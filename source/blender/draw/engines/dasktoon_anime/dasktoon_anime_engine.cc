@@ -12,10 +12,7 @@
 
 namespace blender {
 
-static void dasktoon_anime_render(RenderEngine * /*engine*/,
-                                  Render * /*render*/,
-                                  RenderLayer * /*layer*/,
-                                  const char * /*viewname*/)
+static void dasktoon_anime_render(RenderEngine * /*engine*/, Depsgraph * /*depsgraph*/)
 {
 }
 
