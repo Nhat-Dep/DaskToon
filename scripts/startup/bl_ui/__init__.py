@@ -59,6 +59,7 @@ _modules = [
     "properties_scene",
     "properties_texture",
     "properties_world",
+    "properties_dasktoon",
     "properties_collection",
     "properties_strip",
     "properties_strip_modifier",
