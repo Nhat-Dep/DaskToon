@@ -2,28 +2,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import bpy
-from bpy.types import RenderEngine, Panel, Operator
-
-
-class DASKTOON_RenderEngine(RenderEngine):
-    bl_idname = "DASKTOON_ANIME"
-    bl_label = "DaskToon Anime & Toon"
-    bl_use_preview = True
-    bl_use_eevee_viewport = True
-    bl_use_shading_nodes_custom = False
-    bl_use_postprocess = True
-
-    def __init__(self):
-        super().__init__()
-
-    def view_update(self, context, depsgraph):
-        pass
-
-    def view_draw(self, context, depsgraph):
-        pass
-
-    def render(self, depsgraph):
-        pass
+from bpy.types import Panel, Operator
 
 
 class DASKTOON_RENDER_PT_anime_settings(Panel):
@@ -42,8 +21,8 @@ class DASKTOON_RENDER_PT_anime_settings(Panel):
 
         # Header info
         box = layout.box()
-        box.label(text="Anime & Toon Rendering Suite", icon='RESTRICT_RENDER_OFF')
-        box.label(text="Realtime Cel-Shading & Line Art Engine", icon='CHECKMARK')
+        box.label(text="Native C++ Anime & Toon Suite", icon='RESTRICT_RENDER_OFF')
+        box.label(text="Realtime Cel-Shading Engine", icon='CHECKMARK')
 
         # Cel Shading Settings
         col = layout.column(align=True)
@@ -134,7 +113,6 @@ class DASKTOON_OT_setup_lineart(Operator):
 
 
 classes = (
-    DASKTOON_RenderEngine,
     DASKTOON_RENDER_PT_anime_settings,
     DASKTOON_OT_setup_anime_material,
     DASKTOON_OT_setup_lineart,
