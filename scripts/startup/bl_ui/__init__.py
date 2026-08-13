@@ -60,6 +60,7 @@ _modules = [
     "properties_texture",
     "properties_world",
     "properties_dasktoon",
+    "engine_dasktoon_anime",
     "properties_collection",
     "properties_strip",
     "properties_strip_modifier",
