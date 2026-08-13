@@ -19,8 +19,6 @@ static void dasktoon_anime_render(RenderEngine * /*engine*/,
 {
 }
 
-}  // namespace blender
-
 RenderEngineType DRW_engine_viewport_dasktoon_anime_type = {
     /*next*/ nullptr,
     /*prev*/ nullptr,
@@ -28,7 +26,7 @@ RenderEngineType DRW_engine_viewport_dasktoon_anime_type = {
     /*name*/ N_("DaskToon Anime Engine"),
     /*flag*/ RE_INTERNAL | RE_USE_STEREO_VIEWPORT | RE_USE_GPU_CONTEXT,
     /*update*/ nullptr,
-    /*render*/ &blender::dasktoon_anime_render,
+    /*render*/ &dasktoon_anime_render,
     /*render_frame_finish*/ nullptr,
     /*draw*/ nullptr,
     /*bake*/ nullptr,
@@ -45,3 +43,5 @@ RenderEngineType DRW_engine_viewport_dasktoon_anime_type = {
         /*call*/ nullptr,
     },
 };
+
+}  // namespace blender

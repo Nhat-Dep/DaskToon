@@ -3,14 +3,10 @@
 
 #pragma once
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+namespace blender {
 
 struct RenderEngineType;
 
-extern struct RenderEngineType DRW_engine_viewport_dasktoon_anime_type;
+extern RenderEngineType DRW_engine_viewport_dasktoon_anime_type;
 
-#ifdef __cplusplus
-}
-#endif
+}  // namespace blender
