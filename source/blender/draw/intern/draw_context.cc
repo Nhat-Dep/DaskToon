@@ -101,6 +101,7 @@
 #include "engines/overlay/overlay_engine.h"
 #include "engines/select/select_engine.hh"
 #include "engines/workbench/workbench_engine.h"
+#include "engines/dasktoon_anime/dasktoon_anime_engine.h"
 
 #include "GPU_context.hh"
 
@@ -2287,6 +2288,7 @@ void DRW_engines_register()
 {
   RE_engines_register(&DRW_engine_viewport_eevee_type);
   RE_engines_register(&DRW_engine_viewport_workbench_type);
+  RE_engines_register(&DRW_engine_viewport_dasktoon_anime_type);
 }
 
 void DRW_engines_free()

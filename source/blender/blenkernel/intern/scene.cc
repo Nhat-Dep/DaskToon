@@ -1674,6 +1674,7 @@ const char *RE_engine_id_BLENDER_EEVEE = "BLENDER_EEVEE";
 const char *RE_engine_id_BLENDER_EEVEE_NEXT = "BLENDER_EEVEE_NEXT";
 const char *RE_engine_id_BLENDER_WORKBENCH = "BLENDER_WORKBENCH";
 const char *RE_engine_id_CYCLES = "CYCLES";
+const char *RE_engine_id_DASKTOON_ANIME = "DASKTOON_ANIME";
 
 static void remove_sequencer_fcurves(Scene *sce)
 {
