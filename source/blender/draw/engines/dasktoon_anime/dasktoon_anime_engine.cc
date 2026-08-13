@@ -2,7 +2,7 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_utildefines.h"
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_scene_types.h"
 

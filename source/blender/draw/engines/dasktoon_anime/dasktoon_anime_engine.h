@@ -3,13 +3,13 @@
 
 #pragma once
 
-#include "DNA_engine_types.h"
-
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-extern RenderEngineType DRW_engine_viewport_dasktoon_anime_type;
+struct RenderEngineType;
+
+extern struct RenderEngineType DRW_engine_viewport_dasktoon_anime_type;
 
 #ifdef __cplusplus
 }
