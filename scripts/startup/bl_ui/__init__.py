@@ -61,6 +61,7 @@ _modules = [
     "properties_world",
     "properties_dasktoon",
     "engine_dasktoon_anime",
+    "dasktoon_anime_nodes",
     "properties_collection",
     "properties_strip",
     "properties_strip_modifier",
@@ -123,6 +124,11 @@ def register():
     for mod in _modules_loaded:
         for cls in mod.classes:
             register_class(cls)
+        if hasattr(mod, "register") and mod.__name__ != __name__:
+            try:
+                mod.register()
+            except Exception:
+                pass
 
     space_filebrowser.register_props()
     properties_paint_common.register()
@@ -192,6 +198,11 @@ def unregister():
     properties_paint_common.unregister()
 
     for mod in reversed(_modules_loaded):
+        if hasattr(mod, "unregister") and mod.__name__ != __name__:
+            try:
+                mod.unregister()
+            except Exception:
+                pass
         for cls in reversed(mod.classes):
             if cls.is_registered:
                 unregister_class(cls)

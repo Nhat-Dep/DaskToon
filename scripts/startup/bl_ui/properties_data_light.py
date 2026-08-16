@@ -27,6 +27,7 @@ class DATA_PT_context_light(DataButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_WORKBENCH',
+        'DASKTOON_ANIME',
     }
 
     def draw(self, context):
@@ -48,6 +49,7 @@ class DATA_PT_preview(DataButtonsPanel, Panel):
     COMPAT_ENGINES = {
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
+        'DASKTOON_ANIME',
     }
 
     def draw(self, context):
@@ -74,7 +76,7 @@ class DATA_PT_light(DataButtonsPanel, Panel):
 
 class DATA_PT_EEVEE_light(DataButtonsPanel, Panel):
     bl_label = "Light"
-    COMPAT_ENGINES = {'BLENDER_EEVEE'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE', 'DASKTOON_ANIME'}
 
     def draw(self, context):
         layout = self.layout
@@ -143,7 +145,7 @@ class DATA_PT_EEVEE_light_distance(DataButtonsPanel, Panel):
     bl_label = "Custom Distance"
     bl_parent_id = "DATA_PT_EEVEE_light"
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_EEVEE'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE', 'DASKTOON_ANIME'}
 
     @classmethod
     def poll(cls, context):
@@ -171,7 +173,7 @@ class DATA_PT_EEVEE_light_shadow(DataButtonsPanel, Panel):
     bl_label = "Shadow"
     bl_parent_id = "DATA_PT_EEVEE_light"
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_EEVEE'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE', 'DASKTOON_ANIME'}
 
     def draw_header(self, context):
         light = context.light
@@ -181,7 +183,10 @@ class DATA_PT_EEVEE_light_shadow(DataButtonsPanel, Panel):
         layout = self.layout
         light = context.light
         layout.use_property_split = True
-        layout.active = context.scene.eevee.use_shadows and light.use_shadow
+        has_shadows = True
+        if hasattr(context.scene, "eevee") and hasattr(context.scene.eevee, "use_shadows"):
+            has_shadows = context.scene.eevee.use_shadows
+        layout.active = has_shadows and light.use_shadow
 
         col = layout.column(align=False, heading="Jitter")
         row = col.row(align=True)
@@ -205,7 +210,7 @@ class DATA_PT_EEVEE_light_influence(DataButtonsPanel, Panel):
     bl_label = "Influence"
     bl_parent_id = "DATA_PT_EEVEE_light"
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_EEVEE'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE', 'DASKTOON_ANIME'}
 
     def draw(self, context):
         layout = self.layout
@@ -239,6 +244,7 @@ class DATA_PT_spot(DataButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_WORKBENCH',
+        'DASKTOON_ANIME',
     }
 
     @classmethod
@@ -266,6 +272,7 @@ class DATA_PT_light_animation(DataButtonsPanel, PropertiesAnimationMixin, Proper
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_WORKBENCH',
+        'DASKTOON_ANIME',
     }
 
     def draw(self, context):
@@ -286,11 +293,38 @@ class DATA_PT_light_animation(DataButtonsPanel, PropertiesAnimationMixin, Proper
             self.draw_action_and_slot_selector(context, col, node_tree)
 
 
+class DATA_PT_DaskToon_light_npr(DataButtonsPanel, Panel):
+    bl_label = "DaskToon Anime & NPR Light"
+    bl_parent_id = "DATA_PT_EEVEE_light"
+    COMPAT_ENGINES = {'DASKTOON_ANIME', 'BLENDER_EEVEE'}
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+        light = context.light
+
+        col = layout.column(align=True)
+        col.prop(light, "diffuse_factor", text="Cel Diffuse")
+        col.prop(light, "specular_factor", text="Anime Glossy")
+
+        if light.type != 'SUN':
+            col.separator()
+            col.prop(light, "use_custom_distance", text="Linear Distance")
+            if light.use_custom_distance:
+                col.prop(light, "cutoff_distance", text="Max Range")
+
+        col.separator()
+        col.prop(light, "shadow_filter_radius", text="Shadow Filter")
+        if hasattr(light, "shadow_jitter_overblur"):
+            col.prop(light, "shadow_jitter_overblur", text="Overblur Softness")
+
+
 class DATA_PT_custom_props_light(DataButtonsPanel, PropertyPanel, Panel):
     COMPAT_ENGINES = {
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_WORKBENCH',
+        'DASKTOON_ANIME',
     }
     _context_path = "object.data"
     _property_type = bpy.types.Light
@@ -301,6 +335,7 @@ classes = (
     DATA_PT_preview,
     DATA_PT_light,
     DATA_PT_EEVEE_light,
+    DATA_PT_DaskToon_light_npr,
     DATA_PT_spot,
     DATA_PT_EEVEE_light_shadow,
     DATA_PT_EEVEE_light_influence,

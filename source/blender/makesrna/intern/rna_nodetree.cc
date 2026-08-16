@@ -5058,6 +5058,41 @@ static void def_mix_rgb(BlenderRNA * /*brna*/, StructRNA *srna)
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
 
+static void def_sh_anime_character(BlenderRNA * /*brna*/, StructRNA *srna)
+{
+  static const EnumPropertyItem prop_ambient_mode_items[] = {
+      {0, "OVERLAY", 0, "Overlay (Movie)", "Photoshop Overlay blend (Classic Anime Movie)"},
+      {1, "HUE", 0, "Hue Only (H)", "Shift shadow Hue towards Sky/World without fog"},
+      {2, "HUE_SAT", 0, "Hue + Saturation (HS)", "Shift shadow Hue and Saturation towards Sky/World"},
+      {3, "SAT", 0, "Saturation (S)", "Blend shadow Saturation with Sky/World"},
+      {4, "VAL", 0, "Value (V)", "Blend shadow Brightness with Sky/World"},
+      {5, "MULTIPLY", 0, "Multiply", "Multiply shadow with World color"},
+      {6, "MIX", 0, "Mix", "Direct color mix with World color"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+  static const EnumPropertyItem prop_light_mode_items[] = {
+      {0, "OVERLAY", 0, "Overlay (Standard)", "Natural lighting tint on Base Color"},
+      {1, "HUE", 0, "Hue Tint (H)", "Tint surface Hue with lamp color"},
+      {2, "MULTIPLY", 0, "Multiply", "Direct light color multiplication"},
+      {3, "ADD", 0, "Add (Magic/Neon)", "Additive glow from magic/neon lights"},
+      {4, "PURE_CEL", 0, "Pure Cel", "Cel shading only, no light color shift"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+  PropertyRNA *prop;
+
+  prop = RNA_def_property(srna, "ambient_mode", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "custom1");
+  RNA_def_property_enum_items(prop, prop_ambient_mode_items);
+  RNA_def_property_ui_text(prop, "Ambient Mode", "How World Ambient color affects shadow / shading");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+
+  prop = RNA_def_property(srna, "light_blend_mode", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "custom2");
+  RNA_def_property_enum_items(prop, prop_light_mode_items);
+  RNA_def_property_ui_text(prop, "Light Mode", "How colored lamps affect base color");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+}
+
 static void def_texture(BlenderRNA * /*brna*/, StructRNA *srna)
 {
   PropertyRNA *prop;
@@ -10365,6 +10400,27 @@ static void rna_def_nodes(BlenderRNA *brna)
   define("ShaderNode", "ShaderNodeBsdfRefraction", def_refraction);
   define("ShaderNode", "ShaderNodeBsdfSheen", def_sheen);
   define("ShaderNode", "ShaderNodeBsdfToon", def_toon);
+  define("ShaderNode", "ShaderNodeAnimeCel", def_sh_anime_character);
+  define("ShaderNode", "ShaderNodeAnimeRim");
+  define("ShaderNode", "ShaderNodeAnimeCharacter", def_sh_anime_character);
+  define("ShaderNode", "ShaderNodeAnimeAngelRing");
+  define("ShaderNode", "ShaderNodeAnimeFaceShadow");
+  define("ShaderNode", "ShaderNodeAnimeMangaScreentone");
+  define("ShaderNode", "ShaderNodeAnimeWarmCoolGrade");
+  define("ShaderNode", "ShaderNodeAnimeEye");
+  define("ShaderNode", "ShaderNodeShaderInfo");
+  define("ShaderNode", "ShaderNodeScreenspaceInfo");
+  define("ShaderNode", "ShaderNodeSetDepth");
+  define("ShaderNode", "ShaderNodeCurvature");
+  define("ShaderNode", "ShaderNodeLightInfo");
+  define("ShaderNode", "ShaderNodeOKLabColorRamp");
+  define("ShaderNode", "ShaderNodeSDFPrimitive");
+  define("ShaderNode", "ShaderNodeSDFOp");
+  define("ShaderNode", "ShaderNodeSDFVectorOp");
+  define("ShaderNode", "ShaderNodeSDFNoise");
+  define("ShaderNode", "ShaderNodeTexHexagon");
+  define("ShaderNode", "ShaderNodeTwirl");
+  define("ShaderNode", "ShaderNodeWaterRipples");
   define("ShaderNode", "ShaderNodeBsdfTranslucent");
   define("ShaderNode", "ShaderNodeBsdfTransparent");
   define("ShaderNode", "ShaderNodeBump", def_sh_bump);

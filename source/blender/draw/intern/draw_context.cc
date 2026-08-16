@@ -1203,7 +1203,8 @@ void DRWContext::enable_engines(bool gpencil_engine_needed, RenderEngineType *re
       case OB_MATERIAL:
       case OB_RENDER:
       default:
-        if (render_engine_type == &DRW_engine_viewport_eevee_type) {
+        if (render_engine_type == &DRW_engine_viewport_eevee_type ||
+            render_engine_type == &DRW_engine_viewport_dasktoon_anime_type) {
           view_data.eevee.set_used(true);
         }
         else if (render_engine_type == &DRW_engine_viewport_workbench_type) {

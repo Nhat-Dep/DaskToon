@@ -35,6 +35,27 @@ set(SRC
   nodes/node_shader_bsdf_ray_portal.cc
   nodes/node_shader_bsdf_refraction.cc
   nodes/node_shader_bsdf_sheen.cc
+  nodes/node_shader_anime_cel.cc
+  nodes/node_shader_anime_rim.cc
+  nodes/node_shader_anime_character.cc
+  nodes/node_shader_anime_angel_ring.cc
+  nodes/node_shader_anime_face_shadow.cc
+  nodes/node_shader_anime_manga_screentone.cc
+  nodes/node_shader_anime_warm_cool_grade.cc
+  nodes/node_shader_anime_eye.cc
+  nodes/node_shader_shader_info.cc
+  nodes/node_shader_screenspace_info.cc
+  nodes/node_shader_set_depth.cc
+  nodes/node_shader_curvature.cc
+  nodes/node_shader_light_info.cc
+  nodes/node_shader_oklab_color_ramp.cc
+  nodes/node_shader_sdf_primitive.cc
+  nodes/node_shader_sdf_op.cc
+  nodes/node_shader_sdf_vector_op.cc
+  nodes/node_shader_sdf_noise.cc
+  nodes/node_shader_tex_hexagon.cc
+  nodes/node_shader_twirl.cc
+  nodes/node_shader_water_ripples.cc
   nodes/node_shader_bsdf_toon.cc
   nodes/node_shader_bsdf_translucent.cc
   nodes/node_shader_bsdf_transparent.cc
