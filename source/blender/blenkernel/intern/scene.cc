@@ -223,7 +223,7 @@ static void scene_init_data(ID *id)
     pset->brush[PE_BRUSH_CUT].strength = 1.0f;
   }
 
-  STRNCPY_UTF8(scene->r.engine, RE_engine_id_BLENDER_EEVEE);
+  STRNCPY_UTF8(scene->r.engine, RE_engine_id_DASKTOON_ANIME);
 
   STRNCPY(scene->r.pic, U.renderdir);
 
@@ -243,7 +243,7 @@ static void scene_init_data(ID *id)
   colorspace_name = IMB_colormanagement_role_colorspace_name_get(COLOR_ROLE_DEFAULT_SEQUENCER);
 
   BKE_color_managed_display_settings_init(&scene->display_settings);
-  BKE_color_managed_view_settings_init(&scene->view_settings, &scene->display_settings, "AgX");
+  BKE_color_managed_view_settings_init(&scene->view_settings, &scene->display_settings, "Standard");
   STRNCPY_UTF8(scene->sequencer_colorspace_settings.name, colorspace_name);
 
   BKE_image_format_init(&scene->r.im_format);
@@ -1674,6 +1674,7 @@ const char *RE_engine_id_BLENDER_EEVEE = "BLENDER_EEVEE";
 const char *RE_engine_id_BLENDER_EEVEE_NEXT = "BLENDER_EEVEE_NEXT";
 const char *RE_engine_id_BLENDER_WORKBENCH = "BLENDER_WORKBENCH";
 const char *RE_engine_id_CYCLES = "CYCLES";
+const char *RE_engine_id_DASKTOON_ANIME = "DASKTOON_ANIME";
 
 static void remove_sequencer_fcurves(Scene *sce)
 {
@@ -3034,7 +3035,8 @@ bool BKE_scene_use_spherical_stereo(Scene *scene)
 
 bool BKE_scene_uses_blender_eevee(const Scene *scene)
 {
-  return STREQ(scene->r.engine, RE_engine_id_BLENDER_EEVEE);
+  return STREQ(scene->r.engine, RE_engine_id_BLENDER_EEVEE) ||
+         STREQ(scene->r.engine, RE_engine_id_DASKTOON_ANIME);
 }
 
 bool BKE_scene_uses_blender_workbench(const Scene *scene)

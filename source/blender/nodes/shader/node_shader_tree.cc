@@ -682,6 +682,11 @@ static void ntree_shader_weight_tree_invert(bNodeTree *ntree, bNode *output_node
             case SH_NODE_BSDF_RAY_PORTAL:
             case SH_NODE_BSDF_REFRACTION:
             case SH_NODE_BSDF_TOON:
+            case SH_NODE_ANIME_CEL:
+            case SH_NODE_ANIME_RIM:
+            case SH_NODE_ANIME_CHARACTER:
+            case SH_NODE_ANIME_ANGEL_RING:
+            case SH_NODE_ANIME_EYE:
             case SH_NODE_BSDF_TRANSLUCENT:
             case SH_NODE_BSDF_TRANSPARENT:
             case SH_NODE_BSDF_SHEEN:
@@ -694,7 +699,7 @@ static void ntree_shader_weight_tree_invert(bNodeTree *ntree, bNode *output_node
             case SH_NODE_VOLUME_SCATTER:
             case SH_NODE_VOLUME_COEFFICIENTS:
               fromsock = ntree_shader_node_find_input(fromnode, "Weight");
-              if (fromsock->link) {
+              if (fromsock && fromsock->link) {
                 ntree_weight_tree_merge_weight(ntree, fromnode, fromsock, &tonode, &tosock);
               }
               break;
@@ -744,6 +749,11 @@ static bool closure_node_filter(const bNode *node)
     case SH_NODE_BSDF_RAY_PORTAL:
     case SH_NODE_BSDF_REFRACTION:
     case SH_NODE_BSDF_TOON:
+    case SH_NODE_ANIME_CEL:
+    case SH_NODE_ANIME_RIM:
+    case SH_NODE_ANIME_CHARACTER:
+    case SH_NODE_ANIME_ANGEL_RING:
+    case SH_NODE_ANIME_EYE:
     case SH_NODE_BSDF_TRANSLUCENT:
     case SH_NODE_BSDF_TRANSPARENT:
     case SH_NODE_BSDF_SHEEN:

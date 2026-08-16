@@ -56,6 +56,7 @@ class RENDER_PT_color_management(RenderButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_WORKBENCH',
+        'DASKTOON_ANIME',
     }
 
     def draw(self, context):
@@ -100,6 +101,7 @@ class RENDER_PT_color_management_working_space(RenderButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_WORKBENCH',
+        'DASKTOON_ANIME',
     }
 
     def draw(self, context):
@@ -140,6 +142,7 @@ class RENDER_PT_color_management_advanced(RenderButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_WORKBENCH',
+        'DASKTOON_ANIME',
     }
 
     def draw(self, context):
@@ -162,6 +165,7 @@ class RENDER_PT_color_management_curves(RenderButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_WORKBENCH',
+        'DASKTOON_ANIME',
     }
 
     def draw_header(self, context):
@@ -200,6 +204,7 @@ class RENDER_PT_color_management_white_balance(RenderButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_WORKBENCH',
+        'DASKTOON_ANIME',
     }
 
     def draw_header(self, context):
@@ -235,7 +240,7 @@ class RENDER_PT_color_management_white_balance(RenderButtonsPanel, Panel):
 class RENDER_PT_eevee_motion_blur(RenderButtonsPanel, Panel):
     bl_label = "Motion Blur"
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_EEVEE'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE', 'DASKTOON_ANIME'}
 
     @classmethod
     def poll(cls, context):
@@ -267,7 +272,7 @@ class RENDER_PT_eevee_motion_blur_curve(RenderButtonsPanel, Panel):
     bl_label = "Shutter Curve"
     bl_parent_id = "RENDER_PT_eevee_motion_blur"
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_EEVEE'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE', 'DASKTOON_ANIME'}
 
     def draw(self, context):
         layout = self.layout
@@ -295,7 +300,7 @@ class RENDER_PT_eevee_motion_blur_curve(RenderButtonsPanel, Panel):
 class RENDER_PT_eevee_depth_of_field(RenderButtonsPanel, Panel):
     bl_label = "Depth of Field"
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_EEVEE'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE', 'DASKTOON_ANIME'}
 
     @classmethod
     def poll(cls, context):
@@ -325,7 +330,7 @@ class RENDER_PT_eevee_depth_of_field(RenderButtonsPanel, Panel):
 class RENDER_PT_eevee_volumes(RenderButtonsPanel, Panel):
     bl_label = "Volumes"
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_EEVEE'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE', 'DASKTOON_ANIME'}
 
     @classmethod
     def poll(cls, context):
@@ -352,7 +357,7 @@ class RENDER_PT_eevee_volumes_range(RenderButtonsPanel, Panel):
     bl_label = "Custom Range"
     bl_options = {'DEFAULT_CLOSED'}
     bl_parent_id = "RENDER_PT_eevee_volumes"
-    COMPAT_ENGINES = {'BLENDER_EEVEE'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE', 'DASKTOON_ANIME'}
 
     @classmethod
     def poll(cls, context):
@@ -387,7 +392,7 @@ class RENDER_PT_eevee_raytracing_presets(PresetPanel, Panel):
 class RENDER_PT_eevee_raytracing(RenderButtonsPanel, Panel):
     bl_label = "Raytracing"
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_EEVEE'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE', 'DASKTOON_ANIME'}
 
     @classmethod
     def poll(cls, context):
@@ -421,7 +426,7 @@ class RENDER_PT_eevee_screen_trace(RenderButtonsPanel, Panel):
     bl_label = "Screen Tracing"
     bl_options = {'DEFAULT_CLOSED'}
     bl_parent_id = "RENDER_PT_eevee_raytracing"
-    COMPAT_ENGINES = {'BLENDER_EEVEE'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE', 'DASKTOON_ANIME'}
 
     @classmethod
     def poll(cls, context):
@@ -460,7 +465,7 @@ class RENDER_PT_eevee_gi_approximation(RenderButtonsPanel, Panel):
     bl_label = "Fast GI Approximation"
     bl_options = {'DEFAULT_CLOSED'}
     bl_parent_id = "RENDER_PT_eevee_raytracing"
-    COMPAT_ENGINES = {'BLENDER_EEVEE'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE', 'DASKTOON_ANIME'}
 
     @classmethod
     def poll(cls, context):
@@ -507,7 +512,7 @@ class RENDER_PT_eevee_denoise(RenderButtonsPanel, Panel):
     bl_label = "Denoising"
     bl_options = {'DEFAULT_CLOSED'}
     bl_parent_id = "RENDER_PT_eevee_raytracing"
-    COMPAT_ENGINES = {'BLENDER_EEVEE'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE', 'DASKTOON_ANIME'}
 
     @classmethod
     def poll(cls, context):
@@ -546,7 +551,7 @@ class RENDER_PT_eevee_denoise(RenderButtonsPanel, Panel):
 class RENDER_PT_eevee_light_paths(RenderButtonsPanel, Panel):
     bl_label = "Light Paths"
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_EEVEE'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE', 'DASKTOON_ANIME'}
 
     @classmethod
     def poll(cls, context):
@@ -559,7 +564,7 @@ class RENDER_PT_eevee_light_paths(RenderButtonsPanel, Panel):
 class RENDER_PT_eevee_clamping(RenderButtonsPanel, Panel):
     bl_label = "Clamping"
     bl_parent_id = "RENDER_PT_eevee_light_paths"
-    COMPAT_ENGINES = {'BLENDER_EEVEE'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE', 'DASKTOON_ANIME'}
 
     @classmethod
     def poll(cls, context):
@@ -572,7 +577,7 @@ class RENDER_PT_eevee_clamping(RenderButtonsPanel, Panel):
 class RENDER_PT_eevee_clamping_surface(RenderButtonsPanel, Panel):
     bl_label = "Surface"
     bl_parent_id = "RENDER_PT_eevee_clamping"
-    COMPAT_ENGINES = {'BLENDER_EEVEE'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE', 'DASKTOON_ANIME'}
 
     @classmethod
     def poll(cls, context):
@@ -593,7 +598,7 @@ class RENDER_PT_eevee_clamping_surface(RenderButtonsPanel, Panel):
 class RENDER_PT_eevee_clamping_volume(RenderButtonsPanel, Panel):
     bl_label = "Volume"
     bl_parent_id = "RENDER_PT_eevee_clamping"
-    COMPAT_ENGINES = {'BLENDER_EEVEE'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE', 'DASKTOON_ANIME'}
 
     @classmethod
     def poll(cls, context):
@@ -614,7 +619,7 @@ class RENDER_PT_eevee_clamping_volume(RenderButtonsPanel, Panel):
 class RENDER_PT_eevee_light_paths_intensity(RenderButtonsPanel, Panel):
     bl_label = "Intensity"
     bl_parent_id = "RENDER_PT_eevee_light_paths"
-    COMPAT_ENGINES = {'BLENDER_EEVEE'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE', 'DASKTOON_ANIME'}
 
     @classmethod
     def poll(cls, context):
@@ -636,7 +641,7 @@ class RENDER_PT_eevee_sampling_shadows(RenderButtonsPanel, Panel):
     bl_label = "Shadows"
     bl_parent_id = "RENDER_PT_eevee_sampling"
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_EEVEE'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE', 'DASKTOON_ANIME'}
 
     @classmethod
     def poll(cls, context):
@@ -674,7 +679,7 @@ class RENDER_PT_eevee_sampling_shadows(RenderButtonsPanel, Panel):
 
 class RENDER_PT_eevee_sampling(RenderButtonsPanel, Panel):
     bl_label = "Sampling"
-    COMPAT_ENGINES = {'BLENDER_EEVEE'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE', 'DASKTOON_ANIME'}
 
     @classmethod
     def poll(cls, context):
@@ -687,7 +692,7 @@ class RENDER_PT_eevee_sampling(RenderButtonsPanel, Panel):
 class RENDER_PT_eevee_sampling_viewport(RenderButtonsPanel, Panel):
     bl_label = "Viewport"
     bl_parent_id = "RENDER_PT_eevee_sampling"
-    COMPAT_ENGINES = {'BLENDER_EEVEE'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE', 'DASKTOON_ANIME'}
 
     @classmethod
     def poll(cls, context):
@@ -712,7 +717,7 @@ class RENDER_PT_eevee_sampling_viewport(RenderButtonsPanel, Panel):
 class RENDER_PT_eevee_sampling_render(RenderButtonsPanel, Panel):
     bl_label = "Render"
     bl_parent_id = "RENDER_PT_eevee_sampling"
-    COMPAT_ENGINES = {'BLENDER_EEVEE'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE', 'DASKTOON_ANIME'}
 
     @classmethod
     def poll(cls, context):
@@ -736,7 +741,7 @@ class RENDER_PT_eevee_sampling_advanced(RenderButtonsPanel, Panel):
     bl_label = "Advanced"
     bl_parent_id = "RENDER_PT_eevee_sampling"
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_EEVEE'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE', 'DASKTOON_ANIME'}
 
     @classmethod
     def poll(cls, context):
@@ -757,7 +762,7 @@ class RENDER_PT_eevee_sampling_advanced(RenderButtonsPanel, Panel):
 class RENDER_PT_eevee_film(RenderButtonsPanel, Panel):
     bl_label = "Film"
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_EEVEE'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE', 'DASKTOON_ANIME'}
 
     @classmethod
     def poll(cls, context):
@@ -893,7 +898,7 @@ class RENDER_PT_eevee_performance_memory(RenderButtonsPanel, Panel):
     bl_label = "Memory"
     bl_parent_id = "RENDER_PT_eevee_performance"
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_EEVEE'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE', 'DASKTOON_ANIME'}
 
     @classmethod
     def poll(cls, context):
@@ -915,7 +920,7 @@ class RENDER_PT_eevee_performance_viewport(RenderButtonsPanel, Panel):
     bl_label = "Viewport"
     bl_parent_id = "RENDER_PT_eevee_performance"
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_EEVEE'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE', 'DASKTOON_ANIME'}
 
     @classmethod
     def poll(cls, context):

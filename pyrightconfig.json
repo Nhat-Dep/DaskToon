@@ -1,0 +1,12 @@
+{
+  "include": [
+    "scripts"
+  ],
+  "extraPaths": [
+    "scripts/modules",
+    "scripts/startup"
+  ],
+  "reportMissingImports": "none",
+  "reportMissingModuleSource": "none",
+  "reportUndefinedVariable": "none"
+}
