@@ -56,6 +56,12 @@ set(SRC
   nodes/node_shader_tex_hexagon.cc
   nodes/node_shader_twirl.cc
   nodes/node_shader_water_ripples.cc
+  nodes/node_shader_dask_cel.cc
+  nodes/node_shader_dask_ambient.cc
+  nodes/node_shader_dask_light.cc
+  nodes/node_shader_dask_ao.cc
+  nodes/node_shader_dask_grade.cc
+  nodes/node_shader_dask_outline.cc
   nodes/node_shader_bsdf_toon.cc
   nodes/node_shader_bsdf_translucent.cc
   nodes/node_shader_bsdf_transparent.cc

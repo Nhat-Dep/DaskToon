@@ -100,7 +100,8 @@ void register_node_type_sh_anime_cel()
 
   sh_node_type_base(&ntype, "ShaderNodeAnimeCel"_ustr, SH_NODE_ANIME_CEL);
   ntype.ui_name = "Anime Cel BSDF";
-  ntype.ui_description = "Native DaskToon Multi-Tone Anime Cel-Shading Shader Node with World and Light Influence Options";
+  ntype.ui_description =
+      "Native DaskToon Multi-Tone Anime Cel-Shading Shader Node with World and Light Influence Options (All-in-one: includes specular & world/light tinting; no built-in outline.)";
   ntype.enum_name_legacy = "ANIME_CEL";
   ntype.nclass = NODE_CLASS_SHADER;
   ntype.declare = file_ns::node_declare;

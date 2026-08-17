@@ -236,32 +236,12 @@ class NODE_MT_shader_node_shader_base(node_add_menu.NodeMenu):
 
         layout.separator()
 
-        is_dasktoon = (context.scene and context.scene.render.engine == 'DASKTOON_ANIME')
+        is_dasktoon = (context.scene and context.scene.render.engine in ('DASKTOON_ANIME', 'BLENDER_EEVEE'))
 
         if is_dasktoon:
             self.node_operator(
                 layout,
-                "ShaderNodeAnimeCharacter",
-                label="Dask Shader BSDF",
-                poll=object_material_shader_nodes_poll(context),
-            )
-            self.node_operator(
-                layout,
-                "ShaderNodeAnimeCel",
-                label="Anime Cel BSDF",
-                poll=object_material_shader_nodes_poll(context),
-            )
-            self.node_operator(
-                layout,
-                "ShaderNodeAnimeRim",
-                label="Anime Rim Light",
-                poll=object_material_shader_nodes_poll(context),
-            )
-            self.node_operator(
-                layout,
-                "ShaderNodeBsdfToon",
-                label="Toon BSDF",
-                poll=object_material_shader_nodes_poll(context),
+                "ShaderNodeEmission",
             )
             self.node_operator(
                 layout,
@@ -270,7 +250,13 @@ class NODE_MT_shader_node_shader_base(node_add_menu.NodeMenu):
             )
             self.node_operator(
                 layout,
-                "ShaderNodeEmission",
+                "ShaderNodeBsdfTransparent",
+                poll=object_material_shader_nodes_poll(context),
+            )
+            self.node_operator(
+                layout,
+                "ShaderNodeBsdfTranslucent",
+                poll=object_material_shader_nodes_poll(context),
             )
             self.node_operator(
                 layout,
@@ -280,11 +266,6 @@ class NODE_MT_shader_node_shader_base(node_add_menu.NodeMenu):
             self.node_operator(
                 layout,
                 "ShaderNodeBsdfGlass",
-                poll=object_material_shader_nodes_poll(context),
-            )
-            self.node_operator(
-                layout,
-                "ShaderNodeBsdfTransparent",
                 poll=object_material_shader_nodes_poll(context),
             )
             self.node_operator(
@@ -302,6 +283,77 @@ class NODE_MT_shader_node_shader_base(node_add_menu.NodeMenu):
                 layout,
                 "ShaderNodeBsdfDiffuse",
                 poll=object_material_shader_nodes_poll(context),
+            )
+            self.node_operator(
+                layout,
+                "ShaderNodeEmission",
+            )
+            self.node_operator(
+                layout,
+                "ShaderNodeBsdfGlass",
+                poll=object_material_shader_nodes_poll(context),
+            )
+            self.node_operator(
+                layout,
+                "ShaderNodeBsdfGlossy",
+                poll=object_material_shader_nodes_poll(context),
+            )
+            self.node_operator(
+                layout,
+                "ShaderNodeHoldout",
+                poll=object_material_shader_nodes_poll(context),
+            )
+            self.node_operator(
+                layout,
+                "ShaderNodeBsdfPrincipled",
+                poll=object_material_shader_nodes_poll(context),
+            )
+            self.node_operator(
+                layout,
+                "ShaderNodeBsdfRayPortal",
+                poll=object_material_shader_nodes_poll(context) and cycles_shader_nodes_poll(context),
+            )
+            self.node_operator(
+                layout,
+                "ShaderNodeBsdfRefraction",
+                poll=object_material_shader_nodes_poll(context),
+            )
+            self.node_operator(
+                layout,
+                "ShaderNodeBsdfSheen",
+                poll=object_material_shader_nodes_poll(context),
+            )
+            self.node_operator(
+                layout,
+                "ShaderNodeEeveeSpecular",
+                poll=object_material_shader_nodes_poll(context) and not cycles_shader_nodes_poll(context),
+            )
+            self.node_operator(
+                layout,
+                "ShaderNodeSubsurfaceScattering",
+                poll=object_material_shader_nodes_poll(context),
+            )
+            self.node_operator(
+                layout,
+                "ShaderNodeBsdfTranslucent",
+                poll=object_material_shader_nodes_poll(context),
+            )
+            self.node_operator(
+                layout,
+                "ShaderNodeBsdfTransparent",
+                poll=object_material_shader_nodes_poll(context),
+            )
+            self.node_operator(
+                layout,
+                "ShaderNodeVolumeAbsorption",
+            )
+            self.node_operator(
+                layout,
+                "ShaderNodeVolumePrincipled",
+            )
+            self.node_operator(
+                layout,
+                "ShaderNodeVolumeScatter",
             )
             self.node_operator(
                 layout,
@@ -483,13 +535,15 @@ class NODE_MT_shader_node_vector_base(node_add_menu.NodeMenu):
 
         self.node_operator(layout, "ShaderNodeCombineXYZ")
         props = self.node_operator(layout, "ShaderNodeMapRange")
-        ops = props.settings.add()
-        ops.name = "data_type"
-        ops.value = "'FLOAT_VECTOR'"
+        if props:
+            ops = props.settings.add()
+            ops.name = "data_type"
+            ops.value = "'FLOAT_VECTOR'"
         props = self.node_operator(layout, "ShaderNodeMix", label="Mix Vector")
-        ops = props.settings.add()
-        ops.name = "data_type"
-        ops.value = "'VECTOR'"
+        if props:
+            ops = props.settings.add()
+            ops.name = "data_type"
+            ops.value = "'VECTOR'"
         self.node_operator(layout, "ShaderNodeSeparateXYZ")
         layout.separator()
         self.node_operator(layout, "ShaderNodeMapping")
@@ -574,30 +628,39 @@ class NODE_MT_shader_node_utilities_base(node_add_menu.NodeMenu):
 
 
 class NODE_MT_shader_node_anime_base(node_add_menu.NodeMenu):
-    bl_label = "Anime"
+    bl_label = "DaskToon Anime"
 
     @classmethod
     def poll(cls, context):
-        return dasktoon_anime_shader_nodes_poll(context)
+        return object_material_shader_nodes_poll(context)
 
     def draw(self, context):
         layout = self.layout
-        poll = dasktoon_anime_shader_nodes_poll(context)
+        poll = object_material_shader_nodes_poll(context)
 
-        # Core Shaders & BSDF
+        # 1. Master Anime Shader
+        layout.label(text="Master Anime Shader")
         self.node_operator(layout, "ShaderNodeAnimeCharacter", label="Dask Shader BSDF", poll=poll)
-        self.node_operator(layout, "ShaderNodeAnimeCel", label="Anime Cel BSDF", poll=poll)
-        self.node_operator(layout, "ShaderNodeAnimeEye", label="Anime Eye Shader", poll=poll)
-        self.node_operator(layout, "ShaderNodeAnimeRim", label="Anime Rim Light", poll=poll)
-        self.node_operator(layout, "ShaderNodeBsdfToon", label="Toon BSDF", poll=poll)
 
         layout.separator()
 
-        # Stylized Anime Features & Textures
+        # 2. Modular Building Blocks
+        layout.label(text="Modular Building Blocks")
+        self.node_operator(layout, "ShaderNodeDaskCel", label="Dask Cel Module", poll=poll)
+        self.node_operator(layout, "ShaderNodeDaskAmbient", label="Dask Ambient Module", poll=poll)
+        self.node_operator(layout, "ShaderNodeDaskLight", label="Dask Light Module", poll=poll)
+        self.node_operator(layout, "ShaderNodeDaskAO", label="Dask AO Module", poll=poll)
+        self.node_operator(layout, "ShaderNodeDaskGrade", label="Dask Grade Module", poll=poll)
+        self.node_operator(layout, "ShaderNodeDaskOutline", label="Dask Outline Module", poll=poll)
+
+        layout.separator()
+
+        # 3. Stylized Anime Features
+        layout.label(text="Stylized Anime Features")
         self.node_operator(layout, "ShaderNodeAnimeAngelRing", label="Anime Hair Angel Ring", poll=poll)
         self.node_operator(layout, "ShaderNodeAnimeFaceShadow", label="Anime Face Shadow", poll=poll)
+        self.node_operator(layout, "ShaderNodeAnimeEye", label="Anime Eye Shader", poll=poll)
         self.node_operator(layout, "ShaderNodeAnimeMangaScreentone", label="Manga Comic Screentone", poll=poll)
-        self.node_operator(layout, "ShaderNodeAnimeWarmCoolGrade", label="Anime Warm/Cool Grade", poll=poll)
 
         self.draw_assets_for_catalog(layout, self.bl_label)
 
@@ -615,12 +678,11 @@ class NODE_MT_shader_node_all_base(node_add_menu.NodeMenu):
         self.draw_menu(layout, "Input")
         self.draw_menu(layout, "Output")
         layout.separator()
+        self.draw_menu(layout, "DaskToon Anime")
+        layout.separator()
         # Do not order this alphabetically, we are matching the order in the output node.
         self.draw_menu(layout, "Shader")
         self.draw_menu(layout, "Displacement")
-        if context.scene and context.scene.render.engine == 'DASKTOON_ANIME':
-            layout.separator()
-            self.draw_menu(layout, "Anime")
         layout.separator()
         self.draw_menu(layout, "Color")
         self.draw_menu(layout, "Texture")

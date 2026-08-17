@@ -6,6 +6,10 @@
  * \ingroup GHOST
  */
 
+#include <optional>
+#include <string>
+#include <windows.h>
+
 #include "GHOST_SystemPathsWin32.hh"
 #include "GHOST_Debug.hh"
 

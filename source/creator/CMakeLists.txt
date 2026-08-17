@@ -2099,6 +2099,13 @@ if(WIN32 AND NOT WITH_PYTHON_MODULE)
     PROPERTIES
       VS_USER_PROPS "blender.Cpp.user.props"
   )
+  add_custom_command(
+    TARGET blender POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "$<TARGET_FILE:blender>"
+            "$<TARGET_FILE_DIR:blender>/DaskToon.exe"
+    COMMENT "Auto-generating DaskToon.exe binary"
+  )
 endif()
 
 # -----------------------------------------------------------------------------

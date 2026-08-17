@@ -31,6 +31,8 @@ void register_shader_nodes()
   register_node_type_sh_bsdf_ray_portal();
   register_node_type_sh_bsdf_refraction();
   register_node_type_sh_bsdf_toon();
+  /* DaskToon Anime Suite: all-in-one effect nodes. Used by preset operators
+   * (dasktoon_anime_nodes.py) with a Python node-group fallback if unavailable. */
   register_node_type_sh_anime_cel();
   register_node_type_sh_anime_rim();
   register_node_type_sh_anime_character();
@@ -39,6 +41,10 @@ void register_shader_nodes()
   register_node_type_sh_anime_manga_screentone();
   register_node_type_sh_anime_warm_cool_grade();
   register_node_type_sh_anime_eye();
+  /* Goo Engine Core / SDF / Procedural-Texture Suite: base-engine NPR toolkit
+   * (curvature, SDF ops, screen-space info, procedural textures). Independent
+   * of the DaskToon Anime feature layer above and below — do not remove as
+   * part of anime-scope cleanup. */
   register_node_type_sh_shader_info();
   register_node_type_sh_screenspace_info();
   register_node_type_sh_set_depth();
@@ -52,6 +58,15 @@ void register_shader_nodes()
   register_node_type_sh_tex_hexagon();
   register_node_type_sh_twirl();
   register_node_type_sh_water_ripples();
+  /* DaskToon Dask Modules: composable single-purpose building blocks.
+   * Complementary to the Anime Suite above, not a replacement for it
+   * (covers Outline/Ambient/Light/AO/Grade; not yet wired into presets). */
+  register_node_type_sh_dask_cel();
+  register_node_type_sh_dask_ambient();
+  register_node_type_sh_dask_light();
+  register_node_type_sh_dask_ao();
+  register_node_type_sh_dask_grade();
+  register_node_type_sh_dask_outline();
   register_node_type_sh_bsdf_translucent();
   register_node_type_sh_bsdf_transparent();
   register_node_type_sh_bsdf_sheen();
