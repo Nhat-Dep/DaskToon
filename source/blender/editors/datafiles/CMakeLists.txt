@@ -461,6 +461,7 @@ if(WITH_BLENDER)
       image_zdepth
       imgdisplay
       import
+      import_export
       indirect_only_off
       indirect_only_on
       info
@@ -828,6 +829,8 @@ if(WITH_BLENDER)
       seq_preview
       seq_sequencer
       seq_splitview
+      seq_strip
+      seq_strip_data
       seq_strip_duplicate
       seq_strip_meta
       seq_strip_modifier

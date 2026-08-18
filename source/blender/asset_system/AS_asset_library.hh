@@ -145,7 +145,7 @@ class AssetLibrary {
    * are any remote libraries included).
    *
    * The "Allow Online Access" option will be enforced internally, but probably some check to give
-   * a user message should be done at a higher levl.
+   * a user message should be done at a higher level.
    */
   virtual void force_remote_listing_download() const;
 
@@ -175,6 +175,8 @@ class AssetLibrary {
    * contain a mixture of remote and local assets.
    */
   virtual std::optional<StringRefNull> remote_url() const;
+
+  virtual std::optional<StringRefNull> auth_token() const;
 
   AssetCatalogService &catalog_service() const;
 

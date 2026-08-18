@@ -21,8 +21,7 @@ void node_bsdf_toon(
   float toon_fac = smoothstep(s_min, s_max, facing);
 
   ClosureDiffuse diffuse_data;
-  diffuse_data.weight = weight;
-  diffuse_data.color = color.rgb * toon_fac;
+  diffuse_data.color = color.rgb * weight;
   diffuse_data.N = N;
 
   result = closure_eval(diffuse_data);
