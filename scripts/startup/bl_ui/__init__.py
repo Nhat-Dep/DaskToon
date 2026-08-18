@@ -64,6 +64,7 @@ _modules = [
     "dasktoon_anime_nodes",
     "dasktoon_face_normals",
     "dasktoon_material_combiner",
+    "dasktoon_uv_optimizer",
     "properties_collection",
     "properties_strip",
     "properties_strip_modifier",
