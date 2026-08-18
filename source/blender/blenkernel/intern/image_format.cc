@@ -37,7 +37,7 @@ void BKE_image_format_init(ImageFormatData *imf)
 
   BKE_color_managed_display_settings_init(&imf->display_settings);
 
-  BKE_color_managed_view_settings_init(&imf->view_settings, &imf->display_settings, "AgX");
+  BKE_color_managed_view_settings_init(&imf->view_settings, &imf->display_settings, "Standard");
 
   BKE_color_managed_colorspace_settings_init(&imf->linear_colorspace_settings);
 }

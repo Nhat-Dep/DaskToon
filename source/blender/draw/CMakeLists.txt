@@ -135,6 +135,8 @@ set(SRC
   engines/workbench/workbench_shadow.cc
   engines/workbench/workbench_state.cc
   engines/workbench/workbench_volume.cc
+  engines/dasktoon_anime/dasktoon_anime_engine.cc
+  engines/dasktoon_anime/dasktoon_anime_engine.h
   engines/external/external_engine.cc
   engines/gpencil/gpencil_antialiasing.cc
   engines/gpencil/gpencil_cache_utils.cc

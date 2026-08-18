@@ -632,7 +632,8 @@ static void node_extra_info(NodeExtraInfoParams &parameters)
 
   /* EEVEE supports passes. */
   const Scene *scene = CTX_data_scene(&parameters.C);
-  if (StringRef(scene->r.engine) == RE_engine_id_BLENDER_EEVEE) {
+  if (StringRef(scene->r.engine) == RE_engine_id_BLENDER_EEVEE ||
+      StringRef(scene->r.engine) == RE_engine_id_DASKTOON_ANIME) {
     return;
   }
 

@@ -5104,8 +5104,9 @@ class VIEW3D_MT_edit_mesh_normals(Menu):
         layout.operator("mesh.normals_tools", text="Copy Vector").mode = 'COPY'
         layout.operator("mesh.normals_tools", text="Paste Vector").mode = 'PASTE'
 
-        layout.operator("mesh.smooth_normals", text="Smooth Vectors")
-        layout.operator("mesh.normals_tools", text="Reset Vectors").mode = 'RESET'
+        layout.separator()
+
+        layout.operator("dasktoon.fix_face_normals", text="DaskToon: Spherize Face Normals", icon='SPHERE')
 
         layout.separator()
 
@@ -6967,7 +6968,7 @@ class VIEW3D_PT_shading_render_pass(Panel):
     bl_region_type = 'HEADER'
     bl_label = "Render Pass"
     bl_parent_id = "VIEW3D_PT_shading"
-    COMPAT_ENGINES = {'BLENDER_EEVEE'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE', 'DASKTOON_ANIME'}
 
     @classmethod
     def poll(cls, context):

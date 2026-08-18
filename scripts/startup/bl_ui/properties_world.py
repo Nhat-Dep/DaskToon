@@ -18,7 +18,8 @@ class WorldButtonsPanel:
 
     @classmethod
     def poll(cls, context):
-        return (context.world and context.engine in cls.COMPAT_ENGINES)
+        world = getattr(context, "world", None) or (context.scene.world if getattr(context, "scene", None) else None)
+        return (world is not None and context.engine in cls.COMPAT_ENGINES)
 
 
 class WORLD_PT_context_world(WorldButtonsPanel, Panel):
@@ -28,6 +29,7 @@ class WORLD_PT_context_world(WorldButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_WORKBENCH',
+        'DASKTOON_ANIME',
     }
 
     @classmethod
@@ -38,7 +40,7 @@ class WORLD_PT_context_world(WorldButtonsPanel, Panel):
         layout = self.layout
 
         scene = context.scene
-        world = context.world
+        world = getattr(context, "world", None) or (scene.world if scene else None)
         space = context.space_data
 
         if scene:
@@ -50,18 +52,21 @@ class WORLD_PT_context_world(WorldButtonsPanel, Panel):
 class EEVEE_WORLD_PT_mist(WorldButtonsPanel, Panel):
     bl_label = "Mist Pass"
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_EEVEE'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE', 'DASKTOON_ANIME'}
 
     @classmethod
     def poll(cls, context):
         engine = context.engine
-        return context.world and (engine in cls.COMPAT_ENGINES)
+        world = getattr(context, "world", None) or (context.scene.world if getattr(context, "scene", None) else None)
+        return (world is not None) and (engine in cls.COMPAT_ENGINES)
 
     def draw(self, context):
         layout = self.layout
         layout.use_property_split = True
 
-        world = context.world
+        world = getattr(context, "world", None) or (context.scene.world if getattr(context, "scene", None) else None)
+        if not world:
+            return
 
         col = layout.column(align=True)
         col.prop(world.mist_settings, "start")
@@ -76,6 +81,7 @@ class WORLD_PT_animation(WorldButtonsPanel, PropertiesAnimationMixin, PropertyPa
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_WORKBENCH',
+        'DASKTOON_ANIME',
     }
 
     def draw(self, context):
@@ -84,7 +90,9 @@ class WORLD_PT_animation(WorldButtonsPanel, PropertiesAnimationMixin, PropertyPa
         layout.use_property_decorate = False
 
         # WorldButtonsPanel.poll ensures this is not None.
-        world = context.world
+        world = getattr(context, "world", None) or (context.scene.world if getattr(context, "scene", None) else None)
+        if not world:
+            return
 
         col = layout.column(align=True)
         col.label(text="World")
@@ -101,6 +109,7 @@ class WORLD_PT_custom_props(WorldButtonsPanel, PropertyPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_WORKBENCH',
+        'DASKTOON_ANIME',
     }
     _context_path = "world"
     _property_type = bpy.types.World
@@ -108,24 +117,30 @@ class WORLD_PT_custom_props(WorldButtonsPanel, PropertyPanel, Panel):
 
 class EEVEE_WORLD_PT_surface(WorldButtonsPanel, Panel):
     bl_label = "Surface"
-    COMPAT_ENGINES = {'BLENDER_EEVEE'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE', 'DASKTOON_ANIME'}
 
     @classmethod
     def poll(cls, context):
         engine = context.engine
-        return context.world and (engine in cls.COMPAT_ENGINES)
+        world = getattr(context, "world", None) or (context.scene.world if getattr(context, "scene", None) else None)
+        return (world is not None) and (engine in cls.COMPAT_ENGINES)
 
     def draw(self, context):
         layout = self.layout
 
-        world = context.world
+        world = getattr(context, "world", None) or (context.scene.world if getattr(context, "scene", None) else None)
+        if not world:
+            layout.label(text="No active world")
+            return
 
         layout.separator()
 
         layout.use_property_split = True
 
         ntree = world.node_tree
-        node = ntree.get_output_node('EEVEE')
+        node = None
+        if ntree:
+            node = ntree.get_output_node('EEVEE') or ntree.get_output_node('ALL')
 
         if node:
             input = find_node_input(node, "Surface")
@@ -141,20 +156,25 @@ class EEVEE_WORLD_PT_volume(WorldButtonsPanel, Panel):
     bl_label = "Volume"
     bl_translation_context = i18n_contexts.id_id
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_EEVEE'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE', 'DASKTOON_ANIME'}
 
     @classmethod
     def poll(cls, context):
         engine = context.engine
-        world = context.world
-        return world and (engine in cls.COMPAT_ENGINES)
+        world = getattr(context, "world", None) or (context.scene.world if getattr(context, "scene", None) else None)
+        return (world is not None) and (engine in cls.COMPAT_ENGINES)
 
     def draw(self, context):
         layout = self.layout
 
-        world = context.world
+        world = getattr(context, "world", None) or (context.scene.world if getattr(context, "scene", None) else None)
+        if not world:
+            return
+
         ntree = world.node_tree
-        node = ntree.get_output_node('EEVEE')
+        node = None
+        if ntree:
+            node = ntree.get_output_node('EEVEE') or ntree.get_output_node('ALL')
 
         layout.use_property_split = True
 
@@ -174,13 +194,13 @@ class EEVEE_WORLD_PT_volume(WorldButtonsPanel, Panel):
 class EEVEE_WORLD_PT_settings(WorldButtonsPanel, Panel):
     bl_label = "Settings"
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_EEVEE'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE', 'DASKTOON_ANIME'}
 
     @classmethod
     def poll(cls, context):
         engine = context.engine
-        world = context.world
-        return world and (engine in cls.COMPAT_ENGINES)
+        world = getattr(context, "world", None) or (context.scene.world if getattr(context, "scene", None) else None)
+        return (world is not None) and (engine in cls.COMPAT_ENGINES)
 
     def draw(self, context):
         pass
@@ -189,12 +209,14 @@ class EEVEE_WORLD_PT_settings(WorldButtonsPanel, Panel):
 class EEVEE_WORLD_PT_lightprobe(WorldButtonsPanel, Panel):
     bl_label = "Light Probe"
     bl_parent_id = "EEVEE_WORLD_PT_settings"
-    COMPAT_ENGINES = {'BLENDER_EEVEE'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE', 'DASKTOON_ANIME'}
 
     def draw(self, context):
         layout = self.layout
 
-        world = context.world
+        world = getattr(context, "world", None) or (context.scene.world if getattr(context, "scene", None) else None)
+        if not world:
+            return
 
         layout.use_property_split = True
         layout.prop(world, "probe_resolution", text="Resolution")
@@ -203,12 +225,14 @@ class EEVEE_WORLD_PT_lightprobe(WorldButtonsPanel, Panel):
 class EEVEE_WORLD_PT_sun(WorldButtonsPanel, Panel):
     bl_label = "Sun"
     bl_parent_id = "EEVEE_WORLD_PT_settings"
-    COMPAT_ENGINES = {'BLENDER_EEVEE'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE', 'DASKTOON_ANIME'}
 
     def draw(self, context):
         layout = self.layout
 
-        world = context.world
+        world = getattr(context, "world", None) or (context.scene.world if getattr(context, "scene", None) else None)
+        if not world:
+            return
 
         layout.use_property_split = True
         layout.prop(world, "sun_threshold", text="Threshold")
@@ -219,17 +243,20 @@ class EEVEE_WORLD_PT_sun_shadow(WorldButtonsPanel, Panel):
     bl_label = "Shadow"
     bl_parent_id = "EEVEE_WORLD_PT_sun"
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_EEVEE'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE', 'DASKTOON_ANIME'}
 
     def draw_header(self, context):
-        world = context.world
-        self.layout.prop(world, "use_sun_shadow", text="")
+        world = getattr(context, "world", None) or (context.scene.world if getattr(context, "scene", None) else None)
+        if world:
+            self.layout.prop(world, "use_sun_shadow", text="")
 
     def draw(self, context):
         layout = self.layout
         layout.use_property_split = True
 
-        world = context.world
+        world = getattr(context, "world", None) or (context.scene.world if getattr(context, "scene", None) else None)
+        if not world:
+            return
 
         col = layout.column(align=False, heading="Jitter")
         row = col.row(align=True)
@@ -250,15 +277,26 @@ class WORLD_PT_viewport_display(WorldButtonsPanel, Panel):
     bl_label = "Viewport Display"
     bl_options = {'DEFAULT_CLOSED'}
     bl_order = 10
+    COMPAT_ENGINES = {
+        'BLENDER_RENDER',
+        'BLENDER_EEVEE',
+        'BLENDER_WORKBENCH',
+        'DASKTOON_ANIME',
+    }
 
     @classmethod
     def poll(cls, context):
-        return context.world
+        world = getattr(context, "world", None) or (context.scene.world if getattr(context, "scene", None) else None)
+        return (world is not None) and (context.engine in cls.COMPAT_ENGINES)
 
     def draw(self, context):
         layout = self.layout
         layout.use_property_split = True
-        world = context.world
+
+        world = getattr(context, "world", None) or (context.scene.world if getattr(context, "scene", None) else None)
+        if not world:
+            return
+
         layout.prop(world, "color")
 
 
@@ -266,17 +304,17 @@ classes = (
     WORLD_PT_context_world,
     EEVEE_WORLD_PT_surface,
     EEVEE_WORLD_PT_volume,
-    EEVEE_WORLD_PT_mist,
     EEVEE_WORLD_PT_settings,
     EEVEE_WORLD_PT_lightprobe,
     EEVEE_WORLD_PT_sun,
     EEVEE_WORLD_PT_sun_shadow,
+    EEVEE_WORLD_PT_mist,
     WORLD_PT_viewport_display,
     WORLD_PT_animation,
     WORLD_PT_custom_props,
 )
 
-if __name__ == "__main__":  # only for live edit.
+if __name__ == "__main__":
     from bpy.utils import register_class
     for cls in classes:
         register_class(cls)

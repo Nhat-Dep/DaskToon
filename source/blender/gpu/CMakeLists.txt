@@ -761,6 +761,20 @@ set(GLSL_SRC
   shaders/material/gpu_shader_material_tex_voronoi.glsl
   shaders/material/gpu_shader_material_tex_wave.glsl
   shaders/material/gpu_shader_material_tex_white_noise.glsl
+  shaders/material/gpu_shader_material_anime_cel.glsl
+  shaders/material/gpu_shader_material_anime_rim.glsl
+  shaders/material/gpu_shader_material_anime_character.glsl
+  shaders/material/gpu_shader_material_anime_angel_ring.glsl
+  shaders/material/gpu_shader_material_anime_face_shadow.glsl
+  shaders/material/gpu_shader_material_anime_manga_screentone.glsl
+  shaders/material/gpu_shader_material_anime_warm_cool_grade.glsl
+  shaders/material/gpu_shader_material_anime_eye.glsl
+  shaders/material/gpu_shader_material_dask_cel.glsl
+  shaders/material/gpu_shader_material_dask_ambient.glsl
+  shaders/material/gpu_shader_material_dask_light.glsl
+  shaders/material/gpu_shader_material_dask_ao.glsl
+  shaders/material/gpu_shader_material_dask_grade.glsl
+  shaders/material/gpu_shader_material_dask_outline.glsl
   shaders/material/gpu_shader_material_toon.glsl
   shaders/material/gpu_shader_material_transform_utils.glsl
   shaders/material/gpu_shader_material_translucent.glsl

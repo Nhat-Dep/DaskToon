@@ -422,7 +422,7 @@ static void blo_update_defaults_scene(Main *bmain, Scene *scene)
 {
   ToolSettings *ts = scene->toolsettings;
 
-  STRNCPY_UTF8(scene->r.engine, RE_engine_id_BLENDER_EEVEE);
+  STRNCPY_UTF8(scene->r.engine, RE_engine_id_DASKTOON_ANIME);
 
   scene->r.cfra = 1.0f;
   scene->r.im_format.exr_flag |= R_IMF_EXR_FLAG_MULTIPART;
@@ -723,8 +723,9 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
       STRNCPY_UTF8(scene.view_settings.look, "None");
     }
     else {
-      /* Default to AgX view transform. */
-      STRNCPY_UTF8(scene.view_settings.view_transform, "AgX");
+      /* Default to Standard view transform for DaskToon Anime & NPR rendering. */
+      STRNCPY_UTF8(scene.view_settings.view_transform, "Standard");
+      STRNCPY_UTF8(scene.view_settings.look, "None");
     }
 
     if (app_template && STREQ(app_template, "Video_Editing")) {

@@ -2183,20 +2183,25 @@ static void material_default_surface_init(Material **ma_p)
   Material *ma = material_default_create(ma_p, "Default Surface");
   bNodeTree *ntree = ma->nodetree;
 
-  bNode *principled = bke::node_add_static_node(nullptr, *ntree, SH_NODE_BSDF_PRINCIPLED);
-  bNodeSocket *base_color = bke::node_find_socket(*principled, SOCK_IN, "Base Color"_ustr);
-  copy_v3_v3((static_cast<bNodeSocketValueRGBA *>(base_color->default_value))->value, &ma->r);
+  bNode *dask_shader = bke::node_add_static_node(nullptr, *ntree, SH_NODE_ANIME_CHARACTER);
+  if (!dask_shader) {
+    dask_shader = bke::node_add_static_node(nullptr, *ntree, SH_NODE_BSDF_PRINCIPLED);
+  }
+  bNodeSocket *base_color = bke::node_find_socket(*dask_shader, SOCK_IN, "Base Color"_ustr);
+  if (base_color) {
+    copy_v3_v3((static_cast<bNodeSocketValueRGBA *>(base_color->default_value))->value, &ma->r);
+  }
 
   bNode *output = bke::node_add_static_node(nullptr, *ntree, SH_NODE_OUTPUT_MATERIAL);
 
   bke::node_add_link(*ntree,
-                     *principled,
-                     *bke::node_find_socket(*principled, SOCK_OUT, "BSDF"_ustr),
+                     *dask_shader,
+                     *bke::node_find_socket(*dask_shader, SOCK_OUT, "BSDF"_ustr),
                      *output,
                      *bke::node_find_socket(*output, SOCK_IN, "Surface"_ustr));
 
-  principled->location[0] = -200.0f;
-  principled->location[1] = 100.0f;
+  dask_shader->location[0] = -200.0f;
+  dask_shader->location[1] = 100.0f;
   output->location[0] = 200.0f;
   output->location[1] = 100.0f;
 

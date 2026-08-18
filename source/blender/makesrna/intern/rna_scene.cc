@@ -7011,6 +7011,7 @@ static void rna_def_scene_render_data(BlenderRNA *brna)
 
   static const EnumPropertyItem engine_items[] = {
       {0, "BLENDER_EEVEE", 0, "EEVEE", ""},
+      {0, "DASKTOON_ANIME", 0, "DaskToon Anime Engine", "Native C++ Anime & Toon Render Engine"},
       {0, nullptr, 0, nullptr, nullptr},
   };
 

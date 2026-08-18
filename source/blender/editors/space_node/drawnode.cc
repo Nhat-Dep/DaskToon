@@ -1002,7 +1002,7 @@ static const float std_node_socket_colors[][4] = {
     {0.65, 0.39, 0.78, 1.0}, /* SOCK_ROTATION */
     {0.40, 0.40, 0.40, 1.0}, /* SOCK_MENU */
     {0.72, 0.20, 0.52, 1.0}, /* SOCK_MATRIX */
-    {0.30, 0.50, 0.50, 1.0}, /* SOCK_BUNDLE */
+    {0.15, 0.75, 1.00, 1.0}, /* SOCK_BUNDLE (Electric Cyan Anime) */
     {0.49, 0.49, 0.23, 1.0}, /* SOCK_CLOSURE */
     {0.39, 0.34, 0.26, 1},   /* SOCK_FONT */
     {0, 0, 0, 1},            /* SOCK_SCENE */

@@ -5,6 +5,10 @@
 __pycache__/
 *.py[cod]
 
+# crash logs
+blender.crash.txt
+*.crash.txt
+
 # editors
 *~
 *.swp
