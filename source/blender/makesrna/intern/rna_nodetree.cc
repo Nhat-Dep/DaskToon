@@ -4395,6 +4395,32 @@ static const EnumPropertyItem *rna_NodeRaycastSampleAttributeItem_data_type_item
   });
 }
 
+
+
+static int rna_ShaderNodeAnimeCharacter_outline_tint_mode_get(PointerRNA *ptr)
+{
+  bNode *node = (bNode *)ptr->data;
+  return (node->custom1 >> 4) & 0x0F;
+}
+
+static void rna_ShaderNodeAnimeCharacter_outline_tint_mode_set(PointerRNA *ptr, int value)
+{
+  bNode *node = (bNode *)ptr->data;
+  node->custom1 = (node->custom1 & 0x000F) | ((value & 0x0F) << 4);
+}
+
+static int rna_ShaderNodeAnimeCharacter_ambient_mode_get(PointerRNA *ptr)
+{
+  bNode *node = (bNode *)ptr->data;
+  return node->custom1 & 0x0F;
+}
+
+static void rna_ShaderNodeAnimeCharacter_ambient_mode_set(PointerRNA *ptr, int value)
+{
+  bNode *node = (bNode *)ptr->data;
+  node->custom1 = (node->custom1 & 0xFFF0) | (value & 0x0F);
+}
+
 }  // namespace blender
 
 #else
@@ -5111,7 +5137,10 @@ static void def_sh_anime_character(BlenderRNA * /*brna*/, StructRNA *srna)
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
 
   prop = RNA_def_property(srna, "ambient_mode", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, nullptr, "custom1");
+  RNA_def_property_enum_funcs(prop,
+                              "rna_ShaderNodeAnimeCharacter_ambient_mode_get",
+                              "rna_ShaderNodeAnimeCharacter_ambient_mode_set",
+                              nullptr);
   RNA_def_property_enum_items(prop, prop_ambient_mode_items);
   RNA_def_property_ui_text(prop, "Ambient Mode", "How World Ambient color affects shadow / shading");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
@@ -5120,6 +5149,36 @@ static void def_sh_anime_character(BlenderRNA * /*brna*/, StructRNA *srna)
   RNA_def_property_enum_sdna(prop, nullptr, "custom2");
   RNA_def_property_enum_items(prop, prop_light_mode_items);
   RNA_def_property_ui_text(prop, "Light Mode", "How colored lamps affect base color");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+
+  static const EnumPropertyItem prop_outline_tint_items[] = {
+      {0, "CUSTOM", 0, "Custom Color", "Use specified Outline Color input"},
+      {1, "HARMONIC_KYOTO", 0, "Auto Harmonic (Kyoto Style)", "Auto-synthesize rich dark saturated outline tint from Base Color"},
+      {2, "LIGHT_REACTIVE", 0, "Light Reactive", "Outline tint brightness reacts to scene lighting"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+  prop = RNA_def_property(srna, "outline_tint_mode", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_funcs(prop,
+                              "rna_ShaderNodeAnimeCharacter_outline_tint_mode_get",
+                              "rna_ShaderNodeAnimeCharacter_outline_tint_mode_set",
+                              nullptr);
+  RNA_def_property_enum_items(prop, prop_outline_tint_items);
+  RNA_def_property_ui_text(prop, "Outline Mode", "Outline Color Harmonization Mode");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+}
+
+static void def_sh_dask_cel(BlenderRNA * /*brna*/, StructRNA *srna)
+{
+  static const EnumPropertyItem prop_outline_tint_mode_items[] = {
+      {0, "CUSTOM", 0, "Custom Color", "Use specified Outline Color input"},
+      {1, "HARMONIC_KYOTO", 0, "Auto Harmonic (Kyoto Style)", "Auto-synthesize rich dark saturated outline tint from Base Color"},
+      {2, "LIGHT_REACTIVE", 0, "Light Reactive", "Outline tint brightness reacts to scene lighting"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+  PropertyRNA *prop = RNA_def_property(srna, "outline_tint_mode", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "custom1");
+  RNA_def_property_enum_items(prop, prop_outline_tint_mode_items);
+  RNA_def_property_ui_text(prop, "Outline Mode", "Outline Color Harmonization Mode");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
 
@@ -5139,6 +5198,64 @@ static void def_sh_dask_ambient(BlenderRNA * /*brna*/, StructRNA *srna)
   RNA_def_property_enum_sdna(prop, nullptr, "custom1");
   RNA_def_property_enum_items(prop, prop_ambient_mode_items);
   RNA_def_property_ui_text(prop, "Ambient Mode", "How World Ambient color affects shadow / shading");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+}
+
+static void def_sh_dask_outline(BlenderRNA * /*brna*/, StructRNA *srna)
+{
+  static const EnumPropertyItem prop_tint_mode_items[] = {
+      {0, "CUSTOM", 0, "Custom Color", "Use fixed Outline Color"},
+      {1, "HARMONIC_KYOTO", 0, "Harmonic Tint (Kyoto/Ufotable)", "Auto-synthesize rich dark saturated outline tint from Base Color"},
+      {2, "LIGHT_REACTIVE", 0, "Light Reactive", "Outline tint brightness reacts to scene lighting"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+  PropertyRNA *prop = RNA_def_property(srna, "tint_mode", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "custom1");
+  RNA_def_property_enum_items(prop, prop_tint_mode_items);
+  RNA_def_property_ui_text(prop, "Tint Mode", "Outline Color Harmonization Mode");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+}
+
+static void def_sh_manga_character(BlenderRNA * /*brna*/, StructRNA *srna)
+{
+  static const EnumPropertyItem prop_manga_mode_items[] = {
+      {0, "BW_COMIC", 0, "B&W Manga Comic", "Classic Black & White Manga (Paper White + Halftone Gray + Ink Black)"},
+      {1, "COLOR_WEBTOON", 0, "Color Webtoon / Manhwa", "Modern Digital Color Comic with screentone texture overlay"},
+      {2, "PENCIL_SKETCH", 0, "Pencil Sketch", "Soft graphite pencil draft shading"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+  static const EnumPropertyItem prop_pattern_type_items[] = {
+      {0, "HALFTONE_DOTS", 0, "Halftone Screentone (Tram)", "Classic circular manga screentone dots"},
+      {1, "CROSS_HATCH", 0, "Cross-Hatching", "Multi-directional hand-drawn cross hatching"},
+      {2, "PARALLEL_LINES", 0, "Parallel Lines", "Clean parallel comic shading lines"},
+      {3, "STIPPLE_GRAIN", 0, "Stipple Paper Grain", "Fine ink stipple paper texture"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+  PropertyRNA *prop = RNA_def_property(srna, "manga_mode", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "custom1");
+  RNA_def_property_enum_items(prop, prop_manga_mode_items);
+  RNA_def_property_ui_text(prop, "Manga Mode", "Manga / Comic Art Style");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+
+  prop = RNA_def_property(srna, "pattern_type", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "custom2");
+  RNA_def_property_enum_items(prop, prop_pattern_type_items);
+  RNA_def_property_ui_text(prop, "Pattern Type", "Manga Screentone Shading Pattern");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+}
+
+static void def_sh_artist_line_modulation(BlenderRNA * /*brna*/, StructRNA *srna)
+{
+  static const EnumPropertyItem prop_tint_mode_items[] = {
+      {0, "CUSTOM", 0, "Custom Color", "Use fixed Outline Color"},
+      {1, "HARMONIC_KYOTO", 0, "Harmonic Tint (Kyoto/Ufotable)", "Auto-synthesize rich dark saturated outline tint from Base Color"},
+      {2, "LIGHT_REACTIVE", 0, "Light Reactive", "Outline tint brightness reacts to scene lighting"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+  PropertyRNA *prop = RNA_def_property(srna, "tint_mode", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "custom1");
+  RNA_def_property_enum_items(prop, prop_tint_mode_items);
+  RNA_def_property_ui_text(prop, "Tint Mode", "Outline Color Harmonization Mode");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
 
@@ -10472,11 +10589,16 @@ static void rna_def_nodes(BlenderRNA *brna)
   define("ShaderNode", "ShaderNodeAnimeAngelRing");
   define("ShaderNode", "ShaderNodeAnimeFaceShadow");
   define("ShaderNode", "ShaderNodeAnimeMangaScreentone");
+  define("ShaderNode", "ShaderNodeMangaCharacter", def_sh_manga_character);
+  define("ShaderNode", "ShaderNodeMangaHatching");
+  define("ShaderNode", "ShaderNodeMangaSpeedLines");
+  define("ShaderNode", "ShaderNodeArtistLineModulation", def_sh_artist_line_modulation);
   define("ShaderNode", "ShaderNodeAnimeWarmCoolGrade");
   define("ShaderNode", "ShaderNodeAnimeEye");
   define("ShaderNode", "ShaderNodeShaderInfo");
   define("ShaderNode", "ShaderNodeScreenspaceInfo");
   define("ShaderNode", "ShaderNodeSetDepth");
+  define("ShaderNode", "ShaderNodeDepthInfo");
   define("ShaderNode", "ShaderNodeCurvature");
   define("ShaderNode", "ShaderNodeLightInfo");
   define("ShaderNode", "ShaderNodeOKLabColorRamp");
@@ -10487,12 +10609,12 @@ static void rna_def_nodes(BlenderRNA *brna)
   define("ShaderNode", "ShaderNodeTexHexagon");
   define("ShaderNode", "ShaderNodeTwirl");
   define("ShaderNode", "ShaderNodeWaterRipples");
-  define("ShaderNode", "ShaderNodeDaskCel");
+  define("ShaderNode", "ShaderNodeDaskCel", def_sh_dask_cel);
   define("ShaderNode", "ShaderNodeDaskAmbient", def_sh_dask_ambient);
   define("ShaderNode", "ShaderNodeDaskLight", def_sh_dask_light);
   define("ShaderNode", "ShaderNodeDaskAO");
   define("ShaderNode", "ShaderNodeDaskGrade");
-  define("ShaderNode", "ShaderNodeDaskOutline");
+  define("ShaderNode", "ShaderNodeDaskOutline", def_sh_dask_outline);
   define("ShaderNode", "ShaderNodeBsdfTranslucent");
   define("ShaderNode", "ShaderNodeBsdfTransparent");
   define("ShaderNode", "ShaderNodeBump", def_sh_bump);

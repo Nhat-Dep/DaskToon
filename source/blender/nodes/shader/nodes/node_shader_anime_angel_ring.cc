@@ -75,7 +75,7 @@ void register_node_type_sh_anime_angel_ring()
   static bke::bNodeType ntype;
 
   sh_node_type_base(&ntype, "ShaderNodeAnimeAngelRing"_ustr, SH_NODE_ANIME_ANGEL_RING);
-  ntype.ui_name = "Anime Hair Angel Ring";
+  ntype.ui_name = "Angel Ring";
   ntype.ui_description = "Native DaskToon Hair Angel Ring / Halo Highlight (Anisotropic Normal Z, Noise Jitter & Emission Output)";
   ntype.enum_name_legacy = "ANIME_ANGEL_RING";
   ntype.nclass = NODE_CLASS_SHADER;

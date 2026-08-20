@@ -46,7 +46,7 @@ void register_node_type_sh_anime_warm_cool_grade()
   static bke::bNodeType ntype;
 
   sh_node_type_base(&ntype, "ShaderNodeAnimeWarmCoolGrade"_ustr, SH_NODE_ANIME_WARM_COOL_GRADE);
-  ntype.ui_name = "Anime Warm/Cool Grade";
+  ntype.ui_name = "Warm/Cool Grade";
   ntype.ui_description = "Native DaskToon Penumbra Saturation Boost & Warm/Cool Color Grade (Lit Warm Tint vs Shadow Cool Tint)";
   ntype.enum_name_legacy = "ANIME_WARM_COOL_GRADE";
   ntype.nclass = NODE_CLASS_OP_COLOR;

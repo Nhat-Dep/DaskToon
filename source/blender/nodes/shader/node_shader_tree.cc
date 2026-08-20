@@ -693,6 +693,7 @@ static void ntree_shader_weight_tree_invert(bNodeTree *ntree, bNode *output_node
             case SH_NODE_DASK_AO:
             case SH_NODE_DASK_GRADE:
             case SH_NODE_DASK_OUTLINE:
+            case SH_NODE_ARTIST_LINE_MODULATION:
             case SH_NODE_BSDF_TRANSLUCENT:
             case SH_NODE_BSDF_TRANSPARENT:
             case SH_NODE_BSDF_SHEEN:
@@ -766,6 +767,7 @@ static bool closure_node_filter(const bNode *node)
     case SH_NODE_DASK_AO:
     case SH_NODE_DASK_GRADE:
     case SH_NODE_DASK_OUTLINE:
+    case SH_NODE_ARTIST_LINE_MODULATION:
     case SH_NODE_BSDF_TRANSLUCENT:
     case SH_NODE_BSDF_TRANSPARENT:
     case SH_NODE_BSDF_SHEEN:

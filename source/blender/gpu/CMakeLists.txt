@@ -723,6 +723,10 @@ set(GLSL_SRC
   shaders/material/gpu_shader_material_anime_angel_ring.glsl
   shaders/material/gpu_shader_material_anime_face_shadow.glsl
   shaders/material/gpu_shader_material_anime_manga_screentone.glsl
+  shaders/material/gpu_shader_material_manga_character.glsl
+  shaders/material/gpu_shader_material_manga_hatching.glsl
+  shaders/material/gpu_shader_material_manga_speed_lines.glsl
+  shaders/material/gpu_shader_material_artist_line_modulation.glsl
   shaders/material/gpu_shader_material_anime_warm_cool_grade.glsl
   shaders/material/gpu_shader_material_anime_eye.glsl
   shaders/material/gpu_shader_material_dask_cel.glsl
@@ -731,6 +735,7 @@ set(GLSL_SRC
   shaders/material/gpu_shader_material_dask_ao.glsl
   shaders/material/gpu_shader_material_dask_grade.glsl
   shaders/material/gpu_shader_material_dask_outline.glsl
+  shaders/material/gpu_shader_material_depth_info.glsl
   shaders/material/gpu_shader_material_toon.glsl
   shaders/material/gpu_shader_material_transform_utils.glsl
   shaders/material/gpu_shader_material_translucent.glsl

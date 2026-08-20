@@ -45,6 +45,9 @@ void node_anime_character(float3 N,
                           float rim_lift,
                           float rim_lighting_mix,
                           float rim_factor,
+                          float outline_width,
+                          float4 outline_color,
+                          float outline_lighting_mix,
                           float4 color_filter,
                           float4 shadow_tint,
                           float4 highlight_tint,
@@ -63,7 +66,7 @@ void node_anime_character(float3 N,
   shadow_color = max(shadow_color, float4(0.0f));
 
   float ambient_mode = modes.x;
-  float light_blend_mode = modes.y;
+  float outline_tint_mode = modes.y;
   int module_flags = int(modes.z + 0.5f);
   float ao_samples = modes.w;
 
@@ -88,7 +91,7 @@ void node_anime_character(float3 N,
   float light_intensity = max(max(light_col.r, light_col.g), light_col.b);
 
   /* =========================================================================
-   * 2. DISCRETE 2-TONE CEL SHADING CALCULATION (AUTO HARMONIZED)
+   * 2. DISCRETE 2-TONE CEL SHADING CALCULATION (CLASSIC SHADER)
    * ========================================================================= */
   float s_soft = max(shadow_softness, 0.001f);
   float s_min = clamp(shadow_thresh - s_soft * 0.5f, 0.0f, 1.0f);
@@ -108,91 +111,91 @@ void node_anime_character(float3 N,
    * ========================================================================= */
   float amb_fac = use_ambient ? clamp(ambient_factor, 0.0f, 1.0f) : 0.0f;
   if (amb_fac > 0.0001f) {
-    float3 amb_rgb = ambient_color.rgb;
-    if (use_custom_color < 0.5f) {
-      ClosureDiffuse diff_amb;
-      diff_amb.weight = 1.0f;
-      diff_amb.color = float3(1.0f);
-      diff_amb.N = float3(0.0f, 0.0f, 1.0f);
-      Closure raw_amb = closure_eval(diff_amb);
-      float4 world_light = closure_to_rgba(raw_amb);
-      if (length(world_light.rgb) > 0.0001f) {
-        amb_rgb = world_light.rgb * 3.14159265f;
-      }
+    float3 amb_color;
+    if (use_custom_color > 0.5f) {
+      amb_color = ambient_color.rgb;
+    }
+    else {
+      ClosureDiffuse amb_diff;
+      amb_diff.weight = 1.0f;
+      amb_diff.color = float3(1.0f);
+      amb_diff.N = float3(0.0f, 0.0f, 1.0f);
+      Closure amb_eval = closure_eval(amb_diff);
+      float4 amb_rgba = closure_to_rgba(amb_eval);
+      amb_color = amb_rgba.rgb;
     }
 
     float3 amb_shaded = surface_color;
-    int mode = int(ambient_mode + 0.5f);
-    if (mode == 0) { // Overlay
-      amb_shaded = mix(2.0f * surface_color * amb_rgb,
-                       1.0f - 2.0f * (1.0f - surface_color) * (1.0f - amb_rgb),
-                       step(float3(0.5f), surface_color));
-    }
-    else if (mode == 1) { // Hue
-      float3 hsv_surf = dasktoon_master_rgb_to_hsv(surface_color);
-      float3 hsv_amb = dasktoon_master_rgb_to_hsv(amb_rgb);
-      amb_shaded = dasktoon_master_hsv_to_rgb(float3(hsv_amb.x, hsv_surf.y, hsv_surf.z));
-    }
-    else if (mode == 2) { // Hue + Saturation
-      float3 hsv_surf = dasktoon_master_rgb_to_hsv(surface_color);
-      float3 hsv_amb = dasktoon_master_rgb_to_hsv(amb_rgb);
-      amb_shaded = dasktoon_master_hsv_to_rgb(float3(hsv_amb.x, hsv_amb.y, hsv_surf.z));
-    }
-    else if (mode == 3) { // Saturation
-      float3 hsv_surf = dasktoon_master_rgb_to_hsv(surface_color);
-      float3 hsv_amb = dasktoon_master_rgb_to_hsv(amb_rgb);
-      amb_shaded = dasktoon_master_hsv_to_rgb(float3(hsv_amb.x, hsv_surf.y, hsv_surf.z));
-    }
-    else if (mode == 4) { // Value
-      float3 hsv_surf = dasktoon_master_rgb_to_hsv(surface_color);
-      float3 hsv_amb = dasktoon_master_rgb_to_hsv(amb_rgb);
-      amb_shaded = dasktoon_master_hsv_to_rgb(float3(hsv_amb.x, hsv_surf.y, hsv_amb.z));
-    }
-    else if (mode == 5) { // Multiply
-      amb_shaded = surface_color * amb_rgb;
-    }
-    else { // Mix
-      amb_shaded = mix(surface_color, amb_rgb, 0.5f);
-    }
+    int a_mode = int(ambient_mode + 0.5f);
 
-    if (ambient_shadow_only > 0.5f) {
-      surface_color = mix(surface_color, amb_shaded, amb_fac * (1.0f - cel_factor));
+    if (a_mode == 0) {
+      /* Mode 0: Overlay Blend */
+      float3 a = amb_shaded;
+      float3 b = amb_color;
+      amb_shaded = mix(2.0f * a * b, 1.0f - 2.0f * (1.0f - a) * (1.0f - b), step(float3(0.5f), a));
+    }
+    else if (a_mode == 1) {
+      /* Mode 1: Hue Shift */
+      float3 hsv_surf = dasktoon_master_rgb_to_hsv(amb_shaded);
+      float3 hsv_amb = dasktoon_master_rgb_to_hsv(amb_color);
+      hsv_surf.x = hsv_amb.x;
+      amb_shaded = dasktoon_master_hsv_to_rgb(hsv_surf);
+    }
+    else if (a_mode == 2) {
+      /* Mode 2: Hue + Saturation */
+      float3 hsv_surf = dasktoon_master_rgb_to_hsv(amb_shaded);
+      float3 hsv_amb = dasktoon_master_rgb_to_hsv(amb_color);
+      hsv_surf.x = hsv_amb.x;
+      hsv_surf.y = mix(hsv_surf.y, hsv_amb.y, 0.65f);
+      amb_shaded = dasktoon_master_hsv_to_rgb(hsv_surf);
+    }
+    else if (a_mode == 3) {
+      /* Mode 3: Saturation */
+      float3 hsv_surf = dasktoon_master_rgb_to_hsv(amb_shaded);
+      float3 hsv_amb = dasktoon_master_rgb_to_hsv(amb_color);
+      hsv_surf.y = hsv_amb.y;
+      amb_shaded = dasktoon_master_hsv_to_rgb(hsv_surf);
+    }
+    else if (a_mode == 4) {
+      /* Mode 4: Value / Brightness */
+      float3 hsv_surf = dasktoon_master_rgb_to_hsv(amb_shaded);
+      float3 hsv_amb = dasktoon_master_rgb_to_hsv(amb_color);
+      hsv_surf.z = hsv_amb.z;
+      amb_shaded = dasktoon_master_hsv_to_rgb(hsv_surf);
+    }
+    else if (a_mode == 5) {
+      /* Mode 5: Multiply */
+      amb_shaded = amb_shaded * amb_color;
     }
     else {
-      surface_color = mix(surface_color, amb_shaded, amb_fac);
+      /* Mode 6: Mix */
+      amb_shaded = amb_color;
     }
+
+    float apply_mask = (ambient_shadow_only > 0.5f) ? (1.0f - cel_factor) : 1.0f;
+    surface_color = mix(surface_color, amb_shaded, amb_fac * apply_mask);
   }
 
   /* =========================================================================
-   * 4. BUILT-IN SCENE LIGHT LAYER (FAC = 0 WHEN DISABLED)
+   * 4. BUILT-IN SCENE LIGHT TINT LAYER (FAC = 0 WHEN DISABLED)
    * ========================================================================= */
   float lit_fac = use_light ? clamp(light_factor, 0.0f, 1.0f) : 0.0f;
   if (lit_fac > 0.0001f) {
-    float3 chroma = (light_intensity > 0.001f) ? (light_col / light_intensity) : float3(1.0f);
-    float tint_fac = clamp(light_tint_strength, 0.0f, 2.0f);
-    float3 lamp_tint = mix(float3(1.0f), chroma, tint_fac);
-
     float3 lit_shaded = surface_color;
-    int lmode = int(light_blend_mode + 0.5f);
-    if (lmode == 0) { // Overlay
-      lit_shaded = mix(2.0f * surface_color * lamp_tint,
-                       1.0f - 2.0f * (1.0f - surface_color) * (1.0f - lamp_tint),
-                       step(float3(0.5f), surface_color));
+    float l_strength = clamp(light_tint_strength, 0.0f, 2.0f);
+
+    /* Normalize light color for hue tinting */
+    float l_max = max(max(light_col.r, light_col.g), light_col.b);
+    float3 l_norm = (l_max > 0.001f) ? (light_col / l_max) : float3(1.0f);
+
+    if (abs(l_strength - 1.0f) > 0.001f) {
+      l_norm = mix(float3(1.0f), l_norm, l_strength);
     }
-    else if (lmode == 1) { // Hue Tint
-      float3 hsv_surf = dasktoon_master_rgb_to_hsv(surface_color);
-      float3 hsv_lamp = dasktoon_master_rgb_to_hsv(lamp_tint);
-      lit_shaded = dasktoon_master_hsv_to_rgb(float3(hsv_lamp.x, hsv_surf.y, hsv_surf.z));
-    }
-    else if (lmode == 2) { // Multiply
-      lit_shaded = surface_color * lamp_tint;
-    }
-    else if (lmode == 3) { // Add
-      lit_shaded = surface_color + lamp_tint * 0.5f;
-    }
-    else { // Pure Cel
-      lit_shaded = surface_color;
-    }
+
+    /* Standard Overlay */
+    float3 a = lit_shaded;
+    float3 b = l_norm;
+    lit_shaded = mix(2.0f * a * b, 1.0f - 2.0f * (1.0f - a) * (1.0f - b), step(float3(0.5f), a));
 
     surface_color = mix(surface_color, lit_shaded, lit_fac * cel_factor);
   }
@@ -227,7 +230,8 @@ void node_anime_character(float3 N,
 
     float NdotV = clamp(dot(vN, V), 0.0f, 1.0f);
     float fresnel = 1.0f - NdotV;
-    float rim_power = max(rim_fresnel_power, 0.1f);
+    /* Default tighter falloff to keep rim light strictly on outer silhouette (hair & shoulders) */
+    float rim_power = max(rim_fresnel_power, 0.5f);
     float rim_term = clamp(pow(fresnel, rim_power) + rim_lift, 0.0f, 1.0f);
 
     float3 rim_col = rim_color.rgb;
@@ -236,13 +240,19 @@ void node_anime_character(float3 N,
       rim_col = mix(rim_col, rim_col * light_col, rim_l_mix);
     }
 
-    /* Directional visibility: rim fades in total darkness when rim_lighting_mix > 0 */
-    float light_visibility = mix(1.0f, clamp(light_intensity * 2.0f, 0.0f, 1.0f), rim_l_mix);
+    float light_visibility = mix(1.0f, clamp(light_intensity * 1.5f, 0.0f, 1.0f), rim_l_mix);
     surface_color += rim_col * (rim_term * rim_f * light_visibility);
   }
 
   /* =========================================================================
-   * 7. BUILT-IN CINEMATIC COLOR GRADING LAYER (FAC = 0 WHEN DISABLED)
+   * 7. BUILT-IN DYNAMIC INVERTED HULL / CONTOUR ANIME OUTLINE
+   * =========================================================================
+   * Inverted Hull outlines are synthesized via DaskToon's Zero-Click VRM
+   * auto-sync pipeline (Slot 2 Inverted Hull Solidify). Frontface surface
+   * remains clean and free of Fresnel crease smudges. */
+
+  /* =========================================================================
+   * 8. BUILT-IN CINEMATIC COLOR GRADING LAYER (FAC = 0 WHEN DISABLED)
    * ========================================================================= */
   float grd_fac = use_grade ? clamp(grade_factor, 0.0f, 1.0f) : 0.0f;
   if (grd_fac > 0.0001f) {
@@ -272,7 +282,7 @@ void node_anime_character(float3 N,
   }
 
   /* =========================================================================
-   * 8. MASTER CONTROLS & FINAL EMISSION CLOSURE
+   * 9. MASTER CONTROLS & FINAL EMISSION CLOSURE
    * ========================================================================= */
   surface_color = max(surface_color * max(strength, 0.0f), float3(0.0f));
 

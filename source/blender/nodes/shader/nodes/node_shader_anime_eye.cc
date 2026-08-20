@@ -50,7 +50,7 @@ void register_node_type_sh_anime_eye()
   static bke::bNodeType ntype;
 
   sh_node_type_base(&ntype, "ShaderNodeAnimeEye"_ustr, SH_NODE_ANIME_EYE);
-  ntype.ui_name = "Anime Eye Shader";
+  ntype.ui_name = "Anime Eye";
   ntype.ui_description = "Native DaskToon Anime Eye BSDF (Iris, Pupil, Crescent Bottom Glow, Top Eyelash Shadow & Sparkles)";
   ntype.enum_name_legacy = "ANIME_EYE";
   ntype.nclass = NODE_CLASS_SHADER;

@@ -336,6 +336,11 @@ if(WITH_PYTHON_MODULE)
 
 else()
   add_executable(blender ${EXETYPE} ${SRC})
+  set_target_properties(
+    blender
+    PROPERTIES
+    OUTPUT_NAME "DaskToon"
+  )
   if(WITH_CPU_CHECK)
     # blender_cpu_check *NEEDS* to be linked first, there can be no exceptions
     # to this, this is to ensure this will be the first code to run once the
@@ -346,6 +351,11 @@ else()
     add_executable(blender-launcher WIN32
       blender_launcher_win32.c
       ${CMAKE_SOURCE_DIR}/release/windows/icons/winblender.rc
+    )
+    set_target_properties(
+      blender-launcher
+      PROPERTIES
+      OUTPUT_NAME "DaskToon-launcher"
     )
     if(NOT WITH_WINDOWS_EXTERNAL_MANIFEST)
       target_sources(blender-launcher PRIVATE
@@ -2081,7 +2091,7 @@ endif()
 # Setup launcher
 
 if(WIN32 AND NOT WITH_PYTHON_MODULE)
-  set(BLENDER_BIN "blender.exe")
+  set(BLENDER_BIN "DaskToon.exe")
   install(
     TARGETS blender blender-launcher
     COMPONENT Blender
@@ -2098,13 +2108,6 @@ if(WIN32 AND NOT WITH_PYTHON_MODULE)
     blender
     PROPERTIES
       VS_USER_PROPS "blender.Cpp.user.props"
-  )
-  add_custom_command(
-    TARGET blender POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "$<TARGET_FILE:blender>"
-            "$<TARGET_FILE_DIR:blender>/DaskToon.exe"
-    COMMENT "Auto-generating DaskToon.exe binary"
   )
 endif()
 

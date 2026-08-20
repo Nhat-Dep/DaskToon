@@ -55,7 +55,7 @@ void register_node_type_sh_dask_ambient()
   static bke::bNodeType ntype;
 
   sh_node_type_base(&ntype, "ShaderNodeDaskAmbient"_ustr, SH_NODE_DASK_AMBIENT);
-  ntype.ui_name = "Dask Ambient Module";
+  ntype.ui_name = "World Ambient";
   ntype.ui_description = "Standalone World Ambient & 7 Shading Modes BSDF node";
   ntype.enum_name_legacy = "DASK_AMBIENT";
   ntype.nclass = NODE_CLASS_SHADER;

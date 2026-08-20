@@ -41,11 +41,16 @@ set(SRC
   nodes/node_shader_anime_angel_ring.cc
   nodes/node_shader_anime_face_shadow.cc
   nodes/node_shader_anime_manga_screentone.cc
+  nodes/node_shader_manga_character.cc
+  nodes/node_shader_manga_hatching.cc
+  nodes/node_shader_manga_speed_lines.cc
+  nodes/node_shader_artist_line_modulation.cc
   nodes/node_shader_anime_warm_cool_grade.cc
   nodes/node_shader_anime_eye.cc
   nodes/node_shader_shader_info.cc
   nodes/node_shader_screenspace_info.cc
   nodes/node_shader_set_depth.cc
+  nodes/node_shader_depth_info.cc
   nodes/node_shader_curvature.cc
   nodes/node_shader_light_info.cc
   nodes/node_shader_oklab_color_ramp.cc

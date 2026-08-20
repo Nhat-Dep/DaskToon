@@ -41,7 +41,7 @@ void register_node_type_sh_tex_hexagon()
   static bke::bNodeType ntype;
 
   sh_node_type_base(&ntype, "ShaderNodeTexHexagon"_ustr, SH_NODE_TEX_HEXAGON);
-  ntype.ui_name = "Hexagon Texture";
+  ntype.ui_name = "Hexagon";
   ntype.ui_description = "Goo Engine Hexagon Texture: Procedural honeycomb/mecha armor pattern for anime tech assets";
   ntype.enum_name_legacy = "TEX_HEXAGON";
   ntype.nclass = NODE_CLASS_TEXTURE;

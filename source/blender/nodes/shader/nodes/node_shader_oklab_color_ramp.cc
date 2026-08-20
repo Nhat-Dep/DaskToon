@@ -40,7 +40,7 @@ void register_node_type_sh_oklab_color_ramp()
   static bke::bNodeType ntype;
 
   sh_node_type_base(&ntype, "ShaderNodeOKLabColorRamp"_ustr, SH_NODE_OKLAB_COLOR_RAMP);
-  ntype.ui_name = "OKLab Color Ramp";
+  ntype.ui_name = "OKLab Ramp";
   ntype.ui_description = "Goo Engine OKLab Color Ramp: Perceptually uniform color interpolation preventing desaturated grayish anime boundaries";
   ntype.enum_name_legacy = "OKLAB_COLOR_RAMP";
   ntype.nclass = NODE_CLASS_CONVERTER;

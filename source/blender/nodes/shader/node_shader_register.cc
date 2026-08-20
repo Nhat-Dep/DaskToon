@@ -39,6 +39,10 @@ void register_shader_nodes()
   register_node_type_sh_anime_angel_ring();
   register_node_type_sh_anime_face_shadow();
   register_node_type_sh_anime_manga_screentone();
+  register_node_type_sh_manga_character();
+  register_node_type_sh_manga_hatching();
+  register_node_type_sh_manga_speed_lines();
+  register_node_type_sh_artist_line_modulation();
   register_node_type_sh_anime_warm_cool_grade();
   register_node_type_sh_anime_eye();
   /* Goo Engine Core / SDF / Procedural-Texture Suite: base-engine NPR toolkit
@@ -48,6 +52,7 @@ void register_shader_nodes()
   register_node_type_sh_shader_info();
   register_node_type_sh_screenspace_info();
   register_node_type_sh_set_depth();
+  register_node_type_sh_depth_info();
   register_node_type_sh_curvature();
   register_node_type_sh_light_info();
   register_node_type_sh_oklab_color_ramp();

@@ -65,7 +65,7 @@ void register_node_type_sh_anime_face_shadow()
   static bke::bNodeType ntype;
 
   sh_node_type_base(&ntype, "ShaderNodeAnimeFaceShadow"_ustr, SH_NODE_ANIME_FACE_SHADOW);
-  ntype.ui_name = "Anime Face Shadow";
+  ntype.ui_name = "Face Shadow";
   ntype.ui_description = "Native DaskToon Anime Facial Shadow Smoothing & Direction Controller (SDF Map / Head Vector Normal Smoothing)";
   ntype.enum_name_legacy = "ANIME_FACE_SHADOW";
   ntype.nclass = NODE_CLASS_CONVERTER;

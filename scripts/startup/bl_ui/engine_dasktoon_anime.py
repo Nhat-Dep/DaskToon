@@ -324,6 +324,12 @@ class DASKTOON_RENDER_PT_presets(DaskToonRenderPanel):
         
         p4 = grid.operator("dasktoon.setup_anime_preset", text="Manga Tone", icon='TEXTURE')
         p4.preset_type = 'MANGA'
+        
+        p5 = grid.operator("dasktoon.setup_anime_preset", text="🎨 Artist Outline", icon='MOD_LINEART')
+        p5.preset_type = 'OUTLINE'
+        
+        p6 = grid.operator("dasktoon.setup_anime_preset", text="Dask Cel Shader", icon='MATERIAL')
+        p6.preset_type = 'CEL'
 
 
 # =============================================================================
@@ -399,6 +405,12 @@ def register():
     for cls in classes:
         bpy.utils.register_class(cls)
     bpy.types.Scene.dasktoon_engine = PointerProperty(type=DaskToonEngineSettings)
+
+    # Automatically add DASKTOON_ANIME to all UI panels supporting BLENDER_EEVEE
+    for cls in bpy.types.Panel.__subclasses__():
+        if hasattr(cls, 'COMPAT_ENGINES') and isinstance(cls.COMPAT_ENGINES, set):
+            if 'BLENDER_EEVEE' in cls.COMPAT_ENGINES and 'DASKTOON_ANIME' not in cls.COMPAT_ENGINES:
+                cls.COMPAT_ENGINES.add('DASKTOON_ANIME')
 
 
 def unregister():

@@ -1269,6 +1269,14 @@ ANIME_NATIVE_NODES = {
     'DASK_AO': ("Dask AO Module", "ShaderNodeDaskAO", "SHADING_RENDERED"),
     'DASK_GRADE': ("Dask Grade Module", "ShaderNodeDaskGrade", "COLOR"),
     'DASK_OUTLINE': ("Dask Outline Module", "ShaderNodeDaskOutline", "MOD_LINEART"),
+
+    # Manga & Comic Suite
+    'MANGA_CHARACTER': ("Manga Master Character", "ShaderNodeMangaCharacter", "TEXTURE"),
+    'MANGA_HATCHING': ("Manga Cross-Hatching", "ShaderNodeMangaHatching", "MOD_LINEART"),
+    'MANGA_SPEED_LINES': ("Manga Action Speed Lines", "ShaderNodeMangaSpeedLines", "PROP_CON"),
+
+    # Artist Linework Suite
+    'ARTIST_LINE_MODULATION': ("Artist Line Modulation", "ShaderNodeArtistLineModulation", "GREASEPENCIL"),
 }
 
 
@@ -1466,6 +1474,71 @@ class DASKTOON_OT_setup_anime_preset(Operator):
                 emission = nodes.new('ShaderNodeEmission')
                 emission.location = (400, 0)
                 links.new(tone_node.outputs['Screentone Color'], emission.inputs['Color'])
+        elif self.preset_type == 'OUTLINE':
+            name = "DaskToon_Artist_Outline"
+            mat = bpy.data.materials.new(name=name)
+            mat.use_nodes = True
+            mat.use_backface_culling = True
+            nodes = mat.node_tree.nodes
+            links = mat.node_tree.links
+            nodes.clear()
+
+            out_node = nodes.new('ShaderNodeOutputMaterial')
+            out_node.location = (400, 0)
+            try:
+                outline_node = nodes.new(type='ShaderNodeDaskOutline')
+                outline_node.location = (0, 0)
+                links.new(outline_node.outputs['BSDF'], out_node.inputs['Surface'])
+            except Exception:
+                outline_node = nodes.new('ShaderNodeEmission')
+                outline_node.location = (0, 0)
+                outline_node.inputs['Color'].default_value = (0.16, 0.08, 0.08, 1.0)
+                links.new(outline_node.outputs['Emission'], out_node.inputs['Surface'])
+
+            # Add / Configure Solidify Modifier on Object
+            if not obj.data.materials:
+                base_mat = bpy.data.materials.new(name=f"{obj.name}_Base")
+                base_mat.use_nodes = True
+                obj.data.materials.append(base_mat)
+
+            obj.data.materials.append(mat)
+            outline_mat_idx = len(obj.data.materials) - 1
+
+            mod_name = "DaskToon_Outline_Solidify"
+            mod = obj.modifiers.get(mod_name)
+            if not mod:
+                mod = obj.modifiers.new(name=mod_name, type='SOLIDIFY')
+            mod.thickness = 0.0035
+            mod.offset = 1.0
+            mod.use_flip_normals = True
+            mod.use_rim = False
+            mod.material_offset = outline_mat_idx
+
+            self.report({'INFO'}, f"Applied 1-Click Automated Dask Artist Outline to {obj.name}!")
+            return {'FINISHED'}
+
+        elif self.preset_type == 'CEL':
+            name = "DaskToon_Cel_Shader"
+            mat = bpy.data.materials.new(name=name)
+            mat.use_nodes = True
+            nodes = mat.node_tree.nodes
+            links = mat.node_tree.links
+            nodes.clear()
+
+            out_node = nodes.new('ShaderNodeOutputMaterial')
+            out_node.location = (400, 0)
+            try:
+                cel_node = nodes.new(type='ShaderNodeDaskCel')
+                cel_node.location = (0, 0)
+                links.new(cel_node.outputs['BSDF'], out_node.inputs['Surface'])
+            except Exception:
+                cel_group = get_or_create_cel_shader_group()
+                cel_node = nodes.new('ShaderNodeGroup')
+                cel_node.node_tree = cel_group
+                cel_node.location = (0, 0)
+                emission = nodes.new('ShaderNodeEmission')
+                emission.location = (250, 0)
+                links.new(cel_node.outputs['Color'], emission.inputs['Color'])
                 links.new(emission.outputs['Emission'], out_node.inputs['Surface'])
 
         if obj.data.materials:
@@ -1600,15 +1673,10 @@ def dasktoon_ensure_default_dask_shader(mat):
             mat.node_tree.update_tag()
 
 
-def _sync_outline_node_subgraph(src_socket, target_tree, target_socket):
-    """Deeply clones all upstream node network (Textures, Hue/Sat, ColorRamp, Mix, etc.) into the Outline Material."""
-    if not src_socket:
+def _sync_outline_socket(src_socket, target_tree, target_socket, visited_nodes):
+    """Clones upstream node network for a single socket into the target material."""
+    if not src_socket or not target_socket:
         return
-
-    # Remove existing helper nodes (keep only ShaderNodeDaskOutline and Output)
-    for n in list(target_tree.nodes):
-        if n.bl_idname not in {'ShaderNodeDaskOutline', 'ShaderNodeOutputMaterial'}:
-            target_tree.nodes.remove(n)
 
     if not src_socket.is_linked:
         for lk in list(target_socket.links):
@@ -1618,8 +1686,6 @@ def _sync_outline_node_subgraph(src_socket, target_tree, target_socket):
         except Exception:
             pass
         return
-
-    visited_nodes = {}
 
     def copy_node(src_node):
         if src_node in visited_nodes:
@@ -1672,7 +1738,20 @@ def _sync_outline_node_subgraph(src_socket, target_tree, target_socket):
 
     out_s = build(src_socket)
     if out_s:
+        for lk in list(target_socket.links):
+            target_tree.links.remove(lk)
         target_tree.links.new(out_s, target_socket)
+
+
+def _sync_outline_node_subgraph(src_socket, target_tree, target_socket):
+    """Deeply clones all upstream node network (Textures, Hue/Sat, ColorRamp, Mix, etc.) into the Outline Material."""
+    if not src_socket:
+        return
+    for n in list(target_tree.nodes):
+        if n.bl_idname not in {'ShaderNodeDaskOutline', 'ShaderNodeOutputMaterial'}:
+            target_tree.nodes.remove(n)
+    visited_nodes = {}
+    _sync_outline_socket(src_socket, target_tree, target_socket, visited_nodes)
 
 
 # =============================================================================
@@ -1689,6 +1768,7 @@ def dasktoon_vrm_outline_auto_sync(scene, depsgraph=None):
         outline_width = 0.0
         outline_mix = 0.0
         active_outline_sock = None
+        active_width_sock = None
         enable_outline = False
 
         for mat in obj.data.materials:
@@ -1702,6 +1782,8 @@ def dasktoon_vrm_outline_auto_sync(scene, depsgraph=None):
                     enable_outline = True
                     if 'Outline Width' in node.inputs:
                         outline_width = max(outline_width, node.inputs['Outline Width'].default_value)
+                        if node.inputs['Outline Width'].is_linked:
+                            active_width_sock = node.inputs['Outline Width']
                     if 'Outline Color' in node.inputs:
                         active_outline_sock = node.inputs['Outline Color']
                     if 'Outline Lighting Mix' in node.inputs:
@@ -1717,6 +1799,8 @@ def dasktoon_vrm_outline_auto_sync(scene, depsgraph=None):
                         enable_outline = True
                         if 'Outline Width' in node.inputs:
                             outline_width = max(outline_width, node.inputs['Outline Width'].default_value)
+                            if node.inputs['Outline Width'].is_linked:
+                                active_width_sock = node.inputs['Outline Width']
                         if 'Outline Color' in node.inputs:
                             active_outline_sock = node.inputs['Outline Color']
                         if 'Outline Lighting Mix' in node.inputs:
@@ -1728,6 +1812,8 @@ def dasktoon_vrm_outline_auto_sync(scene, depsgraph=None):
                         enable_outline = True
                         if 'Outline Width' in node.inputs:
                             outline_width = max(outline_width, node.inputs['Outline Width'].default_value)
+                            if node.inputs['Outline Width'].is_linked:
+                                active_width_sock = node.inputs['Outline Width']
                         if 'Outline Color' in node.inputs:
                             active_outline_sock = node.inputs['Outline Color']
                         if 'Outline Lighting Mix' in node.inputs:
@@ -1736,7 +1822,10 @@ def dasktoon_vrm_outline_auto_sync(scene, depsgraph=None):
         mod_name = "DaskToon_Outline"
         existing_mod = obj.modifiers.get(mod_name)
 
-        if enable_outline and outline_width > 0.0001:
+        if enable_outline and (outline_width > 0.0001 or active_width_sock is not None):
+            if active_width_sock is not None and outline_width <= 0.0001:
+                outline_width = 0.002  # Reasonable default modifier extrusion for dynamic width graph
+
             # 1. Ensure Outline Material exists in object material slots
             outline_mat_name = f"{obj.name}_DaskOutline"
             outline_mat = bpy.data.materials.get(outline_mat_name)
@@ -1758,7 +1847,7 @@ def dasktoon_vrm_outline_auto_sync(scene, depsgraph=None):
             if hasattr(outline_mat, 'use_transparent_shadow'):
                 outline_mat.use_transparent_shadow = True
 
-            # Sync outline material values and full upstream node network (HueSatVal, Textures, etc.)
+            # Sync outline material values and full upstream node network (HueSatVal, Textures, DepthInfo, etc.)
             if outline_mat.node_tree:
                 nt = outline_mat.node_tree
                 ot_n = None
@@ -1774,8 +1863,16 @@ def dasktoon_vrm_outline_auto_sync(scene, depsgraph=None):
                 if 'Outline Lighting Mix' in ot_n.inputs:
                     ot_n.inputs['Outline Lighting Mix'].default_value = outline_mix
 
+                # Clean existing helper nodes before deep cloning
+                for n in list(nt.nodes):
+                    if n.bl_idname not in {'ShaderNodeDaskOutline', 'ShaderNodeOutputMaterial'}:
+                        nt.nodes.remove(n)
+
+                visited_nodes = {}
                 if active_outline_sock:
-                    _sync_outline_node_subgraph(active_outline_sock, nt, ot_n.inputs['Outline Color'])
+                    _sync_outline_socket(active_outline_sock, nt, ot_n.inputs['Outline Color'], visited_nodes)
+                if active_width_sock and 'Outline Width' in ot_n.inputs:
+                    _sync_outline_socket(active_width_sock, nt, ot_n.inputs['Outline Width'], visited_nodes)
 
             # Find or append material slot index
             slot_idx = -1
@@ -1799,6 +1896,20 @@ def dasktoon_vrm_outline_auto_sync(scene, depsgraph=None):
             existing_mod.material_offset = slot_idx
             existing_mod.show_viewport = True
             existing_mod.show_render = True
+
+            # 3. Check for artist vertex weight mask (Zero-Click pinching & crease blobbing prevention)
+            mask_vg_names = {'Outline_Weight', 'outline_weight', 'DaskOutline_Mask', 'Outline_Mask', 'Outline_Width', 'outline_mask', 'Outline', 'outline'}
+            matched_vg = None
+            if hasattr(obj, 'vertex_groups'):
+                for vg in obj.vertex_groups:
+                    if vg.name in mask_vg_names:
+                        matched_vg = vg.name
+                        break
+            if matched_vg:
+                existing_mod.vertex_group = matched_vg
+                existing_mod.invert_vertex_group = False
+            else:
+                existing_mod.vertex_group = ""
         else:
             # Cleanly remove modifier when outline is disabled
             if existing_mod:

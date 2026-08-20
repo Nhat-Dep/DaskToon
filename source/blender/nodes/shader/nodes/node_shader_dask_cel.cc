@@ -4,6 +4,7 @@
 
 #include "node_shader_util.hh"
 
+#include "RNA_access.hh"
 #include "UI_interface_layout.hh"
 #include "UI_resources.hh"
 
@@ -57,6 +58,13 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_output<decl::Float>("Shadow Factor"_ustr).description("0..1 factor of shadow vs lit area");
 }
 
+static void node_shader_buts_dask_cel(ui::Layout &layout, bContext * /*C*/, PointerRNA *ptr)
+{
+  if (RNA_boolean_get(ptr, "use_outline")) {
+    layout.prop(ptr, "outline_tint_mode", ui::ITEM_R_SPLIT_EMPTY_NAME, "Outline Mode", ICON_NONE);
+  }
+}
+
 static int node_shader_gpu_dask_cel(GPUMaterial *mat,
                                     bNode *node,
                                     bNodeExecData * /*execdata*/,
@@ -67,7 +75,9 @@ static int node_shader_gpu_dask_cel(GPUMaterial *mat,
     GPU_link(mat, "world_normals_get", &in[0].link);
   }
   GPU_material_flag_set(mat, GPU_MATFLAG_DIFFUSE | GPU_MATFLAG_EMISSION | GPU_MATFLAG_SHADER_TO_RGBA);
-  return GPU_stack_link(mat, node, "node_dask_cel", in, out);
+  
+  float outline_tint_mode = float(node->custom1);
+  return GPU_stack_link(mat, node, "node_dask_cel", in, out, GPU_constant(&outline_tint_mode));
 }
 
 }  // namespace nodes::node_shader_dask_cel_cc
@@ -80,13 +90,14 @@ void register_node_type_sh_dask_cel()
   static bke::bNodeType ntype;
 
   sh_node_type_base(&ntype, "ShaderNodeDaskCel"_ustr, SH_NODE_DASK_CEL);
-  ntype.ui_name = "Dask Cel Module";
+  ntype.ui_name = "Cel Shading";
   ntype.ui_description =
-      "Standalone Discrete 2-Tone Anime Cel Shading node with built-in VRM Inverted Hull Outline controls (Composable module: outline-ready; no specular or world/light tinting.)";
+      "Standalone Discrete 2-Tone Anime Cel Shading node with Harmonic Inverted Hull Outline controls";
   ntype.enum_name_legacy = "DASK_CEL";
   ntype.nclass = NODE_CLASS_SHADER;
   ntype.declare = file_ns::node_declare;
   ntype.add_ui_poll = object_dasktoon_anime_shader_nodes_poll;
+  ntype.draw_buttons = file_ns::node_shader_buts_dask_cel;
   ntype.default_width = bke::NodeWidth::_220;
   ntype.gpu_fn = file_ns::node_shader_gpu_dask_cel;
 

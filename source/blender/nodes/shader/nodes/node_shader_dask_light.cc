@@ -59,7 +59,7 @@ void register_node_type_sh_dask_light()
   static bke::bNodeType ntype;
 
   sh_node_type_base(&ntype, "ShaderNodeDaskLight"_ustr, SH_NODE_DASK_LIGHT);
-  ntype.ui_name = "Dask Light Module";
+  ntype.ui_name = "Light Tint";
   ntype.ui_description = "Standalone Scene Light & 5 Forward Blend Modes BSDF node";
   ntype.enum_name_legacy = "DASK_LIGHT";
   ntype.nclass = NODE_CLASS_SHADER;

@@ -73,7 +73,7 @@ void register_node_type_sh_dask_ao()
   static bke::bNodeType ntype;
 
   sh_node_type_base(&ntype, "ShaderNodeDaskAO"_ustr, SH_NODE_DASK_AO);
-  ntype.ui_name = "Dask AO Module";
+  ntype.ui_name = "Crevice AO";
   ntype.ui_description = "Standalone Hardware Horizon-Based Ambient Occlusion (HBAO) crevice and contact shadow node with Darkness control";
   ntype.enum_name_legacy = "DASK_AO";
   ntype.nclass = NODE_CLASS_SHADER;

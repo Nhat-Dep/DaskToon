@@ -56,7 +56,7 @@ void register_node_type_sh_anime_manga_screentone()
   static bke::bNodeType ntype;
 
   sh_node_type_base(&ntype, "ShaderNodeAnimeMangaScreentone"_ustr, SH_NODE_ANIME_MANGA_SCREENTONE);
-  ntype.ui_name = "Manga Comic Screentone";
+  ntype.ui_name = "Screentone";
   ntype.ui_description = "Native DaskToon 2D Manga Screentone & Halftone Pattern (Screen-Space Dot Matrix, Angle & Sharpness)";
   ntype.enum_name_legacy = "ANIME_MANGA_SCREENTONE";
   ntype.nclass = NODE_CLASS_TEXTURE;

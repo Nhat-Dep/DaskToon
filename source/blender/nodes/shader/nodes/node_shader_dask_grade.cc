@@ -69,7 +69,7 @@ void register_node_type_sh_dask_grade()
   static bke::bNodeType ntype;
 
   sh_node_type_base(&ntype, "ShaderNodeDaskGrade"_ustr, SH_NODE_DASK_GRADE);
-  ntype.ui_name = "Dask Grade Module";
+  ntype.ui_name = "Color Grade";
   ntype.ui_description = "Standalone Cinematic Anime Color Grading (Color Filter, Shadow/Highlight Split Toning, Saturation)";
   ntype.enum_name_legacy = "DASK_GRADE";
   ntype.nclass = NODE_CLASS_SHADER;

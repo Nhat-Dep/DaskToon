@@ -60,7 +60,7 @@ void register_node_type_sh_anime_rim()
   static bke::bNodeType ntype;
 
   sh_node_type_base(&ntype, "ShaderNodeAnimeRim"_ustr, SH_NODE_ANIME_RIM);
-  ntype.ui_name = "Anime Rim Light";
+  ntype.ui_name = "Anime Rim";
   ntype.ui_description = "Native DaskToon Crisp & Soft Anime Rim Light / Backlight Shader Node";
   ntype.enum_name_legacy = "ANIME_RIM";
   ntype.nclass = NODE_CLASS_SHADER;

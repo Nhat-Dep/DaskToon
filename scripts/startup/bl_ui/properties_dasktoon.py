@@ -74,6 +74,12 @@ class VIEW3D_PT_dasktoon_shader_nodes(Panel):
         
         p4 = grid.operator("dasktoon.setup_anime_preset", text="Manga Comic Tone", icon='TEXTURE')
         p4.preset_type = 'MANGA'
+        
+        p5 = grid.operator("dasktoon.setup_anime_preset", text="🎨 Artist Outline", icon='MOD_LINEART')
+        p5.preset_type = 'OUTLINE'
+        
+        p6 = grid.operator("dasktoon.setup_anime_preset", text="Dask Cel Shader", icon='MATERIAL')
+        p6.preset_type = 'CEL'
 
         box_presets.separator()
         box_presets.operator("dasktoon.link_sun_direction", text="☀️ Sync Sun Light to Shaders", icon='LIGHT_SUN')

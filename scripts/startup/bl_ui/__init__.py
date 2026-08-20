@@ -132,6 +132,12 @@ def register():
             except Exception:
                 pass
 
+    # Ensure DASKTOON_ANIME engine is compatible with all standard EEVEE / Cycles UI panels (Object Data, Mesh, Light, Camera, etc.)
+    for cls in bpy.types.Panel.__subclasses__():
+        if hasattr(cls, 'COMPAT_ENGINES') and isinstance(cls.COMPAT_ENGINES, set):
+            if 'BLENDER_EEVEE' in cls.COMPAT_ENGINES and 'DASKTOON_ANIME' not in cls.COMPAT_ENGINES:
+                cls.COMPAT_ENGINES.add('DASKTOON_ANIME')
+
     space_filebrowser.register_props()
     properties_paint_common.register()
 
