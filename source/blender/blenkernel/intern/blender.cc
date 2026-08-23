@@ -125,22 +125,13 @@ static void blender_version_init()
     BLI_assert_msg(0, "Invalid Blender version cycle");
   }
 
-  const char *version_suffix = BKE_blender_version_is_lts() ? " LTS" : "";
-
   SNPRINTF_UTF8(blender_version_string,
-                "%d.%01d.%d%s%s",
+                "0.1-beta (Core %d.%01d.%d)",
                 BLENDER_VERSION / 100,
                 BLENDER_VERSION % 100,
-                BLENDER_VERSION_PATCH,
-                version_suffix,
-                version_cycle);
+                BLENDER_VERSION_PATCH);
 
-  SNPRINTF_UTF8(blender_version_string_compact,
-                "%d.%01d.%d%s",
-                BLENDER_VERSION / 100,
-                BLENDER_VERSION % 100,
-                BLENDER_VERSION_PATCH,
-                version_cycle_compact);
+  SNPRINTF_UTF8(blender_version_string_compact, "%s", "0.1-beta");
 }
 
 const char *BKE_blender_version_string()

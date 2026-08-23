@@ -1,7 +1,7 @@
 ; -- DaskToon Official Windows Installer Script --
 
 #define MyAppName "DaskToon"
-#define MyAppVersion "5.2.0"
+#define MyAppVersion "0.1-beta"
 #define MyAppPublisher "DaskToon Team"
 #define MyAppURL "https://dasktoon.org"
 #define MyAppExeName "DaskToon-launcher.exe"
@@ -14,7 +14,7 @@
 AppId={{D45A700N-A719-4A9B-89E2-6C91E5B42D1A}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
-AppVerName={#MyAppName} {#MyAppVersion} (Anime Engine)
+AppVerName={#MyAppName} {#MyAppVersion} (Anime Engine - Blender 5.2 Core)
 AppPublisher={#MyAppPublisher}
 AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}
@@ -22,8 +22,8 @@ AppUpdatesURL={#MyAppURL}
 DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 AllowNoIcons=yes
-OutputDir=d:\DaskToon\release\dist
-OutputBaseFilename=DaskToon-5.2.0-Windows-Setup
+OutputDir=D:\DaskToon_Releases
+OutputBaseFilename=DaskToon-0.1-beta-Windows-Setup
 SetupIconFile={#IconFile}
 UninstallDisplayIcon={app}\{#MyAppExeName}
 Compression=lzma2/ultra64

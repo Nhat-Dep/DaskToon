@@ -690,7 +690,7 @@ static std::string wm_window_title_text(
     }
   }
 
-  win_title.append(fmt::format(" - DaskToon {}", BKE_blender_version_string()));
+  win_title.append(" - DaskToon 0.1-beta");
 
   return win_title;
 }
