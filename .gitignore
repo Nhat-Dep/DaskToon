@@ -92,3 +92,6 @@ compile_commands.json
 blendcache_*
 *.blend1
 *.blend2
+
+# Distribution / Release Installers
+/release/dist/
