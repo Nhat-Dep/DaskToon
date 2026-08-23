@@ -41,7 +41,7 @@ void register_node_type_sh_sdf_primitive()
 
   sh_node_type_base(&ntype, "ShaderNodeSDFPrimitive"_ustr, SH_NODE_SDF_PRIMITIVE);
   ntype.ui_name = "SDF Primitive";
-  ntype.ui_description = "Goo Engine SDF Primitive: Generates procedural analytical distance fields for anime shapes, eye pupils, and emblems";
+  ntype.ui_description = "DaskToon SDF Primitive: Generates procedural analytical distance fields for anime shapes, eye pupils, and emblems";
   ntype.enum_name_legacy = "SDF_PRIMITIVE";
   ntype.nclass = NODE_CLASS_TEXTURE;
   ntype.declare = file_ns::node_declare;

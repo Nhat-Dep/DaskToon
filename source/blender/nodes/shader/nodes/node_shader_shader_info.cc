@@ -42,7 +42,7 @@ void register_node_type_sh_shader_info()
 
   sh_node_type_base(&ntype, "ShaderNodeShaderInfo"_ustr, SH_NODE_SHADER_INFO);
   ntype.ui_name = "Shader Info";
-  ntype.ui_description = "Goo Engine Shader Info node: Separates lighting into Diffuse Light, Shadow, Ambient, and Specular passes with Light Group filtering";
+  ntype.ui_description = "DaskToon Shader Info node: Separates lighting into Diffuse Light, Shadow, Ambient, and Specular passes with Light Group filtering";
   ntype.enum_name_legacy = "SHADER_INFO";
   ntype.nclass = NODE_CLASS_CONVERTER;
   ntype.declare = file_ns::node_declare;

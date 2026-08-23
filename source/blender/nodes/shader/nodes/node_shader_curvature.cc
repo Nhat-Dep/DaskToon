@@ -44,7 +44,7 @@ void register_node_type_sh_curvature()
 
   sh_node_type_base(&ntype, "ShaderNodeCurvature"_ustr, SH_NODE_CURVATURE);
   ntype.ui_name = "Curvature";
-  ntype.ui_description = "Goo Engine Curvature node: Real-time geometry cavity and ridge extraction from screen-space normal derivatives";
+  ntype.ui_description = "DaskToon Curvature node: Real-time geometry cavity and ridge extraction from screen-space normal derivatives";
   ntype.enum_name_legacy = "CURVATURE";
   ntype.nclass = NODE_CLASS_INPUT;
   ntype.declare = file_ns::node_declare;

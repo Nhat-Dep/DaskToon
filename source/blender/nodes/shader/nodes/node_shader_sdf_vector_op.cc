@@ -42,7 +42,7 @@ void register_node_type_sh_sdf_vector_op()
 
   sh_node_type_base(&ntype, "ShaderNodeSDFVectorOp"_ustr, SH_NODE_SDF_VECTOR_OP);
   ntype.ui_name = "SDF Vector Op";
-  ntype.ui_description = "Goo Engine SDF Vector Op: Spatial transform operations (Translate, Rotate, Scale) for SDF shapes";
+  ntype.ui_description = "DaskToon SDF Vector Op: Spatial transform operations (Translate, Rotate, Scale) for SDF shapes";
   ntype.enum_name_legacy = "SDF_VECTOR_OP";
   ntype.nclass = NODE_CLASS_OP_VECTOR;
   ntype.declare = file_ns::node_declare;

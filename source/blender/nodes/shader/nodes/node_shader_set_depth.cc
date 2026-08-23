@@ -40,7 +40,7 @@ void register_node_type_sh_set_depth()
 
   sh_node_type_base(&ntype, "ShaderNodeSetDepth"_ustr, SH_NODE_SET_DEPTH);
   ntype.ui_name = "Set Depth";
-  ntype.ui_description = "Goo Engine Set Depth node: Offsets pixel z-depth in Reverse-Z for Eyebrows/Eyes through Hair and 2.5D layer sorting";
+  ntype.ui_description = "DaskToon Set Depth node: Offsets pixel z-depth in Reverse-Z for Eyebrows/Eyes through Hair and 2.5D layer sorting";
   ntype.enum_name_legacy = "SET_DEPTH";
   ntype.nclass = NODE_CLASS_SHADER;
   ntype.declare = file_ns::node_declare;

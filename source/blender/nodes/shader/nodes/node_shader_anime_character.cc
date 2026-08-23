@@ -110,6 +110,14 @@ static void node_declare(NodeDeclarationBuilder &b)
       .subtype(PROP_FACTOR)
       .available(use_ao)
       .description("Blend factor for Ambient Occlusion crevice shadows");
+  b.add_input<decl::Float>("AO Mask"_ustr)
+      .default_value(1.0f)
+      .min(0.0f)
+      .max(1.0f)
+      .subtype(PROP_FACTOR)
+      .available(use_ao)
+      .make_available([](bNode &node) { node.custom2 |= (1 << 2); })
+      .description("Texture / Vertex Color mask to control exactly where AO shadows can appear (0.0 = Clean skin, 1.0 = Crevices)");
 
   // Group 5: Dynamic VRM Parametric Rim Light (Visible when Use Rim is enabled)
   b.add_input<decl::Color>("Rim Color"_ustr)
@@ -253,15 +261,10 @@ static int node_shader_gpu_anime_character(GPUMaterial *mat,
 
   GPU_material_flag_set(mat, GPU_MATFLAG_AO | GPU_MATFLAG_DIFFUSE | GPU_MATFLAG_EMISSION | GPU_MATFLAG_SHADER_TO_RGBA);
 
-  GPUNodeStack gpu_in[33];
-  for (int i = 0; i < 33; i++) {
-    gpu_in[i] = in[i];
-  }
-
   return GPU_stack_link(mat,
                         node,
                         "node_anime_character",
-                        gpu_in,
+                        in,
                         out,
                         GPU_constant(modes));
 }

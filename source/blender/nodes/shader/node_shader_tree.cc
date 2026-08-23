@@ -687,6 +687,13 @@ static void ntree_shader_weight_tree_invert(bNodeTree *ntree, bNode *output_node
             case SH_NODE_ANIME_CHARACTER:
             case SH_NODE_ANIME_ANGEL_RING:
             case SH_NODE_ANIME_EYE:
+            case SH_NODE_ANIME_WOOD:
+            case SH_NODE_ANIME_METAL:
+            case SH_NODE_ANIME_FABRIC:
+            case SH_NODE_ANIME_GLASS:
+            case SH_NODE_ANIME_WATER:
+            case SH_NODE_ANIME_TIGHTS:
+            case SH_NODE_ANIME_KNIT:
             case SH_NODE_DASK_CEL:
             case SH_NODE_DASK_AMBIENT:
             case SH_NODE_DASK_LIGHT:
@@ -761,6 +768,13 @@ static bool closure_node_filter(const bNode *node)
     case SH_NODE_ANIME_CHARACTER:
     case SH_NODE_ANIME_ANGEL_RING:
     case SH_NODE_ANIME_EYE:
+    case SH_NODE_ANIME_WOOD:
+    case SH_NODE_ANIME_METAL:
+    case SH_NODE_ANIME_FABRIC:
+    case SH_NODE_ANIME_GLASS:
+    case SH_NODE_ANIME_WATER:
+    case SH_NODE_ANIME_TIGHTS:
+    case SH_NODE_ANIME_KNIT:
     case SH_NODE_DASK_CEL:
     case SH_NODE_DASK_AMBIENT:
     case SH_NODE_DASK_LIGHT:

@@ -1243,7 +1243,16 @@ ANIME_NATIVE_NODES = {
     'WARM_COOL': ("Anime Warm/Cool Grade", "ShaderNodeAnimeWarmCoolGrade", "COLOR"),
     'EYE_SHADER': ("Anime Eye Shader", "ShaderNodeAnimeEye", "HIDE_OFF"),
 
-    # Goo Engine Core Suite
+    # DaskToon Anime Material Nodes Suite
+    'ANIME_WOOD': ("Anime Wood", "ShaderNodeAnimeWood", "STICKY_UVS_LOC"),
+    'ANIME_METAL': ("Anime Metal / Armor", "ShaderNodeAnimeMetal", "SOLO_ON"),
+    'ANIME_FABRIC': ("Anime Fabric / Cloth", "ShaderNodeAnimeFabric", "MOD_CLOTH"),
+    'ANIME_TIGHTS': ("Anime Tights & Fishnet", "ShaderNodeAnimeTights", "STICKY_UVS_VERT"),
+    'ANIME_KNIT': ("Anime Knit & Wool", "ShaderNodeAnimeKnit", "MOD_SOFTBODY"),
+    'ANIME_GLASS': ("Anime Glass & Gem", "ShaderNodeAnimeGlass", "LIGHT_SUN"),
+    'ANIME_WATER': ("Anime Water & Liquid", "ShaderNodeAnimeWater", "MOD_FLUID"),
+
+    # DaskToon NPR Core Suite
     'SHADER_INFO': ("Shader Info", "ShaderNodeShaderInfo", "NODE_CORNER"),
     'SCREENSPACE_INFO': ("Screenspace Info", "ShaderNodeScreenspaceInfo", "WINDOW"),
     'SET_DEPTH': ("Set Depth", "ShaderNodeSetDepth", "MOD_EDGESPLIT"),
@@ -1251,13 +1260,13 @@ ANIME_NATIVE_NODES = {
     'LIGHT_INFO': ("Light Info", "ShaderNodeLightInfo", "LIGHT_DATA"),
     'OKLAB_COLOR_RAMP': ("OKLab Color Ramp", "ShaderNodeOKLabColorRamp", "COLOR"),
 
-    # Goo Engine SDF Suite
+    # DaskToon SDF Suite
     'SDF_PRIMITIVE': ("SDF Primitive", "ShaderNodeSDFPrimitive", "MESH_ICOSPHERE"),
     'SDF_OP': ("SDF Op", "ShaderNodeSDFOp", "MOD_BOOLEAN"),
     'SDF_VECTOR_OP': ("SDF Vector Op", "ShaderNodeSDFVectorOp", "ORIENTATION_GIMBAL"),
     'SDF_NOISE': ("SDF Noise", "ShaderNodeSDFNoise", "TEXTURE"),
 
-    # Goo Engine Procedural Texture Suite
+    # DaskToon Procedural Texture Suite
     'TEX_HEXAGON': ("Hexagon Texture", "ShaderNodeTexHexagon", "GRID"),
     'TWIRL': ("Twirl", "ShaderNodeTwirl", "FORCE_VORTEX"),
     'WATER_RIPPLES': ("Water Ripples", "ShaderNodeWaterRipples", "MOD_WAVE"),
@@ -1516,6 +1525,57 @@ class DASKTOON_OT_setup_anime_preset(Operator):
 
             self.report({'INFO'}, f"Applied 1-Click Automated Dask Artist Outline to {obj.name}!")
             return {'FINISHED'}
+
+        elif self.preset_type == 'WOOD':
+            wood_node = nodes.new(type='ShaderNodeAnimeWood')
+            wood_node.location = (0, 0)
+            links.new(wood_node.outputs['BSDF'], out_node.inputs['Surface'])
+
+        elif self.preset_type == 'METAL':
+            metal_node = nodes.new(type='ShaderNodeAnimeMetal')
+            metal_node.location = (0, 0)
+            links.new(metal_node.outputs['BSDF'], out_node.inputs['Surface'])
+
+        elif self.preset_type == 'FABRIC':
+            fabric_node = nodes.new(type='ShaderNodeAnimeFabric')
+            fabric_node.location = (0, 0)
+            links.new(fabric_node.outputs['BSDF'], out_node.inputs['Surface'])
+
+        elif self.preset_type == 'TIGHTS':
+            tights_node = nodes.new(type='ShaderNodeAnimeTights')
+            tights_node.location = (0, 0)
+            tights_node.inputs['Fishnet Mode'].default_value = 0.0 # Sheer tights mode
+            links.new(tights_node.outputs['BSDF'], out_node.inputs['Surface'])
+
+        elif self.preset_type == 'FISHNET':
+            tights_node = nodes.new(type='ShaderNodeAnimeTights')
+            tights_node.location = (0, 0)
+            tights_node.inputs['Fishnet Mode'].default_value = 1.0 # Diamond fishnet mode
+            tights_node.inputs['Fishnet Scale'].default_value = 12.0
+            links.new(tights_node.outputs['BSDF'], out_node.inputs['Surface'])
+
+        elif self.preset_type == 'KNIT':
+            knit_node = nodes.new(type='ShaderNodeAnimeKnit')
+            knit_node.location = (0, 0)
+            links.new(knit_node.outputs['BSDF'], out_node.inputs['Surface'])
+
+        elif self.preset_type == 'GLASS':
+            glass_node = nodes.new(type='ShaderNodeAnimeGlass')
+            glass_node.location = (0, 0)
+            links.new(glass_node.outputs['BSDF'], out_node.inputs['Surface'])
+            if hasattr(mat, 'surface_render_method'):
+                mat.surface_render_method = 'BLENDED'
+            elif hasattr(mat, 'blend_method'):
+                mat.blend_method = 'BLEND'
+
+        elif self.preset_type == 'WATER':
+            water_node = nodes.new(type='ShaderNodeAnimeWater')
+            water_node.location = (0, 0)
+            links.new(water_node.outputs['BSDF'], out_node.inputs['Surface'])
+            if hasattr(mat, 'surface_render_method'):
+                mat.surface_render_method = 'BLENDED'
+            elif hasattr(mat, 'blend_method'):
+                mat.blend_method = 'BLEND'
 
         elif self.preset_type == 'CEL':
             name = "DaskToon_Cel_Shader"

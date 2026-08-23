@@ -10595,6 +10595,13 @@ static void rna_def_nodes(BlenderRNA *brna)
   define("ShaderNode", "ShaderNodeArtistLineModulation", def_sh_artist_line_modulation);
   define("ShaderNode", "ShaderNodeAnimeWarmCoolGrade");
   define("ShaderNode", "ShaderNodeAnimeEye");
+  define("ShaderNode", "ShaderNodeAnimeWood");
+  define("ShaderNode", "ShaderNodeAnimeMetal");
+  define("ShaderNode", "ShaderNodeAnimeFabric");
+  define("ShaderNode", "ShaderNodeAnimeGlass");
+  define("ShaderNode", "ShaderNodeAnimeWater");
+  define("ShaderNode", "ShaderNodeAnimeTights");
+  define("ShaderNode", "ShaderNodeAnimeKnit");
   define("ShaderNode", "ShaderNodeShaderInfo");
   define("ShaderNode", "ShaderNodeScreenspaceInfo");
   define("ShaderNode", "ShaderNodeSetDepth");

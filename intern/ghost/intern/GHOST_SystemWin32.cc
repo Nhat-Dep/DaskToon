@@ -620,6 +620,9 @@ GHOST_TSuccess GHOST_SystemWin32::init()
   GHOST_TSuccess success = GHOST_System::init();
   InitCommonControls();
 
+  /* Set Explicit AppUserModelID for DaskToon so Windows Taskbar groups it separately from Blender */
+  ::SetCurrentProcessExplicitAppUserModelID(L"DaskToon.AnimeEngine.5.2");
+
   /* Disable scaling on high DPI displays on Vista */
   SetProcessDPIAware();
   initRawInput();
@@ -634,7 +637,10 @@ GHOST_TSuccess GHOST_SystemWin32::init()
     wc.cbClsExtra = 0;
     wc.cbWndExtra = 0;
     wc.hInstance = ::GetModuleHandle(0);
-    wc.hIcon = ::LoadIcon(wc.hInstance, "APPICON");
+    wc.hIcon = ::LoadIcon(wc.hInstance, MAKEINTRESOURCE(1));
+    if (!wc.hIcon) {
+      wc.hIcon = ::LoadIcon(wc.hInstance, "APPICON");
+    }
 
     if (!wc.hIcon) {
       ::LoadIcon(nullptr, IDI_APPLICATION);

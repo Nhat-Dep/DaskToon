@@ -28,8 +28,8 @@ def register():
     anime_nodes.register()
 
     try:
-        import goo_engine_light_groups
-        goo_engine_light_groups.register()
+        import dasktoon_light_groups
+        dasktoon_light_groups.register()
     except Exception:
         pass
 
@@ -38,8 +38,8 @@ def register():
 
 def unregister():
     try:
-        import goo_engine_light_groups
-        goo_engine_light_groups.unregister()
+        import dasktoon_light_groups
+        dasktoon_light_groups.unregister()
     except Exception:
         pass
 

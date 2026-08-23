@@ -42,7 +42,7 @@ void register_node_type_sh_twirl()
 
   sh_node_type_base(&ntype, "ShaderNodeTwirl"_ustr, SH_NODE_TWIRL);
   ntype.ui_name = "Twirl";
-  ntype.ui_description = "Goo Engine Twirl node: Rotational vortex distortion for anime magical spells, energy effects, and stylized warps";
+  ntype.ui_description = "DaskToon Twirl node: Rotational vortex distortion for anime magical spells, energy effects, and stylized warps";
   ntype.enum_name_legacy = "TWIRL";
   ntype.nclass = NODE_CLASS_OP_VECTOR;
   ntype.declare = file_ns::node_declare;

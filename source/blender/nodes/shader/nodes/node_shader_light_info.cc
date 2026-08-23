@@ -39,7 +39,7 @@ void register_node_type_sh_light_info()
 
   sh_node_type_base(&ntype, "ShaderNodeLightInfo"_ustr, SH_NODE_LIGHT_INFO);
   ntype.ui_name = "Light Info";
-  ntype.ui_description = "Goo Engine Light Info node: Retrieve scene light vectors, color, power, and type with Light Group filtering";
+  ntype.ui_description = "DaskToon Light Info node: Retrieve scene light vectors, color, power, and type with Light Group filtering";
   ntype.enum_name_legacy = "LIGHT_INFO";
   ntype.nclass = NODE_CLASS_INPUT;
   ntype.declare = file_ns::node_declare;

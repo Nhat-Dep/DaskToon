@@ -13,7 +13,7 @@ class DASKTOON_LightGroupItem(PropertyGroup):
 
 class DASKTOON_PT_light_groups(Panel):
     """Panel for managing NPR Light Groups in EEVEE-Next"""
-    bl_label = "Goo NPR Light Groups"
+    bl_label = "DaskToon NPR Light Groups"
     bl_idname = "DASKTOON_PT_light_groups"
     bl_space_type = 'PROPERTIES'
     bl_region_type = 'WINDOW'

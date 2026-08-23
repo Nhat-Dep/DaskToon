@@ -1230,9 +1230,14 @@ void GHOST_WindowWin32::registerWindowAppUserModelProperties()
   char blender_path[MAX_PATH];
   wchar_t shell_command[MAX_PATH];
 
-  /* Find the current executable, and see if it's blender.exe if not bail out. */
+  /* Find the current executable, and see if it's DaskToon.exe or blender.exe if not bail out. */
   GetModuleFileName(0, blender_path, sizeof(blender_path));
-  char *blender_app = strstr(blender_path, "blender.exe");
+  char *blender_app = strstr(blender_path, "DaskToon.exe");
+  const char *launcher_name = "DaskToon-launcher.exe";
+  if (!blender_app) {
+    blender_app = strstr(blender_path, "blender.exe");
+    launcher_name = "blender-launcher.exe";
+  }
   if (!blender_app) {
     return;
   }
@@ -1243,8 +1248,8 @@ void GHOST_WindowWin32::registerWindowAppUserModelProperties()
   }
 
   /* Set the launcher as the shell command so the console window will not flash.
-   * when people pin blender to the taskbar. */
-  strcpy(blender_app, "blender-launcher.exe");
+   * when people pin DaskToon to the taskbar. */
+  strcpy(blender_app, launcher_name);
   wsprintfW(shell_command, L"\"%S\"", blender_path);
   UTF16_ENCODE(BLENDER_WIN_APPID);
   UTF16_ENCODE(BLENDER_WIN_APPID_FRIENDLY_NAME);

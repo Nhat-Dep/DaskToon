@@ -40,6 +40,7 @@ void node_anime_character(float3 N,
                           float ao_dist,
                           float ao_darkness,
                           float ao_factor,
+                          float ao_mask,
                           float4 rim_color,
                           float rim_fresnel_power,
                           float rim_lift,
@@ -203,7 +204,7 @@ void node_anime_character(float3 N,
   /* =========================================================================
    * 5. BUILT-IN HARDWARE HBAO CREVICE SHADOWS (FAC = 0 WHEN DISABLED)
    * ========================================================================= */
-  float ao_f = use_ao ? clamp(ao_factor, 0.0f, 1.0f) : 0.0f;
+  float ao_f = use_ao ? (clamp(ao_factor, 0.0f, 1.0f) * clamp(ao_mask, 0.0f, 1.0f)) : 0.0f;
   if (ao_f > 0.0001f) {
     float d = max(ao_dist, 0.0001f);
     float darkness = max(ao_darkness, 0.0f);

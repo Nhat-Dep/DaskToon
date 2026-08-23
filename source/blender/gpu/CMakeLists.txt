@@ -736,6 +736,13 @@ set(GLSL_SRC
   shaders/material/gpu_shader_material_dask_grade.glsl
   shaders/material/gpu_shader_material_dask_outline.glsl
   shaders/material/gpu_shader_material_depth_info.glsl
+  shaders/material/gpu_shader_material_anime_wood.glsl
+  shaders/material/gpu_shader_material_anime_metal.glsl
+  shaders/material/gpu_shader_material_anime_fabric.glsl
+  shaders/material/gpu_shader_material_anime_glass.glsl
+  shaders/material/gpu_shader_material_anime_water.glsl
+  shaders/material/gpu_shader_material_anime_tights.glsl
+  shaders/material/gpu_shader_material_anime_knit.glsl
   shaders/material/gpu_shader_material_toon.glsl
   shaders/material/gpu_shader_material_transform_utils.glsl
   shaders/material/gpu_shader_material_translucent.glsl

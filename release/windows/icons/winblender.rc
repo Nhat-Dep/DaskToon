@@ -1,4 +1,5 @@
-#define BLENDERFILE 1
+#define APPICON 1
+#define BLENDERFILE 2
 #define IDR_VERSION1 1
 
 #ifdef WINDRES
@@ -24,11 +25,11 @@ BEGIN
     BEGIN
       VALUE "FileVersion", BLEN_VER_RC_STR
       VALUE "ProductVersion", BLEN_VER_RC_STR
-      VALUE "CompanyName", "Blender Foundation"
-      VALUE "FileDescription", "Blender"
-      VALUE "LegalCopyright", "GPLv3 (Blender Foundation)"
-      VALUE "OriginalFilename", "blender.exe"
-      VALUE "ProductName", "Blender"
+      VALUE "CompanyName", "DaskToon Team"
+      VALUE "FileDescription", "DaskToon Anime Engine"
+      VALUE "LegalCopyright", "GPLv3 (DaskToon / Blender Foundation)"
+      VALUE "OriginalFilename", "DaskToon.exe"
+      VALUE "ProductName", "DaskToon"
     END
   END
   BLOCK "VarFileInfo"
@@ -36,4 +37,3 @@ BEGIN
     VALUE "Translation", 0x0409, 0x0000
   END
 END
-

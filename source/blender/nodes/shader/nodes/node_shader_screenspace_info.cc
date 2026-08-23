@@ -37,7 +37,7 @@ void register_node_type_sh_screenspace_info()
 
   sh_node_type_base(&ntype, "ShaderNodeScreenspaceInfo"_ustr, SH_NODE_SCREENSPACE_INFO);
   ntype.ui_name = "Screenspace Info";
-  ntype.ui_description = "Goo Engine Screenspace Info node: Access screen-space coordinates, depth, and scene color";
+  ntype.ui_description = "DaskToon Screenspace Info node: Access screen-space coordinates, depth, and scene color";
   ntype.enum_name_legacy = "SCREENSPACE_INFO";
   ntype.nclass = NODE_CLASS_INPUT;
   ntype.declare = file_ns::node_declare;

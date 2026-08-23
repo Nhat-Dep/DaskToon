@@ -40,7 +40,7 @@ void register_node_type_sh_sdf_op()
 
   sh_node_type_base(&ntype, "ShaderNodeSDFOp"_ustr, SH_NODE_SDF_OP);
   ntype.ui_name = "SDF Op";
-  ntype.ui_description = "Goo Engine SDF Op: Boolean operations (Union, Subtract, Intersect, Smooth Union) on Signed Distance Fields";
+  ntype.ui_description = "DaskToon SDF Op: Boolean operations (Union, Subtract, Intersect, Smooth Union) on Signed Distance Fields";
   ntype.enum_name_legacy = "SDF_OP";
   ntype.nclass = NODE_CLASS_CONVERTER;
   ntype.declare = file_ns::node_declare;

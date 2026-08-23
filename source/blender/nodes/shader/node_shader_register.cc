@@ -45,10 +45,16 @@ void register_shader_nodes()
   register_node_type_sh_artist_line_modulation();
   register_node_type_sh_anime_warm_cool_grade();
   register_node_type_sh_anime_eye();
-  /* Goo Engine Core / SDF / Procedural-Texture Suite: base-engine NPR toolkit
+  register_node_type_sh_anime_wood();
+  register_node_type_sh_anime_metal();
+  register_node_type_sh_anime_fabric();
+  register_node_type_sh_anime_glass();
+  register_node_type_sh_anime_water();
+  register_node_type_sh_anime_tights();
+  register_node_type_sh_anime_knit();
+  /* DaskToon NPR Core / SDF / Procedural-Texture Suite: base-engine NPR toolkit
    * (curvature, SDF ops, screen-space info, procedural textures). Independent
-   * of the DaskToon Anime feature layer above and below — do not remove as
-   * part of anime-scope cleanup. */
+   * of the DaskToon Anime feature layer above and below. */
   register_node_type_sh_shader_info();
   register_node_type_sh_screenspace_info();
   register_node_type_sh_set_depth();

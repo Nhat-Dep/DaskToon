@@ -235,11 +235,30 @@ class NODE_MT_shader_node_anime_base(node_add_menu.NodeMenu):
 
         self.draw_menu(layout, "DaskToon Anime/Master Shaders")
         layout.separator()
+        self.draw_menu(layout, "DaskToon Anime/Anime Materials")
         self.draw_menu(layout, "DaskToon Anime/Modular Pipeline")
         self.draw_menu(layout, "DaskToon Anime/Character Features")
         self.draw_menu(layout, "DaskToon Anime/Outline & Inking")
 
         self.draw_assets_for_catalog(layout, self.bl_label)
+
+
+class NODE_MT_shader_node_anime_materials_base(node_add_menu.NodeMenu):
+    bl_label = "Anime Materials"
+    menu_path = "DaskToon Anime/Anime Materials"
+
+    def draw(self, context):
+        layout = self.layout
+        poll = object_material_shader_nodes_poll(context)
+
+        self.node_operator(layout, "ShaderNodeAnimeWood", label="Anime Wood", poll=poll)
+        self.node_operator(layout, "ShaderNodeAnimeMetal", label="Anime Metal / Armor", poll=poll)
+        self.node_operator(layout, "ShaderNodeAnimeFabric", label="Anime Fabric / Cloth", poll=poll)
+        self.node_operator(layout, "ShaderNodeAnimeTights", label="Anime Tights & Fishnet", poll=poll)
+        self.node_operator(layout, "ShaderNodeAnimeKnit", label="Anime Knit & Wool", poll=poll)
+        self.node_operator(layout, "ShaderNodeAnimeGlass", label="Anime Glass & Gem", poll=poll)
+        self.node_operator(layout, "ShaderNodeAnimeWater", label="Anime Water & Liquid", poll=poll)
+        self.draw_assets_for_catalog(layout, self.menu_path)
 
 
 class NODE_MT_shader_node_anime_master_base(node_add_menu.NodeMenu):
@@ -804,6 +823,7 @@ add_menus = {
     "NODE_MT_category_shader_output": NODE_MT_shader_node_output_base,
     "NODE_MT_category_shader_anime": NODE_MT_shader_node_anime_base,
     "NODE_MT_category_shader_anime_master": NODE_MT_shader_node_anime_master_base,
+    "NODE_MT_category_shader_anime_materials": NODE_MT_shader_node_anime_materials_base,
     "NODE_MT_category_shader_anime_modular": NODE_MT_shader_node_anime_modular_base,
     "NODE_MT_category_shader_anime_features": NODE_MT_shader_node_anime_features_base,
     "NODE_MT_category_shader_anime_outline": NODE_MT_shader_node_anime_outline_base,
@@ -835,6 +855,7 @@ swap_menus = {
     "NODE_MT_shader_node_output_swap": NODE_MT_shader_node_output_base,
     "NODE_MT_shader_node_anime_swap": NODE_MT_shader_node_anime_base,
     "NODE_MT_shader_node_anime_master_swap": NODE_MT_shader_node_anime_master_base,
+    "NODE_MT_shader_node_anime_materials_swap": NODE_MT_shader_node_anime_materials_base,
     "NODE_MT_shader_node_anime_modular_swap": NODE_MT_shader_node_anime_modular_base,
     "NODE_MT_shader_node_anime_features_swap": NODE_MT_shader_node_anime_features_base,
     "NODE_MT_shader_node_anime_outline_swap": NODE_MT_shader_node_anime_outline_base,

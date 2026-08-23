@@ -51,6 +51,13 @@ set(SRC
   nodes/node_shader_screenspace_info.cc
   nodes/node_shader_set_depth.cc
   nodes/node_shader_depth_info.cc
+  nodes/node_shader_anime_wood.cc
+  nodes/node_shader_anime_metal.cc
+  nodes/node_shader_anime_fabric.cc
+  nodes/node_shader_anime_glass.cc
+  nodes/node_shader_anime_water.cc
+  nodes/node_shader_anime_tights.cc
+  nodes/node_shader_anime_knit.cc
   nodes/node_shader_curvature.cc
   nodes/node_shader_light_info.cc
   nodes/node_shader_oklab_color_ramp.cc
