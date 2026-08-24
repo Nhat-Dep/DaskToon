@@ -11,7 +11,7 @@ DaskToon
 
 DaskToon is a specialized 3D creation suite based on Blender, tailored for Anime, Manga, VTuber, and stylized NPR workflows.
 
-![DaskToon Splash Art](../release/datafiles/splash.png "DaskToon Splash Art")
+![DaskToon Splash Art](release/datafiles/splash.png "DaskToon Splash Art")
 
 Highlights
 ----------
@@ -34,7 +34,7 @@ motion tracking and video editing.
 Project Pages
 -------------
 
-- [Main Website](http://www.blender.org)
+- [Main Website](https://www.blender.org)
 - [Reference Manual](https://docs.blender.org/manual/en/latest/index.html)
 - [User Community](https://www.blender.org/community/)
 
