@@ -4,6 +4,24 @@ linking to external resources instead of including content in-line.
 See 'release/text/readme.html' for the end user read-me.
 -->
 
+DaskToon
+========
+
+> **MORE EASY MORE FAST** — The Next-Generation Anime & NPR 3D Production Suite.
+
+DaskToon is a specialized 3D creation suite based on Blender, tailored for Anime, Manga, VTuber, and stylized NPR workflows.
+
+![DaskToon Splash Art](release/datafiles/splash.png "DaskToon Splash Art")
+
+Highlights
+----------
+
+- **Anime BSDF (`ShaderNodeAnimeCharacter`)**: Default master cel shader with dual-tone shadows, warm blush tint, rim lighting, and outline modulation.
+- **Stylized Shaders**: Dedicated nodes for Anime Eye Parallax, Angel Ring hair highlight, Face Shadow tracking, Fabric, Knit, Tights, Glass, Water, and Metal.
+- **VRM ARKit Toolset**: Built-in 52 facial shapekeys manager for VTuber and character facial animation.
+- **Anime FX**: Pre-configured compositor nodes for Anime Glow, Manga Screentone, and Speedlines.
+- **Silent Launcher & Clean UX**: Direct startup without terminal window and independent Windows taskbar identity.
+
 Blender
 =======
 
@@ -32,7 +50,7 @@ Development
 License
 -------
 
-Blender as a whole is licensed under the GNU General Public License, Version 3.
+Blender and DaskToon as a whole are licensed under the GNU General Public License, Version 3 (or later).
 Individual files may have a different but compatible license.
 
 See [blender.org/about/license](https://www.blender.org/about/license) for details.
