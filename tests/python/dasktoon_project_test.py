@@ -55,6 +55,36 @@ class ProjectTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             dtp.create_project("Q", self.folder, 'UNITY_URP', self.unity)
 
+    def test_a_different_blend_with_the_same_name_is_never_overwritten(self):
+        os.makedirs(self.folder)
+        existing = os.path.join(self.folder, "Hero.blend")
+        with open(existing, "wb") as f:
+            f.write(b"user file")
+        bpy.ops.wm.save_as_mainfile(filepath=os.path.join(tempfile.mkdtemp(prefix="dt_proj_src_"), "Hero.blend"))
+        with self.assertRaises(ValueError):
+            dtp.create_project("P", self.folder, 'UNITY_URP', self.unity, save_current=True)
+        with open(existing, "rb") as f:
+            self.assertEqual(f.read(), b"user file")
+        self.assertFalse(os.path.exists(os.path.join(self.folder, dtp.PROJECT_FILE)))
+
+    def test_the_file_already_in_the_folder_can_be_saved_in_place(self):
+        os.makedirs(self.folder)
+        bpy.ops.wm.save_as_mainfile(filepath=os.path.join(self.folder, "Hero.blend"))
+        dtp.create_project("P", self.folder, 'UNITY_URP', self.unity, save_current=True)
+        self.assertEqual(os.path.basename(bpy.data.filepath), "Hero.blend")
+
+    def test_model_scan_skips_unity_library_folders(self):
+        project = dtp.create_project("P", self.folder, 'UNITY_URP', self.unity)
+        for rel in (os.path.join("Game", "Assets", "model.blend"), os.path.join("Game", "Library", "cache.blend"),
+                    os.path.join("Game", "Temp", "t.blend")):
+            path = os.path.join(self.folder, rel)
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            open(path, "wb").close()
+        deep = os.path.join(self.folder, *["d%d" % i for i in range(dtp.MAX_SCAN_DEPTH + 2)], "deep.blend")
+        os.makedirs(os.path.dirname(deep))
+        open(deep, "wb").close()
+        self.assertEqual(dtp.project_models(project), [os.path.join(self.folder, "Game", "Assets", "model.blend")])
+
     def test_project_is_found_from_a_subfolder(self):
         dtp.create_project("P", self.folder, 'UNITY_URP', self.unity)
         blend = os.path.join(self.folder, "characters", "hero", "hero.blend")

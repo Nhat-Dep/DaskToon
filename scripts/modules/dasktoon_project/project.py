@@ -12,6 +12,9 @@ PROJECT_FILE = "dasktoon_project.json"
 PROJECT_VERSION = 1
 MAX_RECENT = 8
 RECENT_FILE = "recent_projects.json"
+MAX_SCAN_DEPTH = 6
+MAX_SCAN_DIRS = 2000
+SKIP_DIRS = {"library", "temp", "logs", "obj", "usersettings", "node_modules", "__pycache__"}
 
 
 @dataclass
@@ -97,21 +100,36 @@ def create_project(name, folder, engine, engine_path, save_current=False):
     folder = os.path.abspath(folder)
     if os.path.exists(os.path.join(folder, PROJECT_FILE)):
         raise ValueError("%s đã là một dự án DaskToon" % folder)
+    save_path = ""
+    if save_current:
+        save_path = os.path.join(folder, os.path.basename(bpy.data.filepath) or safe_name(name) + ".blend")
+        current = os.path.normcase(os.path.abspath(bpy.data.filepath)) if bpy.data.filepath else ""
+        if os.path.exists(save_path) and os.path.normcase(save_path) != current:
+            raise ValueError("%s đã có file %s khác; đổi tên file hiện tại hoặc bỏ chọn \"Lưu file hiện tại vào dự án\""
+                             % (folder, os.path.basename(save_path)))
     project = Project(folder, name, [{"engine": engine, "path": engine_path.replace("\\", "/")}])
     save(project)
     install_project_shaders(project)
-    if save_current:
-        file_name = os.path.basename(bpy.data.filepath) or safe_name(name) + ".blend"
-        bpy.ops.wm.save_as_mainfile(filepath=os.path.join(folder, file_name))
+    if save_path:
+        bpy.ops.wm.save_as_mainfile(filepath=save_path)
     add_recent(project.file)
     return project
 
 
 def project_models(project):
-    """Every .blend file of the project (sub-folders included); .blend1 backups and hidden folders are skipped."""
+    """Every .blend file of the project (sub-folders included); .blend1 backups and hidden folders are skipped.
+    The panel calls this while drawing, so the walk is bounded: Unity's cache folders are skipped (a Unity project
+    may live inside the project folder) and the walk stops at MAX_SCAN_DEPTH levels and MAX_SCAN_DIRS folders."""
     found = []
+    base_depth = project.folder.rstrip("\\/").count(os.sep)
+    visited = 0
     for root, dirs, files in os.walk(project.folder):
-        dirs[:] = sorted(d for d in dirs if not d.startswith("."))
+        visited += 1
+        depth = root.rstrip("\\/").count(os.sep) - base_depth
+        if depth >= MAX_SCAN_DEPTH or visited >= MAX_SCAN_DIRS:
+            dirs[:] = []
+        else:
+            dirs[:] = sorted(d for d in dirs if not d.startswith(".") and d.lower() not in SKIP_DIRS)
         found += [os.path.join(root, f) for f in sorted(files) if f.lower().endswith(".blend")]
     return found
 
