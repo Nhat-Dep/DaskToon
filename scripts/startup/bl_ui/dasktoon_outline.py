@@ -179,6 +179,11 @@ def outline_depsgraph_post(scene, depsgraph):
         return
     _busy = True
     try:
+        # Light Bleed / Hand Wobble are edited on <material>.Outline, which is in no object slot:
+        # map an edited companion back to the material(s) that own it.
+        companions = {m for m in materials if find_source(m) is None}
+        if companions:
+            materials.update(m for m in bpy.data.materials if m.get(OUTLINE_MAT_PROP) in companions)
         for mat in materials:
             sync_material(mat)
         if everything:

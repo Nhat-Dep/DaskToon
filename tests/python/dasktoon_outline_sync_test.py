@@ -120,6 +120,22 @@ class OutlineSyncTest(unittest.TestCase):
         self.assertEqual(dask.bl_rna.properties["tint_mode"].enum_items[dask.tint_mode].value, 1)
         self.assertAlmostEqual(dask.inputs["Outline Color"].default_value[0], 0.2, places=4)
 
+    def test_editing_companion_material_resyncs_object(self):
+        """Light Bleed / Hand Wobble live on <material>.Outline, which is in no slot of the object."""
+        self.node.use_outline = True
+        self.node.inputs["Outline Width"].default_value = 0.05
+        update()
+        dask = outline.outline_node(outline.outline_material_for(self.mat, create=False))
+        group = self.obj.modifiers[gn.MODIFIER_NAME].node_group
+        bleed_tables = [n for n in group.nodes if n.bl_idname == 'GeometryNodeIndexSwitch']
+        before = [n.inputs[1].default_value for n in bleed_tables]
+        dask.inputs["Light Bleed"].default_value = 0.9
+        update()
+        group = self.obj.modifiers[gn.MODIFIER_NAME].node_group
+        after = [n.inputs[1].default_value for n in group.nodes if n.bl_idname == 'GeometryNodeIndexSwitch']
+        self.assertIn(0.9, [round(v, 4) for v in after if isinstance(v, float)])
+        self.assertNotEqual(before, after)
+
     def test_outline_preset_operator(self):
         bpy.context.view_layer.objects.active = self.obj
         result = bpy.ops.dasktoon.setup_anime_preset(preset_type='OUTLINE')
