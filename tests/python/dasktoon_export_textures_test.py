@@ -152,6 +152,19 @@ class BakeTest(unittest.TestCase):
         self.assertFalse(self.obj.select_get())
         self.assertEqual(self.obj.data.users, 2)
 
+    def test_material_with_outline_bakes_its_branch(self):
+        """The outline sync handler must not turn the temporary bake object into an outlined one (that baked black)."""
+        self.node.use_outline = True
+        mix = self.nt.nodes.new('ShaderNodeMix')
+        mix.data_type = 'RGBA'
+        sockets = {s.identifier: s for s in mix.inputs}
+        sockets["Factor_Float"].default_value = 0.0
+        sockets["A_Color"].default_value = (0.2, 0.4, 0.6, 1.0)
+        self.nt.links.new(next(s for s in mix.outputs if s.identifier == "Result_Color"), self.node.inputs["Shadow Color"])
+        px = bake.bake_input(self.obj, self.mat, self.source("Shadow Color"), 16, 4).reshape(-1, 4)
+        np.testing.assert_allclose(px[:, :3].mean(axis=0), (0.2, 0.4, 0.6), atol=0.01)
+        self.assertFalse([g.name for g in bpy.data.node_groups if "DT_Bake" in g.name])
+
     def test_branch_size_is_the_largest_image(self):
         tex = self.nt.nodes.new('ShaderNodeTexImage')
         tex.image = bpy.data.images.new("Big", 64, 32)

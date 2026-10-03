@@ -84,7 +84,8 @@ public static class DaskToonRenderTests
         {
             foreach (var c in args.cases)
             {
-                foreach (var r in model.GetComponentsInChildren<Renderer>(true)) r.enabled = r.gameObject.name == c.obj;
+                // obj "*" shows the whole model.
+                foreach (var r in model.GetComponentsInChildren<Renderer>(true)) r.enabled = c.obj == "*" || r.gameObject.name == c.obj;
                 cam.transform.position = V(c.camPos);
                 cam.transform.rotation = Quaternion.LookRotation(V(args.camForward), V(args.camUp));
                 var tex = DaskToonTests.RenderCamera(cam, args.resolution, args.resolution);

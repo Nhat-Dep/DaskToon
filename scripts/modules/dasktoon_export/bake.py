@@ -47,9 +47,23 @@ def _faces_mesh(obj, material):
     return mesh
 
 
+def _strip_outline(mat):
+    """The copy must not be an outline source: the outline sync handler would give the temporary bake object a
+    Geometry Nodes hull with the .Outline material, which spoils the bake (it came out black)."""
+    for prop in ("dasktoon_outline", "dasktoon_outline_material"):
+        if prop in mat:
+            del mat[prop]
+    for node in mat.node_tree.nodes:
+        if node.bl_idname == 'ShaderNodeAnimeCharacter':
+            node.use_outline = False
+        elif node.bl_idname == 'ShaderNodeDaskCel':
+            node.inputs["Use Outline"].default_value = False
+
+
 def _bake_material(source, image):
     """A copy of the branch's material whose only output is Emission(branch) and whose active node is `image`."""
     mat = source.tree_owner.copy()
+    _strip_outline(mat)
     tree = mat.node_tree
     upstream = follow(_input(tree, source.node, source.socket))
     for node in tree.nodes:
