@@ -33,10 +33,22 @@ def register():
     except Exception:
         pass
 
+    try:
+        import dasktoon_ai_bridge
+        dasktoon_ai_bridge.register()
+    except Exception:
+        pass
+
     dasktoon_enforce_color_management()
 
 
 def unregister():
+    try:
+        import dasktoon_ai_bridge
+        dasktoon_ai_bridge.unregister()
+    except Exception:
+        pass
+
     try:
         import dasktoon_light_groups
         dasktoon_light_groups.unregister()
