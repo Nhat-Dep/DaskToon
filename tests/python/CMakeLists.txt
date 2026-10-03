@@ -230,6 +230,23 @@ add_blender_test(
   --python ${CMAKE_CURRENT_LIST_DIR}/bl_load_addons.py
 )
 
+# DaskToon shading core and outline (docs/superpowers/specs/2026-10-03-dasktoon-shading-outline-design.md).
+foreach(dasktoon_test
+    dasktoon_platform_test
+    dasktoon_shading_test
+    dasktoon_shading_baseline
+    dasktoon_shading_styles_test
+    dasktoon_outline_nodes_test
+    dasktoon_outline_sync_test
+    dasktoon_outline_gamedata_test
+    dasktoon_upgrade_test
+)
+  add_blender_test(
+    ${dasktoon_test}
+    --python ${CMAKE_CURRENT_LIST_DIR}/${dasktoon_test}.py
+  )
+endforeach()
+
 add_blender_test(
   script_load_modules
   --python ${CMAKE_CURRENT_LIST_DIR}/bl_load_py_modules.py
