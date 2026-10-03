@@ -178,8 +178,9 @@ Hàm GPU của Anime Cel phải bật thêm cờ `GPU_MATFLAG_GLOSSY` và `GPU_M
   - `dasktoon.shading_style_apply(name)`
   - `dasktoon.shading_style_save(name)`: hỏi tên, xác nhận trước khi ghi đè.
   - `dasktoon.shading_style_delete(name)`: chỉ cho style của người dùng.
-  - `dasktoon.shading_ramp_from_simple`: tạo dải LINEAR với hai điểm, tại `Threshold - Softness/2` (màu tint) và
-    `Threshold + Softness/2` (màu trắng). `tint = clamp(final_shadow / max(Base, 0.01), 0, 1)` tính từ giá trị
+  - `dasktoon.shading_ramp_from_simple`: tạo dải EASE với hai điểm, tại `0.5 - Softness/2` (màu tint) và
+    `0.5 + Softness/2` (màu trắng). Ở chế độ Dải, `t = light + 0.5 - Threshold`, nên ranh giới `light = Threshold`
+    luôn rơi vào `t = 0.5`. EASE gần với `smoothstep` của chế độ Đơn giản. `tint = clamp(final_shadow / max(Base, 0.01), 0, 1)` tính từ giá trị
     socket. Nếu socket đang có link thì dùng `Base = (0.8, 0.8, 0.8)`. Sau đó bật chế độ Dải và báo cho người dùng
     biết đây là chuyển gần đúng.
 - **Menu** `NODE_MT_dasktoon_shading_styles`: các preset có sẵn, một đường kẻ, rồi các style của người dùng.
