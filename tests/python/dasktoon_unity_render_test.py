@@ -34,6 +34,8 @@ SUN_ROTATION = (math.radians(50.0), 0.0, math.radians(30.0))
 WORLD = (0.05, 0.06, 0.08)
 TOLERANCE = 0.03
 EDGE = 0.05
+OUTLINE_WIDTH_TOLERANCE = 1.5   # px; EEVEE's film filter softens the line edges, Unity renders without AA
+OUTLINE_COLOUR_TOLERANCE = 0.08
 MODEL_NAME = "DTCompare"
 
 
@@ -102,6 +104,19 @@ def eye():
     return mat
 
 
+def outlined(name, tint_mode='CUSTOM', bleed=0.0, wobble=0.0):
+    """Anime BSDF with the thickest outline, so its width can be measured in pixels."""
+    mat, node = bsdf(name, use_outline=True, outline_tint_mode=tint_mode)
+    node.inputs["Outline Width"].default_value = 0.05
+    node.inputs["Outline Color"].default_value = (0.0, 0.0, 0.5, 1.0)
+    node.inputs["Outline Lighting Mix"].default_value = 0.0
+    outline.sync_material(mat)
+    dask = outline.outline_node(outline.outline_material_for(mat))
+    dask.inputs["Light Bleed"].default_value = bleed
+    dask.inputs["Hand Wobble"].default_value = wobble
+    return mat
+
+
 def dask_cel(name, style=None):
     mat, node = tu.node_material(name, 'ShaderNodeDaskCel')
     if style:
@@ -128,6 +143,8 @@ CASES = [
     ("eye", eye, True),
     ("daskcel_simple", lambda: dask_cel("daskcel_simple"), True),
     ("daskcel_manga", lambda: dask_cel("daskcel_manga", style="Manga"), True),
+    ("outline_custom", lambda: outlined("outline_custom"), True),
+    ("outline_harmonic", lambda: outlined("outline_harmonic", 'HARMONIC_KYOTO', 0.7, 0.15), True),
 ]
 
 
@@ -151,6 +168,7 @@ def build_scene():
         obj.name = "Case_" + name
         tu.assign(obj, builder())
         spheres.append(obj)
+    outline.sync_all(scene)  # Geometry Nodes outline hulls for the outline cases
     return scene, sun, cam, spheres
 
 
@@ -206,6 +224,36 @@ def compare(blender, unity):
     return worst, used, skipped
 
 
+def outline_profile(img, background):
+    """(thickness in px, sRGB colour at the middle of the line) along 8 directions outside the sphere's disc."""
+    image = srgb(img[..., :3])
+    bg = srgb(np.array(background))
+    centre = RES / 2.0
+    radius = 0.5 / ORTHO_SCALE * RES
+    profile = []
+    for k in range(8):
+        angle = k * math.pi / 4.0
+        hits = []
+        for step in range(30):
+            r = radius + 0.75 + step * 0.5
+            x, y = int(centre + r * math.cos(angle)), int(centre + r * math.sin(angle))
+            if np.abs(image[y, x] - bg).max() > 0.08:
+                hits.append(image[y, x])
+        profile.append((len(hits) * 0.5, hits[len(hits) // 2] if hits else None))
+    return profile
+
+
+def compare_outline(blender, unity):
+    """Largest thickness difference (px) and colour difference over the 8 directions, and the thinnest line."""
+    worst_width, worst_colour, thinnest = 0.0, 0.0, 99.0
+    for (tb, cb), (tu_, cu) in zip(outline_profile(blender, WORLD), outline_profile(unity, (0.0, 0.0, 0.0))):
+        worst_width = max(worst_width, abs(tb - tu_))
+        thinnest = min(thinnest, tb, tu_)
+        if cb is not None and cu is not None:
+            worst_colour = max(worst_colour, float(np.abs(cb - cu).max()))
+    return worst_width, worst_colour, thinnest
+
+
 def write_sheet(rows):
     """One row per case: DaskToon | Unity | |difference| x 5, top to bottom in CASES order."""
     height = RES * len(rows)
@@ -259,6 +307,12 @@ class UnityRenderTest(unittest.TestCase):
             rows.append((blender[name], unity))
             if graded and (worst > TOLERANCE or used < 0.6 * (used + skipped)):
                 failures.append(name)
+            if name.startswith("outline_"):
+                width_diff, colour_diff, thinnest = compare_outline(blender[name], unity)
+                table[name].update(outline_width_diff_px=width_diff, outline_colour_diff=round(colour_diff, 4),
+                                   outline_thinnest_px=thinnest)
+                if width_diff > OUTLINE_WIDTH_TOLERANCE or colour_diff > OUTLINE_COLOUR_TOLERANCE or thinnest < 1.0:
+                    failures.append(name + " (outline)")
         write_sheet(rows)
         with open(os.path.join(tu.OUT_DIR, "unity_compare.json"), "w", encoding="utf-8") as f:
             json.dump(table, f, indent=2)
