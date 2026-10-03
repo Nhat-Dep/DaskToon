@@ -129,6 +129,9 @@ class NodeTest(unittest.TestCase):
         self.assertAlmostEqual(spec.floats["_DT_RingIntensity"], 0.8, places=5)
         self.assertEqual(spec.floats["_DT_RingClampFactor"], 1.0)
         self.assertEqual(spec.floats["_DT_UseAngelRing"], 1.0)
+        # EEVEE also adds each node's own emission, scaled by its hidden Weight socket (Anime Cel 1, Angel Ring 0).
+        self.assertEqual(spec.floats["_DT_CelSelfEmission"], 1.0)
+        self.assertEqual(spec.floats["_DT_RingSelfEmission"], 0.0)
 
     def test_reroutes_are_followed(self):
         mat, node = tu.node_material("Rerouted", 'ShaderNodeAnimeCharacter')

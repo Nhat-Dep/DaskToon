@@ -47,6 +47,8 @@ Shader "DaskToon/AnimeCel"
         _DT_RingIntensity ("Intensity", Float) = 1.5
         [Toggle] _DT_RingClampFactor ("Clamp Factor", Float) = 1
         [Toggle] _DT_RingClampResult ("Clamp Result", Float) = 0
+        _DT_CelSelfEmission ("Cel Own Emission (DaskToon hidden Weight)", Float) = 0
+        _DT_RingSelfEmission ("Ring Own Emission (DaskToon hidden Weight)", Float) = 0
 
         [Header(Outline)][Toggle(_DT_OUTLINE)] _DT_UseOutline ("Outline (re-export from DaskToon to turn on)", Float) = 0
         _DT_OutlineWidth ("Outline Width (m)", Range(0, 0.05)) = 0.002
@@ -114,6 +116,8 @@ Shader "DaskToon/AnimeCel"
             float _DT_RingIntensity;
             float _DT_RingClampFactor;
             float _DT_RingClampResult;
+            float _DT_CelSelfEmission;
+            float _DT_RingSelfEmission;
             DT_SHARED_MATERIAL_FIELDS
         CBUFFER_END
 
@@ -200,9 +204,10 @@ Shader "DaskToon/AnimeCel"
                 r.intensity = _DT_RingIntensity;
                 float ring_fac;
                 float3 ring = dt_angel_ring(r, DT_UnityToBlenderPos(input.positionWS), DT_UnityToBlenderDir(N), ring_fac);
-                c = dt_hair(c, ring, ring_fac, _DT_RingClampFactor, _DT_RingClampResult);
+                // Emission(Mix) plus each node's own emission, which EEVEE adds with the node's hidden Weight.
+                c = dt_hair(c, ring, ring_fac, _DT_RingClampFactor, _DT_RingClampResult) * _DT_EmissionStrength
+                    + c * _DT_CelSelfEmission + ring * _DT_RingSelfEmission;
 #endif
-                c *= _DT_EmissionStrength;
                 c = MixFog(c, inputData.fogCoord);
                 return half4(c, 1.0);
             }

@@ -296,6 +296,11 @@ def _hair(mat, emission, parts, spec, meshes):
     spec.keywords.add("_DT_ANGEL_RING")
     spec.floats["_DT_RingClampFactor"] = 1.0 if clamp_factor else 0.0
     spec.floats["_DT_RingClampResult"] = 1.0 if clamp_result else 0.0
+    # EEVEE also evaluates the closures of nodes whose BSDF output is unused, scaled by their hidden Weight socket:
+    # with the HAIR preset the Anime Cel adds its colour once more (Weight 1). Unity reproduces what DaskToon shows.
+    for node, prop in ((cel, "_DT_CelSelfEmission"), (ring, "_DT_RingSelfEmission")):
+        weight = next((s for s in node.inputs if s.name == "Weight"), None)
+        spec.floats[prop] = float(weight.default_value) if weight is not None and not weight.is_linked else 0.0
     strength = emission.inputs["Strength"]
     spec.floats["_DT_EmissionStrength"] = float(strength.default_value)
     if strength.is_linked:
