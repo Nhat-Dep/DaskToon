@@ -136,6 +136,24 @@ class OutlineSyncTest(unittest.TestCase):
         self.assertIn(0.9, [round(v, 4) for v in after if isinstance(v, float)])
         self.assertNotEqual(before, after)
 
+    def test_unrelated_edit_keeps_companion_nodes(self):
+        """Editing the source must not delete and re-clone the companion's texture nodes: that recompiles
+        the outline shader on every slider tick. A real change upstream must still reach it."""
+        nt = self.mat.node_tree
+        tex = nt.nodes.new('ShaderNodeTexImage')
+        nt.links.new(tex.outputs["Color"], self.node.inputs["Base Color"])
+        self.node.use_outline = True
+        update()
+        companion = outline.outline_material_for(self.mat, create=False)
+        before = sorted(n.as_pointer() for n in companion.node_tree.nodes)
+        self.node.inputs["Shadow Threshold"].default_value = 0.3
+        update()
+        self.assertEqual(before, sorted(n.as_pointer() for n in companion.node_tree.nodes))
+        tex.interpolation = 'Closest'
+        update()
+        clone = next(n for n in companion.node_tree.nodes if n.bl_idname == 'ShaderNodeTexImage')
+        self.assertEqual(clone.interpolation, 'Closest')
+
     def test_outline_preset_operator(self):
         bpy.context.view_layer.objects.active = self.obj
         result = bpy.ops.dasktoon.setup_anime_preset(preset_type='OUTLINE')

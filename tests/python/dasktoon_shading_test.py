@@ -218,6 +218,9 @@ class LegacyNodesTest(unittest.TestCase):
         tu.assign(plane, mat)
         simple = tu.render_center("legacy_simple")
         self.assertGreater(max(simple[:3]), 0.05)
+        copied = mat.copy()  # copying a node whose ramp storage is missing must work
+        self.assertIsNone(next(n for n in copied.node_tree.nodes
+                               if n.bl_idname == 'ShaderNodeAnimeCharacter').shading_ramp)
         node.shading_mode = 'RAMP'
         self.assertIsNotNone(node.shading_ramp)
         ramp = tu.render_center("legacy_ramp")

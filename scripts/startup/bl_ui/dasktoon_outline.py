@@ -15,11 +15,20 @@ OUTLINE_MAT_PROP = "dasktoon_outline_material"
 MASK_NAMES = ("Outline_Weight", "outline_weight", "DaskOutline_Mask", "Outline_Mask", "Outline_Width", "outline_mask")
 
 _signatures = {}
+_companion_signatures = {}
 _busy = False
+
+# Node properties that do not change what a cloned node computes.
+_LAYOUT_PROPS = {
+    "name", "label", "location", "location_absolute", "width", "height", "width_hidden", "select",
+    "hide", "mute", "parent", "color", "color_tag", "use_custom_color", "show_options",
+    "show_preview", "show_texture", "warning_propagation",
+}
 
 
 def reset_cache():
     _signatures.clear()
+    _companion_signatures.clear()
 
 
 def find_source(mat):
@@ -82,6 +91,41 @@ def _sync_socket(source_socket, target_tree, target_socket):
         _set_value(target_socket, tuple(source_socket.default_value))
 
 
+def _value_key(socket):
+    value = getattr(socket, "default_value", None)
+    try:
+        return tuple(round(v, 6) for v in value)
+    except TypeError:
+        return round(value, 6) if isinstance(value, float) else value
+
+
+def _node_key(node):
+    """The settings `_sync_outline_socket` copies: writable RNA properties (images by pointer)."""
+    parts = []
+    for prop in node.bl_rna.properties:
+        if prop.is_readonly or prop.identifier in _LAYOUT_PROPS:
+            continue
+        value = getattr(node, prop.identifier, None)
+        if isinstance(value, bpy.types.ID):
+            value = value.as_pointer()
+        elif isinstance(value, bpy.types.bpy_struct):
+            continue
+        elif hasattr(value, "__len__") and not isinstance(value, str):
+            value = tuple(value)
+        parts.append((prop.identifier, value))
+    return tuple(parts)
+
+
+def _upstream_key(socket, depth=0):
+    """Structural signature of everything that feeds `socket`."""
+    if not socket.is_linked or depth > 64:
+        return ("value", _value_key(socket))
+    link = socket.links[0]
+    node = link.from_node
+    return (node.bl_idname, link.from_socket.identifier, _node_key(node),
+            tuple(_upstream_key(s, depth + 1) for s in node.inputs))
+
+
 def sync_material(mat):
     """Quick controls of the main node -> companion material (one-way, spec 4.2)."""
     source = find_source(mat)
@@ -93,11 +137,16 @@ def sync_material(mat):
     if dask is None:
         return
     tree = companion.node_tree
-    for n in list(tree.nodes):
-        if n.bl_idname not in {'ShaderNodeDaskOutline', 'ShaderNodeOutputMaterial'}:
-            tree.nodes.remove(n)
-    _sync_socket(node.inputs["Outline Color"], tree, dask.inputs["Outline Color"])
-    _sync_socket(node.inputs["Base Color"], tree, dask.inputs["Base Color"])
+    # Re-clone the color branches only when they really changed: rebuilding the companion's nodes
+    # recompiles its shader, which would stutter on every slider tick of the source material.
+    key = (_upstream_key(node.inputs["Outline Color"]), _upstream_key(node.inputs["Base Color"]))
+    if _companion_signatures.get(companion.as_pointer()) != key:
+        for n in list(tree.nodes):
+            if n.bl_idname not in {'ShaderNodeDaskOutline', 'ShaderNodeOutputMaterial'}:
+                tree.nodes.remove(n)
+        _sync_socket(node.inputs["Outline Color"], tree, dask.inputs["Outline Color"])
+        _sync_socket(node.inputs["Base Color"], tree, dask.inputs["Base Color"])
+        _companion_signatures[companion.as_pointer()] = key
     _set_value(dask.inputs["Outline Lighting Mix"], node.inputs["Outline Lighting Mix"].default_value)
     tint_value = node.bl_rna.properties["outline_tint_mode"].enum_items[node.outline_tint_mode].value
     for item in dask.bl_rna.properties["tint_mode"].enum_items:

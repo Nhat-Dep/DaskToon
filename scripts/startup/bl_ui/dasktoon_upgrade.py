@@ -65,10 +65,13 @@ def _enable_outline(mat, width):
         main.inputs["Use Outline"].default_value = True
     else:
         mat[outline.OUTLINE_PROP] = True
-    if width is not None and main is not None:
-        socket = main.inputs["Outline Width"]
-        if socket.default_value in (0.0, 0.002):
-            socket.default_value = width
+    if width is not None:
+        # The Solidify thickness is what the user saw. The old handler kept it equal to the largest
+        # node width; it only differs after a manual Solidify edit or the old OUTLINE preset.
+        if main is not None:
+            main.inputs["Outline Width"].default_value = width
+        else:
+            outline.outline_node(outline.outline_material_for(mat)).inputs["Outline Width"].default_value = width
     return main
 
 
