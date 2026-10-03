@@ -62,6 +62,8 @@ _modules = [
     "properties_dasktoon",
     "engine_dasktoon_anime",
     "dasktoon_anime_nodes",
+    "dasktoon_shading_styles",
+    "dasktoon_outline",
     "dasktoon_anime_fx",
     "dasktoon_face_normals",
     "dasktoon_material_combiner",
