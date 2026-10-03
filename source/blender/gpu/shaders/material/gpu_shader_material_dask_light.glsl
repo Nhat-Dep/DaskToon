@@ -30,7 +30,7 @@ void node_dask_light(float3 N,
   float3 result_col = light_col * tint_fac;
 
   /* Standalone BSDF Output */
-  float w = (weight > 0.0001f) ? weight : 1.0f;
+  float w = weight;
   ClosureEmission emission_data;
   emission_data.weight = w;
   emission_data.emission = result_col;

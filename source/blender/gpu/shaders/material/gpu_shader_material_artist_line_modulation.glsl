@@ -60,7 +60,7 @@ void node_artist_line_modulation(float3 normal_in,
   }
 
   /* 3. View Angle Taper */
-  float3 V = safe_normalize(-g_data.camera_pos);
+  float3 V = safe_normalize(coordinate_incoming(g_data.P));
   float NdotV = abs(dot(N, V));
   float taper = mix(1.0f, smoothstep(0.0f, 0.6f, NdotV), clamp(view_taper, 0.0f, 1.0f));
 
@@ -111,7 +111,7 @@ void node_artist_line_modulation(float3 normal_in,
   out_line_alpha = alpha_factor;
 
   /* 9. Standalone BSDF Emission Closure Output */
-  float w = (weight > 0.0001f) ? weight : 1.0f;
+  float w = weight;
   ClosureEmission emission_data;
   emission_data.weight = w * alpha_factor;
   emission_data.emission = final_line_rgb;

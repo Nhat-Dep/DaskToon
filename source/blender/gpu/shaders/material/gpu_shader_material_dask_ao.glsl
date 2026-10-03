@@ -31,7 +31,7 @@ void node_dask_ao(float3 normal,
   float3 ao_multiplier = mix(float3(1.0f), ao_color.rgb, deep_occlusion);
 
   /* 3. Standalone BSDF Output */
-  float w = (weight > 0.0001f) ? weight : 1.0f;
+  float w = weight;
   ClosureEmission emission_data;
   emission_data.weight = w;
   emission_data.emission = ao_multiplier;

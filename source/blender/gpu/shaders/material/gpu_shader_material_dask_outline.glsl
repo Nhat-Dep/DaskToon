@@ -108,7 +108,7 @@ void node_dask_outline(float3 normal_in,
   out_color = float4(final_line_rgb, 1.0f);
 
   /* 6. Standalone BSDF Output */
-  float w = (weight > 0.0001f) ? weight : 1.0f;
+  float w = weight;
   ClosureEmission emission_data;
   emission_data.weight = w;
   emission_data.emission = final_line_rgb;

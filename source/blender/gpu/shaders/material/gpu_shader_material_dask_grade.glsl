@@ -62,7 +62,7 @@ void node_dask_grade(float4 in_color,
   col *= max(strength, 0.0f);
 
   /* 6. Standalone BSDF Output */
-  float w = (weight > 0.0001f) ? weight : 1.0f;
+  float w = weight;
   ClosureEmission emission_data;
   emission_data.weight = w;
   emission_data.emission = col;

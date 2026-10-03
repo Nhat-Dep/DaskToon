@@ -32,7 +32,7 @@ void node_dask_ambient(float4 ambient_color,
   }
 
   /* 2. Standalone BSDF Output */
-  float w = (weight > 0.0001f) ? weight : 1.0f;
+  float w = weight;
   ClosureEmission emission_data;
   emission_data.weight = w;
   emission_data.emission = amb_rgb;

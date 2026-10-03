@@ -94,13 +94,18 @@ def emission_material(name, rgba, strength=1.0):
     return mat
 
 
+def shader_output(node):
+    """The node's BSDF output when it has one (some DaskToon nodes list a Color output first)."""
+    return node.outputs.get("BSDF") or node.outputs[0]
+
+
 def node_material(name, node_type):
     """Material whose Surface is driven directly by one node of `node_type`."""
     mat = new_material(name)
     nt = mat.node_tree
     out = nt.nodes.new('ShaderNodeOutputMaterial')
     node = nt.nodes.new(node_type)
-    nt.links.new(node.outputs[0], out.inputs["Surface"])
+    nt.links.new(shader_output(node), out.inputs["Surface"])
     return mat, node
 
 
@@ -115,7 +120,7 @@ def mix_with_black_material(name, node_type):
     black.inputs["Strength"].default_value = 0.0
     light_path = nt.nodes.new('ShaderNodeLightPath')
     nt.links.new(light_path.outputs["Is Camera Ray"], mix.inputs[0])
-    nt.links.new(node.outputs[0], mix.inputs[1])
+    nt.links.new(shader_output(node), mix.inputs[1])
     nt.links.new(black.outputs[0], mix.inputs[2])
     nt.links.new(mix.outputs[0], out.inputs["Surface"])
     return mat, node
@@ -143,6 +148,11 @@ def render_center(name):
     pixels, (w, h) = render_pixels(name)
     i = ((h // 2) * w + w // 2) * 4
     return tuple(pixels[i:i + 4])
+
+
+def is_shader_error(rgba):
+    """EEVEE draws materials whose shader failed to compile in magenta (1, 0, 1)."""
+    return rgba[0] > 0.99 and rgba[1] < 0.01 and rgba[2] > 0.99
 
 
 def run_tests():
