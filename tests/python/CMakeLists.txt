@@ -240,6 +240,16 @@ foreach(dasktoon_test
     dasktoon_outline_sync_test
     dasktoon_outline_gamedata_test
     dasktoon_upgrade_test
+    dasktoon_export_yaml_test
+    dasktoon_export_targets_test
+    dasktoon_export_shaders_test
+    dasktoon_export_graph_test
+    dasktoon_export_textures_test
+    dasktoon_export_fbx_test
+    dasktoon_export_layout_test
+    dasktoon_engine_export_ui_test
+    dasktoon_project_test
+    dasktoon_project_ui_test
 )
   add_blender_test(
     ${dasktoon_test}
