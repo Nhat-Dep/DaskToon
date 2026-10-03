@@ -120,6 +120,12 @@ có test chạy đỏ trước khi sửa:
 4. Armature nằm trong collection bị loại trừ làm hỏng xuất FBX. Giờ để nó ra ngoài FBX và cảnh báo.
 5. Pass outline của Unity mới chỉ được biên dịch, chưa được render. Đã thêm hai trường hợp outline vào bài so sánh (kết quả ở bảng trên).
 
+**Lỗi tìm thấy khi bạn thử nhân vật tdt trong Unity 6.6 (đã sửa, commit `25ec498cfe4`):** material có outline mà một input
+phải bake (ví dụ Shadow Color nối qua Hue/Saturation/Value) thì texture bake ra **toàn màu đen**. Nguyên nhân: bản sao material
+dùng để bake vẫn bật outline, nên handler đồng bộ outline gắn lớp vỏ Geometry Nodes vào object bake tạm. Shadow Color đen làm vùng
+bóng trong Unity rơi về `base × 0.5`, nên trông nhạt. Sau khi sửa, render tdt trong Unity khớp DaskToon ở vùng bóng (0.162 so với
+0.162). Cần **export lại**. Có test `test_material_with_outline_bakes_its_branch`.
+
 Những điểm nhỏ để lại sau:
 - Engine Export không có Undo riêng, nên các UV map `DT_OutlineN/W` và material `.Outline` nó thêm gộp vào bước Undo kế tiếp.
 - Không có thanh tiến trình khi bake; bake ảnh 4K, 16 sample sẽ làm DaskToon đứng một lúc.
