@@ -52,7 +52,10 @@ def prepare_outline_data(objects):
         if obj.data.library is not None:
             errors.append("%s: mesh link từ thư viện, không ghi được dữ liệu outline" % obj.name)
             continue
-        ok, message = gamedata.write_outline_uvs(obj)
+        try:
+            ok, message = gamedata.write_outline_uvs(obj)
+        except Exception as ex:  # e.g. the mesh already has Blender's maximum of 8 UV maps
+            ok, message = False, "%s: không ghi được dữ liệu outline (%s)" % (obj.name, ex)
         if ok:
             done.append(obj.name)
         else:
@@ -73,16 +76,22 @@ def modifier_notes(objects):
 
 
 def write_fbx(context, objects, filepath, include_animation):
-    """Export `objects` with the fixed settings of spec 4; the user's selection and active object are restored."""
+    """Export `objects` with the fixed settings of spec 4; the user's selection and active object are restored.
+    Returns the names of objects left out because they cannot be selected (e.g. in an excluded collection)."""
     view_layer = context.view_layer
     selected = [o for o in view_layer.objects if o.select_get()]
     active = view_layer.objects.active
+    left_out = []
     try:
         for obj in selected:
             obj.select_set(False)
         for obj in objects:
-            obj.select_set(True)
+            try:
+                obj.select_set(True)
+            except RuntimeError:
+                left_out.append(obj.name)
         bpy.ops.export_scene.fbx(filepath=filepath, use_selection=True, bake_anim=include_animation, **FBX_SETTINGS)
+        return left_out
     finally:
         for obj in view_layer.objects:
             try:

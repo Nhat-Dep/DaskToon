@@ -84,6 +84,17 @@ class FbxTest(unittest.TestCase):
         self.assertEqual(done, [])
         self.assertEqual(len(errors), 1)
 
+    def test_a_failing_mesh_does_not_stop_the_others(self):
+        obj = outlined_character()
+        while len(obj.data.uv_layers) < 8:   # Blender's limit: DT_OutlineN/W cannot be added
+            obj.data.uv_layers.new(name="UV%d" % len(obj.data.uv_layers))
+        other = tu.add_sphere(segments=8, rings=4)
+        tu.assign(other, obj.data.materials[0])
+        done, errors = model_fbx.prepare_outline_data([obj, other])
+        self.assertEqual(done, [other.name])
+        self.assertEqual(len(errors), 1)
+        self.assertIn(obj.name, errors[0])
+
     def test_modifier_notes_skip_armature_and_outline(self):
         obj = outlined_character()
         obj.modifiers.new("Mirror", 'MIRROR')

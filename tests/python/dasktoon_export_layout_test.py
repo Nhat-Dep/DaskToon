@@ -156,6 +156,46 @@ class LayoutTest(unittest.TestCase):
         mat = read(os.path.join(out, "Hero_Unity", "Hero", "Materials", "Skin.mat"))
         self.assertIn("    - _DT_OutlineUV: -1\n", mat)
 
+    def test_linked_material_with_outline_exports(self):
+        tu.reset_scene()
+        outline.reset_cache()
+        mat, node = tu.node_material("LibSkin", 'ShaderNodeAnimeCharacter')
+        node.use_outline = True
+        tex = mat.node_tree.nodes.new('ShaderNodeRGB')    # a linked colour branch the sync must clone
+        mat.node_tree.links.new(tex.outputs[0], node.inputs["Outline Color"])
+        outline.sync_material(mat)                           # the library is saved with its .Outline companion
+        outline.outline_node(outline.outline_material_for(mat)).inputs["Light Bleed"].default_value = 0.25
+        mat.use_fake_user = True
+        lib = os.path.join(tempfile.mkdtemp(prefix="dt_layout_lib_"), "lib.blend")
+        bpy.ops.wm.save_as_mainfile(filepath=lib)
+        tu.reset_scene()
+        outline.reset_cache()
+        with bpy.data.libraries.load(lib, link=True) as (_src, dst):
+            dst.materials = ["LibSkin"]
+        linked = dst.materials[0]
+        self.assertIsNotNone(linked.library)
+        body = tu.add_sphere(segments=8, rings=4)
+        tu.assign(body, linked)
+        outline.reset_cache()                               # a fresh session: the sync would rebuild the companion
+        out = tempfile.mkdtemp(prefix="dt_layout_out_")
+        target, rep = export_to(out, [body])
+        self.assertEqual(rep.materials, ["LibSkin"])
+        mat_text = read(os.path.join(target.root, "Untitled", "Materials", "LibSkin.mat"))
+        self.assertIn("  - _DT_OUTLINE\n", mat_text)
+        self.assertIn("    - _DT_OutlineLightBleed: 0.25\n", mat_text)
+
+    def test_object_outside_the_view_layer_is_left_out_of_the_fbx(self):
+        body = build_character(tempfile.mkdtemp(prefix="dt_layout_blend_"))
+        rig = bpy.data.objects.new("Rig", bpy.data.armatures.new("Rig"))
+        rigs = bpy.data.collections.new("Rigs")
+        bpy.context.scene.collection.children.link(rigs)
+        rigs.objects.link(rig)
+        bpy.context.view_layer.layer_collection.children["Rigs"].exclude = True
+        out = tempfile.mkdtemp(prefix="dt_layout_out_")
+        _target, rep = export_to(out, [body, rig])
+        self.assertTrue(os.path.isfile(os.path.join(out, "Hero_Unity", "Hero", "Model", "Hero.fbx")))
+        self.assertTrue(any("Rig" in w for w in rep.warnings), rep.warnings)
+
     def test_materials_only(self):
         build_character(tempfile.mkdtemp(prefix="dt_layout_blend_"))
         out = tempfile.mkdtemp(prefix="dt_layout_out_")

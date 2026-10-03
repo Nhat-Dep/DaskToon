@@ -199,9 +199,16 @@ def export_model(context, target, objects, options):
         rel = "%s/%s.fbx" % (model_dir, safe_name(target.name))
         guid = writer.guid(rel)
         meta = unity_yaml.model_meta(guid, mat_guids, options.include_animation)
-        if assets.write_asset(target.root, rel, guid, meta, rep.warnings,
-                              writer=lambda path: model_fbx.write_fbx(context, objects, path, options.include_animation)):
+        left_out = []
+
+        def write_fbx(path):
+            left_out.extend(model_fbx.write_fbx(context, objects, path, options.include_animation))
+
+        if assets.write_asset(target.root, rel, guid, meta, rep.warnings, writer=write_fbx):
             rep.model = rel
+        if left_out:
+            rep.warnings.append("Không đưa vào FBX: %s (không nằm trong view layer hiện tại, ví dụ collection bị loại trừ)"
+                                % ", ".join(left_out))
     rep.light_hint = report.light_hint(context.scene)
     rep.ambient_hint = report.ambient_hint(context.scene)
     if target.mode == 'FOLDER':
