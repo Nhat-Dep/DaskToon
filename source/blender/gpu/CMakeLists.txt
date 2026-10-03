@@ -720,6 +720,7 @@ set(GLSL_SRC
   shaders/material/gpu_shader_material_anime_cel.glsl
   shaders/material/gpu_shader_material_anime_rim.glsl
   shaders/material/gpu_shader_material_anime_character.glsl
+  shaders/material/gpu_shader_material_dasktoon_shading.glsl
   shaders/material/gpu_shader_material_anime_angel_ring.glsl
   shaders/material/gpu_shader_material_anime_face_shadow.glsl
   shaders/material/gpu_shader_material_anime_manga_screentone.glsl

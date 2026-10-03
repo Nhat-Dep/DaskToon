@@ -5,24 +5,7 @@
 #include "gpu_shader_math_vector_safe_lib.glsl"
 #include "gpu_shader_material_transform_utils.glsl"
 #include "gpu_shader_utildefines_lib.glsl"
-
-float3 dasktoon_master_rgb_to_hsv(float3 c)
-{
-  float4 K = float4(0.0f, -1.0f / 3.0f, 2.0f / 3.0f, -1.0f);
-  float4 p = mix(float4(c.bg, K.wz), float4(c.gb, K.xy), step(c.b, c.g));
-  float4 q = mix(float4(p.xyw, c.r), float4(c.r, p.yzx), step(p.x, c.r));
-
-  float d = q.x - min(q.w, q.y);
-  float e = 1.0e-10f;
-  return float3(abs(q.z + (q.w - q.y) / (6.0f * d + e)), d / (q.x + e), q.x);
-}
-
-float3 dasktoon_master_hsv_to_rgb(float3 c)
-{
-  float4 K = float4(1.0f, 2.0f / 3.0f, 1.0f / 3.0f, 3.0f);
-  float3 p = abs(fract(c.xxx + K.xyz) * 6.0f - K.www);
-  return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0f, 1.0f), c.y);
-}
+#include "gpu_shader_material_dasktoon_shading.glsl"
 
 [[node]]
 void node_anime_character(float3 N,
@@ -94,18 +77,9 @@ void node_anime_character(float3 N,
   /* =========================================================================
    * 2. DISCRETE 2-TONE CEL SHADING CALCULATION (CLASSIC SHADER)
    * ========================================================================= */
-  float s_soft = max(shadow_softness, 0.001f);
-  float s_min = clamp(shadow_thresh - s_soft * 0.5f, 0.0f, 1.0f);
-  float s_max = clamp(shadow_thresh + s_soft * 0.5f, s_min + 0.0001f, 1.0f);
-  float cel_factor = smoothstep(s_min, s_max, light_intensity);
-
-  /* Auto-harmonize shadow with base color so shadows never look muddy/grey */
-  float3 auto_shadow = base_color.rgb * shadow_color.rgb * 1.25f;
-  float3 final_shadow = (length(shadow_color.rgb) > 0.001f) ?
-                        mix(shadow_color.rgb, auto_shadow, 0.75f) :
-                        base_color.rgb * 0.5f;
-
-  float3 surface_color = mix(final_shadow, base_color.rgb, cel_factor);
+  float cel_factor;
+  float3 surface_color = dt_shade_simple(
+      light_intensity, base_color.rgb, shadow_color.rgb, shadow_thresh, shadow_softness, cel_factor);
 
   /* =========================================================================
    * 3. BUILT-IN WORLD AMBIENT LIGHTING LAYER (FAC = 0 WHEN DISABLED)
@@ -126,52 +100,7 @@ void node_anime_character(float3 N,
       amb_color = amb_rgba.rgb;
     }
 
-    float3 amb_shaded = surface_color;
-    int a_mode = int(ambient_mode + 0.5f);
-
-    if (a_mode == 0) {
-      /* Mode 0: Overlay Blend */
-      float3 a = amb_shaded;
-      float3 b = amb_color;
-      amb_shaded = mix(2.0f * a * b, 1.0f - 2.0f * (1.0f - a) * (1.0f - b), step(float3(0.5f), a));
-    }
-    else if (a_mode == 1) {
-      /* Mode 1: Hue Shift */
-      float3 hsv_surf = dasktoon_master_rgb_to_hsv(amb_shaded);
-      float3 hsv_amb = dasktoon_master_rgb_to_hsv(amb_color);
-      hsv_surf.x = hsv_amb.x;
-      amb_shaded = dasktoon_master_hsv_to_rgb(hsv_surf);
-    }
-    else if (a_mode == 2) {
-      /* Mode 2: Hue + Saturation */
-      float3 hsv_surf = dasktoon_master_rgb_to_hsv(amb_shaded);
-      float3 hsv_amb = dasktoon_master_rgb_to_hsv(amb_color);
-      hsv_surf.x = hsv_amb.x;
-      hsv_surf.y = mix(hsv_surf.y, hsv_amb.y, 0.65f);
-      amb_shaded = dasktoon_master_hsv_to_rgb(hsv_surf);
-    }
-    else if (a_mode == 3) {
-      /* Mode 3: Saturation */
-      float3 hsv_surf = dasktoon_master_rgb_to_hsv(amb_shaded);
-      float3 hsv_amb = dasktoon_master_rgb_to_hsv(amb_color);
-      hsv_surf.y = hsv_amb.y;
-      amb_shaded = dasktoon_master_hsv_to_rgb(hsv_surf);
-    }
-    else if (a_mode == 4) {
-      /* Mode 4: Value / Brightness */
-      float3 hsv_surf = dasktoon_master_rgb_to_hsv(amb_shaded);
-      float3 hsv_amb = dasktoon_master_rgb_to_hsv(amb_color);
-      hsv_surf.z = hsv_amb.z;
-      amb_shaded = dasktoon_master_hsv_to_rgb(hsv_surf);
-    }
-    else if (a_mode == 5) {
-      /* Mode 5: Multiply */
-      amb_shaded = amb_shaded * amb_color;
-    }
-    else {
-      /* Mode 6: Mix */
-      amb_shaded = amb_color;
-    }
+    float3 amb_shaded = dt_ambient_mode(surface_color, amb_color, int(ambient_mode + 0.5f));
 
     float apply_mask = (ambient_shadow_only > 0.5f) ? (1.0f - cel_factor) : 1.0f;
     surface_color = mix(surface_color, amb_shaded, amb_fac * apply_mask);
@@ -182,21 +111,8 @@ void node_anime_character(float3 N,
    * ========================================================================= */
   float lit_fac = use_light ? clamp(light_factor, 0.0f, 1.0f) : 0.0f;
   if (lit_fac > 0.0001f) {
-    float3 lit_shaded = surface_color;
-    float l_strength = clamp(light_tint_strength, 0.0f, 2.0f);
-
-    /* Normalize light color for hue tinting */
-    float l_max = max(max(light_col.r, light_col.g), light_col.b);
-    float3 l_norm = (l_max > 0.001f) ? (light_col / l_max) : float3(1.0f);
-
-    if (abs(l_strength - 1.0f) > 0.001f) {
-      l_norm = mix(float3(1.0f), l_norm, l_strength);
-    }
-
-    /* Standard Overlay */
-    float3 a = lit_shaded;
-    float3 b = l_norm;
-    lit_shaded = mix(2.0f * a * b, 1.0f - 2.0f * (1.0f - a) * (1.0f - b), step(float3(0.5f), a));
+    float3 lit_shaded = dt_light_mode(
+        surface_color, light_col, dt_light_norm(light_col), light_tint_strength, 0);
 
     surface_color = mix(surface_color, lit_shaded, lit_fac * cel_factor);
   }
@@ -269,9 +185,9 @@ void node_anime_character(float3 N,
 
     /* Saturation Boost */
     if (abs(saturation - 1.0f) > 0.001f) {
-      float3 hsv = dasktoon_master_rgb_to_hsv(graded);
+      float3 hsv = dt_rgb_to_hsv(graded);
       hsv.y = clamp(hsv.y * max(saturation, 0.0f), 0.0f, 1.0f);
-      graded = dasktoon_master_hsv_to_rgb(hsv);
+      graded = dt_hsv_to_rgb(hsv);
     }
 
     /* Brightness & Contrast */
@@ -287,9 +203,13 @@ void node_anime_character(float3 N,
    * ========================================================================= */
   surface_color = max(surface_color * max(strength, 0.0f), float3(0.0f));
 
-  float w = (weight > 0.0001f) ? weight : 1.0f;
+  float a = clamp(alpha, 0.0f, 1.0f);
+  ClosureTransparency transparency_data;
+  transparency_data.weight = weight * (1.0f - a);
+  transparency_data.transmittance = float3(1.0f);
+  transparency_data.holdout = 0.0f;
   ClosureEmission emission_data;
-  emission_data.weight = w * clamp(alpha, 0.0f, 1.0f);
+  emission_data.weight = weight * a;
   emission_data.emission = surface_color;
-  result = closure_eval(emission_data);
+  result = closure_add(closure_eval(transparency_data), closure_eval(emission_data));
 }
