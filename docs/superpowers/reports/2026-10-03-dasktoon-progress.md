@@ -10,7 +10,7 @@ nguyên. Mình không đụng tới và không commit chúng.
 
 ## Kết quả
 
-**Cả 11 task đã xong. 45 test tự động trong 8 file đều PASS** trên bản build hiện tại
+**Cả 11 task đã xong. 47 test tự động trong 8 file đều PASS** trên bản build hiện tại
 (`D:\build_windows_x64_vc17_Release\bin\Release\DaskToon.exe`, đã cài đặt sẵn mọi thay đổi).
 
 | Task | Nội dung | Kết quả |
@@ -83,10 +83,27 @@ nguyên. Mình không đụng tới và không commit chúng.
 14. **"Chuyển từ Đơn giản" đặt điểm dải ở `0.5 ± Softness/2`.** Spec ban đầu ghi `Threshold ± ...`, nhưng như vậy là sai
     với công thức của chế độ Dải. Spec đã được sửa.
 
+## Review cuối
+
+Đây là **tự review**: mình không chạy reviewer độc lập (subagent), vì bạn chưa yêu cầu dùng subagent. Muốn có thêm một
+lượt review độc lập trước khi merge thì bảo mình. Lượt tự review tìm ra 2 lỗi quan trọng; cả hai đã sửa và có test:
+
+1. **Shader outline bị biên dịch lại mỗi khi chỉnh material nguồn.** Khi Base Color là texture (trường hợp thường gặp), mỗi
+   lần kéo thanh trượt bất kỳ, nhánh texture bị xóa và sao chép lại sang material `.Outline`. Giờ chỉ sao chép lại khi
+   các node phía trước thật sự thay đổi.
+2. **Nâng cấp file cũ làm mất độ dày outline.** Phép so sánh với `0.002` không bao giờ khớp do lệch float32, và material
+   không có node chính bị bỏ qua. Giờ độ dày Solidify cũ (đúng là độ dày bạn từng thấy) luôn được chuyển sang.
+
+Những điểm nhỏ để lại sau:
+- Khi sao chép nhánh Outline Color, thiết lập dạng con trỏ (điểm của ColorRamp, đường cong RGB Curves) chưa được chép.
+  Lỗi này có từ code cũ.
+- Báo cáo nâng cấp ghi một dòng "xung đột" cho mỗi linked duplicate, kể cả khi thiết lập giống hệt nhau.
+- Đổi tên object để lại một node group `DT_Outline::<tên cũ>` mồ côi cho tới khi lưu file.
+- Mỗi node đổ bóng DaskToon chiếm một hàng trong texture color-band của material, kể cả ở chế độ Đơn giản.
+- Giống handler cũ, bộ đồng bộ sửa dữ liệu bên trong `depsgraph_update_post`; chưa thử trong lúc render F12.
+
 ## Giới hạn và việc chưa làm
 
-- **Review cuối là tự review.** Mình không chạy reviewer độc lập (subagent), vì bạn chưa yêu cầu dùng subagent. Muốn có
-  thêm một lượt review độc lập trước khi merge thì bảo mình.
 - **Dự án 2 (export sang Unity) chưa bắt đầu**, đúng như đã thống nhất.
 - Mesh có ngon (mặt nhiều hơn 4 cạnh) phải Triangulate trước khi chạy "Chuẩn bị outline cho game".
 - Sửa vị trí đỉnh mà không đổi topology thì dấu `dt_outline_sig` không nhận ra dữ liệu outline đã cũ.
