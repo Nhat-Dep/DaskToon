@@ -194,8 +194,8 @@ def outline_depsgraph_post(scene, depsgraph):
         _busy = False
 
 
-@persistent
 def outline_load_post(_filepath):
+    """Called by dasktoon_upgrade's load_post handler, after any file upgrade has run."""
     reset_cache()
     for scene in bpy.data.scenes:
         sync_all(scene)
@@ -258,12 +258,8 @@ classes = (DASKTOON_OT_outline_toggle_material, MATERIAL_PT_dasktoon_outline)
 def register():
     if outline_depsgraph_post not in bpy.app.handlers.depsgraph_update_post:
         bpy.app.handlers.depsgraph_update_post.append(outline_depsgraph_post)
-    if outline_load_post not in bpy.app.handlers.load_post:
-        bpy.app.handlers.load_post.append(outline_load_post)
 
 
 def unregister():
-    for handler_list, handler in ((bpy.app.handlers.depsgraph_update_post, outline_depsgraph_post),
-                                  (bpy.app.handlers.load_post, outline_load_post)):
-        if handler in handler_list:
-            handler_list.remove(handler)
+    if outline_depsgraph_post in bpy.app.handlers.depsgraph_update_post:
+        bpy.app.handlers.depsgraph_update_post.remove(outline_depsgraph_post)

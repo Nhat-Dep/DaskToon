@@ -65,6 +65,7 @@ _modules = [
     "dasktoon_shading_styles",
     "dasktoon_outline",
     "dasktoon_outline_gamedata",
+    "dasktoon_upgrade",
     "dasktoon_anime_fx",
     "dasktoon_face_normals",
     "dasktoon_material_combiner",
