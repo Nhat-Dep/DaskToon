@@ -19,7 +19,9 @@ void node_dask_cel(float3 N,
                     float outline_lighting_mix,
                     float strength,
                     float weight,
-                    float outline_tint_mode,
+                    const float4 modes,
+                    sampler1DArray ramp_tex,
+                    float ramp_layer,
                     Closure &out_bsdf,
                     float4 &out_color,
                     float &out_shadow_factor)
@@ -27,6 +29,7 @@ void node_dask_cel(float3 N,
   base_color = max(base_color, float4(0.0f));
   shadow_color = max(shadow_color, float4(0.0f));
   N = safe_normalize(N);
+  float outline_tint_mode = modes.x;
 
   /* 1. Extract Forward Radiance from all Scene Lamps */
   ClosureDiffuse diff_in;
@@ -40,8 +43,15 @@ void node_dask_cel(float3 N,
 
   /* 2-3. Shared DaskToon shading core (Simple mode). */
   float cel_factor;
-  float3 surface_color = dt_shade_simple(
-      light_intensity, base_color.rgb, shadow_color.rgb, shadow_thresh, shadow_softness, cel_factor);
+  float3 surface_color;
+  if (modes.y > 0.5f) {
+    surface_color = dt_shade_ramp(
+        light_intensity, base_color.rgb, shadow_thresh, ramp_tex, ramp_layer, modes.z, cel_factor);
+  }
+  else {
+    surface_color = dt_shade_simple(
+        light_intensity, base_color.rgb, shadow_color.rgb, shadow_thresh, shadow_softness, cel_factor);
+  }
 
   /* 4. Automated Harmonic Inverted Hull Outline Integration */
   if (use_outline > 0.5f) {

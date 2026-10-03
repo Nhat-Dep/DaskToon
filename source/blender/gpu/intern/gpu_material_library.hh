@@ -15,7 +15,8 @@
 namespace blender {
 
 #define MAX_FUNCTION_NAME 64
-#define MAX_PARAMETER 36
+/* DaskToon: Anime BSDF needs 39 (34 inputs, 3 constants, a ramp sampler, 1 output). */
+#define MAX_PARAMETER 48
 
 enum GPUFunctionQual {
   FUNCTION_QUAL_IN,

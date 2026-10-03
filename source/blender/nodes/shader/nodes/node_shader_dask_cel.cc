@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "node_shader_util.hh"
+#include "node_shader_dasktoon_shading.hh"
+#include "node_util.hh"
 
 #include "RNA_access.hh"
 #include "UI_interface_layout.hh"
@@ -19,12 +21,16 @@ static void node_declare(NodeDeclarationBuilder &b)
 
   b.add_input<decl::Vector>("Normal"_ustr).min(-1.0f).max(1.0f).hide_value();
   b.add_input<decl::Color>("Base Color"_ustr).default_value({0.95f, 0.85f, 0.80f, 1.0f});
-  b.add_input<decl::Color>("Shadow Color"_ustr).default_value({0.65f, 0.50f, 0.55f, 1.0f});
+  b.add_input<decl::Color>("Shadow Color"_ustr)
+      .default_value({0.65f, 0.50f, 0.55f, 1.0f});
   b.add_input<decl::Float>("Shadow Threshold"_ustr)
       .default_value(0.48f)
       .min(0.0f)
       .max(1.0f)
-      .subtype(PROP_FACTOR);
+      .subtype(PROP_FACTOR)
+      .description(
+          "Light level where shadow begins. World lighting counts too: a bright World leaves "
+          "fewer shadows");
   b.add_input<decl::Float>("Shadow Softness"_ustr)
       .default_value(0.02f)
       .min(0.001f)
@@ -60,9 +66,19 @@ static void node_declare(NodeDeclarationBuilder &b)
 
 static void node_shader_buts_dask_cel(ui::Layout &layout, bContext * /*C*/, PointerRNA *ptr)
 {
-  if (RNA_boolean_get(ptr, "use_outline")) {
-    layout.prop(ptr, "outline_tint_mode", ui::ITEM_R_SPLIT_EMPTY_NAME, "Outline Mode", ICON_NONE);
-  }
+  /* "Use Outline" is an input socket, not an RNA property, so the mode is always shown. */
+  layout.prop(ptr, "outline_tint_mode", ui::ITEM_R_SPLIT_EMPTY_NAME, "Outline Mode", ICON_NONE);
+  dasktoon::draw_shading_buttons(layout, ptr);
+}
+
+static void node_update(bNodeTree *ntree, bNode *node)
+{
+  dasktoon::update_shading_sockets(*ntree, *node);
+}
+
+static void node_init(bNodeTree * /*ntree*/, bNode *node)
+{
+  node->storage = dasktoon::shading_ramp_new();
 }
 
 static int node_shader_gpu_dask_cel(GPUMaterial *mat,
@@ -76,8 +92,16 @@ static int node_shader_gpu_dask_cel(GPUMaterial *mat,
   }
   GPU_material_flag_set(mat, GPU_MATFLAG_DIFFUSE | GPU_MATFLAG_EMISSION | GPU_MATFLAG_SHADER_TO_RGBA);
   
-  float outline_tint_mode = float(node->custom1);
-  return GPU_stack_link(mat, node, "node_dask_cel", in, out, GPU_constant(&outline_tint_mode));
+  const dasktoon::ShadingGPULinks shading = dasktoon::shading_gpu_links(mat, *node);
+  float modes[4] = {float(node->custom1), shading.ramp_mode, shading.ramp_constant, 0.0f};
+  return GPU_stack_link(mat,
+                        node,
+                        "node_dask_cel",
+                        in,
+                        out,
+                        GPU_constant(modes),
+                        shading.ramp_tex,
+                        GPU_constant(&shading.ramp_layer));
 }
 
 }  // namespace nodes::node_shader_dask_cel_cc
@@ -100,6 +124,10 @@ void register_node_type_sh_dask_cel()
   ntype.draw_buttons = file_ns::node_shader_buts_dask_cel;
   ntype.default_width = bke::NodeWidth::_220;
   ntype.gpu_fn = file_ns::node_shader_gpu_dask_cel;
+  ntype.initfunc = file_ns::node_init;
+  ntype.updatefunc = file_ns::node_update;
+  bke::node_type_storage(
+      ntype, "ColorBand", node_free_standard_storage, node_copy_standard_storage);
 
   bke::node_register_type(ntype);
 }

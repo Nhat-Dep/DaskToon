@@ -156,9 +156,11 @@ set(SRC
   node_shader_register.cc
   node_shader_tree.cc
   node_shader_util.cc
+  node_shader_dasktoon_shading.cc
 
   node_shader_register.hh
   node_shader_util.hh
+  node_shader_dasktoon_shading.hh
 
   include/NOD_shader_raycast.hh
 )

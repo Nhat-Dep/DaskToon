@@ -43,6 +43,9 @@ void node_anime_character(float3 N,
                           float alpha,
                           float weight,
                           const float4 modes,
+                          sampler1DArray ramp_tex,
+                          float ramp_layer,
+                          const float4 modes2,
                           Closure &result)
 {
   N = safe_normalize(N);
@@ -78,8 +81,15 @@ void node_anime_character(float3 N,
    * 2. DISCRETE 2-TONE CEL SHADING CALCULATION (CLASSIC SHADER)
    * ========================================================================= */
   float cel_factor;
-  float3 surface_color = dt_shade_simple(
-      light_intensity, base_color.rgb, shadow_color.rgb, shadow_thresh, shadow_softness, cel_factor);
+  float3 surface_color;
+  if (modes2.y > 0.5f) {
+    surface_color = dt_shade_ramp(
+        light_intensity, base_color.rgb, shadow_thresh, ramp_tex, ramp_layer, modes2.z, cel_factor);
+  }
+  else {
+    surface_color = dt_shade_simple(
+        light_intensity, base_color.rgb, shadow_color.rgb, shadow_thresh, shadow_softness, cel_factor);
+  }
 
   /* =========================================================================
    * 3. BUILT-IN WORLD AMBIENT LIGHTING LAYER (FAC = 0 WHEN DISABLED)
@@ -112,7 +122,7 @@ void node_anime_character(float3 N,
   float lit_fac = use_light ? clamp(light_factor, 0.0f, 1.0f) : 0.0f;
   if (lit_fac > 0.0001f) {
     float3 lit_shaded = dt_light_mode(
-        surface_color, light_col, dt_light_norm(light_col), light_tint_strength, 0);
+        surface_color, light_col, dt_light_norm(light_col), light_tint_strength, int(modes2.x + 0.5f));
 
     surface_color = mix(surface_color, lit_shaded, lit_fac * cel_factor);
   }

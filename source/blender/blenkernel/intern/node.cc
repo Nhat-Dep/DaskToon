@@ -2629,6 +2629,16 @@ static void ntree_set_typeinfo(bNodeTree *ntree, bNodeTreeType *typeinfo)
   BKE_ntree_update_tag_all(ntree);
 }
 
+/**
+ * DaskToon shading nodes saved before the shading ramp existed have no ColorBand storage. Their
+ * code handles a missing ramp (it is created when switching to Ramp mode), so such nodes must stay
+ * defined instead of being turned into undefined nodes when a file is read.
+ */
+static bool node_type_storage_is_optional(const bNodeType &ntype)
+{
+  return ELEM(ntype.type_legacy, SH_NODE_ANIME_CHARACTER, SH_NODE_ANIME_CEL, SH_NODE_DASK_CEL);
+}
+
 static void node_set_typeinfo(const bContext *C,
                               bNodeTree *ntree,
                               bNode *node,
@@ -2636,7 +2646,9 @@ static void node_set_typeinfo(const bContext *C,
 {
   /* for nodes saved in older versions storage can get lost, make undefined then */
   if (node->flag & NODE_INIT) {
-    if (typeinfo && typeinfo->storagename[0] && !node->storage) {
+    if (typeinfo && typeinfo->storagename[0] && !node->storage &&
+        !node_type_storage_is_optional(*typeinfo))
+    {
       typeinfo = nullptr;
     }
   }
@@ -5553,7 +5565,9 @@ static bool can_read_node_type(const bNode &node)
   /* Nodes that require storage but don't have any storage data are invalid. */
   if (node.storage == nullptr) {
     const bNodeType *node_type = node_type_find(idname);
-    if (!node_type || !node_type->storagename.empty()) {
+    if (!node_type ||
+        (!node_type->storagename.empty() && !node_type_storage_is_optional(*node_type)))
+    {
       return false;
     }
   }

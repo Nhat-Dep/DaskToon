@@ -118,6 +118,7 @@ set(SRC
   NOD_bundle_type.hh
   NOD_caller_ui.hh
   NOD_common.hh
+  NOD_dasktoon_shading.hh
   NOD_composite.hh
   NOD_compositor_gizmos.hh
   NOD_compositor_nodes_caller_ui.hh
