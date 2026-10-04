@@ -18,6 +18,7 @@ from mathutils import Vector
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import dasktoon_test_utils as tu  # noqa: E402
 import dasktoon_unity_harness as harness  # noqa: E402
+from bl_ui import dasktoon_face_shading as face_shading  # noqa: E402
 from bl_ui import dasktoon_outline as outline  # noqa: E402
 from bl_ui import dasktoon_shading_styles as styles  # noqa: E402
 import dasktoon_export  # noqa: E402
@@ -37,6 +38,7 @@ EDGE = 0.05
 OUTLINE_WIDTH_TOLERANCE = 1.5   # px; EEVEE's film filter softens the line edges, Unity renders without AA
 OUTLINE_COLOUR_TOLERANCE = 0.08
 MODEL_NAME = "DTCompare"
+FACE_CASE = "face_shading"
 
 
 def to_unity(v):
@@ -145,7 +147,15 @@ CASES = [
     ("daskcel_manga", lambda: dask_cel("daskcel_manga", style="Manga"), True),
     ("outline_custom", lambda: outlined("outline_custom"), True),
     ("outline_harmonic", lambda: outlined("outline_harmonic", 'HARMONIC_KYOTO', 0.7, 0.15), True),
+    (FACE_CASE, lambda: bsdf(FACE_CASE)[0], True),
 ]
+
+
+def face_head(location):
+    """The face shading test head at the size of the spheres, set up from all its vertices (no armature)."""
+    head, _rig = tu.add_test_head(radius=0.5, centre=location, with_armature=False)
+    face_shading.setup(head, selected=range(len(head.data.vertices)))
+    return head
 
 
 def build_scene():
@@ -162,9 +172,13 @@ def build_scene():
     cam.rotation_euler = (math.radians(90.0), 0.0, 0.0)
     spheres = []
     for i, (name, builder, _graded) in enumerate(CASES):
-        bpy.ops.mesh.primitive_uv_sphere_add(radius=0.5, segments=48, ring_count=24, location=(i * SPACING, 0.0, 0.0))
-        obj = bpy.context.active_object
-        obj.data.shade_smooth()
+        location = (i * SPACING, 0.0, 0.0)
+        if name == FACE_CASE:
+            obj = face_head(location)
+        else:
+            bpy.ops.mesh.primitive_uv_sphere_add(radius=0.5, segments=48, ring_count=24, location=location)
+            obj = bpy.context.active_object
+            obj.data.shade_smooth()
         obj.name = "Case_" + name
         tu.assign(obj, builder())
         spheres.append(obj)
