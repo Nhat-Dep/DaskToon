@@ -60,6 +60,26 @@ def face_proxies():
     return [o for o in bpy.data.objects if o.get(fs.PROXY_MARK)]
 
 
+def add_island(head, location, size):
+    """Join a box (world location, full size) to the head mesh as a separate island weighted 1 to bone Head."""
+    import bmesh
+    from mathutils import Matrix
+    count = len(head.data.vertices)
+    piece = bpy.data.meshes.new("Piece")
+    bm = bmesh.new()
+    bmesh.ops.create_cube(bm, size=1.0, matrix=Matrix.LocRotScale(Vector(location), None, Vector(size)))
+    bm.to_mesh(piece)
+    bm.free()
+    joined = bmesh.new()
+    joined.from_mesh(head.data)
+    joined.from_mesh(piece)
+    joined.to_mesh(head.data)
+    joined.free()
+    bpy.data.meshes.remove(piece)
+    head.vertex_groups["Head"].add(list(range(count, len(head.data.vertices))), 1.0, 'REPLACE')
+    return list(range(count, len(head.data.vertices)))
+
+
 class FaceShadingSetupTest(unittest.TestCase):
     def setUp(self):
         tu.reset_scene()
@@ -91,6 +111,30 @@ class FaceShadingSetupTest(unittest.TestCase):
         face = weights(head, fsn.MASK_NAME)
         self.assertTrue((face[:skin] == 1.0).all())
         self.assertTrue((face[skin:] == 0.0).all())
+
+    def test_a_lock_of_hair_in_front_of_the_face_is_passed_over(self):
+        head, _rig = tu.add_test_head()
+        lock = add_island(head, (0.0, -0.135, 1.52), (0.01, 0.01, 0.06))  # in front of the nose, narrow
+        fs.setup(head)
+        skin = head["dt_skin_vertices"]
+        face = weights(head, fsn.MASK_NAME)
+        self.assertTrue((face[:skin] == 1.0).all())
+        self.assertTrue((face[skin:] == 0.0).all(), "hair or the lock of hair got into DT_Face")
+        self.assertEqual(face[lock].sum(), 0.0)
+
+    def test_expression_shape_keys_pick_the_face_island(self):
+        head, _rig = tu.add_test_head()
+        add_island(head, (0.0, -0.14, 1.52), (0.08, 0.01, 0.02))  # a visor in front of the face, wider than 1/4 head
+        skin = head["dt_skin_vertices"]
+        head.shape_key_add(name="Basis")
+        smile = head.shape_key_add(name="Smile")
+        for i, point in enumerate(smile.data[:skin]):
+            if point.co.y < -0.05 and point.co.z < 1.47:
+                point.co.z += 0.005
+        fs.setup(head)
+        face = weights(head, fsn.MASK_NAME)
+        self.assertTrue((face[:skin] == 1.0).all())
+        self.assertTrue((face[skin:] == 0.0).all(), "the visor or the hair got into DT_Face")
 
     def test_proxy_fits_the_skin_and_hangs_from_the_head_bone(self):
         head, rig = tu.add_test_head()

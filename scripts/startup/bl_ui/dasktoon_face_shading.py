@@ -21,6 +21,7 @@ HEAD_NAMES = ("head", "j_bip_c_head", "mixamorig:head", "頭")
 NOT_HEAD = ("end", "top", "tip", "nub")
 HEAD_WEIGHT = 0.5
 STRIP = 0.25
+MIN_FACE_WIDTH = 0.25  # of the head width
 FRONT_PERCENTILE = 5.0
 MIN_DEPTH = 0.85
 
@@ -121,13 +122,61 @@ def _island(mesh, seed):
         inside[b[grow]] = True
 
 
+def _moved_by_shape_keys(obj):
+    """Vertices that some shape key moves away from the reference key (the expressions)."""
+    count = len(obj.data.vertices)
+    moved = np.zeros(count, dtype=bool)
+    keys = obj.data.shape_keys
+    if keys is None:
+        return moved
+    reference = np.empty(count * 3, dtype=np.float32)
+    keys.reference_key.data.foreach_get("co", reference)
+    other = np.empty(count * 3, dtype=np.float32)
+    for key in keys.key_blocks:
+        if key != keys.reference_key:
+            key.data.foreach_get("co", other)
+            moved |= np.abs(other - reference).reshape(-1, 3).max(axis=1) > 1e-6
+    return moved
+
+
 def face_island(obj, head):
-    """The face skin (face spec 5.3): the island of the most forward head vertex near the middle of the head."""
+    """The face skin (face spec 5.3, with two guards found on a real character): the island holding the most head
+    vertices moved by expression shape keys, else the island of the most forward head vertex near the middle of the
+    head. Islands narrower than a quarter of the head (a lock of hair in front of the face, an eye, the teeth) are
+    passed over unless nothing else is found."""
     world = _world_coords(obj)
     x = world[head, 0]
     low, high = x.min(), x.max()
+    in_head = np.zeros(len(world), dtype=bool)
+    in_head[head] = True
+    seen = np.zeros(len(world), dtype=bool)
+
+    def wide(island):
+        xs = world[island[in_head[island]], 0]
+        return xs.max() - xs.min() >= MIN_FACE_WIDTH * (high - low)
+
+    moved = _moved_by_shape_keys(obj) & in_head
+    best, best_count = None, 0
+    for seed in np.flatnonzero(moved):
+        if not seen[seed]:
+            island = _island(obj.data, seed)
+            seen[island] = True
+            count = int(moved[island].sum())
+            if count > best_count and wide(island):
+                best, best_count = island, count
+    if best is not None:
+        return best
     middle = head[np.abs(x - (low + high) / 2.0) <= STRIP * (high - low)]
-    return _island(obj.data, middle[np.argmin(world[middle, 1])])
+    seen[:] = False
+    first = None
+    for seed in middle[np.argsort(world[middle, 1], kind="stable")]:
+        if not seen[seed]:
+            island = _island(obj.data, seed)
+            seen[island] = True
+            if wide(island):
+                return island
+            first = island if first is None else first
+    return first
 
 
 def fit(points):
