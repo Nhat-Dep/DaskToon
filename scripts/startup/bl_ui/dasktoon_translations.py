@@ -88,6 +88,25 @@ VI = {
     "This mesh has no proxy yet: press Set Up Face Shading or Fit Proxy":
         "Mesh chưa có khối trứng: bấm Tạo bóng mặt anime hoặc Căn lại khối trứng",
     "Proxy %s is not in the open view layer": "Khối trứng %s không nằm trong view layer đang mở",
+
+    # bl_ui/dasktoon_material_combiner.py
+    "Combine Materials": "Gộp material",
+    "Bake all material slots into one atlas texture and one Anime BSDF material, so the viewport draws faster":
+        "Bake mọi slot material vào một texture atlas và một material Anime BSDF để viewport vẽ nhanh hơn",
+    "Size of the atlas texture": "Kích thước texture atlas",
+    "Lightest": "Nhẹ nhất",
+    "Sharp enough for most characters": "Đủ nét cho hầu hết nhân vật",
+    "Sharpest, for close-ups": "Nét nhất, cho cảnh cận",
+    "Spread the colors this many pixels past the edges of the UV islands, to hide seams":
+        "Loang màu ra ngoài mép các đảo UV thêm chừng này pixel để giấu đường nối",
+    "Restore Original Slots": "Khôi phục slot gốc",
+    "Put back the material slots the mesh had before Combine Materials":
+        "Trả lại các slot material mà mesh có trước khi Gộp material",
+    "Select a mesh object": "Hãy chọn một object mesh",
+    "%s has fewer than 2 material slots: nothing to combine": "%s có ít hơn 2 slot material: không có gì để gộp",
+    "Combined %d material slots into %s, atlas %s": "Đã gộp %d slot material vào %s, atlas %s",
+    "%s has no saved slots to restore": "%s không có slot đã lưu để khôi phục",
+    "Restored %d material slots on %s": "Đã khôi phục %d slot material cho %s",
 }
 
 

@@ -4,13 +4,9 @@
 import bpy
 import bmesh
 import numpy as np
-from bpy.types import Panel, Operator, PropertyGroup
-from bpy.props import (
-    IntProperty,
-    EnumProperty,
-    BoolProperty,
-    StringProperty,
-)
+from bpy.app.translations import pgettext_rpt as rpt_
+from bpy.types import Operator
+from bpy.props import EnumProperty, IntProperty
 
 
 # =============================================================================
@@ -134,12 +130,12 @@ def dilate_atlas(img_array, passes=8):
 def combine_object_materials(obj, resolution=2048, margin=8, mode='SINGLE'):
     """Bakes & consolidates all material slots into a single Dask Shader BSDF material."""
     if not obj or obj.type != 'MESH':
-        return False, "Selected object is not a Mesh."
+        return False, rpt_("Select a mesh object")
 
     me = obj.data
     slot_count = len(obj.material_slots)
     if slot_count <= 1:
-        return False, f"Object only has {slot_count} material slot(s). No consolidation needed."
+        return False, rpt_("%s has fewer than 2 material slots: nothing to combine") % obj.name
 
     was_editmode = (obj.mode == 'EDIT')
 
@@ -256,16 +252,16 @@ def combine_object_materials(obj, resolution=2048, margin=8, mode='SINGLE'):
     if was_editmode:
         bpy.ops.object.mode_set(mode='EDIT')
 
-    return True, f"Consolidated {slot_count} materials into 1 single Master Material using '{atlas_name}' ({width}x{height})!"
+    return True, rpt_("Combined %d material slots into %s, atlas %s") % (slot_count, cons_mat.name, img.name)
 
 
 def restore_object_materials(obj):
     """Restores original material slots and polygon assignments from backup."""
     if not obj or obj.type != 'MESH':
-        return False, "Selected object is not a Mesh."
+        return False, rpt_("Select a mesh object")
 
     if "dasktoon_orig_materials" not in obj or "dasktoon_orig_face_indices" not in obj:
-        return False, "No backup of original materials found on this object."
+        return False, rpt_("%s has no saved slots to restore") % obj.name
 
     orig_mat_names = list(obj["dasktoon_orig_materials"])
     orig_face_indices = list(obj["dasktoon_orig_face_indices"])
@@ -295,7 +291,7 @@ def restore_object_materials(obj):
     if was_editmode:
         bpy.ops.object.mode_set(mode='EDIT')
 
-    return True, f"Restored {len(orig_mat_names)} original material slots on '{obj.name}'!"
+    return True, rpt_("Restored %d material slots on %s") % (len(orig_mat_names), obj.name)
 
 
 # =============================================================================
@@ -303,133 +299,91 @@ def restore_object_materials(obj):
 # =============================================================================
 
 class DASKTOON_OT_combine_materials(Operator):
-    """Bake & consolidate all material slots into 1 single Master Dask Shader BSDF material (Ultra-Fast Viewport Optimization)"""
+    """Bake all material slots into one atlas texture and one Anime BSDF material, so the viewport draws faster"""
     bl_idname = "dasktoon.combine_materials"
-    bl_label = "Combine & Optimize Materials"
+    bl_label = "Combine Materials"
     bl_options = {'REGISTER', 'UNDO'}
 
     resolution: EnumProperty(
         name="Resolution",
-        description="Atlas Texture Resolution",
+        description="Size of the atlas texture",
         items=[
-            ('1024', "1024 x 1024", "Standard (Lightweight)"),
-            ('2048', "2048 x 2048", "High Quality (Recommended for Anime)"),
-            ('4096', "4096 x 4096", "Ultra High (Cinematic Crisp)"),
+            ('1024', "1024 × 1024", "Lightest"),
+            ('2048', "2048 × 2048", "Sharp enough for most characters"),
+            ('4096', "4096 × 4096", "Sharpest, for close-ups"),
         ],
         default='2048',
     )
     margin: IntProperty(
-        name="UV Margin Bleed",
-        description="Expand pixel boundaries to eliminate UV seams",
+        name="Margin",
+        description="Spread the colors this many pixels past the edges of the UV islands, to hide seams",
         default=8,
         min=0,
         max=32,
+        subtype='PIXEL',
     )
 
     def execute(self, context):
         obj = context.active_object
         if not obj or obj.type != 'MESH':
-            self.report({'WARNING'}, "Please select a Mesh object!")
+            self.report({'WARNING'}, rpt_("Select a mesh object"))
             return {'CANCELLED'}
 
         res_val = int(self.resolution)
         success, msg = combine_object_materials(obj, resolution=res_val, margin=self.margin)
 
         if success:
-            self.report({'INFO'}, f"✨ DaskToon: {msg}")
+            self.report({'INFO'}, msg)
             return {'FINISHED'}
         else:
-            self.report({'WARNING'}, f"DaskToon: {msg}")
+            self.report({'WARNING'}, msg)
             return {'CANCELLED'}
 
 
 class DASKTOON_OT_restore_materials(Operator):
-    """Restore original multi-material slots from safe backup"""
+    """Put back the material slots the mesh had before Combine Materials"""
     bl_idname = "dasktoon.restore_materials"
-    bl_label = "Restore Original Materials"
+    bl_label = "Restore Original Slots"
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
         obj = context.active_object
         if not obj or obj.type != 'MESH':
-            self.report({'WARNING'}, "Please select a Mesh object!")
+            self.report({'WARNING'}, rpt_("Select a mesh object"))
             return {'CANCELLED'}
 
         success, msg = restore_object_materials(obj)
         if success:
-            self.report({'INFO'}, f"✨ DaskToon: {msg}")
+            self.report({'INFO'}, msg)
             return {'FINISHED'}
         else:
-            self.report({'WARNING'}, f"DaskToon: {msg}")
+            self.report({'WARNING'}, msg)
             return {'CANCELLED'}
 
 
 # =============================================================================
-# Sidebar N-Panel: Material Optimizer & Combiner
+# Material slot menu
 # =============================================================================
 
-class DASKTOON_PT_material_combiner(Panel):
-    """Material Optimizer & Combiner panel in 3D Viewport Sidebar"""
-    bl_label = "🎨 Material Optimizer & Combiner"
-    bl_idname = "DASKTOON_PT_material_combiner"
-    bl_space_type = 'VIEW_3D'
-    bl_region_type = 'UI'
-    bl_category = "DaskToon"
-    bl_order = 18
-
-    def draw(self, context):
-        layout = self.layout
-        obj = context.active_object
-
-        box = layout.box()
-        box.label(text="Consolidate Multiple Slots to 1 Master Shader", icon='MATERIAL')
-
-        if not obj or obj.type != 'MESH':
-            box.label(text="Select a Mesh to optimize materials", icon='INFO')
-            return
-
-        slot_count = len(obj.material_slots)
-        row = box.row()
-        row.label(text=f"Current Slots: {slot_count}", icon='RESTRICT_VIEW_OFF')
-        if slot_count > 1:
-            row.label(text="➔ Target: 1 Slot", icon='CHECKMARK')
-
-        col = box.column(align=True)
-        col.scale_y = 1.3
-        col.operator("dasktoon.combine_materials", text="✨ Combine Materials (1-Click)", icon='IMAGE_ZDEPTH')
-
-        if "dasktoon_orig_materials" in obj:
-            box.separator()
-            box.operator("dasktoon.restore_materials", text="🔄 Restore Original Slots", icon='LOOP_BACK')
+def menu_func(self, context):
+    """Material slot menu ⌄ (Properties › Material)."""
+    layout = self.layout
+    layout.separator()
+    layout.operator(DASKTOON_OT_combine_materials.bl_idname, icon='IMAGE_ZDEPTH')
+    obj = context.object
+    if obj is not None and "dasktoon_orig_materials" in obj:
+        layout.operator(DASKTOON_OT_restore_materials.bl_idname, icon='LOOP_BACK')
 
 
-# =============================================================================
-# Registration
-# =============================================================================
-
-classes = (
-    DASKTOON_OT_combine_materials,
-    DASKTOON_OT_restore_materials,
-    DASKTOON_PT_material_combiner,
-)
+classes = (DASKTOON_OT_combine_materials, DASKTOON_OT_restore_materials)
 
 
+# bl_ui registers `classes`; register()/unregister() only manage the menu entry.
 def register():
-    for cls in classes:
-        if not hasattr(cls, 'is_registered') or not cls.is_registered:
-            try:
-                bpy.utils.register_class(cls)
-            except Exception:
-                pass
+    from .properties_material import MATERIAL_MT_context_menu
+    MATERIAL_MT_context_menu.append(menu_func)
 
 
 def unregister():
-    for cls in reversed(classes):
-        try:
-            bpy.utils.unregister_class(cls)
-        except Exception:
-            pass
-
-
-if __name__ == "__main__":
-    register()
+    from .properties_material import MATERIAL_MT_context_menu
+    MATERIAL_MT_context_menu.remove(menu_func)
