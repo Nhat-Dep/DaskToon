@@ -134,5 +134,35 @@ class OutlineNodesTest(unittest.TestCase):
                 self.assertLess((co - moved[0]).length, 1e-5)
 
 
+    def test_hull_direction_ignores_custom_normals(self):
+        obj = tu.add_sphere(segments=16, rings=8)
+        obj.data.materials.append(tu.emission_material("Skin", (1, 1, 1, 1)))
+        count = len(obj.data.vertices)
+        self._apply(obj, width=0.05)
+        plain = hull_verts(obj, count, expected=count)
+        obj.data.normals_split_custom_set_from_vertices([(0.0, 0.0, 1.0)] * count)
+        obj.data.update()
+        bpy.context.view_layer.update()
+        for a, b in zip(plain, hull_verts(obj, count, expected=count)):
+            self.assertLess((a - b).length, 1e-5)
+
+    def test_hull_is_shaded_with_the_negated_source_normal(self):
+        obj = tu.add_sphere(segments=16, rings=8)
+        obj.data.materials.append(tu.emission_material("Skin", (1, 1, 1, 1)))
+        faces = len(obj.data.polygons)
+        self._apply(obj, width=0.05)
+        mesh = evaluated_mesh(obj)
+        for poly in mesh.polygons[faces:]:
+            for i in poly.loop_indices:
+                self.assertLess(mesh.corner_normals[i].vector.dot(mesh.vertices[mesh.loops[i].vertex_index].co), 0.0)
+        obj.data.normals_split_custom_set_from_vertices([(0.0, 0.0, 1.0)] * len(obj.data.vertices))
+        obj.data.update()
+        bpy.context.view_layer.update()
+        mesh = evaluated_mesh(obj)
+        for poly in mesh.polygons[faces:]:
+            for i in poly.loop_indices:
+                self.assertAlmostEqual(mesh.corner_normals[i].vector.z, -1.0, delta=1e-4)
+
+
 if __name__ == "__main__":
     tu.run_tests()

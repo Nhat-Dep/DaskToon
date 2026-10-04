@@ -10,7 +10,7 @@ from dataclasses import dataclass
 import bpy
 
 CORE_GROUP = "DaskToon_OutlineCore"
-CORE_VERSION = 1
+CORE_VERSION = 2
 OBJECT_GROUP_PREFIX = "DT_Outline::"
 MODIFIER_NAME = "DaskToon Outline"
 WOBBLE_SCALE = 12.0
@@ -96,13 +96,22 @@ def ensure_core_group():
     group_in, group_out = nodes.new('NodeGroupInput'), nodes.new('NodeGroupOutput')
     inp = group_in.outputs
 
+    # The hull is shaded with the negated corner normal of the source, like the Unity outline pass (N = -normal). It is
+    # captured before the hull is built: Flip Faces keeps custom normals (e.g. DaskToon face shading) as they are.
+    capture = nodes.new('GeometryNodeCaptureAttribute')
+    capture.domain = 'CORNER'
+    capture.capture_items.new('VECTOR', "Normal")
+    links.new(inp["Geometry"], capture.inputs["Geometry"])
+    links.new(nodes.new('GeometryNodeInputNormal').outputs["Normal"], capture.inputs["Normal"])
+
     # Faces whose material has outline enabled are the hull source.
     separate = nodes.new('GeometryNodeSeparateGeometry')
     separate.domain = 'FACE'
-    links.new(inp["Geometry"], separate.inputs["Geometry"])
+    links.new(capture.outputs["Geometry"], separate.inputs["Geometry"])
     links.new(inp["Enabled"], separate.inputs["Selection"])
 
-    # Smoothed normal: merge coincident vertices, then sample their normal back (no cracks on split seams).
+    # Smoothed geometric normal (True Normal: custom normals such as face shading are ignored, like DT_OutlineN in game
+    # engines): merge coincident vertices, then sample their normal back (no cracks on split seams).
     merge = nodes.new('GeometryNodeMergeByDistance')
     merge.inputs["Distance"].default_value = 1e-5
     links.new(inp["Geometry"], merge.inputs["Geometry"])
@@ -114,7 +123,7 @@ def ensure_core_group():
     smooth.data_type = 'FLOAT_VECTOR'
     smooth.domain = 'POINT'
     links.new(merge.outputs[0], smooth.inputs["Geometry"])
-    links.new(nodes.new('GeometryNodeInputNormal').outputs[0], smooth.inputs["Value"])
+    links.new(nodes.new('GeometryNodeInputNormal').outputs["True Normal"], smooth.inputs["Value"])
     links.new(nearest.outputs["Index"], smooth.inputs["Index"])
 
     # World-space normal and direction towards the Sun.
@@ -186,9 +195,14 @@ def ensure_core_group():
     links.new(to_local.outputs[0], set_position.inputs["Offset"])
     flip = nodes.new('GeometryNodeFlipFaces')
     links.new(set_position.outputs[0], flip.inputs["Mesh"])
+    hull_normal = nodes.new('GeometryNodeSetMeshNormal')
+    hull_normal.mode = 'FREE'
+    hull_normal.domain = 'CORNER'
+    links.new(flip.outputs[0], hull_normal.inputs["Mesh"])
+    links.new(_vector_math(tree, 'SCALE', capture.outputs["Normal"], scale=-1.0), hull_normal.inputs["Custom Normal"])
 
     links.new(inp["Geometry"], group_out.inputs["Original"])
-    links.new(flip.outputs[0], group_out.inputs["Hull"])
+    links.new(hull_normal.outputs[0], group_out.inputs["Hull"])
     return tree
 
 

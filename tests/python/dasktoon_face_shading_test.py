@@ -15,6 +15,7 @@ from mathutils import Vector
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import dasktoon_test_utils as tu  # noqa: E402
+from bl_ui import dasktoon_outline as outline  # noqa: E402
 from bl_ui import dasktoon_face_shading as fs  # noqa: E402
 from bl_ui import dasktoon_face_shading_nodes as fsn  # noqa: E402
 
@@ -333,6 +334,43 @@ class FaceShadingUITest(unittest.TestCase):
         for idname in ("dasktoon.fix_face_normals", "dasktoon.reset_face_normals",
                        "dasktoon.toggle_face_normals_display"):
             self.assertIn(("operator", idname), log)
+
+
+class OutlineCompatibilityTest(unittest.TestCase):
+    def setUp(self):
+        tu.reset_scene()
+        outline.reset_cache()
+        self.head, self.rig = tu.add_test_head()
+        self.mat, self.node = tu.node_material("Skin", 'ShaderNodeAnimeCharacter')
+        self.node.use_outline = True
+        tu.assign(self.head, self.mat)
+        outline.sync_all(bpy.context.scene)
+
+    def hull(self):
+        depsgraph = bpy.context.evaluated_depsgraph_get()
+        evaluated = self.head.evaluated_get(depsgraph)
+        mesh = evaluated.to_mesh()
+        count = len(self.head.data.vertices)
+        points = [tuple(v.co) for v in mesh.vertices[count:]]
+        evaluated.to_mesh_clear()
+        return np.array(points)
+
+    def test_face_shading_stays_right_before_the_outline(self):
+        fs.setup(self.head)
+        names = ["Armature", fsn.MODIFIER_NAME, "DaskToon Outline"]
+        self.assertEqual([m.name for m in self.head.modifiers], names)
+        self.node.inputs["Outline Width"].default_value = 0.02
+        outline.sync_all(bpy.context.scene)
+        self.assertEqual([m.name for m in self.head.modifiers], names)
+
+    def test_outline_hull_does_not_follow_the_face_normals(self):
+        fs.setup(self.head)
+        modifier = fsn.get_modifier(self.head)
+        with_face = self.hull()
+        modifier.show_viewport = False
+        without_face = self.hull()
+        self.assertEqual(with_face.shape, without_face.shape)
+        self.assertLess(np.abs(with_face - without_face).max(), 1e-5)
 
 
 if __name__ == "__main__":
