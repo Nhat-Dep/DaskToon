@@ -356,6 +356,8 @@ def _outline(mat, spec, meshes):
         return
     for im in node_maps.OUTLINE_INPUTS:
         _read_input(companion, dask, im, spec, meshes)
+    spec.floats["_DT_OutlineLightBleed"] = outline.LIGHT_BLEED
+    spec.floats["_DT_OutlineWobble"] = outline.HAND_WOBBLE
     main = source[1]
     if main is not None:
         spec.floats["_DT_OutlineWidth"] = float(main.inputs["Outline Width"].default_value)

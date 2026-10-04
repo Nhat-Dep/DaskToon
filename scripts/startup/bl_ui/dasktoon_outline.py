@@ -6,13 +6,16 @@
 
 import bpy
 from bpy.app.handlers import persistent
-from bpy.types import Operator, Panel
+from bpy.types import Operator
 
 from . import dasktoon_outline_nodes as gn
 
 OUTLINE_PROP = "dasktoon_outline"
 OUTLINE_MAT_PROP = "dasktoon_outline_material"
 MASK_NAMES = ("Outline_Weight", "outline_weight", "DaskOutline_Mask", "Outline_Mask", "Outline_Width", "outline_mask")
+# Hand-drawn line weight, fixed (UI spec 4): thinner on the lit side, a slight pen wobble.
+LIGHT_BLEED = 0.70
+HAND_WOBBLE = 0.15
 
 _signatures = {}
 _companion_signatures = {}
@@ -151,6 +154,13 @@ def _set_value(socket, value):
         socket.default_value = value
 
 
+def _fix_line_weight(dask):
+    """The companion's Dask Outline node gets the fixed Light Bleed and Hand Wobble (linked libraries stay as saved)."""
+    if dask.id_data.library is None:
+        _set_value(dask.inputs["Light Bleed"], LIGHT_BLEED)
+        _set_value(dask.inputs["Hand Wobble"], HAND_WOBBLE)
+
+
 def _sync_socket(source_socket, target_tree, target_socket):
     if source_socket.is_linked:
         _sync_outline_socket(source_socket, target_tree, target_socket, {})
@@ -221,6 +231,7 @@ def sync_material(mat):
     for item in dask.bl_rna.properties["tint_mode"].enum_items:
         if item.value == tint_value and dask.tint_mode != item.identifier:
             dask.tint_mode = item.identifier
+    _fix_line_weight(dask)
 
 
 def find_sun(scene):
@@ -241,10 +252,9 @@ def _slot_params(obj):
         companion = outline_material_for(mat)
         dask = outline_node(companion)
         node = source[1]
+        _fix_line_weight(dask)
         width_socket = node.inputs["Outline Width"] if node is not None else dask.inputs["Outline Width"]
-        slots.append(gn.SlotParams(True, float(width_socket.default_value),
-                                   float(dask.inputs["Light Bleed"].default_value),
-                                   float(dask.inputs["Hand Wobble"].default_value), companion))
+        slots.append(gn.SlotParams(True, float(width_socket.default_value), LIGHT_BLEED, HAND_WOBBLE, companion))
     return slots
 
 
@@ -324,65 +334,44 @@ def outline_load_post(_filepath):
         sync_all(scene)
 
 
-class DASKTOON_OT_outline_toggle_material(Operator):
-    """Turn the DaskToon outline on or off for a material without an Anime BSDF / Dask Cel node"""
-    bl_idname = "dasktoon.outline_toggle_material"
-    bl_label = "Outline"
+class DASKTOON_OT_outline_remove_legacy(Operator):
+    """Turn off the DaskToon outline this material got before outlines moved onto the Anime BSDF and Dask Cel nodes"""
+    bl_idname = "dasktoon.outline_remove_legacy"
+    bl_label = "Remove DaskToon Outline"
     bl_options = {'REGISTER', 'UNDO'}
-
-    def execute(self, context):
-        mat = context.material
-        if mat is None:
-            return {'CANCELLED'}
-        mat[OUTLINE_PROP] = not bool(mat.get(OUTLINE_PROP))
-        return {'FINISHED'}
-
-
-class MATERIAL_PT_dasktoon_outline(Panel):
-    bl_label = "DaskToon Outline"
-    bl_space_type = 'PROPERTIES'
-    bl_region_type = 'WINDOW'
-    bl_context = "material"
 
     @classmethod
     def poll(cls, context):
-        return context.material is not None
+        mat = getattr(context, "material", None)
+        return mat is not None and mat.library is None and bool(mat.get(OUTLINE_PROP))
 
-    def draw(self, context):
-        layout = self.layout
-        mat = context.material
-        main = None
-        if mat.node_tree is not None:
-            main = next((n for n in mat.node_tree.nodes
-                         if n.bl_idname in {'ShaderNodeAnimeCharacter', 'ShaderNodeDaskCel'}), None)
-        if main is not None and main.bl_idname == 'ShaderNodeAnimeCharacter':
-            layout.prop(main, "use_outline", text="Outline")
-        elif main is not None:
-            layout.prop(main.inputs["Use Outline"], "default_value", text="Outline")
-        else:
-            layout.operator(DASKTOON_OT_outline_toggle_material.bl_idname,
-                            text="Outline", depress=bool(mat.get(OUTLINE_PROP)))
-        companion = outline_material_for(mat, create=False)
-        dask = outline_node(companion)
-        if find_source(mat) is not None and dask is not None:
-            col = layout.column(align=True)
-            if main is None:
-                col.prop(dask.inputs["Outline Width"], "default_value", text="Width")
-            col.prop(dask.inputs["Light Bleed"], "default_value", text="Light Bleed")
-            col.prop(dask.inputs["Hand Wobble"], "default_value", text="Hand Wobble")
-            col.prop(dask, "tint_mode", text="")
-        layout.operator("dasktoon.outline_prepare_game_data", icon='EXPORT')
+    def execute(self, context):
+        del context.material[OUTLINE_PROP]
+        sync_all(context.scene)
+        return {'FINISHED'}
 
 
-classes = (DASKTOON_OT_outline_toggle_material, MATERIAL_PT_dasktoon_outline)
+def material_menu_func(self, context):
+    """Material slot menu: only for a material outlined the old way (no Anime BSDF / Dask Cel node with outline)."""
+    mat = getattr(context, "material", None)
+    if mat is not None and mat.get(OUTLINE_PROP) and find_source(mat) == ('MATERIAL', None):
+        self.layout.separator()
+        self.layout.operator(DASKTOON_OT_outline_remove_legacy.bl_idname, icon='X')
 
 
-# bl_ui registers `classes` itself; register()/unregister() only manage the handlers.
+classes = (DASKTOON_OT_outline_remove_legacy,)
+
+
+# bl_ui registers `classes` itself; register()/unregister() manage the handler and the material slot menu entry.
 def register():
+    from .properties_material import MATERIAL_MT_context_menu
     if outline_depsgraph_post not in bpy.app.handlers.depsgraph_update_post:
         bpy.app.handlers.depsgraph_update_post.append(outline_depsgraph_post)
+    MATERIAL_MT_context_menu.append(material_menu_func)
 
 
 def unregister():
+    from .properties_material import MATERIAL_MT_context_menu
     if outline_depsgraph_post in bpy.app.handlers.depsgraph_update_post:
         bpy.app.handlers.depsgraph_update_post.remove(outline_depsgraph_post)
+    MATERIAL_MT_context_menu.remove(material_menu_func)

@@ -106,16 +106,14 @@ def eye():
     return mat
 
 
-def outlined(name, tint_mode='CUSTOM', bleed=0.0, wobble=0.0):
-    """Anime BSDF with the thickest outline, so its width can be measured in pixels."""
+def outlined(name, tint_mode='CUSTOM'):
+    """Anime BSDF with the thickest outline, so its width can be measured in pixels. Light Bleed and Hand Wobble are
+    the fixed ones (UI spec 4)."""
     mat, node = bsdf(name, use_outline=True, outline_tint_mode=tint_mode)
     node.inputs["Outline Width"].default_value = 0.05
     node.inputs["Outline Color"].default_value = (0.0, 0.0, 0.5, 1.0)
     node.inputs["Outline Lighting Mix"].default_value = 0.0
     outline.sync_material(mat)
-    dask = outline.outline_node(outline.outline_material_for(mat))
-    dask.inputs["Light Bleed"].default_value = bleed
-    dask.inputs["Hand Wobble"].default_value = wobble
     return mat
 
 
@@ -146,7 +144,7 @@ CASES = [
     ("daskcel_simple", lambda: dask_cel("daskcel_simple"), True),
     ("daskcel_manga", lambda: dask_cel("daskcel_manga", style="Manga"), True),
     ("outline_custom", lambda: outlined("outline_custom"), True),
-    ("outline_harmonic", lambda: outlined("outline_harmonic", 'HARMONIC_KYOTO', 0.7, 0.15), True),
+    ("outline_harmonic", lambda: outlined("outline_harmonic", 'HARMONIC_KYOTO'), True),
     (FACE_CASE, lambda: bsdf(FACE_CASE)[0], True),
 ]
 

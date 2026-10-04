@@ -118,13 +118,12 @@ ANGEL_RING_INPUTS = (
     _in("Intensity", "_DT_RingIntensity", 'FLOAT'),
 )
 
-# Dask Outline node of the <material>.Outline companion (project 1, spec 4.2).
+# Dask Outline node of the <material>.Outline companion (project 1, spec 4.2). Light Bleed and Hand Wobble are
+# fixed (UI spec 4) and written by graph._outline.
 OUTLINE_INPUTS = (
     _in("Base Color", "_DT_OutlineBaseColor", 'COLOR', True),
     _in("Outline Color", "_DT_OutlineColor", 'COLOR', True),
     _in("Outline Width", "_DT_OutlineWidth", 'FLOAT'),
-    _in("Light Bleed", "_DT_OutlineLightBleed", 'FLOAT'),
-    _in("Hand Wobble", "_DT_OutlineWobble", 'FLOAT'),
     _in("Tint Darkness", "_DT_OutlineTintDarkness", 'FLOAT'),
     _in("Tint Saturation Boost", "_DT_OutlineTintSatBoost", 'FLOAT'),
     _in("Outline Lighting Mix", "_DT_OutlineLightingMix", 'FLOAT'),

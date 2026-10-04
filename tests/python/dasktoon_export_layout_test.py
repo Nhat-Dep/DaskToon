@@ -182,7 +182,7 @@ class LayoutTest(unittest.TestCase):
         self.assertEqual(rep.materials, ["LibSkin"])
         mat_text = read(os.path.join(target.root, "Untitled", "Materials", "LibSkin.mat"))
         self.assertIn("  - _DT_OUTLINE\n", mat_text)
-        self.assertIn("    - _DT_OutlineLightBleed: 0.25\n", mat_text)
+        self.assertIn("    - _DT_OutlineLightBleed: 0.7\n", mat_text)  # fixed, not the library's 0.25
 
     def test_object_outside_the_view_layer_is_left_out_of_the_fbx(self):
         body = build_character(tempfile.mkdtemp(prefix="dt_layout_blend_"))

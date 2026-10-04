@@ -34,6 +34,21 @@ VI = {
         "Engine này sắp có; hiện chỉ hỗ trợ Unity 6 (URP)",
     "No destination folder chosen": "Chưa chọn thư mục đích",
     "Nothing to export (no object selected?)": "Không có gì để xuất (chưa chọn object?)",
+
+    # bl_ui/dasktoon_outline.py
+    "Remove DaskToon Outline": "Gỡ outline DaskToon",
+    "Turn off the DaskToon outline this material got before outlines moved onto the Anime BSDF and Dask Cel nodes":
+        "Tắt outline DaskToon mà material này được bật từ trước khi outline chuyển lên node Anime BSDF và Dask Cel",
+
+    # bl_ui/dasktoon_outline_gamedata.py
+    "Prepare Outline for Games": "Chuẩn bị outline cho game",
+    "Write smoothed outline normals and the width mask into real UV maps for game export":
+        "Ghi normal outline đã làm mượt và mặt nạ độ dày vào UV map thật để xuất sang game",
+    "%s: needs at least one UV map": "%s: cần ít nhất một UV map",
+    "%s: has faces with more than 4 sides (n-gons); triangulate or split them first":
+        "%s: có mặt nhiều hơn 4 cạnh (ngon); hãy Triangulate hoặc chia lại trước",
+    "%s: wrote %s and %s": "%s: đã ghi %s và %s",
+    "Prepared %d mesh(es), %d error(s)": "Đã chuẩn bị %d mesh, %d lỗi",
 }
 
 

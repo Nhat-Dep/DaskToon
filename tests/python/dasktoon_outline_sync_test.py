@@ -120,21 +120,34 @@ class OutlineSyncTest(unittest.TestCase):
         self.assertEqual(dask.bl_rna.properties["tint_mode"].enum_items[dask.tint_mode].value, 1)
         self.assertAlmostEqual(dask.inputs["Outline Color"].default_value[0], 0.2, places=4)
 
-    def test_editing_companion_material_resyncs_object(self):
-        """Light Bleed / Hand Wobble live on <material>.Outline, which is in no slot of the object."""
+    def test_light_bleed_and_hand_wobble_are_fixed(self):
+        """Hand-drawn line weight is automatic (UI spec 4): values an older file set by hand are put back."""
         self.node.use_outline = True
-        self.node.inputs["Outline Width"].default_value = 0.05
         update()
         dask = outline.outline_node(outline.outline_material_for(self.mat, create=False))
+        dask.inputs["Light Bleed"].default_value = 0.2
+        dask.inputs["Hand Wobble"].default_value = 0.9
+        outline.reset_cache()
+        outline.sync_all(bpy.context.scene)
+        self.assertAlmostEqual(dask.inputs["Light Bleed"].default_value, outline.LIGHT_BLEED, places=6)
+        self.assertAlmostEqual(dask.inputs["Hand Wobble"].default_value, outline.HAND_WOBBLE, places=6)
         group = self.obj.modifiers[gn.MODIFIER_NAME].node_group
-        bleed_tables = [n for n in group.nodes if n.bl_idname == 'GeometryNodeIndexSwitch']
-        before = [n.inputs[1].default_value for n in bleed_tables]
-        dask.inputs["Light Bleed"].default_value = 0.9
+        values = [round(n.inputs[1].default_value, 4) for n in group.nodes if n.bl_idname == 'GeometryNodeIndexSwitch'
+                  and isinstance(n.inputs[1].default_value, float)]
+        self.assertIn(round(outline.LIGHT_BLEED, 4), values)
+        self.assertIn(round(outline.HAND_WOBBLE, 4), values)
+
+    def test_legacy_material_outline_can_be_removed_from_the_slot_menu(self):
+        plain = tu.emission_material("Plain", (1, 1, 1, 1))
+        tu.assign(self.obj, plain)
+        plain[outline.OUTLINE_PROP] = True
         update()
-        group = self.obj.modifiers[gn.MODIFIER_NAME].node_group
-        after = [n.inputs[1].default_value for n in group.nodes if n.bl_idname == 'GeometryNodeIndexSwitch']
-        self.assertIn(0.9, [round(v, 4) for v in after if isinstance(v, float)])
-        self.assertNotEqual(before, after)
+        self.assertIsNotNone(self.obj.modifiers.get(gn.MODIFIER_NAME))
+        with bpy.context.temp_override(material=plain, object=self.obj):
+            self.assertEqual(bpy.ops.dasktoon.outline_remove_legacy(), {'FINISHED'})
+        self.assertNotIn(outline.OUTLINE_PROP, plain)
+        update()
+        self.assertIsNone(self.obj.modifiers.get(gn.MODIFIER_NAME))
 
     def test_unrelated_edit_keeps_companion_nodes(self):
         """Editing the source must not delete and re-clone the companion's texture nodes: that recompiles

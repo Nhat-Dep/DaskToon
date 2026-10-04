@@ -20,6 +20,8 @@ REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 TRANSLATED = [
     "scripts/startup/bl_ui/dasktoon_engine_export.py",
     "scripts/startup/bl_ui/dasktoon_sun_sync.py",
+    "scripts/startup/bl_ui/dasktoon_outline.py",
+    "scripts/startup/bl_ui/dasktoon_outline_gamedata.py",
 ]
 
 
@@ -36,8 +38,7 @@ class TranslationTest(unittest.TestCase):
 
     def test_source_strings_are_english_without_emoji(self):
         for rel in TRANSLATED:
-            strings, _dynamic = iu.module_strings(path(rel))
-            bad = sorted(s for s in strings if iu.VI_CHARS.search(s) or iu.EMOJI.search(s))
+            bad = sorted(s for s in iu.all_strings(path(rel)) if iu.VI_CHARS.search(s) or iu.EMOJI.search(s))
             self.assertEqual(bad, [], rel)
 
     def test_no_visible_string_is_built_at_run_time(self):

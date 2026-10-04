@@ -73,6 +73,20 @@ def module_strings(path):
     return strings, dynamic
 
 
+def all_strings(path):
+    """Every string constant of a Python file except docstrings of modules and functions: what may reach the user."""
+    with open(path, encoding="utf-8") as f:
+        tree = ast.parse(f.read())
+    docstrings = set()
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.Module, ast.FunctionDef, ast.AsyncFunctionDef)) and node.body:
+            first = node.body[0]
+            if isinstance(first, ast.Expr) and _literal(first.value) is not None:
+                docstrings.add(id(first.value))
+    return {node.value for node in ast.walk(tree)
+            if isinstance(node, ast.Constant) and isinstance(node.value, str) and id(node) not in docstrings}
+
+
 def visible(msgid):
     return re.search("[A-Za-z]", msgid) is not None
 

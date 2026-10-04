@@ -23,6 +23,7 @@ REMOVED = (
     "DASKTOON_OT_setup_anime_preset", "NODE_OT_dasktoon_add_anime_node", "DASKTOON_OT_link_sun_direction",
     "DASKTOON_OT_fix_face_normals", "DASKTOON_OT_reset_face_normals", "DASKTOON_OT_toggle_face_normals_display",
     "DASKTOON_PT_face_shading_advanced",
+    "MATERIAL_PT_dasktoon_outline", "DASKTOON_OT_outline_toggle_material",
 )
 REMOVED_MODULES = ("dasktoon_light_groups", "bl_ui.dasktoon_anime_nodes", "bl_ui.dasktoon_face_normals",
                    "bl_ui.properties_dasktoon")
@@ -59,6 +60,16 @@ class RemovedUITest(unittest.TestCase):
         dasktoon_init.dasktoon_enforce_color_management(scene)
         self.assertEqual(scene.view_settings.view_transform, 'Standard')
 
+
+
+def appended(menu, module):
+    funcs = getattr(getattr(menu, "draw", None), "_draw_funcs", None) or []
+    return [f for f in funcs if getattr(f, "__module__", "") == module]
+
+
+class MovedUITest(unittest.TestCase):
+    def test_outline_removal_is_in_the_material_slot_menu(self):
+        self.assertTrue(appended(bpy.types.MATERIAL_MT_context_menu, "bl_ui.dasktoon_outline"))
 
 if __name__ == "__main__":
     tu.run_tests()
