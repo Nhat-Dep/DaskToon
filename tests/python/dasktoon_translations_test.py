@@ -19,6 +19,7 @@ REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 # Grows task by task; Task 12 checks that it covers every DaskToon file.
 TRANSLATED = [
     "scripts/startup/bl_ui/dasktoon_engine_export.py",
+    "scripts/startup/bl_ui/dasktoon_sun_sync.py",
 ]
 
 

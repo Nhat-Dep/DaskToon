@@ -64,6 +64,7 @@ _modules = [
     "dasktoon_shading_styles",
     "dasktoon_outline",
     "dasktoon_outline_gamedata",
+    "dasktoon_sun_sync",
     "dasktoon_upgrade",
     "dasktoon_engine_export",
     "dasktoon_project",
