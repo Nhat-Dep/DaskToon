@@ -220,5 +220,120 @@ class FaceShadingSetupTest(unittest.TestCase):
         self.assertIsNone(fs.panel_target(bpy.context))
 
 
+class Recorder:
+    """Stands in for UILayout: records the labels, operators and properties a panel draws."""
+
+    def __init__(self, log=None):
+        self.log = [] if log is None else log
+        self.scale_y = 1.0
+
+    def column(self, **_kw):
+        return Recorder(self.log)
+
+    def row(self, **_kw):
+        return Recorder(self.log)
+
+    def box(self):
+        return Recorder(self.log)
+
+    def separator(self, **_kw):
+        pass
+
+    def label(self, text="", **_kw):
+        self.log.append(("label", text))
+
+    def operator(self, idname, text=None, **_kw):
+        self.log.append(("operator", idname))
+
+    def prop(self, _data, _prop, text=None, **_kw):
+        self.log.append(("prop", text))
+
+
+def draw(panel):
+    recorder = Recorder()
+
+    class Fake:
+        layout = recorder
+
+    panel.draw(Fake(), bpy.context)
+    return recorder.log
+
+
+class FaceShadingUITest(unittest.TestCase):
+    def setUp(self):
+        tu.reset_scene()
+
+    def test_classes_are_registered_and_the_old_panel_is_gone(self):
+        for name in ("DASKTOON_OT_face_shading_setup", "DASKTOON_OT_face_shading_refit",
+                     "DASKTOON_OT_face_shading_remove", "DASKTOON_OT_face_shading_select_proxy",
+                     "DASKTOON_PT_face_shading", "DASKTOON_PT_face_shading_advanced",
+                     "DASKTOON_OT_fix_face_normals", "DASKTOON_OT_reset_face_normals"):
+            self.assertTrue(hasattr(bpy.types, name), name)
+        self.assertFalse(hasattr(bpy.types, "DASKTOON_PT_face_normals"))
+        panel = bpy.types.DASKTOON_PT_face_shading
+        self.assertEqual((panel.bl_space_type, panel.bl_region_type, panel.bl_category), ('VIEW_3D', 'UI', "DaskToon"))
+        self.assertEqual(bpy.types.DASKTOON_PT_face_shading_advanced.bl_parent_id, "DASKTOON_PT_face_shading")
+
+    def test_setup_operator_on_the_active_mesh(self):
+        head, _rig = tu.add_test_head()
+        self.assertEqual(bpy.ops.dasktoon.face_shading_setup(), {'FINISHED'})
+        self.assertIsNotNone(fsn.get_modifier(head))
+
+    def test_setup_operator_uses_the_edit_mode_selection(self):
+        head, _rig = tu.add_test_head(with_armature=False)
+        skin = head["dt_skin_vertices"]
+        for v in head.data.vertices:
+            v.select = v.index < skin
+        bpy.ops.object.mode_set(mode='EDIT')
+        self.assertEqual(bpy.ops.dasktoon.face_shading_setup(), {'FINISHED'})
+        self.assertEqual(head.mode, 'EDIT')
+        bpy.ops.object.mode_set(mode='OBJECT')
+        self.assertEqual(fs.proxy_of(head).parent, head)
+
+    def test_setup_operator_reports_what_is_missing(self):
+        tu.add_test_head(with_armature=False)
+        with self.assertRaises(RuntimeError):
+            bpy.ops.dasktoon.face_shading_setup()
+
+    def test_select_proxy_then_refit_and_remove_from_the_proxy(self):
+        head, _rig = tu.add_test_head()
+        bpy.ops.dasktoon.face_shading_setup()
+        proxy = fs.proxy_of(head)
+        self.assertEqual(bpy.ops.dasktoon.face_shading_select_proxy(), {'FINISHED'})
+        self.assertEqual(bpy.context.view_layer.objects.active, proxy)
+        self.assertTrue(proxy.select_get())
+        self.assertFalse(head.select_get())
+        self.assertEqual(bpy.ops.dasktoon.face_shading_refit(), {'FINISHED'})
+        self.assertEqual(bpy.ops.dasktoon.face_shading_remove(), {'FINISHED'})
+        self.assertIsNone(fsn.get_modifier(head))
+
+    def test_panel_offers_setup_then_the_sliders(self):
+        log = draw(bpy.types.DASKTOON_PT_face_shading)
+        self.assertEqual(log[0][0], "label")
+        head, _rig = tu.add_test_head()
+        self.assertIn(("operator", "dasktoon.face_shading_setup"), draw(bpy.types.DASKTOON_PT_face_shading))
+        fs.setup(head)
+        log = draw(bpy.types.DASKTOON_PT_face_shading)
+        self.assertEqual([text for kind, text in log if kind == "prop"],
+                         ["Độ phủ", "Vùng chuyển", "Giữ bóng mũi", "Giữ bóng cằm"])
+        for idname in ("dasktoon.face_shading_select_proxy", "dasktoon.face_shading_refit",
+                       "dasktoon.face_shading_remove"):
+            self.assertIn(("operator", idname), log)
+        self.assertNotIn(("operator", "dasktoon.reset_face_normals"), log)
+        bpy.context.view_layer.objects.active = fs.proxy_of(head)
+        self.assertIn(("label", "Khối trứng của Head"), draw(bpy.types.DASKTOON_PT_face_shading))
+
+    def test_panel_suggests_clearing_old_custom_normals(self):
+        head, _rig = tu.add_test_head()
+        head.data.normals_split_custom_set_from_vertices([v.normal for v in head.data.vertices])
+        self.assertIn(("operator", "dasktoon.reset_face_normals"), draw(bpy.types.DASKTOON_PT_face_shading))
+
+    def test_advanced_panel_holds_the_old_tools(self):
+        log = draw(bpy.types.DASKTOON_PT_face_shading_advanced)
+        for idname in ("dasktoon.fix_face_normals", "dasktoon.reset_face_normals",
+                       "dasktoon.toggle_face_normals_display"):
+            self.assertIn(("operator", idname), log)
+
+
 if __name__ == "__main__":
     tu.run_tests()

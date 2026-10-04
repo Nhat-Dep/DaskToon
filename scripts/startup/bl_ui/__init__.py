@@ -70,6 +70,7 @@ _modules = [
     "dasktoon_project",
     "dasktoon_anime_fx",
     "dasktoon_face_normals",
+    "dasktoon_face_shading",
     "dasktoon_material_combiner",
     "dasktoon_shape_key_manager",
     "properties_collection",

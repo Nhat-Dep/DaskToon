@@ -1,10 +1,12 @@
 # SPDX-FileCopyrightText: 2026 DaskToon Authors
 # SPDX-License-Identifier: GPL-2.0-or-later
 
+"""Legacy face normal tools; their buttons live under DaskToon › Bóng mặt › Nâng cao (dasktoon_face_shading)."""
+
 import bpy
 import bmesh
 import mathutils
-from bpy.types import Panel, Operator, PropertyGroup
+from bpy.types import Operator, PropertyGroup
 from bpy.props import (
     FloatProperty,
     FloatVectorProperty,
@@ -241,40 +243,6 @@ class DASKTOON_OT_toggle_face_normals_display(Operator):
 
 
 # =============================================================================
-# Sidebar N-Panel: Anime Face Normal Studio
-# =============================================================================
-
-class DASKTOON_PT_face_normals(Panel):
-    """Anime Face Normal Studio panel in 3D Viewport Sidebar"""
-    bl_label = "🎭 Anime Face Normal Studio"
-    bl_idname = "DASKTOON_PT_face_normals"
-    bl_space_type = 'VIEW_3D'
-    bl_region_type = 'UI'
-    bl_category = "DaskToon"
-    bl_order = 15
-
-    def draw(self, context):
-        layout = self.layout
-        obj = context.active_object
-
-        box = layout.box()
-        box.label(text="Arc System Works / Hoyo Face Shading", icon='SHADING_RENDERED')
-
-        if not obj or obj.type != 'MESH':
-            box.label(text="Select a character Mesh to edit normals", icon='INFO')
-            return
-
-        col = box.column(align=True)
-        col.scale_y = 1.3
-        col.operator("dasktoon.fix_face_normals", text="✨ Fix Face Normals (1-Click)", icon='SPHERE')
-
-        box.separator()
-        row = box.row(align=True)
-        row.operator("dasktoon.reset_face_normals", text="Reset Normals", icon='LOOP_BACK')
-        row.operator("dasktoon.toggle_face_normals_display", text="Normal Lines", icon='HIDE_OFF')
-
-
-# =============================================================================
 # Registration
 # =============================================================================
 
@@ -282,7 +250,6 @@ classes = (
     DASKTOON_OT_fix_face_normals,
     DASKTOON_OT_reset_face_normals,
     DASKTOON_OT_toggle_face_normals_display,
-    DASKTOON_PT_face_normals,
 )
 
 

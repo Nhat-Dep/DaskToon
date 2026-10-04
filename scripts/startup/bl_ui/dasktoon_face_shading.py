@@ -9,6 +9,7 @@ from contextlib import contextmanager
 
 import bpy
 import numpy as np
+from bpy.types import Operator, Panel
 from mathutils import Matrix, Vector
 
 from . import dasktoon_face_shading_nodes as fsn
@@ -292,4 +293,158 @@ def panel_target(context):
     return None
 
 
-classes = ()
+SLIDERS = (("Coverage", "Độ phủ"), ("Falloff", "Vùng chuyển"), ("Nose Keep", "Giữ bóng mũi"),
+           ("Chin Keep", "Giữ bóng cằm"))
+
+
+def _run(operator, context, action, done):
+    """Run action(mesh, selected) on the panel's mesh. In Edit Mode the selection is read and Edit Mode is left
+    meanwhile (vertex groups cannot be written in Edit Mode)."""
+    obj = panel_target(context)
+    if obj is None:
+        operator.report({'ERROR'}, "Hãy chọn mesh nhân vật")
+        return {'CANCELLED'}
+    editing = obj.mode == 'EDIT'
+    selected = None
+    if editing:
+        obj.update_from_editmode()
+        flags = np.zeros(len(obj.data.vertices), dtype=bool)
+        obj.data.vertices.foreach_get("select", flags)
+        selected = np.flatnonzero(flags)
+        bpy.ops.object.mode_set(mode='OBJECT')
+    try:
+        action(obj, selected)
+    except FaceShadingError as ex:
+        operator.report({'ERROR'}, str(ex))
+        return {'CANCELLED'}
+    finally:
+        if editing:
+            bpy.ops.object.mode_set(mode='EDIT')
+    operator.report({'INFO'}, done % obj.name)
+    return {'FINISHED'}
+
+
+class DASKTOON_OT_face_shading_setup(Operator):
+    """Shade the face like an egg: find the head, fit an egg-shaped proxy to it and add the Face Shading modifier"""
+    bl_idname = "dasktoon.face_shading_setup"
+    bl_label = "Tạo bóng mặt anime"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        return _run(self, context, setup, "Đã tạo bóng mặt cho %s: kéo khối trứng hoặc chỉnh thanh trượt")
+
+
+class DASKTOON_OT_face_shading_refit(Operator):
+    """Fit the egg-shaped proxy to the face again (position and size); the sliders stay"""
+    bl_idname = "dasktoon.face_shading_refit"
+    bl_label = "Căn lại khối trứng"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        return _run(self, context, refit, "Đã căn lại khối trứng của %s")
+
+
+class DASKTOON_OT_face_shading_remove(Operator):
+    """Remove the face shading of the mesh: the modifier, DT_Face and the proxy when no other mesh uses it"""
+    bl_idname = "dasktoon.face_shading_remove"
+    bl_label = "Gỡ bóng mặt"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        return _run(self, context, lambda obj, _selected: remove(obj), "Đã gỡ bóng mặt của %s")
+
+
+class DASKTOON_OT_face_shading_select_proxy(Operator):
+    """Select the egg-shaped proxy to move, rotate or scale it; the face shading follows right away"""
+    bl_idname = "dasktoon.face_shading_select_proxy"
+    bl_label = "Chọn khối trứng"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        obj = panel_target(context)
+        proxy = proxy_of(obj) if obj is not None else None
+        if proxy is None:
+            self.report({'ERROR'}, "Mesh chưa có khối trứng: bấm Tạo bóng mặt anime hoặc Căn lại khối trứng")
+            return {'CANCELLED'}
+        if context.mode != 'OBJECT':
+            bpy.ops.object.mode_set(mode='OBJECT')
+        try:
+            proxy.hide_set(False)
+            proxy.hide_viewport = False
+            for other in context.selected_objects:
+                other.select_set(False)
+            proxy.select_set(True)
+        except RuntimeError:
+            self.report({'ERROR'}, "Khối trứng %s không nằm trong view layer đang mở" % proxy.name)
+            return {'CANCELLED'}
+        context.view_layer.objects.active = proxy
+        return {'FINISHED'}
+
+
+class DASKTOON_PT_face_shading(Panel):
+    bl_label = "Bóng mặt"
+    bl_idname = "DASKTOON_PT_face_shading"
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_category = "DaskToon"
+    bl_order = 15
+
+    def draw(self, context):
+        layout = self.layout
+        obj = panel_target(context)
+        if obj is None:
+            layout.label(text="Chọn mesh nhân vật hoặc khối trứng", icon='INFO')
+            return
+        if obj.library is not None or obj.data.library is not None:
+            layout.label(text="Mesh link từ thư viện, không sửa được", icon='ERROR')
+            return
+        modifier = fsn.get_modifier(obj)
+        if modifier is None:
+            col = layout.column()
+            col.scale_y = 1.4
+            col.operator(DASKTOON_OT_face_shading_setup.bl_idname, icon='SHADING_RENDERED')
+        else:
+            if context.active_object != obj:
+                layout.label(text="Khối trứng của " + obj.name, icon='MESH_UVSPHERE')
+            if proxy_of(obj) is None:
+                layout.label(text="Chưa có khối trứng: bấm Căn lại khối trứng", icon='ERROR')
+            layout.operator(DASKTOON_OT_face_shading_select_proxy.bl_idname, icon='RESTRICT_SELECT_OFF')
+            col = layout.column(align=True)
+            for name, label in SLIDERS:
+                col.prop(fsn.input_socket(modifier, name), "value", text=label, slider=True)
+            row = layout.row(align=True)
+            row.operator(DASKTOON_OT_face_shading_refit.bl_idname, icon='FILE_REFRESH')
+            row.operator(DASKTOON_OT_face_shading_remove.bl_idname, icon='X')
+        if obj.data.has_custom_normals and context.active_object == obj:
+            box = layout.box()
+            box.label(text="Mesh còn custom normal cũ: bóng mũi, cằm", icon='INFO')
+            box.label(text="sẽ theo normal đó, không theo hình khối thật")
+            box.operator("dasktoon.reset_face_normals", text="Xóa normal tùy chỉnh cũ", icon='LOOP_BACK')
+
+
+class DASKTOON_PT_face_shading_advanced(Panel):
+    bl_label = "Nâng cao"
+    bl_idname = "DASKTOON_PT_face_shading_advanced"
+    bl_parent_id = "DASKTOON_PT_face_shading"
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_category = "DaskToon"
+    bl_options = {'DEFAULT_CLOSED'}
+
+    def draw(self, _context):
+        layout = self.layout
+        layout.label(text="Công cụ cũ: ghi thẳng normal vào mesh", icon='INFO')
+        layout.operator("dasktoon.fix_face_normals", icon='SPHERE')
+        row = layout.row(align=True)
+        row.operator("dasktoon.reset_face_normals", text="Reset Normals", icon='LOOP_BACK')
+        row.operator("dasktoon.toggle_face_normals_display", text="Normal Lines", icon='HIDE_OFF')
+
+
+classes = (
+    DASKTOON_OT_face_shading_setup,
+    DASKTOON_OT_face_shading_refit,
+    DASKTOON_OT_face_shading_remove,
+    DASKTOON_OT_face_shading_select_proxy,
+    DASKTOON_PT_face_shading,
+    DASKTOON_PT_face_shading_advanced,
+)
