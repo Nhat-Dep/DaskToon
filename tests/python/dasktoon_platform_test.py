@@ -63,5 +63,13 @@ class PlatformAssumptions(unittest.TestCase):
         self.assertEqual([k.name for k in imported.data.shape_keys.key_blocks], ["Basis", "Smile"])
 
 
+class Security(unittest.TestCase):
+    def test_no_ai_bridge_is_installed(self):
+        """The AI Bridge let any program on the computer run Python inside DaskToon through port 9998. It was removed
+        and must not come back, e.g. from an old branch copied into the build."""
+        self.assertFalse("dasktoon_ai_bridge" in sys.modules, "scripts/startup/dasktoon_ai_bridge.py was loaded")
+        self.assertFalse(hasattr(bpy.types, "DASKTOON_OT_start_ai_bridge"))
+
+
 if __name__ == "__main__":
     tu.run_tests()

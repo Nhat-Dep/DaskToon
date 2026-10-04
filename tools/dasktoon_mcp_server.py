@@ -5,48 +5,19 @@
 """
 DaskToon Native MCP (Model Context Protocol) Server
 Implements standard JSON-RPC 2.0 MCP protocol over stdio for Antigravity IDE, Claude Desktop, and Cursor.
-Connects to live DaskToon GUI via local socket (port 9998) with automatic headless fallback.
+Every tool runs in a background DaskToon process. The live AI Bridge (a socket on port 9998 inside the DaskToon window)
+was removed: any program on the computer could run Python inside DaskToon through it.
 """
 
 import sys
 import json
-import socket
 import subprocess
 import os
 import tempfile
 import base64
 import traceback
 
-SOCKET_HOST = "127.0.0.1"
-SOCKET_PORT = 9998
 DASKTOON_EXE = r"D:\build_windows_x64_vc17_Release\bin\Release\DaskToon.exe"
-
-
-def send_to_live_dasktoon(payload, timeout=8.0):
-    """Attempt to send payload to live DaskToon GUI via TCP socket."""
-    try:
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.settimeout(timeout)
-        s.connect((SOCKET_HOST, SOCKET_PORT))
-        msg = (json.dumps(payload) + "\n").encode("utf-8")
-        s.sendall(msg)
-        
-        chunks = []
-        while True:
-            chunk = s.recv(65536)
-            if not chunk:
-                break
-            chunks.append(chunk)
-            if b"\n" in chunk:
-                break
-        s.close()
-        
-        raw_res = b"".join(chunks).decode("utf-8").strip()
-        if raw_res:
-            return json.loads(raw_res)
-    except Exception:
-        return None
-    return None
 
 
 def run_headless_code(code_str):
@@ -103,13 +74,9 @@ print("__DASKTOON_JSON_START__" + json.dumps(output) + "__DASKTOON_JSON_END__")
 
 def tool_execute_code(args):
     code = args.get("code", "")
-    # Try live socket first
-    resp = send_to_live_dasktoon({"action": "run_code", "code": code})
-    mode = "Live Viewport"
-    if resp is None:
-        resp = run_headless_code(code)
-        mode = "Headless CLI"
-    
+    resp = run_headless_code(code)
+    mode = "Headless CLI"
+
     status = resp.get("status", "ok")
     stdout = resp.get("stdout", "")
     stderr = resp.get("stderr", "")
@@ -126,9 +93,7 @@ def tool_execute_code(args):
 
 
 def tool_get_scene_summary(args):
-    resp = send_to_live_dasktoon({"action": "get_scene_info"})
-    if resp is None:
-        py_code = """
+    py_code = """
 scene = bpy.context.scene
 objects = [{"name": ob.name, "type": ob.type, "location": list(ob.location), "materials": [m.name for m in ob.data.materials if m] if hasattr(ob.data, 'materials') else []} for ob in scene.objects]
 materials = [m.name for m in bpy.data.materials]
@@ -146,11 +111,11 @@ res = {
 }
 res
 """
-        raw_res = run_headless_code(py_code)
-        try:
-            resp = eval(raw_res.get("result", "{}"))
-        except Exception:
-            resp = raw_res
+    raw_res = run_headless_code(py_code)
+    try:
+        resp = eval(raw_res.get("result", "{}"))
+    except Exception:
+        resp = raw_res
 
     return [{"type": "text", "text": json.dumps(resp, indent=2)}]
 
@@ -165,9 +130,7 @@ def tool_create_anime_material(args):
         "rim_intensity": args.get("rim_intensity", 0.6),
         "target_object": args.get("target_object", None),
     }
-    resp = send_to_live_dasktoon(payload)
-    if resp is None:
-        py_code = f"""
+    py_code = f"""
 mat = bpy.data.materials.new({repr(payload['name'])})
 mat.use_nodes = True
 nodes = mat.node_tree.nodes
@@ -188,23 +151,13 @@ mat.node_tree.links.new(bsdf.outputs['BSDF'], out.inputs['Surface'])
 {f"if {repr(payload['target_object'])} in bpy.data.objects: bpy.data.objects[{repr(payload['target_object'])}].data.materials.append(mat)" if payload['target_object'] else ""}
 {{"status": "ok", "material_name": mat.name, "node_type": "ShaderNodeAnimeCharacter (Anime BSDF)"}}
 """
-        raw_res = run_headless_code(py_code)
-        try:
-            resp = eval(raw_res.get("result", "{}"))
-        except Exception:
-            resp = raw_res
+    raw_res = run_headless_code(py_code)
+    try:
+        resp = eval(raw_res.get("result", "{}"))
+    except Exception:
+        resp = raw_res
 
     return [{"type": "text", "text": json.dumps(resp, indent=2)}]
-
-
-def tool_capture_viewport(args):
-    resp = send_to_live_dasktoon({"action": "capture_viewport"})
-    if resp and resp.get("status") == "ok" and resp.get("image_base64"):
-        return [
-            {"type": "text", "text": f"Screenshot captured from Live DaskToon Viewport: {resp.get('image_path')}"},
-            {"type": "image", "data": resp["image_base64"], "mimeType": "image/png"}
-        ]
-    return [{"type": "text", "text": "Live DaskToon GUI is not open. Open DaskToon to capture live interactive Viewport screenshots."}]
 
 
 def tool_setup_arkit_shapekeys(args):
@@ -237,13 +190,6 @@ else:
     }}
 res
 """
-    resp = send_to_live_dasktoon({"action": "run_code", "code": py_code})
-    if resp and resp.get("result"):
-        try:
-            return [{"type": "text", "text": json.dumps(eval(resp["result"]), indent=2)}]
-        except Exception:
-            return [{"type": "text", "text": str(resp["result"])}]
-    
     raw = run_headless_code(py_code)
     return [{"type": "text", "text": json.dumps(raw, indent=2)}]
 
@@ -255,7 +201,7 @@ res
 TOOLS = [
     {
         "name": "dasktoon_execute_code",
-        "description": "Execute arbitrary Python code inside DaskToon. If DaskToon GUI is open, executes live on the main UI thread with instant Viewport update; otherwise runs headless.",
+        "description": "Execute Python code in a background DaskToon process (bpy, context, data and ops are available). It does not see a DaskToon window that is open; open and save a .blend file to work on one.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -295,14 +241,6 @@ TOOLS = [
             "properties": {
                 "target_object": {"type": "string", "description": "Name of character head/face mesh object. Defaults to active object."}
             }
-        }
-    },
-    {
-        "name": "dasktoon_capture_viewport",
-        "description": "Capture an interactive screenshot of the active 3D Viewport in DaskToon and return the image to the chat for AI visual review and verification.",
-        "inputSchema": {
-            "type": "object",
-            "properties": {}
         }
     }
 ]
@@ -359,8 +297,6 @@ def handle_json_rpc(line):
             content = tool_create_anime_material(args)
         elif name == "dasktoon_setup_vrm_arkit":
             content = tool_setup_arkit_shapekeys(args)
-        elif name == "dasktoon_capture_viewport":
-            content = tool_capture_viewport(args)
         else:
             return {
                 "jsonrpc": "2.0",
