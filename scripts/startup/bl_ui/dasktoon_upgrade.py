@@ -76,7 +76,7 @@ def _enable_outline(mat, width):
 
 
 def upgrade_legacy_outline(lines):
-    from .dasktoon_anime_nodes import _sync_outline_socket
+    from .dasktoon_outline import _sync_outline_socket
     copied = {}
     removed_slots = 0
     for obj in list(bpy.data.objects):

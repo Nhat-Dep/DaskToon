@@ -154,14 +154,6 @@ class OutlineSyncTest(unittest.TestCase):
         clone = next(n for n in companion.node_tree.nodes if n.bl_idname == 'ShaderNodeTexImage')
         self.assertEqual(clone.interpolation, 'Closest')
 
-    def test_outline_preset_operator(self):
-        bpy.context.view_layer.objects.active = self.obj
-        result = bpy.ops.dasktoon.setup_anime_preset(preset_type='OUTLINE')
-        self.assertEqual(result, {'FINISHED'})
-        update()
-        self.assertTrue(self.node.use_outline)
-        self.assertFalse(any(m.type == 'SOLIDIFY' for m in self.obj.modifiers))
-
 
 if __name__ == "__main__":
     tu.run_tests()

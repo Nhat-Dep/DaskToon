@@ -71,6 +71,76 @@ def outline_material_for(mat, create=True):
     return companion
 
 
+def _sync_outline_socket(src_socket, target_tree, target_socket, visited_nodes):
+    """Clones upstream node network for a single socket into the target material."""
+    if not src_socket or not target_socket:
+        return
+
+    if not src_socket.is_linked:
+        for lk in list(target_socket.links):
+            target_tree.links.remove(lk)
+        try:
+            target_socket.default_value = src_socket.default_value
+        except Exception:
+            pass
+        return
+
+    def copy_node(src_node):
+        if src_node in visited_nodes:
+            return visited_nodes[src_node]
+        dst_node = target_tree.nodes.new(src_node.bl_idname)
+        visited_nodes[src_node] = dst_node
+
+        # Copy RNA properties (like image, blend_type, color_ramp, etc.)
+        for prop in src_node.rna_type.properties:
+            if not prop.is_readonly and prop.identifier not in {'name', 'location'}:
+                try:
+                    setattr(dst_node, prop.identifier, getattr(src_node, prop.identifier))
+                except Exception:
+                    pass
+
+        # Copy unlinked input default values
+        for i, in_s in enumerate(src_node.inputs):
+            if i < len(dst_node.inputs) and not in_s.is_linked:
+                try:
+                    dst_node.inputs[i].default_value = in_s.default_value
+                except Exception:
+                    pass
+        return dst_node
+
+    def build(src_sock):
+        if not src_sock.is_linked:
+            return None
+        link = src_sock.links[0]
+        src_from_n = link.from_node
+        src_from_s = link.from_socket
+        dst_from_n = copy_node(src_from_n)
+
+        for in_s in src_from_n.inputs:
+            if in_s.is_linked:
+                in_link = in_s.links[0]
+                up_dst_n = copy_node(in_link.from_node)
+                try:
+                    f_idx = list(in_link.from_node.outputs).index(in_link.from_socket)
+                    t_idx = list(src_from_n.inputs).index(in_s)
+                    target_tree.links.new(up_dst_n.outputs[f_idx], dst_from_n.inputs[t_idx])
+                    build(in_s)
+                except Exception:
+                    pass
+
+        try:
+            f_sock_idx = list(src_from_n.outputs).index(src_from_s)
+            return dst_from_n.outputs[f_sock_idx]
+        except Exception:
+            return None
+
+    out_s = build(src_socket)
+    if out_s:
+        for lk in list(target_socket.links):
+            target_tree.links.remove(lk)
+        target_tree.links.new(out_s, target_socket)
+
+
 def _set_value(socket, value):
     current = socket.default_value
     try:
@@ -82,7 +152,6 @@ def _set_value(socket, value):
 
 
 def _sync_socket(source_socket, target_tree, target_socket):
-    from .dasktoon_anime_nodes import _sync_outline_socket
     if source_socket.is_linked:
         _sync_outline_socket(source_socket, target_tree, target_socket, {})
     else:

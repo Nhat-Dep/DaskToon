@@ -470,25 +470,7 @@ class DASKTOON_PT_face_shading(Panel):
             box = layout.box()
             box.label(text="Mesh còn custom normal cũ: bóng mũi, cằm", icon='INFO')
             box.label(text="sẽ theo normal đó, không theo hình khối thật")
-            box.operator("dasktoon.reset_face_normals", text="Xóa normal tùy chỉnh cũ", icon='LOOP_BACK')
-
-
-class DASKTOON_PT_face_shading_advanced(Panel):
-    bl_label = "Nâng cao"
-    bl_idname = "DASKTOON_PT_face_shading_advanced"
-    bl_parent_id = "DASKTOON_PT_face_shading"
-    bl_space_type = 'VIEW_3D'
-    bl_region_type = 'UI'
-    bl_category = "DaskToon"
-    bl_options = {'DEFAULT_CLOSED'}
-
-    def draw(self, _context):
-        layout = self.layout
-        layout.label(text="Công cụ cũ: ghi thẳng normal vào mesh", icon='INFO')
-        layout.operator("dasktoon.fix_face_normals", icon='SPHERE')
-        row = layout.row(align=True)
-        row.operator("dasktoon.reset_face_normals", text="Reset Normals", icon='LOOP_BACK')
-        row.operator("dasktoon.toggle_face_normals_display", text="Normal Lines", icon='HIDE_OFF')
+            box.operator("mesh.customdata_custom_splitnormals_clear", icon='LOOP_BACK')
 
 
 classes = (
@@ -497,5 +479,4 @@ classes = (
     DASKTOON_OT_face_shading_remove,
     DASKTOON_OT_face_shading_select_proxy,
     DASKTOON_PT_face_shading,
-    DASKTOON_PT_face_shading_advanced,
 )

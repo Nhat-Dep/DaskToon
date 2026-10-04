@@ -2,10 +2,7 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-"""
-DaskToon Engine - Automatic Startup Initialization
-Initializes Color Management defaults and registers Anime shader nodes cleanly on startup.
-"""
+"""DaskToon start-up: the colour management DaskToon's shading is tuned for (Standard view, no look)."""
 
 import bpy
 
@@ -24,40 +21,8 @@ def dasktoon_enforce_color_management(scene=None):
 
 
 def register():
-    import bl_ui.dasktoon_anime_nodes as anime_nodes
-    anime_nodes.register()
-
-    try:
-        import dasktoon_light_groups
-        dasktoon_light_groups.register()
-    except Exception:
-        pass
-
-    try:
-        import dasktoon_ai_bridge
-        dasktoon_ai_bridge.register()
-    except Exception:
-        pass
-
     dasktoon_enforce_color_management()
 
 
 def unregister():
-    try:
-        import dasktoon_ai_bridge
-        dasktoon_ai_bridge.unregister()
-    except Exception:
-        pass
-
-    try:
-        import dasktoon_light_groups
-        dasktoon_light_groups.unregister()
-    except Exception:
-        pass
-
-    import bl_ui.dasktoon_anime_nodes as anime_nodes
-    anime_nodes.unregister()
-
-
-if __name__ == "__main__":
-    register()
+    pass
