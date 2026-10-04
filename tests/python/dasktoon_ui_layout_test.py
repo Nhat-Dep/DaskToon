@@ -24,6 +24,7 @@ REMOVED = (
     "DASKTOON_OT_fix_face_normals", "DASKTOON_OT_reset_face_normals", "DASKTOON_OT_toggle_face_normals_display",
     "DASKTOON_PT_face_shading_advanced",
     "MATERIAL_PT_dasktoon_outline", "DASKTOON_OT_outline_toggle_material",
+    "DASKTOON_PT_face_shading",
 )
 REMOVED_MODULES = ("dasktoon_light_groups", "bl_ui.dasktoon_anime_nodes", "bl_ui.dasktoon_face_normals",
                    "bl_ui.properties_dasktoon")

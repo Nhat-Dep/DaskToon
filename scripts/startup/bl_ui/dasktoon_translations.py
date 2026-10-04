@@ -49,6 +49,45 @@ VI = {
         "%s: có mặt nhiều hơn 4 cạnh (ngon); hãy Triangulate hoặc chia lại trước",
     "%s: wrote %s and %s": "%s: đã ghi %s và %s",
     "Prepared %d mesh(es), %d error(s)": "Đã chuẩn bị %d mesh, %d lỗi",
+
+    # bl_ui/dasktoon_face_shading.py
+    "Face Shading": "Bóng mặt",
+    "Set Up Face Shading": "Tạo bóng mặt anime",
+    "Shade the face like an egg: find the head, fit an egg-shaped proxy to it and add the Face Shading modifier":
+        "Đổ bóng mặt như một quả trứng: tìm đầu, căn một khối trứng ôm lấy nó và thêm modifier Face Shading",
+    "Fit Proxy": "Căn lại khối trứng",
+    "Fit the egg-shaped proxy to the face again (position and size); the sliders stay":
+        "Căn lại khối trứng theo khuôn mặt (vị trí và kích thước); giữ nguyên các thanh trượt",
+    "Remove Face Shading": "Gỡ bóng mặt",
+    "Remove the face shading of the mesh: the modifier, DT_Face and the proxy when no other mesh uses it":
+        "Gỡ bóng mặt khỏi mesh: modifier, DT_Face và khối trứng nếu không còn mesh nào dùng",
+    "Select Proxy": "Chọn khối trứng",
+    "Select the egg-shaped proxy to move, rotate or scale it; the face shading follows right away":
+        "Chọn khối trứng để di chuyển, xoay hoặc co giãn; bóng mặt cập nhật ngay",
+    "Keep Nose Shadow": "Giữ bóng mũi",
+    "Keep Chin Shadow": "Giữ bóng cằm",
+    "Proxy of %s": "Khối trứng của %s",
+    "No proxy yet: press Fit Proxy": "Chưa có khối trứng: bấm Căn lại khối trứng",
+    "Linked from a library, cannot be edited": "Link từ thư viện, không sửa được",
+    "This mesh still has old custom normals:": "Mesh còn custom normal cũ:",
+    "the nose and chin shadows follow them, not the real shape": "bóng mũi và cằm sẽ theo normal đó, không theo hình khối thật",
+    "Select a character mesh": "Hãy chọn mesh nhân vật",
+    "Mesh %s is linked from a library and cannot be edited": "Mesh %s được link từ thư viện, không sửa được",
+    "No head found (no head bone with weights): select the face in Edit Mode and try again":
+        "Không tìm thấy vùng đầu (không có xương đầu có trọng số): hãy chọn vùng mặt trong Edit Mode rồi bấm lại",
+    "No face skin in the middle of the head: select the whole face, nose included, and try again":
+        "Không thấy da mặt ở giữa vùng đầu: hãy chọn cả khuôn mặt, kể cả mũi, rồi bấm lại",
+    "The face is too small to fit a proxy": "Vùng mặt quá nhỏ để đặt khối trứng",
+    "%s is not inside the head: paint that vertex group again": "%s không nằm trong vùng đầu: hãy tô lại vertex group đó",
+    "%s has no face shading yet: press Set Up Face Shading first":
+        "%s chưa có bóng mặt: hãy bấm Tạo bóng mặt anime trước",
+    "Face shading set up on %s: drag the proxy or use the sliders":
+        "Đã tạo bóng mặt cho %s: kéo khối trứng hoặc chỉnh thanh trượt",
+    "Proxy of %s fitted again": "Đã căn lại khối trứng của %s",
+    "Face shading removed from %s": "Đã gỡ bóng mặt của %s",
+    "This mesh has no proxy yet: press Set Up Face Shading or Fit Proxy":
+        "Mesh chưa có khối trứng: bấm Tạo bóng mặt anime hoặc Căn lại khối trứng",
+    "Proxy %s is not in the open view layer": "Khối trứng %s không nằm trong view layer đang mở",
 }
 
 
