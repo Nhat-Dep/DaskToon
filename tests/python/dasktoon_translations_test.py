@@ -26,6 +26,8 @@ TRANSLATED = [
     "scripts/startup/bl_ui/dasktoon_material_combiner.py",
     "scripts/startup/bl_ui/dasktoon_anime_fx.py",
     "scripts/startup/bl_ui/dasktoon_shape_key_manager.py",
+    "scripts/startup/bl_ui/dasktoon_project.py",
+    "scripts/modules/dasktoon_project/project.py",
 ]
 
 

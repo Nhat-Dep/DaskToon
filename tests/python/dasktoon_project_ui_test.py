@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-"""DaskToon project operators and the Engine Export default target (spec 7). Panels are checked by hand."""
+"""DaskToon project operators, the File › DaskToon Project menu and the Engine Export default target (spec 7)."""
 
 import os
 import sys
@@ -16,6 +16,37 @@ import dasktoon_test_utils as tu  # noqa: E402
 from bl_ui import dasktoon_engine_export as export_ui  # noqa: E402
 from bl_ui import dasktoon_project as project_ui  # noqa: E402
 from dasktoon_project import project as dtp  # noqa: E402
+
+
+class Props:
+    pass
+
+
+class Recorder:
+    def __init__(self):
+        self.log = []
+
+    def operator(self, idname, **_kw):
+        self.log.append(("operator", idname))
+        return Props()
+
+    def menu(self, idname, **_kw):
+        self.log.append(("menu", idname))
+
+    def label(self, text="", **_kw):
+        self.log.append(("label", text))
+
+    def separator(self, **_kw):
+        pass
+
+
+def draw_menu(menu):
+    class Fake:
+        layout = Recorder()
+
+    fake = Fake()
+    menu.draw(fake, bpy.context)
+    return fake.layout.log
 
 
 def fake_unity():
@@ -78,9 +109,38 @@ class ProjectUITest(unittest.TestCase):
         self.create()
         self.assertEqual(export_ui.default_directory(bpy.context), (self.unity.replace("\\", "/"), 'UNITY_URP'))
 
+    def test_file_menu_holds_everything_the_project_panel_had(self):
+        log = draw_menu(bpy.types.TOPBAR_MT_dasktoon_project)
+        self.assertIn(("operator", "dasktoon.project_create"), log)
+        self.assertIn(("operator", "dasktoon.project_open"), log)
+        self.assertIn(("menu", "TOPBAR_MT_dasktoon_project_recent"), log)
+        self.assertNotIn(("operator", "dasktoon.project_export"), log)
+        self.assertEqual(self.create(), {'FINISHED'})
+        log = draw_menu(bpy.types.TOPBAR_MT_dasktoon_project)
+        for entry in (("menu", "TOPBAR_MT_dasktoon_project_models"), ("operator", "dasktoon.project_export"),
+                      ("operator", "dasktoon.project_reinstall_shaders"), ("operator", "dasktoon.project_open_folder")):
+            self.assertIn(entry, log)
+
+    def test_file_menu_entry_draws(self):
+        class Fake:
+            layout = Recorder()
+
+        fake = Fake()
+        project_ui.menu_func_file(fake, bpy.context)
+        self.assertEqual(fake.layout.log, [("menu", "TOPBAR_MT_dasktoon_project")])
+
+    def test_recent_and_models_submenus_list_their_files(self):
+        self.assertEqual(draw_menu(bpy.types.TOPBAR_MT_dasktoon_project_recent), [("label", "No recent projects")])
+        self.assertEqual(self.create(), {'FINISHED'})
+        self.assertEqual(draw_menu(bpy.types.TOPBAR_MT_dasktoon_project_recent), [("operator", "dasktoon.project_open")])
+        self.assertEqual(draw_menu(bpy.types.TOPBAR_MT_dasktoon_project_models),
+                         [("operator", "dasktoon.project_open_model")])
+
     def test_ui_is_registered(self):
-        self.assertTrue(hasattr(bpy.types, "VIEW3D_PT_dasktoon_project"))
-        self.assertTrue(hasattr(bpy.types, "TOPBAR_MT_dasktoon_project"))
+        self.assertFalse(hasattr(bpy.types, "VIEW3D_PT_dasktoon_project"))
+        for name in ("TOPBAR_MT_dasktoon_project", "TOPBAR_MT_dasktoon_project_recent",
+                     "TOPBAR_MT_dasktoon_project_models"):
+            self.assertTrue(hasattr(bpy.types, name), name)
         ours = [f for f in bpy.types.TOPBAR_MT_file._dyn_ui_initialize()
                 if getattr(f, "__module__", "") == project_ui.__name__ and f.__name__ == "menu_func_file"]
         self.assertEqual(len(ours), 1)

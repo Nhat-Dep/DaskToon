@@ -519,6 +519,45 @@ VI = {
     "Wrinkles the right side of the nose up.": "Cánh mũi phải co nhăn lên trên.",
     "Tongue Out": "Thè lưỡi",
     "Sticks the tip of the tongue out past the lips.": "Đầu lưỡi thò ra ngoài môi.",
+
+    # bl_ui/dasktoon_project.py and dasktoon_project/project.py
+    "DaskToon Project": "Dự án DaskToon",
+    "New Project…": "Tạo dự án…",
+    "Open Project…": "Mở dự án…",
+    "No recent projects": "Chưa có dự án gần đây",
+    "Models": "Các model",
+    "Shaders: version %d": "Shader: phiên bản %d",
+    "Shaders: not installed": "Shader: chưa cài",
+    "Create DaskToon Project": "Tạo dự án DaskToon",
+    "Create a DaskToon project linked to a Unity project and install the DaskToon shaders into it":
+        "Tạo dự án DaskToon gắn với một project Unity và cài shader DaskToon vào đó",
+    "Project Folder": "Thư mục dự án",
+    "Unity Project": "Project Unity",
+    "Save Current File in Project": "Lưu file hiện tại vào dự án",
+    "Created project %s and installed the shaders into %s": "Đã tạo dự án %s và cài shader vào %s",
+    "Open DaskToon Project": "Mở dự án DaskToon",
+    "Open a DaskToon project (dasktoon_project.json)": "Mở một dự án DaskToon (dasktoon_project.json)",
+    "Opened project %s": "Đã mở dự án %s",
+    "Open this .blend file of the project (DaskToon asks to save the current file first when it has changes)":
+        "Mở file .blend này của dự án (DaskToon hỏi lưu file hiện tại trước nếu file có thay đổi)",
+    "Export This Model": "Xuất model này",
+    "Export this file's model, materials and shaders straight into the project's Unity project":
+        "Xuất model, material và shader của file này thẳng vào project Unity của dự án",
+    "This file has no object to export": "File không có object nào để xuất",
+    "Reinstall Shaders": "Cài lại shader",
+    "Write the DaskToon shaders into the project's Unity project again":
+        "Ghi lại shader DaskToon vào project Unity của dự án",
+    "Reinstalled the shaders into %s": "Đã cài lại shader vào %s",
+    "Open Project Folder": "Mở thư mục dự án",
+    "Open the project folder in the file manager": "Mở thư mục dự án trong trình quản lý file",
+    "No DaskToon project is open": "Chưa mở dự án DaskToon nào",
+    "%s: project version %r is not supported": "%s: phiên bản dự án %r không được hỗ trợ",
+    "Engine %s is not supported yet": "Engine %s chưa được hỗ trợ",
+    "%s is not a Unity project (it needs Assets/ and ProjectSettings/)":
+        "%s không phải project Unity (cần có Assets/ và ProjectSettings/)",
+    "%s is already a DaskToon project": "%s đã là một dự án DaskToon",
+    "%s already has another file named %s: rename the current file or turn off Save Current File in Project":
+        "%s đã có file khác tên %s: hãy đổi tên file hiện tại hoặc bỏ chọn Lưu file hiện tại vào dự án",
 }
 
 
