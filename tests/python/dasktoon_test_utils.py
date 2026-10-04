@@ -67,6 +67,57 @@ def add_sphere(radius=1.0, segments=32, rings=16):
     return obj
 
 
+TEST_HEAD_SEGMENTS = (48, 24)
+
+
+def add_test_head(radius=0.1, centre=(0.0, 0.0, 1.5), with_armature=True, name="Head"):
+    """Face shading test head (face spec 8), upright and facing -Y with the object at the world origin like a
+    character: a UV sphere skin with a nose bump and two eye dents, then a hair cap that is a separate island. With an
+    armature, every vertex is weighted 1 to bone "Head" of armature "Rig". Returns (head, rig or None);
+    head["dt_skin_vertices"] is the number of skin vertices, which come first."""
+    import bmesh
+    from mathutils import Matrix, Vector
+    bm = bmesh.new()
+    bm.loops.layers.uv.verify()
+    segments, rings = TEST_HEAD_SEGMENTS
+    bmesh.ops.create_uvsphere(bm, u_segments=segments, v_segments=rings, radius=radius, calc_uvs=True)
+    skin = len(bm.verts)
+    for v in bm.verts:
+        d = v.co.normalized()
+        if d.y < 0.0:
+            nose = max(0.0, 1.0 - (d.x / 0.2) ** 2 - ((d.z + 0.15) / 0.2) ** 2)
+            dents = sum(max(0.0, 1.0 - ((d.x - side) / 0.16) ** 2 - ((d.z - 0.12) / 0.12) ** 2) for side in (-0.38, 0.38))
+            v.co += d * radius * (0.12 * nose - 0.08 * dents)
+    hair = Matrix.LocRotScale(Vector((0.0, 0.25 * radius, 0.45 * radius)), None, Vector((1.1, 1.1, 0.7)))
+    bmesh.ops.create_uvsphere(bm, u_segments=24, v_segments=12, radius=radius, matrix=hair, calc_uvs=True)
+    bmesh.ops.translate(bm, verts=list(bm.verts), vec=Vector(centre))
+    mesh = bpy.data.meshes.new(name)
+    bm.to_mesh(mesh)
+    bm.free()
+    mesh.shade_smooth()
+    head = bpy.data.objects.new(name, mesh)
+    bpy.context.scene.collection.objects.link(head)
+    head["dt_skin_vertices"] = skin
+    rig = None
+    if with_armature:
+        rig = bpy.data.objects.new("Rig", bpy.data.armatures.new("Rig"))
+        bpy.context.scene.collection.objects.link(rig)
+        rig.select_set(True)
+        bpy.context.view_layer.objects.active = rig
+        bpy.ops.object.mode_set(mode='EDIT')
+        bone = rig.data.edit_bones.new("Head")
+        bone.head = (centre[0], centre[1], centre[2] - radius)
+        bone.tail = (centre[0], centre[1], centre[2] + radius)
+        bpy.ops.object.mode_set(mode='OBJECT')
+        head.vertex_groups.new(name="Head").add(list(range(len(mesh.vertices))), 1.0, 'REPLACE')
+        head.parent = rig
+        head.modifiers.new("Armature", 'ARMATURE').object = rig
+    for obj in bpy.context.view_layer.objects:
+        obj.select_set(obj == head)
+    bpy.context.view_layer.objects.active = head
+    return head, rig
+
+
 def add_sun(strength=1.0, rotation=(0.0, 0.0, 0.0), color=(1.0, 1.0, 1.0)):
     data = bpy.data.lights.new("Sun", 'SUN')
     data.energy = strength

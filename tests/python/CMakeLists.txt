@@ -250,6 +250,7 @@ foreach(dasktoon_test
     dasktoon_engine_export_ui_test
     dasktoon_project_test
     dasktoon_project_ui_test
+    dasktoon_face_shading_nodes_test
 )
   add_blender_test(
     ${dasktoon_test}
