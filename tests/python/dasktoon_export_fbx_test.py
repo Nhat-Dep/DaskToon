@@ -14,6 +14,7 @@ import bpy
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import dasktoon_test_utils as tu  # noqa: E402
 from bl_ui import dasktoon_outline as outline  # noqa: E402
+from bl_ui import dasktoon_face_shading_nodes as fsn  # noqa: E402
 from bl_ui import dasktoon_outline_nodes as gn  # noqa: E402
 from dasktoon_export import model_fbx  # noqa: E402
 
@@ -103,6 +104,12 @@ class FbxTest(unittest.TestCase):
         self.assertEqual(len(notes), 1)
         self.assertIn("Mirror", notes[0])
         self.assertNotIn(gn.MODIFIER_NAME, notes[0])
+
+
+    def test_modifier_notes_skip_face_shading(self):
+        obj = outlined_character()
+        fsn.ensure_modifier(obj)
+        self.assertEqual(model_fbx.modifier_notes([obj]), [])
 
 
 if __name__ == "__main__":

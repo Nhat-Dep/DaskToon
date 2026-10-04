@@ -152,5 +152,10 @@ class YamlTest(unittest.TestCase):
         self.assertIn("  mainObjectFileID: 2100000\n", uy.material_meta(TEX))
 
 
+    def test_model_meta_turns_blend_shape_normals_off_for_face_shading(self):
+        self.assertIn("    blendShapeNormalImportMode: 0\n", uy.model_meta(TEX, {}, False))
+        self.assertIn("    blendShapeNormalImportMode: 2\n", uy.model_meta(TEX, {}, False, blend_shape_normals=False))
+
+
 if __name__ == "__main__":
     tu.run_tests()

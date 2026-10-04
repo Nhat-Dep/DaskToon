@@ -64,11 +64,14 @@ def prepare_outline_data(objects):
 
 
 def modifier_notes(objects):
-    """Modifiers other than Armature and the DaskToon outline are not in the FBX (Apply Modifiers is off)."""
+    """Modifiers other than Armature, the DaskToon outline and face shading are not in the FBX (Apply Modifiers is
+    off; face shading is written as normals)."""
+    from bl_ui import dasktoon_face_shading_nodes as fsn
     from bl_ui import dasktoon_outline_nodes as gn
     notes = []
     for obj in objects:
-        extra = [m.name for m in getattr(obj, "modifiers", ()) if m.type != 'ARMATURE' and m.name != gn.MODIFIER_NAME]
+        extra = [m.name for m in getattr(obj, "modifiers", ()) if m.type != 'ARMATURE'
+                 and m.name not in (gn.MODIFIER_NAME, fsn.MODIFIER_NAME)]
         if obj.type == 'MESH' and extra:
             notes.append("%s: modifier %s không được áp dụng vào FBX; hãy Apply trước khi export nếu cần"
                          % (obj.name, ", ".join(extra)))

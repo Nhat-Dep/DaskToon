@@ -213,9 +213,10 @@ def texture_meta(guid, kind, size=(1024, 1024), point_filter=False):
     return _meta(guid, lines)
 
 
-def model_meta(guid, materials, import_animation):
+def model_meta(guid, materials, import_animation, blend_shape_normals=True):
     """ModelImporter of an exported FBX. `materials` maps an FBX material name to the GUID of its .mat, so Unity
-    uses the exported materials without Search and Remap (spec 4)."""
+    uses the exported materials without Search and Remap (spec 4). `blend_shape_normals` False sets the blend shape
+    normals to None (face shading, face spec 6)."""
     remap = []
     for name in sorted(materials):
         remap += ["  - first:", "      type: UnityEngine:Material", "      assembly: UnityEngine.CoreModule",
@@ -293,7 +294,7 @@ def model_meta(guid, materials, import_animation):
         "    tangentImportMode: 3",
         "    normalCalculationMode: 4",
         "    legacyComputeAllNormalsFromSmoothingGroupsWhenMeshHasBlendShapes: 0",
-        "    blendShapeNormalImportMode: 0",
+        "    blendShapeNormalImportMode: %d" % (0 if blend_shape_normals else 2),
         "    normalSmoothingSource: 0",
         "  referencedClips: []",
         "  importAnimation: %d" % (1 if import_animation else 0),

@@ -31,6 +31,7 @@ class Report:
     skipped: list = field(default_factory=list)
     baked: list = field(default_factory=list)
     outline_meshes: list = field(default_factory=list)
+    face_meshes: list = field(default_factory=list)
     modifier_notes: list = field(default_factory=list)
     warnings: list = field(default_factory=list)
     light_hint: str = ""
@@ -51,6 +52,9 @@ class Report:
             out.append("Đã bake: " + ", ".join(self.baked))
         if self.outline_meshes:
             out.append("Đã ghi DT_OutlineN/W cho: " + ", ".join(self.outline_meshes))
+        if self.face_meshes:
+            out.append("Bóng mặt: đã ghi normal khối trứng (tư thế nghỉ) cho: %s; blend shape trong FBX không đổi normal"
+                       % ", ".join(self.face_meshes))
         out += self.modifier_notes
         out += ["Cảnh báo: " + w for w in self.warnings]
         out += [hint for hint in (self.light_hint, self.ambient_hint) if hint]

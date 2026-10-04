@@ -168,13 +168,9 @@ class _Writer:
         return guid
 
 
-def export_model(context, target, objects, options):
-    """Write `objects` (FBX), their DaskToon materials and the shaders to `target` (spec 3-5). Returns a Report."""
-    from . import assets, graph, model_fbx, shaders_install, targets, unity_yaml
-    if target.engine not in targets.SUPPORTED_ENGINES:
-        raise ValueError("Engine %s chưa được hỗ trợ" % target.engine)
-    rep = report.Report(mode=target.mode, root=target.root, name=target.name)
-    meshes = [o for o in objects if o.type == 'MESH']
+def _write_model(context, target, objects, meshes, options, rep):
+    """Outline data, materials, shaders and the FBX (spec 3-5)."""
+    from . import assets, graph, model_fbx, shaders_install, unity_yaml
     rep.outline_meshes, errors = model_fbx.prepare_outline_data(meshes)
     rep.warnings += errors
     rep.modifier_notes = model_fbx.modifier_notes(meshes)
@@ -198,7 +194,8 @@ def export_model(context, target, objects, options):
         writer.folder(model_dir)
         rel = "%s/%s.fbx" % (model_dir, safe_name(target.name))
         guid = writer.guid(rel)
-        meta = unity_yaml.model_meta(guid, mat_guids, options.include_animation)
+        meta = unity_yaml.model_meta(guid, mat_guids, options.include_animation,
+                                     blend_shape_normals=not rep.face_meshes)
         left_out = []
 
         def write_fbx(path):
@@ -209,6 +206,23 @@ def export_model(context, target, objects, options):
         if left_out:
             rep.warnings.append("Không đưa vào FBX: %s (không nằm trong view layer hiện tại, ví dụ collection bị loại trừ)"
                                 % ", ".join(left_out))
+    return writer
+
+
+def export_model(context, target, objects, options):
+    """Write `objects` (FBX), their DaskToon materials and the shaders to `target` (spec 3-5). Returns a Report.
+    Face-shaded meshes get their rest-pose face normals for the FBX and are given back afterwards (face spec 6)."""
+    from . import assets, face_shading, targets, unity_yaml
+    if target.engine not in targets.SUPPORTED_ENGINES:
+        raise ValueError("Engine %s chưa được hỗ trợ" % target.engine)
+    rep = report.Report(mode=target.mode, root=target.root, name=target.name)
+    meshes = [o for o in objects if o.type == 'MESH']
+    snapshots, rep.face_meshes, errors = face_shading.bake_rest_normals(context, meshes)
+    rep.warnings += errors
+    try:
+        writer = _write_model(context, target, objects, meshes, options, rep)
+    finally:
+        face_shading.restore_normals(snapshots)
     rep.light_hint = report.light_hint(context.scene)
     rep.ambient_hint = report.ambient_hint(context.scene)
     if target.mode == 'FOLDER':
