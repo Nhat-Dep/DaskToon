@@ -254,6 +254,7 @@ foreach(dasktoon_test
     dasktoon_face_shading_test
     dasktoon_face_shading_export_test
     dasktoon_mcp_server_test
+    dasktoon_install_test
 )
   add_blender_test(
     ${dasktoon_test}
