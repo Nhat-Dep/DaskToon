@@ -257,6 +257,7 @@ foreach(dasktoon_test
     dasktoon_install_test
     dasktoon_languages_test
     dasktoon_ui_layout_test
+    dasktoon_translations_test
 )
   add_blender_test(
     ${dasktoon_test}

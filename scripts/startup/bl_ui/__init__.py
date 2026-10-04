@@ -59,6 +59,7 @@ _modules = [
     "properties_scene",
     "properties_texture",
     "properties_world",
+    "dasktoon_translations",
     "engine_dasktoon_anime",
     "dasktoon_shading_styles",
     "dasktoon_outline",
