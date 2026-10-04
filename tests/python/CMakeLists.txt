@@ -253,6 +253,7 @@ foreach(dasktoon_test
     dasktoon_face_shading_nodes_test
     dasktoon_face_shading_test
     dasktoon_material_combiner_test
+    dasktoon_anime_fx_test
     dasktoon_face_shading_export_test
     dasktoon_mcp_server_test
     dasktoon_install_test
