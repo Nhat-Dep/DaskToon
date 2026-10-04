@@ -147,6 +147,26 @@ class FaceShadingExportTest(unittest.TestCase):
         export_face.restore_normals(snapshots)
         self.assertFalse(head.data.has_custom_normals)
 
+    def test_a_failure_while_writing_gives_the_written_meshes_back(self):
+        head, _rig = face_head()
+        second = head.copy()
+        second.data = head.data.copy()
+        bpy.context.scene.collection.objects.link(second)
+        real, calls = export_face._snapshot, []
+
+        def flaky(mesh):
+            calls.append(mesh)
+            if len(calls) == 2:
+                raise RuntimeError("boom")
+            return real(mesh)
+
+        with mock.patch.object(export_face, "_snapshot", side_effect=flaky):
+            with self.assertRaises(RuntimeError):
+                export_face.bake_rest_normals(bpy.context, [head, second])
+        self.assertEqual(len(calls), 2)
+        self.assertFalse(head.data.has_custom_normals)
+        self.assertFalse(second.data.has_custom_normals)
+
     def test_export_model_writes_rest_normals_and_the_meta(self):
         head, rig = face_head()
         want_world = to_world(head, rest_normals(head, rig))

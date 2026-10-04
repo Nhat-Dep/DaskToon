@@ -202,6 +202,13 @@ class FaceShadingSetupTest(unittest.TestCase):
         with self.assertRaises(fs.FaceShadingError):
             fs.head_vertices(head, None)
 
+    def test_selection_without_a_middle_is_reported(self):
+        head, _rig = tu.add_test_head(with_armature=False)
+        sides = [v.index for v in head.data.vertices if abs(v.co.x) > 0.08]  # two clusters, nothing in the middle
+        with self.assertRaises(fs.FaceShadingError):
+            fs.setup(head, selected=sides)
+        self.assertIsNone(fsn.get_modifier(head))
+
     def test_nothing_to_work_with_raises(self):
         head, _rig = tu.add_test_head(with_armature=False)
         with self.assertRaises(fs.FaceShadingError):

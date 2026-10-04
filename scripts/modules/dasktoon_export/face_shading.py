@@ -139,10 +139,14 @@ def bake_rest_normals(context, objects):
                                 "chưa được ghi" % (obj.name, ", ".join(_before_face_shading(obj)) or "?"))
             evaluated.to_mesh_clear()
     snapshots, names = [], []
-    for obj, values in normals.items():
-        snapshots.append((obj.data, _snapshot(obj.data)))
-        obj.data.normals_split_custom_set(values)
-        names.append(obj.name)
+    try:
+        for obj, values in normals.items():
+            snapshots.append((obj.data, _snapshot(obj.data)))
+            obj.data.normals_split_custom_set(values)
+            names.append(obj.name)
+    except Exception:  # The caller gets no snapshots: give back what was already written, then report the error.
+        restore_normals(snapshots)
+        raise
     return snapshots, names, warnings
 
 

@@ -176,6 +176,8 @@ def face_island(obj, head):
             if wide(island):
                 return island
             first = island if first is None else first
+    if first is None:
+        raise FaceShadingError("Không thấy da mặt ở giữa vùng đầu; hãy chọn cả vùng mặt (gồm mũi) rồi bấm lại")
     return first
 
 
