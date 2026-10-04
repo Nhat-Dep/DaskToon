@@ -27,6 +27,8 @@ REMOVED = (
     "DASKTOON_PT_face_shading",
     "DASKTOON_PT_material_combiner",
     "VIEW3D_PT_dasktoon_anime_fx",
+    "DASKTOON_PT_shape_axis_panel", "DASKTOON_PT_vrm_toolset_panel", "DASKTOON_PT_arkit_studio_panel",
+    "DASKTOON_OT_vrm_zero_all_shapes", "DASKTOON_OT_vrm_mirror_shape_key",
 )
 REMOVED_MODULES = ("dasktoon_light_groups", "bl_ui.dasktoon_anime_nodes", "bl_ui.dasktoon_face_normals",
                    "bl_ui.properties_dasktoon")

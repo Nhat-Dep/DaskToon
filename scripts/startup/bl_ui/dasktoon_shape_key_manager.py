@@ -1,31 +1,23 @@
 # SPDX-FileCopyrightText: 2026 DaskToon Authors
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-"""
-DaskToon ShapeKey Axis & Morph Controller Suite
-Interactive 2D Viewport HUD & Multi-Purpose Blendshape Rigging System.
-Supports 4 specialized visual HUD controller types:
-  1. 🕹️ 2D Joystick (XY Planar Pad)
-  2. ⭐ 5-Point AIUEO Star (Japanese/Anime Lip-Sync Pentagon)
-  3. 🧭 Emotion Compass Wheel (360-degree Radial Expression Wheel)
-  4. 🎚️ 1D Multi-Slider Hub (Multi-Channel Vertical Fader Mixer Bank, e.g. Blink Both / Left / Right)
-With 1-Click VRM (VRoid / VRM 0.x / VRM 1.0), MMD, ARKit 52, Ears, Cloth & Body Auto-Detection.
-"""
+"""Expression tools under Properties › Object Data › Shape Keys (UI spec 3.2): VRM and ARKit expression sets, split and
+bake tools, reference cards with a test on the model, and controllers that drive shape keys from a 2D joystick, an
+AIUEO star, an emotion wheel or a slider bank, with an interactive HUD in the 3D Viewport."""
 
 import bpy
 import gpu
 from gpu_extras.batch import batch_for_shader
 import blf
 import math
-import json
-import os
 import re
+import textwrap
+from bpy.app.translations import pgettext_iface as iface_, pgettext_n as n_, pgettext_rpt as rpt_
 from bpy.types import (
     Panel,
     Operator,
     PropertyGroup,
     UIList,
-    Menu,
 )
 from bpy.props import (
     StringProperty,
@@ -35,7 +27,6 @@ from bpy.props import (
     EnumProperty,
     CollectionProperty,
     PointerProperty,
-    FloatVectorProperty,
 )
 
 
@@ -50,6 +41,7 @@ class DaskHUDState:
     active_slider_index = -1
     drag_start_x = 0
     drag_start_y = 0
+    session = 0  # bumped by every HUD start; an older HUD operator still running ends itself
 
 
 # =============================================================================
@@ -67,63 +59,63 @@ def _update_slider_value(self, context):
 
 
 class DaskShapeMappingItem(PropertyGroup):
-    """Represents a single Shape Key mapped onto 2D coordinates or 1D multi-slider bank."""
+    """A shape key placed on a controller: a point on the pad, or a slider of a slider bank"""
     shape_key_name: StringProperty(
         name="Shape Key",
-        description="Target mesh Shape Key name",
+        description="Shape key this mapping drives",
         default="",
     )
     # 2D Coordinates
     target_x: FloatProperty(
         name="Target X",
-        description="X coordinate on the 2D plane (-1.0 to 1.0)",
+        description="Position of the shape key on the pad, from left (-1) to right (1)",
         default=0.0,
         min=-1.0,
         max=1.0,
     )
     target_y: FloatProperty(
         name="Target Y",
-        description="Y coordinate on the 2D plane (-1.0 to 1.0)",
+        description="Position of the shape key on the pad, from bottom (-1) to top (1)",
         default=0.0,
         min=-1.0,
         max=1.0,
     )
     # 1D Multi-Slider Channel Value
     slider_value: FloatProperty(
-        name="Slider Value",
-        description="Independent channel fader value (0.0 to 1.0)",
+        name="Value",
+        description="Value of this slider",
         default=0.0,
         min=0.0,
         max=1.0,
         update=_update_slider_value,
     )
     radius: FloatProperty(
-        name="Radius / Influence",
-        description="Radial influence falloff distance",
+        name="Influence Radius",
+        description="Distance from the point at which the shape key fades out",
         default=0.90,
         min=0.01,
         max=3.0,
     )
     min_value: FloatProperty(
-        name="Min Value",
-        description="Minimum output value",
+        name="Minimum",
+        description="Lowest value given to the shape key",
         default=0.0,
     )
     max_value: FloatProperty(
-        name="Max Value",
-        description="Maximum output value",
+        name="Maximum",
+        description="Highest value given to the shape key",
         default=1.0,
     )
     exponent: FloatProperty(
-        name="Curve Falloff",
-        description="Falloff curve exponent (1.0 = Linear, 2.0 = Smooth, 0.5 = Sharp)",
+        name="Falloff",
+        description="Exponent of the falloff curve: 1 is linear, 2 smooth, 0.5 sharp",
         default=1.0,
         min=0.1,
         max=5.0,
     )
     enabled: BoolProperty(
         name="Enabled",
-        description="Enable/Disable this mapping",
+        description="Use this mapping",
         default=True,
     )
 
@@ -134,34 +126,34 @@ def _update_handle_position(self, context):
 
 
 class DaskShapeGroupItem(PropertyGroup):
-    """A logical controller group (e.g. Look, Mouth, Hair Sway, Breast Physics, Cloth Wind)."""
+    """A controller: a pad or a slider bank that drives a set of shape keys"""
     name: StringProperty(
-        name="Group Name",
-        description="Name of this controller group",
+        name="Name",
+        description="Name of the controller",
         default="New Controller",
     )
     controller_category: EnumProperty(
         name="Category",
-        description="Intended animation and morph category",
+        description="What the controller animates",
         items=[
-            ('FACE', "🎭 Face & Expression", "Facial blendshapes, emotions, eyes, brows"),
-            ('LIP_SYNC', "👄 Lip-Sync & Visemes", "Phonemes, AIUEO, speech shapes"),
-            ('BODY', "🦾 Body & Muscle Morphs", "Anatomy, muscle flex, breathing, body scale"),
-            ('HAIR_EARS', "🦊 Hair, Ears & Tails", "Kemonomimi animal ears, tail wag, ponytail sway"),
-            ('CLOTH', "👗 Cloth & Dynamics", "Skirt wind sway, cape folds, wrinkles"),
-            ('PROPS', "⚔️ Props & Mechanics", "Weapons, mechanical transforms, character customizer"),
-            ('CUSTOM', "⚙️ Custom", "General-purpose morph group"),
+            ('FACE', "Face", "Expressions, eyes and brows"),
+            ('LIP_SYNC', "Lip Sync", "Visemes and speech shapes"),
+            ('BODY', "Body", "Breathing, muscles and proportions"),
+            ('HAIR_EARS', "Hair & Ears", "Animal ears, tails and hair"),
+            ('CLOTH', "Cloth", "Skirt and cape sway, wrinkles"),
+            ('PROPS', "Props", "Weapons, mechanical parts and customizer shapes"),
+            ('CUSTOM', "Custom", "Anything else"),
         ],
         default='FACE',
     )
     controller_type: EnumProperty(
         name="Type",
-        description="Controller layout and interaction geometry",
+        description="Shape of the controller",
         items=[
-            ('JOYSTICK_2D', "🕹️ 2D Joystick (XY Pad)", "Free 2D XY planar joystick controller"),
-            ('VISEME_STAR', "⭐ 5-Point AIUEO Star", "5-Point radial star pad for Japanese/Anime speech"),
-            ('COMPASS_WHEEL', "🧭 Emotion Compass Wheel", "360-degree radial emotion/direction wheel"),
-            ('SLIDER_1D', "🎚️ 1D Multi-Slider Hub", "Multi-channel linear fader mixer bank"),
+            ('JOYSTICK_2D', "2D Joystick", "A pad with each shape key at a point"),
+            ('VISEME_STAR', "AIUEO Star", "A five-point star for the vowels A, I, U, E, O"),
+            ('COMPASS_WHEEL', "Emotion Wheel", "A wheel with an emotion in each direction"),
+            ('SLIDER_1D', "Slider Bank", "One slider per shape key"),
         ],
         default='JOYSTICK_2D',
     )
@@ -169,7 +161,7 @@ class DaskShapeGroupItem(PropertyGroup):
     # Current Handle (Drivable Coordinates for 2D Types)
     handle_x: FloatProperty(
         name="Handle X",
-        description="Horizontal driver coordinate",
+        description="Horizontal position of the handle",
         default=0.0,
         min=-1.0,
         max=1.0,
@@ -177,7 +169,7 @@ class DaskShapeGroupItem(PropertyGroup):
     )
     handle_y: FloatProperty(
         name="Handle Y",
-        description="Vertical driver coordinate",
+        description="Vertical position of the handle",
         default=0.0,
         min=-1.0,
         max=1.0,
@@ -190,8 +182,8 @@ class DaskShapeGroupItem(PropertyGroup):
 
     # Group Settings
     use_rbf_blend: BoolProperty(
-        name="Smooth RBF Blending",
-        description="Smoothly blend between overlapping target influence zones",
+        name="Smooth Blending",
+        description="Blend smoothly where the influence of two points overlaps",
         default=True,
     )
     lock_x: BoolProperty(name="Lock X", default=False)
@@ -241,36 +233,18 @@ class DaskShapeGroupItem(PropertyGroup):
 
 
 class DaskShapeControllerRoot(PropertyGroup):
-    """Root data container attached to Scene or Object."""
+    """The controllers of a mesh object"""
     groups: CollectionProperty(type=DaskShapeGroupItem)
-    active_group_index: IntProperty(name="Active Group Index", default=0)
-    filter_category: EnumProperty(
-        name="Filter Category",
-        items=[
-            ('ALL', "All Categories", "Show all controllers"),
-            ('FACE', "Face", "Facial and Expression controllers"),
-            ('LIP_SYNC', "Lip-Sync", "Visemes and phoneme controllers"),
-            ('BODY', "Body", "Anatomy and body morphs"),
-            ('HAIR_EARS', "Hair/Ears", "Hair, ears, tails controllers"),
-            ('CLOTH', "Cloth", "Cloth and wind controllers"),
-            ('PROPS', "Props", "Props and customizer morphs"),
-        ],
-        default='ALL',
-    )
-    search_query: StringProperty(
-        name="Search",
-        description="Filter controllers by name",
-        default="",
-    )
+    active_group_index: IntProperty(name="Active Controller Index", default=0)
 
     # HUD Viewport Settings
     hud_enabled: BoolProperty(
-        name="Show Viewport HUD",
-        description="Display interactive 2D on-screen Joystick HUD in the 3D Viewport",
+        name="Show HUD",
+        description="Show the controller HUD in the 3D Viewport",
         default=False,
     )
-    hud_pos_x: IntProperty(name="HUD Pos X", default=80, min=10, max=4000)
-    hud_pos_y: IntProperty(name="HUD Pos Y", default=80, min=10, max=4000)
+    hud_pos_x: IntProperty(name="HUD X", default=80, min=10, max=4000)
+    hud_pos_y: IntProperty(name="HUD Y", default=80, min=10, max=4000)
     hud_size: IntProperty(name="HUD Size", default=240, min=150, max=600)
 
 
@@ -362,15 +336,15 @@ def draw_shape_axis_hud_2d(self, context):
     fill_rect(hud_x, hud_y + hud_h - 26, hud_x + hud_w, hud_y + hud_h, (0.12, 0.15, 0.24, 0.95))
     wire_line(hud_x, hud_y + hud_h - 26, hud_x + hud_w, hud_y + hud_h - 26, (0.35, 0.42, 0.55, 0.80))
 
-    type_badges = {
-        'JOYSTICK_2D': "🕹️ 2D Joystick",
-        'VISEME_STAR': "⭐ AIUEO Star",
-        'COMPASS_WHEEL': "🧭 Emotion Wheel",
-        'SLIDER_1D': f"🎚️ Multi-Slider Hub ({len(grp.mappings)} Sliders)",
+    type_names = {
+        'JOYSTICK_2D': n_("2D Joystick"),
+        'VISEME_STAR': n_("AIUEO Star"),
+        'COMPASS_WHEEL': n_("Emotion Wheel"),
+        'SLIDER_1D': n_("Slider Bank"),
     }
-    badge = type_badges.get(grp.controller_type, "🕹️")
-    draw_str(f"{badge}: {grp.name}", hud_x + 8, hud_y + hud_h - 18, size=11, color=(0.95, 0.96, 1.0, 1.0))
-    draw_str("✕", hud_x + hud_w - 18, hud_y + hud_h - 18, size=12, color=(0.7, 0.7, 0.8, 1.0))
+    badge = iface_(type_names.get(grp.controller_type, type_names['JOYSTICK_2D']))
+    draw_str("%s: %s" % (badge, grp.name), hud_x + 8, hud_y + hud_h - 18, size=11, color=(0.95, 0.96, 1.0, 1.0))
+    draw_str("×", hud_x + hud_w - 18, hud_y + hud_h - 18, size=12, color=(0.7, 0.7, 0.8, 1.0))
 
     # 3. Inner Pad Area Background
     pad_left = hud_x + 15
@@ -456,10 +430,10 @@ def draw_shape_axis_hud_2d(self, context):
             y2 = pad_cy + pad_half * math.sin(ang)
             wire_line(pad_cx, pad_cy, x2, y2, (0.22, 0.30, 0.42, 0.60))
 
-        draw_str("JOY (喜)", pad_cx - 20, pad_cy + pad_half - 12, size=9, color=(1.0, 0.85, 0.30, 0.90))
-        draw_str("SORROW (哀)", pad_cx - 28, pad_cy - pad_half + 4, size=9, color=(0.40, 0.70, 1.0, 0.90))
-        draw_str("ANGRY (怒)", pad_cx - pad_half + 2, pad_cy + 2, size=9, color=(1.0, 0.35, 0.35, 0.90))
-        draw_str("SURPRISE (驚)", pad_cx + pad_half - 52, pad_cy + 2, size=9, color=(0.50, 0.95, 0.60, 0.90))
+        draw_str(iface_("Joy"), pad_cx - 20, pad_cy + pad_half - 12, size=9, color=(1.0, 0.85, 0.30, 0.90))
+        draw_str(iface_("Sorrow"), pad_cx - 28, pad_cy - pad_half + 4, size=9, color=(0.40, 0.70, 1.0, 0.90))
+        draw_str(iface_("Angry"), pad_cx - pad_half + 2, pad_cy + 2, size=9, color=(1.0, 0.35, 0.35, 0.90))
+        draw_str(iface_("Surprised"), pad_cx + pad_half - 52, pad_cy + 2, size=9, color=(0.50, 0.95, 0.60, 0.90))
 
     else:
         # ── TYPE 1: 2D PLANAR XY JOYSTICK ──
@@ -494,13 +468,13 @@ def draw_shape_axis_hud_2d(self, context):
     btn_y = hud_y + 32
     fill_rect(hud_x + 10, btn_y, hud_x + hud_w - 10, btn_y + 20, (0.16, 0.20, 0.28, 0.90))
     wire_rect(hud_x + 10, btn_y, hud_x + hud_w - 10, btn_y + 20, (0.30, 0.36, 0.48, 0.80))
-    draw_str("Reset All in Group", hud_x + hud_w / 2 - 44, btn_y + 5, size=11, color=(0.90, 0.92, 1.0, 1.0))
+    draw_str(iface_("Reset Group"), hud_x + hud_w / 2 - 44, btn_y + 5, size=11, color=(0.90, 0.92, 1.0, 1.0))
 
     bar_y = hud_y + 8
     if grp.controller_type != 'SLIDER_1D':
-        draw_str(f"X: {grp.handle_x:+.3f}  Y: {grp.handle_y:+.3f}", hud_x + 12, bar_y + 16, size=10, color=(0.75, 0.80, 0.90, 0.90))
+        draw_str("X: %+.3f  Y: %+.3f" % (grp.handle_x, grp.handle_y), hud_x + 12, bar_y + 16, size=10, color=(0.75, 0.80, 0.90, 0.90))
     else:
-        draw_str(f"{len(grp.mappings)} Channels Active", hud_x + 12, bar_y + 16, size=10, color=(0.75, 0.80, 0.90, 0.90))
+        draw_str(iface_("%d sliders") % len(grp.mappings), hud_x + 12, bar_y + 16, size=10, color=(0.75, 0.80, 0.90, 0.90))
 
     fill_rect(hud_x + 10, bar_y, hud_x + 30, bar_y + 14, (0.14, 0.17, 0.24, 0.90))
     wire_rect(hud_x + 10, bar_y, hud_x + 30, bar_y + 14, (0.28, 0.34, 0.44, 0.80))
@@ -518,13 +492,42 @@ def draw_shape_axis_hud_2d(self, context):
 # Interactive Modal Operator for Viewport 2D HUD
 # =============================================================================
 
+def _view3d_region(screen):
+    """(area, region) of the first 3D Viewport of the screen, or (None, None)."""
+    for area in (screen.areas if screen is not None else ()):
+        if area.type == 'VIEW_3D':
+            for region in area.regions:
+                if region.type == 'WINDOW':
+                    return area, region
+    return None, None
+
+
+def _close_hud(context):
+    """Hide the HUD. A HUD operator still running ends at its next event."""
+    DaskHUDState.is_active = False
+    DaskHUDState.is_dragging = False
+    DaskHUDState.active_slider_index = -1
+    if DaskHUDState.draw_handler is not None:
+        bpy.types.SpaceView3D.draw_handler_remove(DaskHUDState.draw_handler, 'WINDOW')
+        DaskHUDState.draw_handler = None
+    obj = context.object
+    if obj is not None and hasattr(obj, "dask_shape_controllers"):
+        obj.dask_shape_controllers.hud_enabled = False
+    if context.screen is not None:
+        for area in context.screen.areas:
+            area.tag_redraw()
+
+
 class DASKTOON_OT_shape_axis_toggle_hud(Operator):
-    """Open interactive 2D on-screen Joystick HUD in 3D Viewport (Click & drag handles to deform character!)"""
+    """Show the active controller in the 3D Viewport: drag the handle or the sliders, I inserts a keyframe, Esc closes"""
     bl_idname = "dasktoon.shape_axis_toggle_hud"
-    bl_label = "Interactive Viewport HUD"
+    bl_label = "Viewport HUD"
     bl_options = {'REGISTER', 'UNDO'}
 
     def modal(self, context, event):
+        if not DaskHUDState.is_active or getattr(self, "_session", -1) != DaskHUDState.session:
+            # Closed from the Controllers panel, or a newer HUD took over.
+            return {'CANCELLED'}
         context.area.tag_redraw()
         obj = context.object
         if not obj or not hasattr(obj, "dask_shape_controllers"):
@@ -641,13 +644,21 @@ class DASKTOON_OT_shape_axis_toggle_hud(Operator):
         return {'PASS_THROUGH'}
 
     def invoke(self, context, event):
-        if context.area.type != 'VIEW_3D':
-            self.report({'WARNING'}, "View3D not found")
-            return {'CANCELLED'}
+        if DaskHUDState.is_active:
+            _close_hud(context)
+            return {'FINISHED'}
 
         obj = context.object
-        if not obj or not hasattr(obj, "dask_shape_controllers"):
-            self.report({'ERROR'}, "Select a Mesh with Shape Keys!")
+        if obj is None or obj.type != 'MESH' or obj.data.shape_keys is None:
+            self.report({'ERROR'}, rpt_("Select a mesh with shape keys"))
+            return {'CANCELLED'}
+
+        # The button sits in Properties › Object Data: the HUD runs in a 3D Viewport of the same window.
+        area, region = context.area, context.region
+        if area is None or area.type != 'VIEW_3D' or region is None or region.type != 'WINDOW':
+            area, region = _view3d_region(context.screen)
+        if area is None:
+            self.report({'WARNING'}, rpt_("Open a 3D Viewport to show the HUD"))
             return {'CANCELLED'}
 
         root = obj.dask_shape_controllers
@@ -656,27 +667,23 @@ class DASKTOON_OT_shape_axis_toggle_hud(Operator):
 
         root.hud_enabled = True
         DaskHUDState.is_active = True
+        DaskHUDState.session += 1
+        self._session = DaskHUDState.session
 
         if DaskHUDState.draw_handler is None:
             DaskHUDState.draw_handler = bpy.types.SpaceView3D.draw_handler_add(
                 draw_shape_axis_hud_2d, (self, context), 'WINDOW', 'POST_PIXEL'
             )
 
-        context.window_manager.modal_handler_add(self)
-        self.report({'INFO'}, "Interactive Viewport HUD Active! (Drag Sliders/Handles | Press I to Keyframe | ESC to Close)")
+        # Mouse positions reach modal() relative to the region the handler was added in.
+        with context.temp_override(area=area, region=region):
+            context.window_manager.modal_handler_add(self)
+        area.tag_redraw()
+        self.report({'INFO'}, rpt_("HUD open: drag the handle or the sliders, I inserts a keyframe, Esc closes"))
         return {'RUNNING_MODAL'}
 
     def cancel(self, context):
-        DaskHUDState.is_active = False
-        DaskHUDState.is_dragging = False
-        DaskHUDState.active_slider_index = -1
-        if DaskHUDState.draw_handler is not None:
-            bpy.types.SpaceView3D.draw_handler_remove(DaskHUDState.draw_handler, 'WINDOW')
-            DaskHUDState.draw_handler = None
-        if context.object and hasattr(context.object, "dask_shape_controllers"):
-            context.object.dask_shape_controllers.hud_enabled = False
-        if context.area:
-            context.area.tag_redraw()
+        _close_hud(context)
 
 
 # =============================================================================
@@ -684,9 +691,9 @@ class DASKTOON_OT_shape_axis_toggle_hud(Operator):
 # =============================================================================
 
 class DASKTOON_OT_shape_axis_reset_handle(Operator):
-    """Reset current controller handle to center (0, 0) or zero all sliders in group"""
+    """Move the handle of the active controller back to the middle and set its sliders to 0"""
     bl_idname = "dasktoon.shape_axis_reset_handle"
-    bl_label = "Reset Handle"
+    bl_label = "Reset Group"
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
@@ -700,12 +707,12 @@ class DASKTOON_OT_shape_axis_reset_handle(Operator):
                 for mp in grp.mappings:
                     mp.slider_value = 0.0
                 grp.evaluate_mappings(context)
-                self.report({'INFO'}, f"Reset {grp.name} to 0.0")
+                self.report({'INFO'}, rpt_("Reset %s") % grp.name)
         return {'FINISHED'}
 
 
 class DASKTOON_OT_shape_axis_reset_all(Operator):
-    """Reset all controller handles and zero all shape keys"""
+    """Reset every controller and set all shape keys to 0"""
     bl_idname = "dasktoon.shape_axis_reset_all"
     bl_label = "Reset All Controllers"
     bl_options = {'REGISTER', 'UNDO'}
@@ -727,14 +734,14 @@ class DASKTOON_OT_shape_axis_reset_all(Operator):
                 if kb != obj.data.shape_keys.reference_key:
                     kb.value = 0.0
 
-        self.report({'INFO'}, "All shape keys and controllers reset to 0.0!")
+        self.report({'INFO'}, rpt_("All controllers and shape keys reset"))
         return {'FINISHED'}
 
 
 class DASKTOON_OT_shape_axis_keyframe_handle(Operator):
-    """Insert Keyframe for the active controller handle position and shape keys"""
+    """Insert a keyframe on the handle of the active controller and on its shape keys"""
     bl_idname = "dasktoon.shape_axis_keyframe_handle"
-    bl_label = "Keyframe Handle"
+    bl_label = "Insert Keyframe"
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
@@ -754,12 +761,12 @@ class DASKTOON_OT_shape_axis_keyframe_handle(Operator):
                             if kb:
                                 kb.keyframe_insert(data_path="value")
 
-                self.report({'INFO'}, f"Keyframed {grp.name} at frame {context.scene.frame_current}")
+                self.report({'INFO'}, rpt_("Keyframed %s at frame %d") % (grp.name, context.scene.frame_current))
         return {'FINISHED'}
 
 
 class DASKTOON_OT_shape_axis_add_group(Operator):
-    """Add a new Shape Key controller group"""
+    """Add a controller"""
     bl_idname = "dasktoon.shape_axis_add_group"
     bl_label = "Add Controller"
     bl_options = {'REGISTER', 'UNDO'}
@@ -769,9 +776,9 @@ class DASKTOON_OT_shape_axis_add_group(Operator):
         name="Category",
         items=[
             ('FACE', "Face", ""),
-            ('LIP_SYNC', "Lip-Sync", ""),
+            ('LIP_SYNC', "Lip Sync", ""),
             ('BODY', "Body", ""),
-            ('HAIR_EARS', "Hair/Ears", ""),
+            ('HAIR_EARS', "Hair & Ears", ""),
             ('CLOTH', "Cloth", ""),
             ('PROPS', "Props", ""),
         ],
@@ -781,9 +788,9 @@ class DASKTOON_OT_shape_axis_add_group(Operator):
         name="Type",
         items=[
             ('JOYSTICK_2D', "2D Joystick", ""),
-            ('VISEME_STAR', "5-Point Star", ""),
-            ('COMPASS_WHEEL', "Compass Wheel", ""),
-            ('SLIDER_1D', "1D Multi-Slider Hub", ""),
+            ('VISEME_STAR', "AIUEO Star", ""),
+            ('COMPASS_WHEEL', "Emotion Wheel", ""),
+            ('SLIDER_1D', "Slider Bank", ""),
         ],
         default='JOYSTICK_2D',
     )
@@ -802,7 +809,7 @@ class DASKTOON_OT_shape_axis_add_group(Operator):
 
 
 class DASKTOON_OT_shape_axis_remove_group(Operator):
-    """Remove the active controller group"""
+    """Remove the active controller"""
     bl_idname = "dasktoon.shape_axis_remove_group"
     bl_label = "Remove Controller"
     bl_options = {'REGISTER', 'UNDO'}
@@ -819,12 +826,12 @@ class DASKTOON_OT_shape_axis_remove_group(Operator):
 
 
 class DASKTOON_OT_shape_axis_add_mapping(Operator):
-    """Add a shape key target mapping to the active controller"""
+    """Add a shape key to the active controller"""
     bl_idname = "dasktoon.shape_axis_add_mapping"
     bl_label = "Add Mapping"
     bl_options = {'REGISTER', 'UNDO'}
 
-    shape_name: StringProperty(name="Shape Key Name", default="")
+    shape_name: StringProperty(name="Shape Key", default="")
     x: FloatProperty(name="Target X", default=0.0)
     y: FloatProperty(name="Target Y", default=0.0)
     radius: FloatProperty(name="Radius", default=0.90)
@@ -846,7 +853,7 @@ class DASKTOON_OT_shape_axis_add_mapping(Operator):
 
 
 class DASKTOON_OT_shape_axis_remove_mapping(Operator):
-    """Remove active shape key target mapping"""
+    """Remove the active shape key from the controller"""
     bl_idname = "dasktoon.shape_axis_remove_mapping"
     bl_label = "Remove Mapping"
     bl_options = {'REGISTER', 'UNDO'}
@@ -869,23 +876,23 @@ class DASKTOON_OT_shape_axis_remove_mapping(Operator):
 # =============================================================================
 
 class DASKTOON_OT_shape_axis_auto_setup(Operator):
-    """Automatically detect character Blendshapes (VRM 0.x/1.0, MMD, ARKit 52, Ears, Cloth, Body) and generate optimal HUD controllers"""
+    """Find the character's shape keys (VRM, VRoid, MMD and other common names) and add controllers for them"""
     bl_idname = "dasktoon.shape_axis_auto_setup"
-    bl_label = "1-Click Auto Setup"
+    bl_label = "Auto Setup"
     bl_options = {'REGISTER', 'UNDO'}
 
     preset_type: EnumProperty(
-        name="Auto Preset",
+        name="Preset",
         items=[
-            ('VRM_STANDARD', "🌟 Auto Detect VRM / VRoid Suite (Primary)", "1-Click Full Setup for VRM 0.x, VRM 1.0 & VRoid blendshapes"),
-            ('ALL_SUITE', "✨ Complete Multi-Purpose Suite", "Auto setup Face, Visemes, Ears, Hair, Body & Cloth"),
-            ('VRM_EMOTIONS', "🧭 VRM Emotion Compass Wheel", "Setup 360° Joy/Angry/Sad/Surprised emotion wheel"),
-            ('AIUEO_VISEMES', "⭐ AIUEO 5-Point Star Pad", "Setup 5-point Japanese/Anime viseme pad"),
-            ('BLINK_HUB', "🎚️ 3-Slider Eye Blink Hub", "Setup multi-slider 1D hub for Blink Both, Left & Right"),
-            ('ARKIT_52', "📱 Apple ARKit 52 Face Suite", "Setup full 52 ARKit face tracking blendshapes"),
-            ('EARS_TAIL', "🦊 Kemonomimi Animal Ears & Tail", "Setup ear wag & tail physics"),
-            ('BODY_MUSCLE', "🦾 Body & Muscle Morphs", "Setup Breathing, Muscle Flex & Morphs"),
-            ('CLOTH_WIND', "👗 Cloth & Wind Sway", "Setup 4-way skirt/cape wind sway"),
+            ('VRM_STANDARD', "Auto Detect VRM / VRoid",
+             "Emotion wheel, AIUEO star, gaze joystick and blink sliders for VRM 0.x, VRM 1.0 and VRoid shape keys"),
+            ('ALL_SUITE', "Everything", "Every controller below that finds matching shape keys"),
+            ('VRM_EMOTIONS', "VRM Emotions", "An emotion wheel: joy, angry, sorrow, surprised, relaxed"),
+            ('AIUEO_VISEMES', "AIUEO Visemes", "A five-point star for the vowels"),
+            ('BLINK_HUB', "Blink Sliders", "Sliders to blink both eyes, the left eye and the right eye"),
+            ('EARS_TAIL', "Ears & Tail", "A joystick for animal ear shape keys"),
+            ('BODY_MUSCLE', "Body", "A joystick for breathing, muscle and weight shape keys"),
+            ('CLOTH_WIND', "Cloth Wind", "A joystick for skirt and cape sway in four directions"),
         ],
         default='VRM_STANDARD',
     )
@@ -893,10 +900,11 @@ class DASKTOON_OT_shape_axis_auto_setup(Operator):
     def execute(self, context):
         obj = context.object
         if not obj or obj.type != 'MESH' or not obj.data or not obj.data.shape_keys:
-            self.report({'ERROR'}, "Selected object has no Shape Keys!")
+            self.report({'ERROR'}, rpt_("Select a mesh with shape keys"))
             return {'CANCELLED'}
 
         root = obj.dask_shape_controllers
+        before = len(root.groups)
         existing_names = [kb.name for kb in obj.data.shape_keys.key_blocks]
 
         def find_shape(patterns):
@@ -1036,7 +1044,7 @@ class DASKTOON_OT_shape_axis_auto_setup(Operator):
                 if fat: grp.mappings.add().shape_key_name = fat; grp.mappings[-1].target_x = -1.0
 
         root.active_group_index = 0
-        self.report({'INFO'}, f"Auto Setup completed! Generated {len(root.groups)} controllers for {self.preset_type}.")
+        self.report({'INFO'}, rpt_("Auto Setup added %d controllers") % (len(root.groups) - before))
         return {'FINISHED'}
 
 
@@ -1045,7 +1053,7 @@ class DASKTOON_OT_shape_axis_auto_setup(Operator):
 # =============================================================================
 
 class DASKTOON_OT_shape_axis_generate_rig_board(Operator):
-    """Generate an interactive 3D Rig Board in Viewport with Bone/Empty handles driven by Blender Drivers"""
+    """Add a board next to the mesh with a frame and an empty handle per controller, as a start for a rig"""
     bl_idname = "dasktoon.shape_axis_generate_rig_board"
     bl_label = "Generate 3D Rig Board"
     bl_options = {'REGISTER', 'UNDO'}
@@ -1053,12 +1061,12 @@ class DASKTOON_OT_shape_axis_generate_rig_board(Operator):
     def execute(self, context):
         obj = context.object
         if not obj or obj.type != 'MESH' or not obj.data or not obj.data.shape_keys:
-            self.report({'ERROR'}, "Select a Mesh with Shape Keys!")
+            self.report({'ERROR'}, rpt_("Select a mesh with shape keys"))
             return {'CANCELLED'}
 
         root = obj.dask_shape_controllers
         if not root.groups:
-            self.report({'WARNING'}, "No controller groups to generate! Run Auto-Setup first.")
+            self.report({'WARNING'}, rpt_("No controllers yet: run Auto Setup first"))
             return {'CANCELLED'}
 
         col_name = f"{obj.name}_ShapeRigBoard"
@@ -1100,12 +1108,12 @@ class DASKTOON_OT_shape_axis_generate_rig_board(Operator):
             con.use_max_y = True; con.max_y = obj.location.y
             con.owner_space = 'WORLD'
 
-        self.report({'INFO'}, f"Generated 3D Rig Board with {len(root.groups)} controllers in collection '{col_name}'!")
+        self.report({'INFO'}, rpt_("Rig board with %d controllers added to collection %s") % (len(root.groups), col_name))
         return {'FINISHED'}
 
 
 # =============================================================================
-# UI Panels: N-Panel Sidebar & Object Data Properties
+# Lists of the Controllers panel
 # =============================================================================
 
 class DASKTOON_UL_shape_groups(UIList):
@@ -1119,132 +1127,17 @@ class DASKTOON_UL_shape_groups(UIList):
         }
         ic = type_icons.get(grp.controller_type, 'SETTINGS')
         layout.prop(grp, "name", text="", emboss=False, icon=ic)
-        layout.label(text=f"({len(grp.mappings)} shapes)")
+        layout.label(text=iface_("%d shapes") % len(grp.mappings), translate=False)
 
 
 class DASKTOON_UL_shape_mappings(UIList):
     def draw_item(self, _context, layout, _data, item, icon, _active_data_, _active_propname, _index):
         mp = item
         layout.prop(mp, "enabled", text="")
-        layout.label(text=mp.shape_key_name or "(Empty)", icon='SHAPEKEY_DATA')
+        layout.label(text=mp.shape_key_name or iface_("(Empty)"), icon='SHAPEKEY_DATA', translate=False)
         row = layout.row(align=True)
         row.alignment = 'RIGHT'
-        row.label(text=f"X:{mp.target_x:.2f} Y:{mp.target_y:.2f}")
-
-
-class DASKTOON_PT_shape_axis_panel(Panel):
-    """Master N-Panel in 3D Viewport under 'Shape Axis' and 'DaskToon' tabs"""
-    bl_space_type = 'VIEW_3D'
-    bl_region_type = 'UI'
-    bl_category = "Shape Axis"
-    bl_label = "ShapeKey Axis Controller Suite"
-
-    @classmethod
-    def poll(cls, context):
-        obj = context.object
-        return obj and obj.type == 'MESH' and obj.data and obj.data.shape_keys
-
-    def draw(self, context):
-        layout = self.layout
-        obj = context.object
-        root = getattr(obj, "dask_shape_controllers", None)
-        if not root:
-            return
-
-        # 1. Big Interactive Viewport HUD Launcher
-        box_hud = layout.box()
-        b_hud_col = box_hud.column(align=True)
-        btn_text = "🕹️ Close Viewport HUD" if DaskHUDState.is_active else "🕹️ Open Interactive Viewport HUD"
-        btn_icon = 'CANCEL' if DaskHUDState.is_active else 'PLAY'
-        b_hud_col.operator("dasktoon.shape_axis_toggle_hud", text=btn_text, icon=btn_icon)
-
-        # 2. Quick Actions Toolbar
-        row = layout.row(align=True)
-        row.operator("dasktoon.shape_axis_reset_handle", text="Reset Group", icon='LOOP_BACK')
-        row.operator("dasktoon.shape_axis_reset_all", text="Reset All", icon='X')
-        row.operator("dasktoon.shape_axis_keyframe_handle", text="Key [I]", icon='KEY_HLT')
-
-        # 3. 1-Click Multi-Purpose & VRM Auto Setup Wizard
-        box = layout.box()
-        box.label(text="1-Click Auto Setup Presets", icon='AUTO')
-        # Primary VRM Button
-        vrm_op = box.operator("dasktoon.shape_axis_auto_setup", text="🌟 Auto Detect VRM / VRoid Suite", icon='SOLO_ON')
-        vrm_op.preset_type = 'VRM_STANDARD'
-
-        grid = box.grid_flow(columns=2, align=True)
-        g1 = grid.operator("dasktoon.shape_axis_auto_setup", text="🧭 VRM Emotions", icon='ORIENTATION_GIMBAL')
-        g1.preset_type = 'VRM_EMOTIONS'
-        g2 = grid.operator("dasktoon.shape_axis_auto_setup", text="⭐ AIUEO Star", icon='OUTLINER_OB_FONT')
-        g2.preset_type = 'AIUEO_VISEMES'
-        g3 = grid.operator("dasktoon.shape_axis_auto_setup", text="🎚️ 3-Slider Blink", icon='DRIVER_DISTANCE')
-        g3.preset_type = 'BLINK_HUB'
-        g4 = grid.operator("dasktoon.shape_axis_auto_setup", text="🦊 Ears & Tail", icon='STRANDS')
-        g4.preset_type = 'EARS_TAIL'
-
-        layout.separator()
-
-        # 4. Groups List
-        row = layout.row()
-        row.label(text="Controller Groups:", icon='GROUP')
-        row.prop(root, "filter_category", text="")
-
-        row = layout.row()
-        row.template_list("DASKTOON_UL_shape_groups", "", root, "groups", root, "active_group_index", rows=4)
-
-        col = row.column(align=True)
-        col.operator("dasktoon.shape_axis_add_group", icon='ADD', text="")
-        col.operator("dasktoon.shape_axis_remove_group", icon='REMOVE', text="")
-
-        if not root.groups or root.active_group_index >= len(root.groups):
-            return
-
-        grp = root.groups[root.active_group_index]
-
-        # 5. Active Group Controls & Sliders
-        box = layout.box()
-        b_row = box.row()
-        b_row.prop(grp, "name", text="Group")
-        b_row.prop(grp, "controller_type", text="")
-
-        if grp.controller_type == 'SLIDER_1D':
-            # Multi-Slider Faders in N-Panel
-            col = box.column(align=True)
-            col.label(text=f"Fader Channels ({len(grp.mappings)} Sliders):", icon='DRIVER_DISTANCE')
-            for mp in grp.mappings:
-                if mp.shape_key_name:
-                    row = col.row(align=True)
-                    row.prop(mp, "slider_value", slider=True, text=mp.shape_key_name)
-                    # Quick zero button for each channel
-                    zero_op = row.operator("dasktoon.shape_axis_reset_handle", text="", icon='X')
-        else:
-            col = box.column(align=True)
-            col.prop(grp, "handle_x", slider=True, text="X (Horizontal)")
-            col.prop(grp, "handle_y", slider=True, text="Y (Vertical)")
-
-        # 6. Mappings for this Group
-        box.separator()
-        b_row = box.row()
-        b_row.label(text="Shape Key Mappings:", icon='SHAPEKEY_DATA')
-
-        b_row = box.row()
-        b_row.template_list("DASKTOON_UL_shape_mappings", "", grp, "mappings", grp, "active_mapping_index", rows=3)
-        b_col = b_row.column(align=True)
-        b_col.operator("dasktoon.shape_axis_add_mapping", icon='ADD', text="")
-        b_col.operator("dasktoon.shape_axis_remove_mapping", icon='REMOVE', text="")
-
-        if grp.mappings and 0 <= grp.active_mapping_index < len(grp.mappings):
-            mp = grp.mappings[grp.active_mapping_index]
-            sub = box.column(align=True)
-            sub.prop_search(mp, "shape_key_name", obj.data.shape_keys, "key_blocks", text="Shape")
-            if grp.controller_type != 'SLIDER_1D':
-                coords = sub.row(align=True)
-                coords.prop(mp, "target_x", text="Target X")
-                coords.prop(mp, "target_y", text="Target Y")
-                sub.prop(mp, "radius", text="Influence Radius", slider=True)
-
-        # 7. 3D Rig Board Generator
-        layout.separator()
-        layout.operator("dasktoon.shape_axis_generate_rig_board", text="🎮 Generate 3D Rig Board", icon='ARMATURE_DATA')
+        row.label(text="X:%.2f Y:%.2f" % (mp.target_x, mp.target_y), translate=False)
 
 
 # =============================================================================
@@ -1252,16 +1145,16 @@ class DASKTOON_PT_shape_axis_panel(Panel):
 # =============================================================================
 
 class DASKTOON_OT_vrm_init_standard(Operator):
-    """Initialize or generate missing VRM 0.x / VRM 1.0 standard blendshapes"""
+    """Add the VRM expression shape keys the mesh does not have yet, empty, ready to sculpt"""
     bl_idname = "dasktoon.vrm_init_standard"
-    bl_label = "Initialize VRM Standard"
+    bl_label = "Add VRM Expression Set"
     bl_options = {'REGISTER', 'UNDO'}
 
     standard_type: EnumProperty(
-        name="VRM Version",
+        name="Version",
         items=[
-            ('VRM_0', "VRM 0.x Standard (joy, angry, a, i, u, blink...)", "18 VRM 0.x blendshapes"),
-            ('VRM_1', "VRM 1.0 Standard (happy, sad, aa, ih, blinkLeft...)", "18 VRM 1.0 blendshapes"),
+            ('VRM_0', "VRM 0.x", "The 18 VRM 0.x shape keys: joy, angry, a, i, u, blink…"),
+            ('VRM_1', "VRM 1.0", "The 18 VRM 1.0 shape keys: happy, sad, aa, ih, blinkLeft…"),
         ],
         default='VRM_0',
     )
@@ -1269,7 +1162,7 @@ class DASKTOON_OT_vrm_init_standard(Operator):
     def execute(self, context):
         obj = context.object
         if not obj or obj.type != 'MESH':
-            self.report({'ERROR'}, "Select a Mesh Object!")
+            self.report({'ERROR'}, rpt_("Select a mesh object"))
             return {'CANCELLED'}
 
         if not obj.data.shape_keys:
@@ -1297,24 +1190,25 @@ class DASKTOON_OT_vrm_init_standard(Operator):
                 obj.shape_key_add(name=name, from_mix=False)
                 added += 1
 
-        self.report({'INFO'}, f"VRM Initializer: Added {added} missing shape keys for {self.standard_type}.")
+        self.report({'INFO'}, rpt_("Added %d VRM shape keys") % added)
         return {'FINISHED'}
 
 
 class DASKTOON_OT_vrm_split_shape_key(Operator):
-    """Split a symmetrical Shape Key into Left (_L) and Right (_R) with seamless X-axis falloff"""
+    """Split a symmetric shape key into a left and a right shape key, blended across the middle of the mesh"""
     bl_idname = "dasktoon.vrm_split_shape_key"
-    bl_label = "Split Shape Key (L / R)"
+    bl_label = "Split Left / Right"
     bl_options = {'REGISTER', 'UNDO'}
 
-    source_shape: StringProperty(name="Source Shape Key", default="")
-    falloff: FloatProperty(name="Center Seam Falloff", default=0.015, min=0.0, max=0.2, description="Smooth blending radius across the center line X=0")
+    source_shape: StringProperty(name="Source", default="")
+    falloff: FloatProperty(name="Falloff", default=0.015, min=0.0, max=0.2,
+                           description="Width of the blend across the middle of the mesh (X = 0)")
     suffix_style: EnumProperty(
-        name="Suffix Style",
+        name="Suffix",
         items=[
-            ('_L_R', "_L / _R (Standard)", "e.g. blink_L, blink_R"),
-            ('Left_Right', "Left / Right (CamelCase)", "e.g. blinkLeft, blinkRight"),
-            ('_l_r', "_l / _r (Lowercase)", "e.g. blink_l, blink_r"),
+            ('_L_R', "_L / _R", "Names like blink_L and blink_R"),
+            ('Left_Right', "Left / Right", "Names like blinkLeft and blinkRight"),
+            ('_l_r', "_l / _r", "Names like blink_l and blink_r"),
         ],
         default='_L_R',
     )
@@ -1330,12 +1224,12 @@ class DASKTOON_OT_vrm_split_shape_key(Operator):
     def execute(self, context):
         obj = context.object
         if not obj or not obj.data or not obj.data.shape_keys:
-            self.report({'ERROR'}, "Select a Mesh with Shape Keys!")
+            self.report({'ERROR'}, rpt_("Select a mesh with shape keys"))
             return {'CANCELLED'}
 
         sk = obj.data.shape_keys
         if not self.source_shape or self.source_shape not in sk.key_blocks:
-            self.report({'ERROR'}, f"Source Shape Key '{self.source_shape}' not found!")
+            self.report({'ERROR'}, rpt_("Shape key %s not found") % self.source_shape)
             return {'CANCELLED'}
 
         basis_kb = sk.key_blocks[0]
@@ -1370,84 +1264,18 @@ class DASKTOON_OT_vrm_split_shape_key(Operator):
             left_kb.data[i].co = b_co + delta * fac_l
             right_kb.data[i].co = b_co + delta * fac_r
 
-        self.report({'INFO'}, f"Split '{self.source_shape}' -> '{l_name}' and '{r_name}' with falloff {self.falloff:.3f}m.")
-        return {'FINISHED'}
-
-
-class DASKTOON_OT_vrm_mirror_shape_key(Operator):
-    """Mirror a Shape Key across the X-axis (Left to Right or Right to Left)"""
-    bl_idname = "dasktoon.vrm_mirror_shape_key"
-    bl_label = "Mirror Shape Key (X-Axis)"
-    bl_options = {'REGISTER', 'UNDO'}
-
-    source_shape: StringProperty(name="Source Shape Key", default="")
-    target_shape: StringProperty(name="Target Name (Empty for Auto)", default="")
-
-    def invoke(self, context, _event):
-        obj = context.object
-        if obj and obj.data and obj.data.shape_keys:
-            active_kb = obj.active_shape_key
-            if active_kb and active_kb.name != "Basis":
-                self.source_shape = active_kb.name
-        return context.window_manager.invoke_props_dialog(self)
-
-    def execute(self, context):
-        obj = context.object
-        if not obj or not obj.data or not obj.data.shape_keys:
-            self.report({'ERROR'}, "Select a Mesh with Shape Keys!")
-            return {'CANCELLED'}
-
-        sk = obj.data.shape_keys
-        if not self.source_shape or self.source_shape not in sk.key_blocks:
-            self.report({'ERROR'}, f"Shape Key '{self.source_shape}' not found!")
-            return {'CANCELLED'}
-
-        basis_kb = sk.key_blocks[0]
-        src_kb = sk.key_blocks[self.source_shape]
-
-        target_name = self.target_shape
-        if not target_name:
-            if "_L" in self.source_shape: target_name = self.source_shape.replace("_L", "_R")
-            elif "_R" in self.source_shape: target_name = self.source_shape.replace("_R", "_L")
-            elif "Left" in self.source_shape: target_name = self.source_shape.replace("Left", "Right")
-            elif "Right" in self.source_shape: target_name = self.source_shape.replace("Right", "Left")
-            elif "_l" in self.source_shape: target_name = self.source_shape.replace("_l", "_r")
-            elif "_r" in self.source_shape: target_name = self.source_shape.replace("_r", "_l")
-            else: target_name = f"{self.source_shape}_Mirrored"
-
-        target_kb = sk.key_blocks.get(target_name) or obj.shape_key_add(name=target_name, from_mix=False)
-
-        # Build KD-Tree for spatial symmetry matching
-        import mathutils
-        kd = mathutils.kdtree.KDTree(len(obj.data.vertices))
-        for i, v in enumerate(obj.data.vertices):
-            kd.insert(v.co, i)
-        kd.balance()
-
-        for i, v in enumerate(obj.data.vertices):
-            mirrored_pos = mathutils.Vector((-v.co.x, v.co.y, v.co.z))
-            co, match_idx, dist = kd.find(mirrored_pos)
-
-            if dist < 0.01:
-                # Matched symmetric vertex
-                src_delta = src_kb.data[match_idx].co - basis_kb.data[match_idx].co
-                mirrored_delta = mathutils.Vector((-src_delta.x, src_delta.y, src_delta.z))
-                target_kb.data[i].co = basis_kb.data[i].co + mirrored_delta
-            else:
-                target_kb.data[i].co = basis_kb.data[i].co
-
-        self.report({'INFO'}, f"Mirrored '{self.source_shape}' -> '{target_name}'.")
+        self.report({'INFO'}, rpt_("Split %s into %s and %s") % (self.source_shape, l_name, r_name))
         return {'FINISHED'}
 
 
 class DASKTOON_OT_vrm_bake_expression(Operator):
-    """Bake current mixed Shape Key values into a new single Shape Key"""
+    """Save the current mix of shape key values as a new shape key"""
     bl_idname = "dasktoon.vrm_bake_expression"
-    bl_label = "Bake Current Expression to Shape Key"
+    bl_label = "Bake Expression to New Shape Key"
     bl_options = {'REGISTER', 'UNDO'}
 
-    new_name: StringProperty(name="New Shape Key Name", default="custom_expression_baked")
-    reset_after: BoolProperty(name="Reset Sliders After Bake", default=True)
+    new_name: StringProperty(name="Name", default="custom_expression_baked")
+    reset_after: BoolProperty(name="Clear Values After Bake", default=True)
 
     def invoke(self, context, _event):
         return context.window_manager.invoke_props_dialog(self)
@@ -1455,7 +1283,7 @@ class DASKTOON_OT_vrm_bake_expression(Operator):
     def execute(self, context):
         obj = context.object
         if not obj or not obj.data or not obj.data.shape_keys:
-            self.report({'ERROR'}, "Select a Mesh with Shape Keys!")
+            self.report({'ERROR'}, rpt_("Select a mesh with shape keys"))
             return {'CANCELLED'}
 
         sk = obj.data.shape_keys
@@ -1481,22 +1309,22 @@ class DASKTOON_OT_vrm_bake_expression(Operator):
                 if kb != basis_kb and kb != new_kb:
                     kb.value = 0.0
 
-        self.report({'INFO'}, f"Baked {active_count} active shape keys into '{self.new_name}'.")
+        self.report({'INFO'}, rpt_("Baked %d shape keys into %s") % (active_count, self.new_name))
         return {'FINISHED'}
 
 
 class DASKTOON_OT_vrm_synthesize_arkit52(Operator):
-    """Synthesize complete Apple ARKit 52 Face Tracking blendshapes from existing VRM/VRoid shape keys"""
+    """Build the 52 ARKit face tracking shape keys from the VRM or VRoid shape keys of the mesh"""
     bl_idname = "dasktoon.vrm_synthesize_arkit52"
-    bl_label = "Synthesize ARKit 52 Suite"
+    bl_label = "Synthesize ARKit 52 from VRM"
     bl_options = {'REGISTER', 'UNDO'}
 
-    overwrite_existing: BoolProperty(name="Overwrite Existing ARKit Keys", default=False)
+    overwrite_existing: BoolProperty(name="Overwrite Existing", default=False)
 
     def execute(self, context):
         obj = context.object
         if not obj or not obj.data or not obj.data.shape_keys:
-            self.report({'ERROR'}, "Select a Mesh with Shape Keys!")
+            self.report({'ERROR'}, rpt_("Select a mesh with shape keys"))
             return {'CANCELLED'}
 
         sk = obj.data.shape_keys
@@ -1624,28 +1452,12 @@ class DASKTOON_OT_vrm_synthesize_arkit52(Operator):
 
             generated_count += 1
 
-        self.report({'INFO'}, f"Generated {generated_count} / 52 Apple ARKit blendshapes from VRM sources!")
-        return {'FINISHED'}
-
-
-class DASKTOON_OT_vrm_zero_all_shapes(Operator):
-    """Reset all Shape Keys on the active mesh to 0.0"""
-    bl_idname = "dasktoon.vrm_zero_all_shapes"
-    bl_label = "Zero All Shape Keys"
-    bl_options = {'REGISTER', 'UNDO'}
-
-    def execute(self, context):
-        obj = context.object
-        if not obj or not obj.data or not obj.data.shape_keys:
-            return {'CANCELLED'}
-        for kb in obj.data.shape_keys.key_blocks:
-            kb.value = 0.0
-        self.report({'INFO'}, "Reset all Shape Keys to 0.0.")
+        self.report({'INFO'}, rpt_("Built %d of the 52 ARKit shape keys") % generated_count)
         return {'FINISHED'}
 
 
 class DASKTOON_OT_vrm_remove_empty_shapes(Operator):
-    """Clean up and remove shape keys with zero vertex displacement"""
+    """Remove the shape keys that move no vertex"""
     bl_idname = "dasktoon.vrm_remove_empty_shapes"
     bl_label = "Remove Empty Shape Keys"
     bl_options = {'REGISTER', 'UNDO'}
@@ -1677,25 +1489,30 @@ class DASKTOON_OT_vrm_remove_empty_shapes(Operator):
             if kb:
                 obj.shape_key_remove(kb)
 
-        self.report({'INFO'}, f"Removed {len(to_remove)} empty/unused shape keys.")
+        self.report({'INFO'}, rpt_("Removed %d empty shape keys") % len(to_remove))
         return {'FINISHED'}
 
 
 class DASKTOON_OT_vrm_convert_naming(Operator):
-    """Convert Shape Key naming conventions (VRM 0.x <-> VRM 1.0 <-> VRoid <-> MMD)"""
+    """Rename shape keys from one naming standard to another (VRoid, VRM 0.x, VRM 1.0)"""
     bl_idname = "dasktoon.vrm_convert_naming"
-    bl_label = "Convert Naming Convention"
+    bl_label = "Convert Naming"
     bl_options = {'REGISTER', 'UNDO'}
 
     conversion_mode: EnumProperty(
-        name="Conversion Standard",
+        name="Conversion",
         items=[
-            ('VROID_TO_VRM0', "VRoid (Fcl_...) -> VRM 0.x (joy, blink...)", "Convert VRoid names to VRM 0.x standard"),
-            ('VRM0_TO_VRM1', "VRM 0.x -> VRM 1.0 (happy, blinkLeft...)", "Convert VRM 0.x to VRM 1.0 standard"),
-            ('VRM1_TO_VRM0', "VRM 1.0 -> VRM 0.x (joy, blink_l...)", "Convert VRM 1.0 to VRM 0.x standard"),
+            ('VROID_TO_VRM0', "VRoid to VRM 0.x", "Rename VRoid shape keys (Fcl_ALL_Joy…) to VRM 0.x names (joy…)"),
+            ('VRM0_TO_VRM1', "VRM 0.x to VRM 1.0",
+             "Rename VRM 0.x shape keys (joy, blink_l…) to VRM 1.0 names (happy, blinkLeft…)"),
+            ('VRM1_TO_VRM0', "VRM 1.0 to VRM 0.x",
+             "Rename VRM 1.0 shape keys (happy, blinkLeft…) to VRM 0.x names (joy, blink_l…)"),
         ],
         default='VROID_TO_VRM0',
     )
+
+    def invoke(self, context, _event):
+        return context.window_manager.invoke_props_dialog(self)
 
     def execute(self, context):
         obj = context.object
@@ -1735,24 +1552,24 @@ class DASKTOON_OT_vrm_convert_naming(Operator):
                 kb.name = new_n
                 renamed += 1
 
-        self.report({'INFO'}, f"Renamed {renamed} shape keys to {self.conversion_mode}.")
+        self.report({'INFO'}, rpt_("Renamed %d shape keys") % renamed)
         return {'FINISHED'}
 
 
 class DASKTOON_OT_vrm_live_preview(Operator):
-    """Live interactive Auto-Blink and Lip-Sync previewer in 3D Viewport"""
+    """Play a blink, speech or emotion test on the mesh in a loop, until Esc or right click"""
     bl_idname = "dasktoon.vrm_live_preview"
-    bl_label = "Live Expression Previewer"
+    bl_label = "Live Preview"
     bl_options = {'REGISTER'}
 
     _timer = None
     _step = 0.0
     preview_mode: EnumProperty(
-        name="Preview Mode",
+        name="Mode",
         items=[
-            ('AUTO_BLINK', "👁️ Auto Blink Cycle", "Natural random eye blink test"),
-            ('AIUEO_TALK', "🗣️ AIUEO Lip-Sync Loop", "Continuous vowel speech cycle"),
-            ('EMOTIONS', "🎭 Emotion Transition Loop", "Smooth emotion shifting"),
+            ('AUTO_BLINK', "Blink", "Blink every few seconds"),
+            ('AIUEO_TALK', "Speech", "Say the vowels A, I, U, E, O in a loop"),
+            ('EMOTIONS', "Emotions", "Go through joy, surprise, sorrow and anger in a loop"),
         ],
         default='AUTO_BLINK',
     )
@@ -1808,7 +1625,7 @@ class DASKTOON_OT_vrm_live_preview(Operator):
         wm = context.window_manager
         self._timer = wm.event_timer_add(0.033, window=context.window)
         wm.modal_handler_add(self)
-        self.report({'INFO'}, f"Live Preview Started: {self.preview_mode}. Press ESC or Right Click to stop.")
+        self.report({'INFO'}, rpt_("Live preview running: press Esc or right click to stop"))
         return {'RUNNING_MODAL'}
 
     def cancel(self, context):
@@ -1822,7 +1639,7 @@ class DASKTOON_OT_vrm_live_preview(Operator):
                 if kb != obj.data.shape_keys.key_blocks[0]:
                     kb.value = 0.0
         context.area.tag_redraw()
-        self.report({'INFO'}, "Live Preview Stopped.")
+        self.report({'INFO'}, rpt_("Live preview stopped"))
 
 
 # =============================================================================
@@ -1831,104 +1648,112 @@ class DASKTOON_OT_vrm_live_preview(Operator):
 
 VRM_GUIDE_CARDS = {
     'JOY': {
-        'name': "😊 Joy / Happy (Nụ cười tươi)",
-        'region': "👄 Khóe Miệng + 👁️ Mắt",
-        'desc': "Nụ cười tươi tắn. Khóe miệng kéo dẹt sang hai bên và chếch lên trên, mí mắt dưới đẩy nhẹ tạo mắt cười hình bán nguyệt.",
+        'name': n_("Joy"),
+        'region': n_("Mouth Corners and Eyes"),
+        'desc': n_("A bright smile: the mouth corners pull out and up, and the lower eyelids push up into smiling "
+                   "half-moon eyes."),
         'targets': ['joy', 'happy', 'Fcl_ALL_Joy', 'mouthSmileLeft', 'mouthSmileRight'],
     },
     'ANGRY': {
-        'name': "😠 Angry (Tức giận)",
-        'region': "🤨 Lông Mày + 👄 Khóe Môi",
-        'desc': "Biểu cảm tức giận. Hai đầu lông mày hạ thấp và ép sát vào sống mũi, mí mắt nheo gắt, khóe môi chúc xuống.",
+        'name': n_("Angry"),
+        'region': n_("Brows and Mouth Corners"),
+        'desc': n_("Anger: the inner ends of the brows drop and press toward the nose, the eyes narrow hard and the "
+                   "mouth corners turn down."),
         'targets': ['angry', 'Fcl_ALL_Angry', 'browDownLeft', 'browDownRight', 'mouthFrownLeft', 'mouthFrownRight'],
     },
     'SORROW': {
-        'name': "😢 Sorrow / Sad (Buồn bã)",
-        'region': "🤨 Lông Mày + 👄 Môi Dưới",
-        'desc': "Biểu cảm buồn bã / đau lòng. Hai đầu lông mày nâng cao chếch chữ bát (八), khóe miệng trễ xuống, ánh mắt rũ.",
+        'name': n_("Sorrow"),
+        'region': n_("Brows and Lower Lip"),
+        'desc': n_("Sadness: the inner ends of the brows rise into a slant, the mouth corners droop and the gaze "
+                   "falls."),
         'targets': ['sorrow', 'sad', 'Fcl_ALL_Sorrow', 'browInnerUp', 'mouthFrownLeft', 'mouthFrownRight'],
     },
     'SURPRISED': {
-        'name': "😲 Surprised (Kinh ngạc)",
-        'region': "👁️ Mắt Mở To + 👄 Miệng Chữ O",
-        'desc': "Biểu cảm sửng sốt / ngạc nhiên. Hai mắt mở to hết cỡ, đồng tử co nhẹ, lông mày nhướng cao, miệng há hình chữ O.",
+        'name': n_("Surprised"),
+        'region': n_("Wide Eyes and O Mouth"),
+        'desc': n_("Surprise: the eyes open as wide as they go, the pupils shrink a little, the brows rise high and "
+                   "the mouth opens into an O."),
         'targets': ['surprised', 'Fcl_ALL_Surprised', 'eyeWideLeft', 'eyeWideRight', 'browInnerUp', 'jawOpen'],
     },
     'RELAXED': {
-        'name': "😌 Relaxed / Fun (Thư thái)",
-        'region': "👁️ Mắt Cong Nhắm + 👄 Nụ Cười Nhẹ",
-        'desc': "Biểu cảm an tâm / dễ chịu. Hai mắt nhắm cong hình chữ U (^ ^), khóe miệng mỉm cười nhẹ nhàng.",
+        'name': n_("Relaxed"),
+        'region': n_("Curved Closed Eyes and Soft Smile"),
+        'desc': n_("Contentment: the eyes close into curves (^ ^) and the mouth corners smile softly."),
         'targets': ['fun', 'relaxed', 'Fcl_ALL_Relaxed', 'mouthDimpleLeft', 'mouthDimpleRight'],
     },
     'VISEME_A': {
-        'name': "🗣️ Viseme A (Khẩu hình A)",
-        'region': "👄 Cằm Hạ Thấp (Há Miệng Dọc)",
-        'desc': "Khẩu hình phát âm 'A'. Cằm hạ thấp xuống, miệng mở dọc tự nhiên để lộ răng cửa trên và lưỡi.",
+        'name': n_("Viseme A"),
+        'region': n_("Jaw Lowered, Mouth Open Tall"),
+        'desc': n_("Mouth shape for 'A': the jaw drops and the mouth opens tall, showing the upper front teeth and "
+                   "the tongue."),
         'targets': ['a', 'aa', 'Fcl_MTH_A', 'jawOpen'],
     },
     'VISEME_I': {
-        'name': "🗣️ Viseme I (Khẩu hình I)",
-        'region': "👄 Kéo Ngang Môi (Cười Răng)",
-        'desc': "Khẩu hình phát âm 'I'. Hai khóe miệng kéo căng sang hai bên theo chiều ngang, để lộ hai hàm răng.",
+        'name': n_("Viseme I"),
+        'region': n_("Lips Pulled Wide, Teeth Showing"),
+        'desc': n_("Mouth shape for 'I': both mouth corners stretch sideways, showing both rows of teeth."),
         'targets': ['i', 'ih', 'Fcl_MTH_I', 'mouthStretchLeft', 'mouthStretchRight'],
     },
     'VISEME_U': {
-        'name': "🗣️ Viseme U (Khẩu hình U)",
-        'region': "👄 Chu Môi Nhỏ",
-        'desc': "Khẩu hình phát âm 'U'. Môi trên và môi dưới chu tròn nhỏ về phía trước, hai má hơi hóp lại.",
+        'name': n_("Viseme U"),
+        'region': n_("Small Pursed Lips"),
+        'desc': n_("Mouth shape for 'U': both lips purse forward into a small circle and the cheeks draw in a "
+                   "little."),
         'targets': ['u', 'ou', 'Fcl_MTH_U', 'mouthFunnel', 'mouthPucker'],
     },
     'VISEME_E': {
-        'name': "🗣️ Viseme E (Khẩu hình E)",
-        'region': "👄 Miệng Mở Vừa Phải",
-        'desc': "Khẩu hình phát âm 'E'. Khóe miệng mở rộng vừa phải, môi trên hơi cong lên tạo hình vòm cầu.",
+        'name': n_("Viseme E"),
+        'region': n_("Mouth Half Open"),
+        'desc': n_("Mouth shape for 'E': the mouth corners open moderately and the upper lip arches a little."),
         'targets': ['e', 'ee', 'Fcl_MTH_E', 'mouthSmileLeft', 'mouthSmileRight'],
     },
     'VISEME_O': {
-        'name': "🗣️ Viseme O (Khẩu hình O)",
-        'region': "👄 Miệng Tròn Vo",
-        'desc': "Khẩu hình phát âm 'O'. Miệng mở tròn vo như quả trứng, môi hơi chìa ra phía trước.",
+        'name': n_("Viseme O"),
+        'region': n_("Round Mouth"),
+        'desc': n_("Mouth shape for 'O': the mouth opens round like an egg and the lips push forward a little."),
         'targets': ['o', 'oh', 'Fcl_MTH_O', 'mouthPucker', 'jawOpen'],
     },
     'BLINK_BOTH': {
-        'name': "👁️ Eye Blink (Chớp cả hai mắt)",
-        'region': "👁️ Mí Mắt Trên",
-        'desc': "Chớp mắt hoàn toàn. Mí mắt trên hạ sát hoàn toàn xuống mí dưới, lông mi cụp tự nhiên.",
+        'name': n_("Blink Both Eyes"),
+        'region': n_("Upper Eyelids"),
+        'desc': n_("A full blink: the upper eyelids close all the way onto the lower ones and the lashes fold "
+                   "naturally."),
         'targets': ['blink', 'Fcl_EYE_Close', 'eyeBlinkLeft', 'eyeBlinkRight'],
     },
     'WINK_L': {
-        'name': "😉 Wink Left (Nháy mắt Trái)",
-        'region': "👁️ Mắt Bên Trái",
-        'desc': "Chỉ có mắt bên Trái nhắm lại tạo dáng nháy mắt tinh nghịch, mắt bên Phải vẫn mở to.",
+        'name': n_("Wink Left"),
+        'region': n_("Left Eye"),
+        'desc': n_("Only the left eye closes in a playful wink; the right eye stays wide open."),
         'targets': ['blink_l', 'blinkLeft', 'Fcl_EYE_Close_L', 'eyeBlinkLeft'],
     },
     'WINK_R': {
-        'name': "😉 Wink Right (Nháy mắt Phải)",
-        'region': "👁️ Mắt Bên Phải",
-        'desc': "Chỉ có mắt bên Phải nhắm lại, mắt bên Trái vẫn mở to bình thường.",
+        'name': n_("Wink Right"),
+        'region': n_("Right Eye"),
+        'desc': n_("Only the right eye closes; the left eye stays open as usual."),
         'targets': ['blink_r', 'blinkRight', 'Fcl_EYE_Close_R', 'eyeBlinkRight'],
     },
     'CHEEK_PUFF': {
-        'name': "🐡 Cheek Puff (Phồng má)",
-        'region': "😼 Hai Bên Má",
-        'desc': "Phồng căng hai bên má ra ngoài như đang ngậm hơi hoặc hờn dỗi Anime.",
+        'name': n_("Cheek Puff"),
+        'region': n_("Both Cheeks"),
+        'desc': n_("Both cheeks puff out, as if holding air or sulking."),
         'targets': ['cheekPuff', 'Fcl_MTH_U'],
     },
 }
 
+
 class DASKTOON_OT_vrm_guide_solo_preview(Operator):
-    """Solo preview the selected reference guide expression on the character model"""
+    """Show this expression on the mesh: its shape keys go to the intensity, all others to 0"""
     bl_idname = "dasktoon.vrm_guide_solo_preview"
-    bl_label = "Solo Preview on Model"
+    bl_label = "Test Expression on Model"
     bl_options = {'REGISTER', 'UNDO'}
 
-    card_key: StringProperty(name="Card Key", default="JOY")
+    card_key: StringProperty(name="Expression", default="JOY")
     intensity: FloatProperty(name="Intensity", default=1.0, min=0.0, max=1.0)
 
     def execute(self, context):
         obj = context.object
         if not obj or not obj.data or not obj.data.shape_keys:
-            self.report({'ERROR'}, "Select a Mesh with Shape Keys!")
+            self.report({'ERROR'}, rpt_("Select a mesh with shape keys"))
             return {'CANCELLED'}
 
         sk = obj.data.shape_keys
@@ -1948,92 +1773,13 @@ class DASKTOON_OT_vrm_guide_solo_preview(Operator):
                     break
 
         if applied:
-            self.report({'INFO'}, f"Previewing '{card['name']}': Active shapes -> {', '.join(applied)}")
+            self.report({'INFO'}, rpt_("Showing %s: %s") % (iface_(card['name']), ", ".join(applied)))
         else:
-            self.report({'WARNING'}, f"No matching Shape Keys found on model for '{card['name']}'. Run VRM Initializer first!")
+            self.report({'WARNING'}, rpt_("No shape key of the mesh matches %s: add a VRM expression set first")
+                        % iface_(card['name']))
 
         return {'FINISHED'}
 
-
-# =============================================================================
-# VRM ShapeKey Toolset Dedicated N-Panel (Tab: "Shape Axis")
-# =============================================================================
-
-class DASKTOON_PT_vrm_toolset_panel(Panel):
-    """Dedicated VRM ShapeKey Toolset Panel in 3D Viewport"""
-    bl_space_type = 'VIEW_3D'
-    bl_region_type = 'UI'
-    bl_category = "Shape Axis"
-    bl_label = "VRM ShapeKey Toolset"
-    bl_options = {'DEFAULT_CLOSED'}
-
-    @classmethod
-    def poll(cls, context):
-        obj = context.object
-        return obj and obj.type == 'MESH'
-
-    def draw(self, context):
-        layout = self.layout
-        obj = context.object
-        sk = obj.data.shape_keys if obj and obj.data else None
-        scene = context.scene
-
-        # ── 0. Visual Reference Guide & Cards ──
-        box_guide = layout.box()
-        box_guide.label(text="📖 VRM Expression Guide Cards", icon='BOOKMARKS')
-        
-        if not hasattr(scene, "dask_guide_card_key"):
-            scene.dask_guide_card_key = "JOY"
-
-        box_guide.prop(scene, "dask_guide_card_key", text="Card")
-        selected_key = scene.dask_guide_card_key
-        card = VRM_GUIDE_CARDS.get(selected_key, VRM_GUIDE_CARDS['JOY'])
-
-        card_box = box_guide.box()
-        col = card_box.column(align=True)
-        col.label(text=f"🎯 {card['name']}", icon='SOLO_ON')
-        col.label(text=f"📍 {card['region']}", icon='RESTRICT_SELECT_OFF')
-        col.separator()
-        col.label(text=card['desc'])
-        col.separator()
-
-        row_btn = col.row(align=True)
-        op_solo = row_btn.operator("dasktoon.vrm_guide_solo_preview", text="🔍 Solo Test on Model", icon='VIEWZOOM')
-        op_solo.card_key = selected_key
-        row_btn.operator("dasktoon.vrm_zero_all_shapes", text="Reset", icon='LOOP_BACK')
-
-        # ── 1. VRM Standard Initializer ──
-        box_init = layout.box()
-        box_init.label(text="VRM Standard Initializer", icon='OUTLINER_OB_ARMATURE')
-        row = box_init.row(align=True)
-        op_vrm0 = row.operator("dasktoon.vrm_init_standard", text="🌟 VRM 0.x Suite", icon='ADD')
-        op_vrm0.standard_type = 'VRM_0'
-        op_vrm1 = row.operator("dasktoon.vrm_init_standard", text="✨ VRM 1.0 Suite", icon='FILE_REFRESH')
-        op_vrm1.standard_type = 'VRM_1'
-
-        if not sk:
-            box_init.label(text="(Object has no Shape Keys yet)", icon='INFO')
-            return
-
-        # ── 2. Shape Key Split & Mirror Studio ──
-        box_split = layout.box()
-        box_split.label(text="Split & Mirror Studio", icon='MOD_MIRROR')
-        row = box_split.row(align=True)
-        row.operator("dasktoon.vrm_split_shape_key", text="✂️ Split Active (L / R)", icon='ARROW_LEFTRIGHT')
-        row.operator("dasktoon.vrm_mirror_shape_key", text="🪞 Mirror (X-Axis)", icon='MOD_MIRROR')
-
-        # ── 3. Expression Mixer & Baker ──
-        box_mix = layout.box()
-        box_mix.label(text="Expression Mixer & Bake", icon='COLORSET_01_VEC')
-        box_mix.operator("dasktoon.vrm_bake_expression", text="🧪 Bake Current Expression to New Key", icon='EXPERIMENTAL')
-
-        # ── 4. Clean-Up & Management Utilities ──
-        box_util = layout.box()
-        box_util.label(text="Clean-Up & Utilities", icon='TOOL_SETTINGS')
-        col = box_util.column(align=True)
-        col.operator("dasktoon.vrm_zero_all_shapes", text="Zero All Shape Keys", icon='LOOP_BACK')
-        col.operator("dasktoon.vrm_remove_empty_shapes", text="Remove Empty / Zero-Delta Keys", icon='TRASH')
-        col.operator("dasktoon.vrm_convert_naming", text="Convert Naming Standard...", icon='SYNTAX_OFF')
 
 # =============================================================================
 # ARKit 52 Database & Visual Reference Guide
@@ -2047,7 +1793,7 @@ ARKIT_52_ALL_NAMES = [
     'eyeWideLeft', 'eyeWideRight',
     # Jaw (4)
     'jawOpen', 'jawForward', 'jawLeft', 'jawRight',
-    # Mouth (24)
+    # Mouth (23)
     'mouthClose', 'mouthFunnel', 'mouthPucker', 'mouthLeft', 'mouthRight',
     'mouthSmileLeft', 'mouthSmileRight', 'mouthFrownLeft', 'mouthFrownRight',
     'mouthDimpleLeft', 'mouthDimpleRight', 'mouthStretchLeft', 'mouthStretchRight',
@@ -2056,76 +1802,79 @@ ARKIT_52_ALL_NAMES = [
     'mouthUpperUpLeft', 'mouthUpperUpRight',
     # Brows (5)
     'browDownLeft', 'browDownRight', 'browInnerUp', 'browOuterUpLeft', 'browOuterUpRight',
-    # Cheeks, Nose & Tongue (5)
+    # Cheeks, Nose & Tongue (6)
     'cheekPuff', 'cheekSquintLeft', 'cheekSquintRight', 'noseSneerLeft', 'noseSneerRight', 'tongueOut',
 ]
 
 ARKIT_GUIDE_DB = {
-    'eyeBlinkLeft': ("👁️ Mí Mắt Trái", "Nhắm mí mắt trên bên Trái hoàn toàn chạm mí dưới."),
-    'eyeBlinkRight': ("👁️ Mí Mắt Phải", "Nhắm mí mắt trên bên Phải hoàn toàn chạm mí dưới."),
-    'eyeLookUpLeft': ("👀 Đồng Tử Trái", "Đồng tử mắt trái liếc lên trên."),
-    'eyeLookUpRight': ("👀 Đồng Tử Phải", "Đồng tử mắt phải liếc lên trên."),
-    'eyeLookDownLeft': ("👀 Đồng Tử Trái", "Đồng tử mắt trái liếc cụp xuống dưới."),
-    'eyeLookDownRight': ("👀 Đồng Tử Phải", "Đồng tử mắt phải liếc cụp xuống dưới."),
-    'eyeLookInLeft': ("👀 Đồng Tử Trái", "Đồng tử mắt trái liếc vào trong sống mũi."),
-    'eyeLookInRight': ("👀 Đồng Tử Phải", "Đồng tử mắt phải liếc vào trong sống mũi."),
-    'eyeLookOutLeft': ("👀 Đồng Tử Trái", "Đồng tử mắt trái liếc ra ngoài thái dương."),
-    'eyeLookOutRight': ("👀 Đồng Tử Phải", "Đồng tử mắt phải liếc ra ngoài thái dương."),
-    'eyeSquintLeft': ("👁️ Nheo Mắt Trái", "Mí dưới mắt trái đẩy nhẹ lên trên như đang nheo mắt cười."),
-    'eyeSquintRight': ("👁️ Nheo Mắt Phải", "Mí dưới mắt phải đẩy nhẹ lên trên như đang nheo mắt cười."),
-    'eyeWideLeft': ("👁️ Trợn Mắt Trái", "Mí mắt trên bên trái mở to căng hết cỡ."),
-    'eyeWideRight': ("👁️ Trợn Mắt Phải", "Mí mắt trên bên phải mở to căng hết cỡ."),
-    'jawOpen': ("👄 Mở Cằm Dọc", "Cằm hạ thấp xuống phía dưới để há miệng lớn."),
-    'jawForward': ("👄 Đưa Cằm Ra Trước", "Xương cằm dưới đẩy tịnh tiến ra phía trước."),
-    'jawLeft': ("👄 Lệch Cằm Trái", "Cằm dưới trượt sang bên Trái."),
-    'jawRight': ("👄 Lệch Cằm Phải", "Cằm dưới trượt sang bên Phải."),
-    'mouthClose': ("👄 Khép Môi", "Hai môi ép chặt vào nhau khi cằm đang há."),
-    'mouthFunnel': ("👄 Mở Phễu", "Môi mở tròn hình phễu như đang nói chữ 'U' to."),
-    'mouthPucker': ("👄 Chu Môi", "Hai môi chu tròn nhỏ nhô về phía trước (chu mỏ/hôn)."),
-    'mouthLeft': ("👄 Kéo Mép Trái", "Toàn bộ vòm môi trượt sang bên Trái."),
-    'mouthRight': ("👄 Kéo Mép Phải", "Toàn bộ vòm môi trượt sang bên Phải."),
-    'mouthSmileLeft': ("😊 Cười Mép Trái", "Khóe môi trái kéo sang bên và chếch lên trên."),
-    'mouthSmileRight': ("😊 Cười Mép Phải", "Khóe môi phải kéo sang bên và chếch lên trên."),
-    'mouthFrownLeft': ("😢 Mếu Mép Trái", "Khóe môi trái kéo chúc xuống dưới (mếu/buồn)."),
-    'mouthFrownRight': ("😢 Mếu Mép Phải", "Khóe môi phải kéo chúc xuống dưới (mếu/buồn)."),
-    'mouthDimpleLeft': ("😊 Lúm Đồng Tiền Trái", "Khóe môi trái kéo lùi nhẹ vào má tạo vết lúm."),
-    'mouthDimpleRight': ("😊 Lúm Đồng Tiền Phải", "Khóe môi phải kéo lùi nhẹ vào má tạo vết lúm."),
-    'mouthStretchLeft': ("👄 Kéo Căng Mép Trái", "Khóe miệng trái kéo căng ngang sang bên (phát âm 'I')."),
-    'mouthStretchRight': ("👄 Kéo Căng Mép Phải", "Khóe miệng phải kéo căng ngang sang bên (phát âm 'I')."),
-    'mouthRollLower': ("👄 Cuộn Môi Dưới", "Môi dưới cuộn tròn vào trong mép răng."),
-    'mouthRollUpper': ("👄 Cuộn Môi Trên", "Môi trên cuộn tròn vào trong mép răng."),
-    'mouthShrugLower': ("👄 Đẩy Môi Dưới", "Môi dưới đẩy nhếch lên trên."),
-    'mouthShrugUpper': ("👄 Đẩy Môi Trên", "Môi trên nhếch nhẹ lên trên."),
-    'mouthPressLeft': ("👄 Ép Mép Trái", "Môi trái ép dẹt chặt vào nhau."),
-    'mouthPressRight': ("👄 Ép Mép Phải", "Môi phải ép dẹt chặt vào nhau."),
-    'mouthLowerDownLeft': ("👄 Hạ Môi Dưới Trái", "Phần môi dưới bên trái kéo hạ xuống để lộ răng dưới."),
-    'mouthLowerDownRight': ("👄 Hạ Môi Dưới Phải", "Phần môi dưới bên phải kéo hạ xuống để lộ răng dưới."),
-    'mouthUpperUpLeft': ("👄 Nâng Môi Trên Trái", "Phần môi trên bên trái kéo nâng lên để lộ răng trên."),
-    'mouthUpperUpRight': ("👄 Nâng Môi Trên Phải", "Phần môi trên bên phải kéo nâng lên để lộ răng trên."),
-    'browDownLeft': ("🤨 Hạ Mày Trái", "Đầu lông mày trái hạ thấp và ép sát vào sống mũi."),
-    'browDownRight': ("🤨 Hạ Mày Phải", "Đầu lông mày phải hạ thấp và ép sát vào sống mũi."),
-    'browInnerUp': ("🤨 Nhướng Lông Mày Giữa", "Hai đầu lông mày giữa nhướng cao tạo vẻ buồn bã/ngạc nhiên."),
-    'browOuterUpLeft': ("🤨 Nhướng Đuôi Mày Trái", "Đuôi ngoài lông mày trái nâng cao lên trên."),
-    'browOuterUpRight': ("🤨 Nhướng Đuôi Mày Phải", "Đuôi ngoài lông mày phải nâng cao lên trên."),
-    'cheekPuff': ("🐡 Phồng Hai Má", "Hai bên má phồng căng tròn ra ngoài."),
-    'cheekSquintLeft': ("😼 Nâng Má Trái", "Khối cơ má trái nâng cao đẩy mí mắt dưới lên."),
-    'cheekSquintRight': ("😼 Nâng Má Phải", "Khối cơ má phải nâng cao đẩy mí mắt dưới lên."),
-    'noseSneerLeft': ("👃 Nhăn Mũi Trái", "Cánh mũi trái co nhăn lên trên."),
-    'noseSneerRight': ("👃 Nhăn Mũi Phải", "Cánh mũi phải co nhăn lên trên."),
-    'tongueOut': ("👅 Thè Lưỡi", "Đầu lưỡi thò ra ngoài môi."),
+    'eyeBlinkLeft': (n_("Left Eyelid"), n_("Closes the left upper eyelid fully onto the lower one.")),
+    'eyeBlinkRight': (n_("Right Eyelid"), n_("Closes the right upper eyelid fully onto the lower one.")),
+    'eyeLookUpLeft': (n_("Left Pupil"), n_("Turns the left eye up.")),
+    'eyeLookUpRight': (n_("Right Pupil"), n_("Turns the right eye up.")),
+    'eyeLookDownLeft': (n_("Left Pupil"), n_("Turns the left eye down.")),
+    'eyeLookDownRight': (n_("Right Pupil"), n_("Turns the right eye down.")),
+    'eyeLookInLeft': (n_("Left Pupil"), n_("Turns the left eye in, toward the nose.")),
+    'eyeLookInRight': (n_("Right Pupil"), n_("Turns the right eye in, toward the nose.")),
+    'eyeLookOutLeft': (n_("Left Pupil"), n_("Turns the left eye out, toward the temple.")),
+    'eyeLookOutRight': (n_("Right Pupil"), n_("Turns the right eye out, toward the temple.")),
+    'eyeSquintLeft': (n_("Left Eye Squint"), n_("Pushes the left lower eyelid up, as in a smiling squint.")),
+    'eyeSquintRight': (n_("Right Eye Squint"), n_("Pushes the right lower eyelid up, as in a smiling squint.")),
+    'eyeWideLeft': (n_("Left Eye Wide"), n_("Opens the left upper eyelid as wide as it goes.")),
+    'eyeWideRight': (n_("Right Eye Wide"), n_("Opens the right upper eyelid as wide as it goes.")),
+    'jawOpen': (n_("Jaw Open"), n_("Drops the jaw to open the mouth wide.")),
+    'jawForward': (n_("Jaw Forward"), n_("Pushes the lower jaw forward.")),
+    'jawLeft': (n_("Jaw Left"), n_("Slides the lower jaw to the left.")),
+    'jawRight': (n_("Jaw Right"), n_("Slides the lower jaw to the right.")),
+    'mouthClose': (n_("Lips Closed"), n_("Presses the lips together while the jaw is open.")),
+    'mouthFunnel': (n_("Lip Funnel"), n_("Opens the lips into a round funnel, as in a loud 'U'.")),
+    'mouthPucker': (n_("Lip Pucker"), n_("Puckers the lips forward into a small round shape, as for a kiss.")),
+    'mouthLeft': (n_("Mouth Left"), n_("Slides the whole mouth to the left.")),
+    'mouthRight': (n_("Mouth Right"), n_("Slides the whole mouth to the right.")),
+    'mouthSmileLeft': (n_("Left Smile"), n_("Pulls the left mouth corner out and up.")),
+    'mouthSmileRight': (n_("Right Smile"), n_("Pulls the right mouth corner out and up.")),
+    'mouthFrownLeft': (n_("Left Frown"), n_("Pulls the left mouth corner down.")),
+    'mouthFrownRight': (n_("Right Frown"), n_("Pulls the right mouth corner down.")),
+    'mouthDimpleLeft': (n_("Left Dimple"), n_("Pulls the left mouth corner back into the cheek, making a dimple.")),
+    'mouthDimpleRight': (n_("Right Dimple"), n_("Pulls the right mouth corner back into the cheek, making a dimple.")),
+    'mouthStretchLeft': (n_("Left Stretch"), n_("Stretches the left mouth corner sideways, as for 'I'.")),
+    'mouthStretchRight': (n_("Right Stretch"), n_("Stretches the right mouth corner sideways, as for 'I'.")),
+    'mouthRollLower': (n_("Lower Lip Roll"), n_("Rolls the lower lip in over the teeth.")),
+    'mouthRollUpper': (n_("Upper Lip Roll"), n_("Rolls the upper lip in over the teeth.")),
+    'mouthShrugLower': (n_("Lower Lip Shrug"), n_("Pushes the lower lip up.")),
+    'mouthShrugUpper': (n_("Upper Lip Shrug"), n_("Lifts the upper lip a little.")),
+    'mouthPressLeft': (n_("Left Lip Press"), n_("Presses the left side of the lips flat together.")),
+    'mouthPressRight': (n_("Right Lip Press"), n_("Presses the right side of the lips flat together.")),
+    'mouthLowerDownLeft': (n_("Left Lower Lip Down"),
+                           n_("Pulls the left side of the lower lip down, showing the lower teeth.")),
+    'mouthLowerDownRight': (n_("Right Lower Lip Down"),
+                            n_("Pulls the right side of the lower lip down, showing the lower teeth.")),
+    'mouthUpperUpLeft': (n_("Left Upper Lip Up"), n_("Lifts the left side of the upper lip, showing the upper teeth.")),
+    'mouthUpperUpRight': (n_("Right Upper Lip Up"),
+                          n_("Lifts the right side of the upper lip, showing the upper teeth.")),
+    'browDownLeft': (n_("Left Brow Down"), n_("Lowers the inner end of the left brow toward the nose.")),
+    'browDownRight': (n_("Right Brow Down"), n_("Lowers the inner end of the right brow toward the nose.")),
+    'browInnerUp': (n_("Inner Brows Up"), n_("Raises the inner ends of both brows, looking sad or surprised.")),
+    'browOuterUpLeft': (n_("Left Outer Brow Up"), n_("Raises the outer end of the left brow.")),
+    'browOuterUpRight': (n_("Right Outer Brow Up"), n_("Raises the outer end of the right brow.")),
+    'cheekPuff': (n_("Cheek Puff"), n_("Puffs both cheeks out.")),
+    'cheekSquintLeft': (n_("Left Cheek Raise"), n_("Raises the left cheek, pushing the lower eyelid up.")),
+    'cheekSquintRight': (n_("Right Cheek Raise"), n_("Raises the right cheek, pushing the lower eyelid up.")),
+    'noseSneerLeft': (n_("Left Nose Sneer"), n_("Wrinkles the left side of the nose up.")),
+    'noseSneerRight': (n_("Right Nose Sneer"), n_("Wrinkles the right side of the nose up.")),
+    'tongueOut': (n_("Tongue Out"), n_("Sticks the tip of the tongue out past the lips.")),
 }
 
 
 class DASKTOON_OT_arkit_init_placeholders(Operator):
-    """Initialize all 52 Apple ARKit blendshapes as basis placeholders on the mesh"""
+    """Add the 52 ARKit shape keys the mesh does not have yet, empty, ready to sculpt"""
     bl_idname = "dasktoon.arkit_init_placeholders"
-    bl_label = "Initialize 52 ARKit Placeholders"
+    bl_label = "Add ARKit 52 Placeholders"
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
         obj = context.object
         if not obj or obj.type != 'MESH':
-            self.report({'ERROR'}, "Select a Mesh Object!")
+            self.report({'ERROR'}, rpt_("Select a mesh object"))
             return {'CANCELLED'}
 
         if not obj.data.shape_keys:
@@ -2138,23 +1887,23 @@ class DASKTOON_OT_arkit_init_placeholders(Operator):
                 obj.shape_key_add(name=name, from_mix=False)
                 added += 1
 
-        self.report({'INFO'}, f"Initialized {added} missing ARKit 52 blendshapes on '{obj.name}'.")
+        self.report({'INFO'}, rpt_("Added %d ARKit shape keys to %s") % (added, obj.name))
         return {'FINISHED'}
 
 
 class DASKTOON_OT_arkit_solo_preview(Operator):
-    """Solo preview the selected ARKit blendshape on the character model"""
+    """Show this ARKit shape key on the mesh: it goes to the intensity, all others to 0"""
     bl_idname = "dasktoon.arkit_solo_preview"
-    bl_label = "Solo Preview ARKit Shape"
+    bl_label = "Test ARKit Shape on Model"
     bl_options = {'REGISTER', 'UNDO'}
 
-    shape_name: StringProperty(name="Shape Name", default="eyeBlinkLeft")
+    shape_name: StringProperty(name="Shape Key", default="eyeBlinkLeft")
     intensity: FloatProperty(name="Intensity", default=1.0, min=0.0, max=1.0)
 
     def execute(self, context):
         obj = context.object
         if not obj or not obj.data or not obj.data.shape_keys:
-            self.report({'ERROR'}, "Select a Mesh with Shape Keys!")
+            self.report({'ERROR'}, rpt_("Select a mesh with shape keys"))
             return {'CANCELLED'}
 
         sk = obj.data.shape_keys
@@ -2164,111 +1913,205 @@ class DASKTOON_OT_arkit_solo_preview(Operator):
         kb = sk.key_blocks.get(self.shape_name)
         if kb:
             kb.value = self.intensity
-            self.report({'INFO'}, f"ARKit Solo: Active '{self.shape_name}' = {self.intensity:.2f}")
+            self.report({'INFO'}, rpt_("Showing %s") % self.shape_name)
         else:
-            self.report({'WARNING'}, f"Shape key '{self.shape_name}' not found on model. Synthesize ARKit first!")
+            self.report({'WARNING'}, rpt_("Shape key %s not found: synthesize ARKit 52 first") % self.shape_name)
 
         return {'FINISHED'}
 
 
 # =============================================================================
-# DEDICATED ARKit 52 N-PANEL TAB (Category: "ARKit")
+# Properties › Object Data › Shape Keys (UI spec 3.2)
 # =============================================================================
 
-class DASKTOON_PT_arkit_studio_panel(Panel):
-    """Dedicated Apple ARKit 52 Face Tracking Studio in 3D Viewport Sidebar (Tab 'ARKit')"""
-    bl_space_type = 'VIEW_3D'
-    bl_region_type = 'UI'
-    bl_category = "ARKit"
-    bl_label = "Apple ARKit 52 Face Studio"
+ARKIT_GROUPS = ((n_("Eyes"), 0, 14), (n_("Jaw & Mouth"), 14, 41), (n_("Brows"), 41, 46),
+                (n_("Cheeks, Nose & Tongue"), 46, 52))
+
+
+class DaskExpressionPanel:
+    bl_space_type = 'PROPERTIES'
+    bl_region_type = 'WINDOW'
+    bl_context = "data"
+    bl_parent_id = "DATA_PT_shape_keys"
+    bl_options = {'DEFAULT_CLOSED'}
+    needs_shape_keys = True
 
     @classmethod
     def poll(cls, context):
         obj = context.object
-        return obj and obj.type == 'MESH'
+        if obj is None or obj.type != 'MESH':
+            return False
+        return obj.data.shape_keys is not None or not cls.needs_shape_keys
+
+
+def _card(layout, context, title, region, text, translate_title=True):
+    """A reference card: the title, the face region and the description, wrapped to the width of the editor."""
+    col = layout.box().column(align=True)
+    col.label(text=iface_(title) if translate_title else title, icon='SOLO_ON', translate=False)
+    col.label(text=iface_(region), icon='RESTRICT_SELECT_OFF', translate=False)
+    col.separator()
+    width = context.region.width if context.region is not None else 300
+    scale = context.preferences.system.ui_scale or 1.0  # 0 without a window (background)
+    chars = max(24, int(width / (7 * scale)))
+    for line in textwrap.wrap(iface_(text), chars):
+        col.label(text=line, translate=False)
+
+
+class DATA_PT_dasktoon_expression_sets(DaskExpressionPanel, Panel):
+    bl_label = "Expression Sets"
+    needs_shape_keys = False
+
+    def draw(self, context):
+        layout = self.layout
+        row = layout.row(align=True)
+        row.operator("dasktoon.vrm_init_standard", text="VRM 0.x Set", icon='ADD').standard_type = 'VRM_0'
+        row.operator("dasktoon.vrm_init_standard", text="VRM 1.0 Set", icon='ADD').standard_type = 'VRM_1'
+        col = layout.column(align=True)
+        col.operator("dasktoon.vrm_synthesize_arkit52", icon='SOLO_ON')
+        col.operator("dasktoon.arkit_init_placeholders", icon='ADD')
+        col.operator("dasktoon.vrm_convert_naming", icon='SYNTAX_OFF')
+        keys = context.object.data.shape_keys
+        if keys is None:
+            return
+        present = sum(1 for name in ARKIT_52_ALL_NAMES if name in keys.key_blocks)
+        box = layout.box()
+        box.label(text=iface_("ARKit 52: %d / 52 shapes") % present, translate=False,
+                  icon='CHECKMARK' if present == 52 else 'INFO')
+        grid = box.grid_flow(columns=2, align=True)
+        for label, start, end in ARKIT_GROUPS:
+            count = sum(1 for name in ARKIT_52_ALL_NAMES[start:end] if name in keys.key_blocks)
+            grid.label(text="%s: %d/%d" % (iface_(label), count, end - start), translate=False)
+
+
+class DATA_PT_dasktoon_expression_tools(DaskExpressionPanel, Panel):
+    bl_label = "Expression Tools"
+
+    def draw(self, _context):
+        col = self.layout.column(align=True)
+        col.operator("dasktoon.vrm_split_shape_key", icon='ARROW_LEFTRIGHT')
+        col.operator("dasktoon.vrm_bake_expression", icon='EXPERIMENTAL')
+        col.operator("dasktoon.vrm_remove_empty_shapes", icon='TRASH')
+
+
+class DATA_PT_dasktoon_expression_preview(DaskExpressionPanel, Panel):
+    bl_label = "Expression Preview"
+
+    def draw(self, context):
+        layout = self.layout
+        scene = context.scene
+        layout.prop(scene, "dask_guide_card_key", text="VRM")
+        card = VRM_GUIDE_CARDS.get(scene.dask_guide_card_key, VRM_GUIDE_CARDS['JOY'])
+        _card(layout, context, card['name'], card['region'], card['desc'])
+        row = layout.row(align=True)
+        row.operator("dasktoon.vrm_guide_solo_preview", text="Test on Model", icon='VIEWZOOM').card_key = \
+            scene.dask_guide_card_key
+        row.operator("object.shape_key_clear", text="Clear Values", icon='LOOP_BACK')
+        layout.separator()
+        layout.prop(scene, "dask_arkit_selected_shape", text="ARKit")
+        name = scene.dask_arkit_selected_shape
+        region, text = ARKIT_GUIDE_DB.get(name, (n_("Face"), n_("An ARKit facial movement.")))
+        _card(layout, context, name, region, text, translate_title=False)
+        row = layout.row(align=True)
+        row.operator("dasktoon.arkit_solo_preview", text="Test on Model", icon='VIEWZOOM').shape_name = name
+        row.operator("object.shape_key_clear", text="Clear Values", icon='LOOP_BACK')
+        layout.separator()
+        row = layout.row(align=True)
+        row.operator("dasktoon.vrm_live_preview", text="Blink", icon='HIDE_OFF').preview_mode = 'AUTO_BLINK'
+        row.operator("dasktoon.vrm_live_preview", text="Speech", icon='SPEAKER').preview_mode = 'AIUEO_TALK'
+        row.operator("dasktoon.vrm_live_preview", text="Emotions", icon='SCENE').preview_mode = 'EMOTIONS'
+
+
+class DATA_PT_dasktoon_expression_controllers(DaskExpressionPanel, Panel):
+    bl_label = "Controllers"
 
     def draw(self, context):
         layout = self.layout
         obj = context.object
-        sk = obj.data.shape_keys if obj and obj.data else None
-        scene = context.scene
-
-        # ── 1. ARKit Health & Status Inspector ──
-        box_stat = layout.box()
-        box_stat.label(text="ARKit 52 Blendshapes Status", icon='PHONE')
-        
-        if sk:
-            present_count = sum(1 for name in ARKIT_52_ALL_NAMES if name in sk.key_blocks)
-            perc = int((present_count / 52.0) * 100)
-            
-            row = box_stat.row(align=True)
-            ic = 'CHECKMARK' if present_count == 52 else 'INFO'
-            row.label(text=f"Progress: {present_count} / 52 Shapes ({perc}%)", icon=ic)
-            
-            # Sub-category badges
-            eyes_c = sum(1 for n in ARKIT_52_ALL_NAMES[:14] if n in sk.key_blocks)
-            jaw_mouth_c = sum(1 for n in ARKIT_52_ALL_NAMES[14:42] if n in sk.key_blocks)
-            brow_c = sum(1 for n in ARKIT_52_ALL_NAMES[42:47] if n in sk.key_blocks)
-            cheek_c = sum(1 for n in ARKIT_52_ALL_NAMES[47:] if n in sk.key_blocks)
-            
-            grid = box_stat.grid_flow(columns=2, align=True)
-            grid.label(text=f"👁️ Eyes: {eyes_c}/14")
-            grid.label(text=f"👄 Mouth: {jaw_mouth_c}/28")
-            grid.label(text=f"🤨 Brows: {brow_c}/5")
-            grid.label(text=f"😼 Cheeks: {cheek_c}/5")
-        else:
-            box_stat.label(text="(Object has no Shape Keys yet)", icon='INFO')
-
-        # ── 2. 1-Click ARKit 52 Synthesizer & Generator ──
-        box_gen = layout.box()
-        box_gen.label(text="ARKit 52 Generators", icon='AUTO')
-        box_gen.operator("dasktoon.vrm_synthesize_arkit52", text="📱 Synthesize 52 ARKit from VRM", icon='SOLO_ON')
-        box_gen.operator("dasktoon.arkit_init_placeholders", text="➕ Initialize 52 Empty Placeholders", icon='ADD')
-
-        if not sk:
+        root = getattr(obj, "dask_shape_controllers", None)
+        if not root:
             return
 
-        # ── 3. ARKit 52 Visual Reference Cards & Inspector ──
-        box_cards = layout.box()
-        box_cards.label(text="📖 ARKit 52 Visual Reference & Test", icon='BOOKMARKS')
+        # 1. Viewport HUD
+        if DaskHUDState.is_active:
+            layout.operator("dasktoon.shape_axis_toggle_hud", text="Close Viewport HUD", icon='CANCEL')
+        else:
+            layout.operator("dasktoon.shape_axis_toggle_hud", text="Open Viewport HUD", icon='PLAY')
 
-        if not hasattr(scene, "dask_arkit_selected_shape"):
-            scene.dask_arkit_selected_shape = "eyeBlinkLeft"
+        # 2. Quick actions
+        row = layout.row(align=True)
+        row.operator("dasktoon.shape_axis_reset_handle", text="Reset Group", icon='LOOP_BACK')
+        row.operator("dasktoon.shape_axis_reset_all", text="Reset All", icon='X')
+        row.operator("dasktoon.shape_axis_keyframe_handle", text="Insert Keyframe", icon='KEY_HLT')
 
-        box_cards.prop(scene, "dask_arkit_selected_shape", text="Shape")
-        sel_shape = scene.dask_arkit_selected_shape
-        guide_info = ARKIT_GUIDE_DB.get(sel_shape, ("📍 Vùng mặt", "Mô tả cử động giải phẫu ARKit."))
+        # 3. Auto setup
+        box = layout.box()
+        box.label(text="Auto Setup", icon='AUTO')
+        box.operator("dasktoon.shape_axis_auto_setup", text="Auto Detect VRM / VRoid",
+                     icon='SOLO_ON').preset_type = 'VRM_STANDARD'
+        grid = box.grid_flow(columns=2, align=True)
+        grid.operator("dasktoon.shape_axis_auto_setup", text="VRM Emotions",
+                      icon='ORIENTATION_GIMBAL').preset_type = 'VRM_EMOTIONS'
+        grid.operator("dasktoon.shape_axis_auto_setup", text="AIUEO Visemes",
+                      icon='OUTLINER_OB_FONT').preset_type = 'AIUEO_VISEMES'
+        grid.operator("dasktoon.shape_axis_auto_setup", text="Blink Sliders",
+                      icon='DRIVER_DISTANCE').preset_type = 'BLINK_HUB'
+        grid.operator("dasktoon.shape_axis_auto_setup", text="Ears & Tail", icon='STRANDS').preset_type = 'EARS_TAIL'
 
-        card_box = box_cards.box()
-        col = card_box.column(align=True)
-        col.label(text=f"🎯 {sel_shape}", icon='SHAPEKEY_DATA')
-        col.label(text=f"📍 {guide_info[0]}", icon='RESTRICT_SELECT_OFF')
-        col.separator()
-        col.label(text=guide_info[1])
-        col.separator()
+        layout.separator()
 
-        row_b = col.row(align=True)
-        op_solo = row_b.operator("dasktoon.arkit_solo_preview", text="🔍 Solo Test on Model", icon='VIEWZOOM')
-        op_solo.shape_name = sel_shape
-        row_b.operator("dasktoon.vrm_zero_all_shapes", text="Reset", icon='LOOP_BACK')
+        # 4. Controllers
+        layout.label(text="Controller Groups", icon='GROUP')
+        row = layout.row()
+        row.template_list("DASKTOON_UL_shape_groups", "", root, "groups", root, "active_group_index", rows=4)
+        col = row.column(align=True)
+        col.operator("dasktoon.shape_axis_add_group", icon='ADD', text="")
+        col.operator("dasktoon.shape_axis_remove_group", icon='REMOVE', text="")
 
-        # ── 4. Live Motion Tester ──
-        box_prev = layout.box()
-        box_prev.label(text="Live Viewport Motion Tester", icon='PLAY')
-        row = box_prev.row(align=True)
-        op_b = row.operator("dasktoon.vrm_live_preview", text="👁️ Blink Test", icon='HIDE_OFF')
-        op_b.preview_mode = 'AUTO_BLINK'
-        op_t = row.operator("dasktoon.vrm_live_preview", text="🗣️ Speech Loop", icon='SPEAKER')
-        op_t.preview_mode = 'AIUEO_TALK'
-        op_e = row.operator("dasktoon.vrm_live_preview", text="🎭 Emotions", icon='SCENE')
-        op_e.preview_mode = 'EMOTIONS'
+        if not root.groups or root.active_group_index >= len(root.groups):
+            return
 
-        # ── 5. ARKit Utilities ──
-        box_util = layout.box()
-        box_util.label(text="ARKit Utilities", icon='TOOL_SETTINGS')
-        row = box_util.row(align=True)
-        row.operator("dasktoon.vrm_zero_all_shapes", text="Zero All 52", icon='LOOP_BACK')
-        row.operator("dasktoon.vrm_remove_empty_shapes", text="Clean Empty", icon='TRASH')
+        grp = root.groups[root.active_group_index]
+
+        # 5. Active controller
+        box = layout.box()
+        row = box.row()
+        row.prop(grp, "name", text="")
+        row.prop(grp, "controller_type", text="")
+
+        if grp.controller_type == 'SLIDER_1D':
+            col = box.column(align=True)
+            col.label(text=iface_("Fader Channels (%d sliders)") % len(grp.mappings), icon='DRIVER_DISTANCE',
+                      translate=False)
+            for mp in grp.mappings:
+                if mp.shape_key_name:
+                    col.prop(mp, "slider_value", slider=True, text=mp.shape_key_name, translate=False)
+        else:
+            col = box.column(align=True)
+            col.prop(grp, "handle_x", slider=True)
+            col.prop(grp, "handle_y", slider=True)
+
+        # 6. Shape keys of the active controller
+        box.separator()
+        box.label(text="Shape Key Mappings", icon='SHAPEKEY_DATA')
+        row = box.row()
+        row.template_list("DASKTOON_UL_shape_mappings", "", grp, "mappings", grp, "active_mapping_index", rows=3)
+        col = row.column(align=True)
+        col.operator("dasktoon.shape_axis_add_mapping", icon='ADD', text="")
+        col.operator("dasktoon.shape_axis_remove_mapping", icon='REMOVE', text="")
+
+        if grp.mappings and 0 <= grp.active_mapping_index < len(grp.mappings):
+            mp = grp.mappings[grp.active_mapping_index]
+            sub = box.column(align=True)
+            sub.prop_search(mp, "shape_key_name", obj.data.shape_keys, "key_blocks")
+            if grp.controller_type != 'SLIDER_1D':
+                coords = sub.row(align=True)
+                coords.prop(mp, "target_x")
+                coords.prop(mp, "target_y")
+                sub.prop(mp, "radius", slider=True)
+
+        # 7. 3D rig board
+        layout.separator()
+        layout.operator("dasktoon.shape_axis_generate_rig_board", icon='ARMATURE_DATA')
 
 
 # =============================================================================
@@ -2289,13 +2132,10 @@ classes = (
     DASKTOON_OT_shape_axis_remove_mapping,
     DASKTOON_OT_shape_axis_auto_setup,
     DASKTOON_OT_shape_axis_generate_rig_board,
-    # VRM & ARKit ShapeKey Toolset Operators
     DASKTOON_OT_vrm_init_standard,
     DASKTOON_OT_vrm_split_shape_key,
-    DASKTOON_OT_vrm_mirror_shape_key,
     DASKTOON_OT_vrm_bake_expression,
     DASKTOON_OT_vrm_synthesize_arkit52,
-    DASKTOON_OT_vrm_zero_all_shapes,
     DASKTOON_OT_vrm_remove_empty_shapes,
     DASKTOON_OT_vrm_convert_naming,
     DASKTOON_OT_vrm_live_preview,
@@ -2304,41 +2144,25 @@ classes = (
     DASKTOON_OT_arkit_solo_preview,
     DASKTOON_UL_shape_groups,
     DASKTOON_UL_shape_mappings,
-    DASKTOON_PT_shape_axis_panel,
-    DASKTOON_PT_vrm_toolset_panel,
-    DASKTOON_PT_arkit_studio_panel,
+    DATA_PT_dasktoon_expression_sets,
+    DATA_PT_dasktoon_expression_tools,
+    DATA_PT_dasktoon_expression_preview,
+    DATA_PT_dasktoon_expression_controllers,
 )
 
 
+# bl_ui registers `classes`; register()/unregister() only manage the properties and the HUD.
 def register():
-    for cls in classes:
-        try:
-            bpy.utils.register_class(cls)
-        except Exception:
-            pass
     bpy.types.Object.dask_shape_controllers = PointerProperty(type=DaskShapeControllerRoot)
     bpy.types.Scene.dask_guide_card_key = EnumProperty(
-        name="Expression Card",
-        items=[
-            ('JOY', "😊 Joy / Happy", "Open smile & eyes curved"),
-            ('ANGRY', "😠 Angry", "Furrowed brows & lowered eyelids"),
-            ('SORROW', "😢 Sorrow / Sad", "Raised inner brows & downturned mouth"),
-            ('SURPRISED', "😲 Surprised", "Raised brows & wide open eyes"),
-            ('RELAXED', "😌 Relaxed / Fun", "Curved eyes & soft smile"),
-            ('VISEME_A', "🗣️ Viseme A (aa)", "Jaw open vertically"),
-            ('VISEME_I', "🗣️ Viseme I (ih)", "Mouth stretched horizontally"),
-            ('VISEME_U', "🗣️ Viseme U (ou)", "Mouth funnel & pucker"),
-            ('VISEME_E', "🗣️ Viseme E (ee)", "Mouth open moderately"),
-            ('VISEME_O', "🗣️ Viseme O (oh)", "Mouth open rounded O"),
-            ('BLINK_BOTH', "👁️ Eye Blink Both", "Both upper eyelids closed"),
-            ('WINK_L', "😉 Wink Left", "Left eye closed, right eye open"),
-            ('WINK_R', "😉 Wink Right", "Right eye closed, left eye open"),
-            ('CHEEK_PUFF', "🐡 Cheek Puff", "Both cheeks puffed outward"),
-        ],
+        name="VRM Expression",
+        description="Expression to look up",
+        items=[(key, card['name'], card['region']) for key, card in VRM_GUIDE_CARDS.items()],
         default='JOY',
     )
     bpy.types.Scene.dask_arkit_selected_shape = EnumProperty(
-        name="ARKit Blendshape",
+        name="ARKit Shape Key",
+        description="ARKit shape key to look up",
         items=[(name, name, ARKIT_GUIDE_DB.get(name, ("", ""))[1]) for name in ARKIT_52_ALL_NAMES],
         default='eyeBlinkLeft',
     )
@@ -2348,22 +2172,6 @@ def unregister():
     if DaskHUDState.draw_handler is not None:
         bpy.types.SpaceView3D.draw_handler_remove(DaskHUDState.draw_handler, 'WINDOW')
         DaskHUDState.draw_handler = None
-    if hasattr(bpy.types.Object, "dask_shape_controllers"):
-        del bpy.types.Object.dask_shape_controllers
-    if hasattr(bpy.types.Scene, "dask_guide_card_key"):
-        del bpy.types.Scene.dask_guide_card_key
-    if hasattr(bpy.types.Scene, "dask_arkit_selected_shape"):
-        del bpy.types.Scene.dask_arkit_selected_shape
-    for cls in reversed(classes):
-        try:
-            bpy.utils.unregister_class(cls)
-        except Exception:
-            pass
-
-
-if __name__ == "__main__":
-    register()
-
-
-if __name__ == "__main__":
-    register()
+    del bpy.types.Object.dask_shape_controllers
+    del bpy.types.Scene.dask_guide_card_key
+    del bpy.types.Scene.dask_arkit_selected_shape
