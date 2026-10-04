@@ -77,23 +77,37 @@ def add_test_head(radius=0.1, centre=(0.0, 0.0, 1.5), with_armature=True, name="
     head["dt_skin_vertices"] is the number of skin vertices, which come first."""
     import bmesh
     from mathutils import Matrix, Vector
-    bm = bmesh.new()
-    bm.loops.layers.uv.verify()
-    segments, rings = TEST_HEAD_SEGMENTS
-    bmesh.ops.create_uvsphere(bm, u_segments=segments, v_segments=rings, radius=radius, calc_uvs=True)
-    skin = len(bm.verts)
-    for v in bm.verts:
-        d = v.co.normalized()
+
+    def sphere(segments, rings, matrix):
+        bm = bmesh.new()
+        bm.loops.layers.uv.verify()
+        bmesh.ops.create_uvsphere(bm, u_segments=segments, v_segments=rings, radius=radius, matrix=matrix,
+                                  calc_uvs=True)
+        return bm
+
+    # Skin and hair are built apart and joined with from_mesh: create_uvsphere reuses freed vertex slots, so a second
+    # sphere in the same BMesh would interleave its vertices with the first one's.
+    skin_bm = sphere(*TEST_HEAD_SEGMENTS, Matrix.Translation(centre))
+    for v in skin_bm.verts:
+        d = (v.co - Vector(centre)).normalized()
         if d.y < 0.0:
             nose = max(0.0, 1.0 - (d.x / 0.2) ** 2 - ((d.z + 0.15) / 0.2) ** 2)
             dents = sum(max(0.0, 1.0 - ((d.x - side) / 0.16) ** 2 - ((d.z - 0.12) / 0.12) ** 2) for side in (-0.38, 0.38))
             v.co += d * radius * (0.12 * nose - 0.08 * dents)
-    hair = Matrix.LocRotScale(Vector((0.0, 0.25 * radius, 0.45 * radius)), None, Vector((1.1, 1.1, 0.7)))
-    bmesh.ops.create_uvsphere(bm, u_segments=24, v_segments=12, radius=radius, matrix=hair, calc_uvs=True)
-    bmesh.ops.translate(bm, verts=list(bm.verts), vec=Vector(centre))
-    mesh = bpy.data.meshes.new(name)
-    bm.to_mesh(mesh)
-    bm.free()
+    hair_bm = sphere(24, 12, Matrix.LocRotScale(Vector(centre) + Vector((0.0, 0.25 * radius, 0.45 * radius)), None,
+                                                Vector((1.1, 1.1, 0.7))))
+    mesh, hair = bpy.data.meshes.new(name), bpy.data.meshes.new(name + "Hair")
+    skin_bm.to_mesh(mesh)
+    hair_bm.to_mesh(hair)
+    skin = len(skin_bm.verts)
+    skin_bm.free()
+    hair_bm.free()
+    joined = bmesh.new()
+    joined.from_mesh(mesh)
+    joined.from_mesh(hair)
+    joined.to_mesh(mesh)
+    joined.free()
+    bpy.data.meshes.remove(hair)
     mesh.shade_smooth()
     head = bpy.data.objects.new(name, mesh)
     bpy.context.scene.collection.objects.link(head)
