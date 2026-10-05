@@ -537,7 +537,8 @@ EFFECTS = (
     (n_("Impact"), (('IMPACT_SHOCKWAVE', 'SPHERE'), ('IMPACT_HIT_SPARK', 'LIGHT_SUN'),
                     ('IMPACT_SLASH_ARC', 'CURVE_DATA'), ('IMPACT_DEBRIS', 'MOD_EXPLODE'))),
     (n_("Atmosphere"), (('BUBBLES_UP', 'META_BALL'), ('BUBBLES_DOWN', 'MOD_FLUID'), ('SAKURA', 'COMMUNITY'),
-                        ('LEAVES', 'FORCE_WIND'), ('SPARKLES', 'LIGHT_SUN'), ('EMBERS', 'FIRE'), ('RAIN', 'MOD_WAVE'))),
+                        ('LEAVES', 'FORCE_WIND'), ('SPARKLES', 'LIGHT_SUN'), ('EMBERS', 'LIGHT_POINT'),
+                        ('RAIN', 'MOD_WAVE'))),
 )
 
 

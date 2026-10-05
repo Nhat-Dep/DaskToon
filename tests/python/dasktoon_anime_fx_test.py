@@ -53,6 +53,11 @@ class AnimeEffectMenuTest(unittest.TestCase):
         self.assertEqual(sorted(kinds), sorted(items))
         self.assertEqual(len(kinds), 11)
 
+    def test_effect_icons_exist(self):
+        # A real UILayout rejects unknown icons and stops drawing the menu there; the Recorder above accepts anything.
+        icons = {item.identifier for item in bpy.types.UILayout.bl_rna.functions["label"].parameters["icon"].enum_items}
+        self.assertEqual([icon for _group, effects in fx.EFFECTS for _kind, icon in effects if icon not in icons], [])
+
     def test_add_menu_has_the_submenu_and_the_panel_is_gone(self):
         funcs = bpy.types.VIEW3D_MT_add.draw._draw_funcs
         self.assertTrue([f for f in funcs if f.__module__ == fx.__name__])

@@ -77,6 +77,25 @@ class MovedUITest(unittest.TestCase):
     def test_outline_removal_is_in_the_material_slot_menu(self):
         self.assertTrue(appended(bpy.types.MATERIAL_MT_context_menu, "bl_ui.dasktoon_outline"))
 
+class IconTest(unittest.TestCase):
+    def test_every_icon_given_by_name_exists(self):
+        # A real UILayout rejects an unknown icon and stops drawing the panel or menu at that point.
+        import ast
+        import glob
+        repo = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        icons = {item.identifier for item in bpy.types.UILayout.bl_rna.functions["label"].parameters["icon"].enum_items}
+        bad = []
+        for path in sorted(glob.glob(os.path.join(repo, "scripts", "startup", "bl_ui", "dasktoon_*.py"))):
+            with open(path, encoding="utf-8") as f:
+                tree = ast.parse(f.read())
+            for node in ast.walk(tree):
+                if isinstance(node, ast.keyword) and node.arg == "icon":
+                    for value in ast.walk(node.value):
+                        if isinstance(value, ast.Constant) and isinstance(value.value, str) and                                 value.value not in icons:
+                            bad.append("%s: %s" % (os.path.basename(path), value.value))
+        self.assertEqual(bad, [])
+
+
 class NoSidebarTest(unittest.TestCase):
     def test_no_dasktoon_panel_in_any_sidebar_or_in_render_and_light(self):
         bad = []
