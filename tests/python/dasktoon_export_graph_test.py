@@ -156,7 +156,7 @@ class NodeTest(unittest.TestCase):
         spec, reason = analyze(mat, sphere_with(mat))
         self.assertIsNone(spec)
         self.assertIn("ShaderNodeBsdfPrincipled", reason)
-        self.assertEqual(graph.analyze_material(None, []), (None, "slot trống"))
+        self.assertEqual(graph.analyze_material(None, []), (None, "empty slot"))
 
 
 class SourceTest(unittest.TestCase):
@@ -329,7 +329,7 @@ class OutlineTest(unittest.TestCase):
         for obj in (a, b):
             gamedata.write_outline_uvs(obj)
         spec, _ = graph.analyze_material(mat, [a.data, b.data])
-        self.assertTrue(any("thứ tự UV" in w for w in spec.warnings), spec.warnings)
+        self.assertTrue(any("UV order" in w for w in spec.warnings), spec.warnings)
 
     def test_companion_is_recognised(self):
         mat, node = tu.node_material("Owner", 'ShaderNodeAnimeCharacter')

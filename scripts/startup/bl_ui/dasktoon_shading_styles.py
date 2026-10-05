@@ -12,21 +12,24 @@ import os
 import re
 
 import bpy
+from bpy.app.translations import pgettext_n as n_, pgettext_rpt as rpt_
 from bpy.props import BoolProperty, StringProperty
 from bpy.types import Menu, Operator
 
 SHADING_NODE_TYPES = {'ShaderNodeAnimeCharacter', 'ShaderNodeAnimeCel', 'ShaderNodeDaskCel'}
 
+# The names are English source text, shown translated in the Shading Style menu; nothing stores them (applying a style
+# writes the ramp).
 BUILTIN_STYLES = {
-    "Anime 2 tông": {"interpolation": 'CONSTANT', "stops": [
+    n_("Anime 2-Tone"): {"interpolation": 'CONSTANT', "stops": [
         (0.0, (0.80, 0.62, 0.66, 1.0)), (0.5, (1.0, 1.0, 1.0, 1.0))]},
-    "Anime 3 tông": {"interpolation": 'CONSTANT', "stops": [
+    n_("Anime 3-Tone"): {"interpolation": 'CONSTANT', "stops": [
         (0.0, (0.55, 0.42, 0.52, 1.0)), (0.3, (0.82, 0.66, 0.70, 1.0)), (0.55, (1.0, 1.0, 1.0, 1.0))]},
-    "Mềm như vẽ": {"interpolation": 'EASE', "stops": [
+    n_("Soft Painted"): {"interpolation": 'EASE', "stops": [
         (0.2, (0.72, 0.58, 0.66, 1.0)), (0.7, (1.0, 1.0, 1.0, 1.0))]},
-    "Da anime (viền ấm)": {"interpolation": 'CONSTANT', "stops": [
+    n_("Anime Skin (Warm Edge)"): {"interpolation": 'CONSTANT', "stops": [
         (0.0, (0.82, 0.62, 0.64, 1.0)), (0.47, (1.0, 0.55, 0.50, 1.0)), (0.53, (1.0, 1.0, 1.0, 1.0))]},
-    "Manga": {"interpolation": 'CONSTANT', "stops": [
+    n_("Manga"): {"interpolation": 'CONSTANT', "stops": [
         (0.0, (0.10, 0.10, 0.10, 1.0)), (0.5, (1.0, 1.0, 1.0, 1.0))]},
 }
 
@@ -157,7 +160,7 @@ class DASKTOON_OT_shading_style_apply(_TargetProps, Operator):
         node = _target_node(context, self)
         style = get_style(self.name)
         if node is None or style is None:
-            self.report({'WARNING'}, "Không tìm thấy node hoặc style")
+            self.report({'WARNING'}, rpt_("Node or style not found"))
             return {'CANCELLED'}
         node.shading_mode = 'RAMP'
         apply_style(node.shading_ramp, style)
@@ -167,10 +170,10 @@ class DASKTOON_OT_shading_style_apply(_TargetProps, Operator):
 class DASKTOON_OT_shading_style_save(_TargetProps, Operator):
     """Save the current ramp as one of your own styles (shared by every file)"""
     bl_idname = "dasktoon.shading_style_save"
-    bl_label = "Lưu style của tôi"
+    bl_label = "Save My Style"
 
-    name: StringProperty(name="Tên style", default="Style của tôi")
-    overwrite: BoolProperty(name="Ghi đè nếu đã có", default=False)
+    name: StringProperty(name="Style Name", default="My Style")
+    overwrite: BoolProperty(name="Overwrite Existing", default=False)
 
     def invoke(self, context, event):
         return context.window_manager.invoke_props_dialog(self)
@@ -178,24 +181,24 @@ class DASKTOON_OT_shading_style_save(_TargetProps, Operator):
     def execute(self, context):
         node = _target_node(context, self)
         if node is None or node.shading_ramp is None:
-            self.report({'WARNING'}, "Hãy chọn một node DaskToon ở chế độ Dải đổ bóng")
+            self.report({'WARNING'}, rpt_("Select a DaskToon node that uses a shading ramp"))
             return {'CANCELLED'}
         name = self.name.strip()
         if not name or name in BUILTIN_STYLES:
-            self.report({'ERROR'}, "Tên trống hoặc trùng preset có sẵn")
+            self.report({'ERROR'}, rpt_("The name is empty or the same as a built-in style"))
             return {'CANCELLED'}
         if name in list_user_styles() and not self.overwrite:
-            self.report({'ERROR'}, "Style '%s' đã có. Tick 'Ghi đè nếu đã có' để thay" % name)
+            self.report({'ERROR'}, rpt_("Style %s already exists: turn on Overwrite Existing to replace it") % name)
             return {'CANCELLED'}
         save_user_style(name, node.shading_ramp)
-        self.report({'INFO'}, "Đã lưu style '%s'" % name)
+        self.report({'INFO'}, rpt_("Saved style %s") % name)
         return {'FINISHED'}
 
 
 class DASKTOON_OT_shading_style_delete(Operator):
     """Delete one of your own shading styles"""
     bl_idname = "dasktoon.shading_style_delete"
-    bl_label = "Xóa style"
+    bl_label = "Delete Style"
 
     name: StringProperty()
 
@@ -204,7 +207,7 @@ class DASKTOON_OT_shading_style_delete(Operator):
 
     def execute(self, context):
         if not delete_user_style(self.name):
-            self.report({'WARNING'}, "Không tìm thấy style '%s'" % self.name)
+            self.report({'WARNING'}, rpt_("Style %s not found") % self.name)
             return {'CANCELLED'}
         return {'FINISHED'}
 
@@ -212,16 +215,16 @@ class DASKTOON_OT_shading_style_delete(Operator):
 class DASKTOON_OT_shading_ramp_from_simple(_TargetProps, Operator):
     """Create a ramp that approximates the current Simple sliders"""
     bl_idname = "dasktoon.shading_ramp_from_simple"
-    bl_label = "Chuyển từ Đơn giản"
+    bl_label = "Convert from Simple"
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
         node = _target_node(context, self)
         if node is None:
-            self.report({'WARNING'}, "Hãy chọn một node DaskToon")
+            self.report({'WARNING'}, rpt_("Select a DaskToon node"))
             return {'CANCELLED'}
         ramp_from_simple(node)
-        self.report({'INFO'}, "Đã tạo dải gần đúng với thanh trượt hiện tại")
+        self.report({'INFO'}, rpt_("Made a ramp close to the current sliders"))
         return {'FINISHED'}
 
 
@@ -236,16 +239,17 @@ class NODE_MT_dasktoon_shading_styles(Menu):
         if user:
             layout.separator()
             for name in user:
-                layout.operator(DASKTOON_OT_shading_style_apply.bl_idname, text=name, icon='USER').name = name
+                layout.operator(DASKTOON_OT_shading_style_apply.bl_idname, text=name, icon='USER',
+                                translate=False).name = name
             layout.menu("NODE_MT_dasktoon_shading_styles_delete", icon='TRASH')
 
 
 class NODE_MT_dasktoon_shading_styles_delete(Menu):
-    bl_label = "Xóa style"
+    bl_label = "Delete Style"
 
     def draw(self, context):
         for name in list_user_styles():
-            self.layout.operator(DASKTOON_OT_shading_style_delete.bl_idname, text=name).name = name
+            self.layout.operator(DASKTOON_OT_shading_style_delete.bl_idname, text=name, translate=False).name = name
 
 
 classes = (

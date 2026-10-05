@@ -7,6 +7,7 @@ render engine and samples are restored and every temporary datablock is removed,
 
 import bmesh
 import bpy
+from bpy.app.translations import pgettext_rpt as rpt_
 import numpy as np
 
 from .graph import follow
@@ -89,7 +90,7 @@ def bake_input(obj, material, source, size, samples):
     """Float RGBA pixels (size x size, rows bottom-up) of the branch feeding source.node / source.socket in
     source.tree_owner's tree, baked on the faces of `obj` that use `material`, over the first UV map."""
     if not obj.data.uv_layers:
-        raise RuntimeError("mesh %s không có UV map để bake" % obj.name)
+        raise RuntimeError(rpt_("Mesh %s has no UV map to bake") % obj.name)
     scene = bpy.context.scene
     view_layer = bpy.context.view_layer
     selected = [o for o in view_layer.objects if o.select_get()]

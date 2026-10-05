@@ -28,11 +28,67 @@ TRANSLATED = [
     "scripts/startup/bl_ui/dasktoon_shape_key_manager.py",
     "scripts/startup/bl_ui/dasktoon_project.py",
     "scripts/modules/dasktoon_project/project.py",
+    "scripts/modules/dasktoon_export/__init__.py",
+    "scripts/modules/dasktoon_export/assets.py",
+    "scripts/modules/dasktoon_export/bake.py",
+    "scripts/modules/dasktoon_export/face_shading.py",
+    "scripts/modules/dasktoon_export/graph.py",
+    "scripts/modules/dasktoon_export/model_fbx.py",
+    "scripts/modules/dasktoon_export/node_maps.py",
+    "scripts/modules/dasktoon_export/report.py",
+    "scripts/modules/dasktoon_export/shaders_install.py",
+    "scripts/modules/dasktoon_export/targets.py",
+    "scripts/modules/dasktoon_export/textures.py",
+    "scripts/modules/dasktoon_export/unity_yaml.py",
+    "scripts/modules/dasktoon_project/__init__.py",
+    "scripts/startup/bl_ui/dasktoon_face_shading_nodes.py",
+    "scripts/startup/bl_ui/dasktoon_outline_nodes.py",
+    "scripts/startup/bl_ui/dasktoon_shading_styles.py",
+    "scripts/startup/bl_ui/dasktoon_upgrade.py",
+    "scripts/startup/bl_ui/engine_dasktoon_anime.py",
+    "scripts/startup/dasktoon_init.py",
 ]
 
 
 def path(rel):
     return os.path.join(REPO, *rel.split("/"))
+
+
+def dasktoon_files():
+    """Every DaskToon Python file that can show text."""
+    import glob
+    found = set()
+    for pattern in ("scripts/startup/bl_ui/dasktoon_*.py", "scripts/startup/bl_ui/engine_dasktoon_anime.py",
+                    "scripts/startup/dasktoon_*.py", "scripts/modules/dasktoon_export/*.py",
+                    "scripts/modules/dasktoon_project/*.py"):
+        found.update(os.path.relpath(p, REPO).replace(os.sep, "/") for p in glob.glob(path(pattern)))
+    found.discard("scripts/startup/bl_ui/dasktoon_translations.py")
+    return found
+
+
+def dasktoon_node_menus():
+    """(node types, labels) of the Shader Editor's DaskToon Anime and DaskToon Manga Add menus: the bl_idname of each
+    C++ node they add, and the menu and item labels they show."""
+    import ast
+    with open(path("scripts/startup/bl_ui/node_add_menu_shader.py"), encoding="utf-8") as f:
+        tree = ast.parse(f.read())
+    types, labels = set(), set()
+    for cls in [n for n in tree.body if isinstance(n, ast.ClassDef) and
+                ("anime" in n.name.lower() or "manga" in n.name.lower())]:
+        for stmt in cls.body:
+            if isinstance(stmt, ast.Assign) and any(getattr(tg, "id", "") == "bl_label" for tg in stmt.targets):
+                labels.add(stmt.value.value)
+        for call in [n for n in ast.walk(cls) if isinstance(n, ast.Call)]:
+            for arg in call.args:
+                if isinstance(arg, ast.Constant) and isinstance(arg.value, str):
+                    if arg.value.startswith("ShaderNode"):
+                        types.add(arg.value)
+                    elif "/" in arg.value and getattr(call.func, "attr", "") == "draw_menu":
+                        labels.add(arg.value.rsplit("/", 1)[1])
+            for kw in call.keywords:
+                if kw.arg == "label" and isinstance(kw.value, ast.Constant):
+                    labels.add(kw.value.value)
+    return types, labels
 
 
 class TranslationTest(unittest.TestCase):
@@ -55,6 +111,28 @@ class TranslationTest(unittest.TestCase):
         with iu.language('vi_VN'):
             for rel in TRANSLATED:
                 self.assertEqual(iu.untranslated(iu.module_strings(path(rel))[0], dt.KEEP), [], rel)
+
+    def test_every_dasktoon_file_is_checked(self):
+        self.assertEqual(dasktoon_files() - set(TRANSLATED), set())
+
+    def test_dasktoon_nodes_are_translated(self):
+        types, strings = dasktoon_node_menus()
+        self.assertIn("ShaderNodeMangaCharacter", types)
+        mat = bpy.data.materials.new("DT_NodeStrings")
+        for idname in sorted(types):
+            node = mat.node_tree.nodes.new(idname)
+            strings.add(node.bl_rna.name)
+            strings.update(s.name for s in list(node.inputs) + list(node.outputs))
+            for prop in node.bl_rna.properties:
+                if prop.identifier in bpy.types.ShaderNode.bl_rna.properties:
+                    continue
+                strings.update((prop.name, prop.description))
+                if prop.type == 'ENUM':
+                    for item in prop.enum_items:
+                        strings.update((item.name, item.description))
+        bpy.data.materials.remove(mat)
+        with iu.language('vi_VN'):
+            self.assertEqual(iu.untranslated(strings, dt.KEEP), [])
 
     def test_translation_table_is_vietnamese(self):
         for msgid, msgstr in dt.VI.items():

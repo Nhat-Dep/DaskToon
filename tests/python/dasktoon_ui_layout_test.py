@@ -77,5 +77,25 @@ class MovedUITest(unittest.TestCase):
     def test_outline_removal_is_in_the_material_slot_menu(self):
         self.assertTrue(appended(bpy.types.MATERIAL_MT_context_menu, "bl_ui.dasktoon_outline"))
 
+class NoSidebarTest(unittest.TestCase):
+    def test_no_dasktoon_panel_in_any_sidebar_or_in_render_and_light(self):
+        bad = []
+        for cls in subclasses(bpy.types.Panel):
+            if not getattr(cls, "is_registered", False):
+                continue
+            module = getattr(cls, "__module__", "")
+            dasktoon = "dasktoon" in module or "DASKTOON" in cls.__name__.upper()
+            if not dasktoon:
+                continue
+            if cls.bl_region_type == 'UI' or getattr(cls, "bl_category", "") in {"DaskToon", "ARKit", "Shape Axis"}:
+                bad.append(cls.__name__)
+            if cls.bl_space_type == 'PROPERTIES' and getattr(cls, "bl_context", "") in {"render", "data"} and \
+                    getattr(cls, "bl_parent_id", "").startswith("DATA_PT_EEVEE_light"):
+                bad.append(cls.__name__)
+            if cls.bl_space_type == 'PROPERTIES' and getattr(cls, "bl_context", "") == "render":
+                bad.append(cls.__name__)
+        self.assertEqual(bad, [])
+
+
 if __name__ == "__main__":
     tu.run_tests()

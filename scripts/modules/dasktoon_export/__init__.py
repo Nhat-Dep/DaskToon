@@ -7,6 +7,8 @@ Design: docs/superpowers/specs/2026-10-03-dasktoon-unity-export-design.md"""
 
 from dataclasses import dataclass
 
+from bpy.app.translations import pgettext_rpt as rpt_
+
 from . import report  # noqa: F401  (re-exported for callers: dasktoon_export.report)
 
 _FORBIDDEN = '<>:"/\\|?*'
@@ -108,14 +110,15 @@ class _Writer:
                 self.written[key] = guid
                 return guid
             if src.kind == 'NORMAL':
-                self.rep.warnings.append("%s: không đọc được ảnh normal map %s; bỏ normal map"
+                self.rep.warnings.append(rpt_("%s: cannot read the normal map image %s; normal map left out")
                                          % (spec.material.name, src.image.name))
                 return None
         size = bake.branch_size(src.tree_owner, src.node, src.socket, self.options.bake_size)
         try:
             pixels = bake.bake_input(users[0], spec.material, src, size, self.options.bake_samples)
         except Exception as ex:  # A failed bake must not stop the export; the input keeps its value.
-            self.rep.warnings.append("%s › %s: bake lỗi (%s); dùng giá trị đang đặt" % (spec.material.name, src.socket, ex))
+            self.rep.warnings.append(rpt_("%s › %s: bake failed (%s); using its value")
+                                     % (spec.material.name, src.socket, ex))
             return None
         if textures.needs_float(pixels):
             ext, data, kind = ".exr", textures.exr_bytes(pixels, size, size), 'DATA'
@@ -129,7 +132,7 @@ class _Writer:
             return None
         self.rep.baked.append("%s › %s" % (spec.material.name, src.socket))
         if len(users) > 1:
-            self.rep.warnings.append("%s › %s: bake trên mesh của %s, các mesh khác dùng chung texture này"
+            self.rep.warnings.append(rpt_("%s › %s: baked on the mesh of %s; the other meshes share this texture")
                                      % (spec.material.name, src.socket, users[0].name))
         return guid
 
@@ -204,8 +207,8 @@ def _write_model(context, target, objects, meshes, options, rep):
         if assets.write_asset(target.root, rel, guid, meta, rep.warnings, writer=write_fbx):
             rep.model = rel
         if left_out:
-            rep.warnings.append("Không đưa vào FBX: %s (không nằm trong view layer hiện tại, ví dụ collection bị loại trừ)"
-                                % ", ".join(left_out))
+            rep.warnings.append(rpt_("Not in the FBX: %s (not in the current view layer, for example in an excluded "
+                                     "collection)") % ", ".join(left_out))
     return writer
 
 
@@ -214,7 +217,7 @@ def export_model(context, target, objects, options):
     Face-shaded meshes get their rest-pose face normals for the FBX and are given back afterwards (face spec 6)."""
     from . import assets, face_shading, targets, unity_yaml
     if target.engine not in targets.SUPPORTED_ENGINES:
-        raise ValueError("Engine %s chưa được hỗ trợ" % target.engine)
+        raise ValueError(rpt_("Engine %s is not supported yet") % target.engine)
     rep = report.Report(mode=target.mode, root=target.root, name=target.name)
     meshes = [o for o in objects if o.type == 'MESH']
     snapshots, rep.face_meshes, errors = face_shading.bake_rest_normals(context, meshes)

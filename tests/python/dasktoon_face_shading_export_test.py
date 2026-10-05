@@ -175,7 +175,7 @@ class FaceShadingExportTest(unittest.TestCase):
         rep = dasktoon_export.export_model(bpy.context, target, [head, rig], OPTIONS)
         self.assertEqual(rep.face_meshes, ["Head"])
         self.assertFalse(any(fsn.MODIFIER_NAME in note for note in rep.modifier_notes))
-        self.assertTrue(any("Bóng mặt" in line for line in rep.lines()))
+        self.assertTrue(any("Face shading" in line for line in rep.lines()))
         self.assertFalse(head.data.has_custom_normals)
         self.assertEqual(rig.data.pose_position, 'POSE')
         with open(os.path.join(target.root, "Hero/Model/Hero.fbx.meta"), encoding="utf-8") as f:

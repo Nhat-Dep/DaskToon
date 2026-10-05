@@ -7,10 +7,12 @@
 import os
 from dataclasses import dataclass
 
+from bpy.app.translations import pgettext_n as n_
+
 ENGINES = (
-    ('UNITY_URP', "Unity 6 (URP)", "Unity 6, Universal Render Pipeline 17.5"),
-    ('UNREAL_5', "Unreal 5 (sắp có)", "Chưa hỗ trợ"),
-    ('GODOT_4', "Godot 4 (sắp có)", "Chưa hỗ trợ"),
+    ('UNITY_URP', n_("Unity 6 (URP)"), n_("Unity 6, Universal Render Pipeline 17.5")),
+    ('UNREAL_5', n_("Unreal 5 (coming soon)"), n_("Not supported yet")),
+    ('GODOT_4', n_("Godot 4 (coming soon)"), n_("Not supported yet")),
 )
 SUPPORTED_ENGINES = {'UNITY_URP'}
 TARGET_PROP = "dasktoon_engine_target"
