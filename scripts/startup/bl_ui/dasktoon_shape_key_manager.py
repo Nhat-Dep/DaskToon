@@ -560,6 +560,11 @@ class DASKTOON_OT_shape_axis_toggle_hud(Operator):
         pad_bottom = pad_cy - pad_half
 
         mx, my = event.mouse_region_x, event.mouse_region_y
+        region = context.region
+        if not DaskHUDState.is_dragging and region is not None and \
+                not (0 <= mx < region.width and 0 <= my < region.height):
+            # Over another editor, e.g. Properties where the HUD is opened from: the event belongs to that editor.
+            return {'PASS_THROUGH'}
 
         if event.type == 'LEFTMOUSE':
             if event.value == 'PRESS':

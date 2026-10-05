@@ -70,6 +70,20 @@ class SunSyncTest(unittest.TestCase):
         bpy.context.view_layer.update()
         self.assertTrue(close(node.inputs["Light Vector"].default_value, ss.sun_vector(self.sun)))
 
+    def test_animated_sun_turns_materials_on_frame_change(self):
+        # Frame changes run frame_change_post, not depsgraph_update_post: the old Sync Sun driver followed every frame.
+        mat, node = face_shadow_material()
+        bpy.context.view_layer.update()
+        scene = bpy.context.scene
+        self.sun.keyframe_insert("rotation_euler", frame=1)
+        self.sun.rotation_euler = (math.radians(80.0), 0.0, math.radians(-50.0))
+        self.sun.keyframe_insert("rotation_euler", frame=20)
+        scene.frame_set(1)
+        at_one = tuple(node.inputs["Light Vector"].default_value)
+        scene.frame_set(20)
+        self.assertTrue(close(node.inputs["Light Vector"].default_value, ss.sun_vector(self.sun)))
+        self.assertFalse(close(node.inputs["Light Vector"].default_value, at_one))
+
     def test_no_sun_changes_nothing(self):
         bpy.data.objects.remove(self.sun)
         mat, node = face_shadow_material()

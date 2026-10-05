@@ -15,7 +15,7 @@
   node, ô và thuộc tính của các node DaskToon viết bằng C++.
 - Danh sách ngôn ngữ chỉ còn Automatic, English và Tiếng Việt.
 - Light Bleed (0.70) và Hand Wobble (0.15) của outline là giá trị cố định, tự áp dụng.
-- Hướng Sun của các node tự cập nhật theo Sun trong scene, không cần nút hay driver.
+- Hướng Sun của các node tự cập nhật theo Sun trong scene, kể cả khi Sun có animation. Không cần nút hay driver.
 - Bản cài được đồng bộ với repo bằng `tools/dasktoon_sync_build.py`. Script chép file mới và xóa các file cũ không còn
   trong repo.
 
@@ -30,7 +30,7 @@
 | Gộp material | Thanh bên › Material Optimizer | Properties › Material › menu ⌄ cạnh danh sách slot › **Combine Materials**. **Restore Original Slots** chỉ hiện khi có slot để khôi phục |
 | Dự án | Thanh bên › Dự án | File › **DaskToon Project**: New Project, Open Project, Open Recent. Khi đang mở dự án có thêm Models, Export This Model, Reinstall Shaders và Open Project Folder |
 | Outline | Properties › Material › DaskToon Outline, và trên node | Chỉ trên node Anime BSDF / Dask Cel. Material dùng outline kiểu cũ có lệnh **Remove DaskToon Outline** trong menu ⌄ của slot. **Prepare Outline for Games** tìm bằng F3 |
-| Hướng Sun cho node | Nút Sync Sun (3 chỗ) | Tự động |
+| Hướng Sun cho node | Nút Sync Sun (3 chỗ) | Tự động, cả khi Sun có animation |
 | Engine Export, Shading Style, menu node DaskToon | — | Giữ nguyên chỗ cũ |
 
 ## Đã bỏ và vì sao
@@ -63,8 +63,8 @@
 
 ## Kiểm thử
 
-- Toàn bộ 30 mục test DaskToon trong `tests/python/CMakeLists.txt`: 239 test, tất cả OK. Riêng shading baseline chạy
-  khoảng 6 phút.
+- Toàn bộ 30 mục test DaskToon trong `tests/python/CMakeLists.txt`: 242 test, tất cả OK, chạy lại sau lượt sửa cuối.
+  Riêng shading baseline chạy khoảng 6 phút.
 - Test mới của phần này:
   - bản cài khớp repo;
   - danh sách ngôn ngữ;
@@ -91,6 +91,33 @@
 - Ảnh duyệt (`tests/python/dasktoon_visual_review.py`):
   - Simple và 5 kiểu đổ bóng có sẵn hiển thị đúng ở cả 3 góc Sun.
   - Hàng outline cuối có viền liền, không đứt nét ở cả 3 góc Sun.
+
+## Duyệt cuối
+
+Tôi tự duyệt toàn bộ mã của nhánh, không dùng người duyệt riêng, vì phiên làm việc này không được tạo agent khi bạn chưa
+yêu cầu. Người viết tự duyệt thì dễ bỏ sót hơn người duyệt mới, nên bạn quyết định có cần duyệt thêm trước khi merge hay
+không.
+
+Hai lỗi mức Important đã sửa. Mỗi lỗi có test thấy đỏ trước khi sửa, xanh sau khi sửa, rồi chạy lại toàn bộ test:
+
+1. **Sun có animation không còn kéo theo bóng mặt khi phát hoặc render animation.** Khi đổi khung hình, Blender chạy
+   handler `frame_change_post` chứ không chạy `depsgraph_update_post`, trong khi driver Sync Sun cũ chạy ở mọi khung.
+   Đã thêm handler cho lúc đổi khung. Handler đọc Sun đã đánh giá, nên đúng cả khi render. Khi hướng Sun không đổi, nó
+   chỉ tốn một phép so sánh. Test: `test_animated_sun_turns_materials_on_frame_change`.
+2. **HUD mở từ Properties nhận cả sự kiện của editor khác.** Ví dụ bấm I khi chuột đang trên một ô ở Properties thì HUD
+   chèn keyframe cho tay cầm của nó thay vì cho ô đó; chuột phải ở đâu cũng đóng HUD và làm mất cú bấm. Giờ HUD chỉ xử
+   lý sự kiện khi chuột nằm trong 3D Viewport của nó, trừ lúc đang kéo. Test:
+   `test_hud_leaves_events_over_other_editors_alone`.
+
+Việc nhỏ để lại (chưa sửa):
+
+- Nếu đóng 3D Viewport đang chạy HUD, HUD bị lỗi và vẫn coi là đang mở cho tới khi bấm nút một lần nữa.
+- Chưa có test kiểm mỗi câu dịch giữ đủ các chỗ `%s`/`%d` của câu gốc. Tôi đã kiểm bằng tay: 791 mục đều khớp.
+- `bl_ui/__init__.py` vẫn tự thêm DASKTOON_ANIME vào các panel EEVEE, trùng việc của `engine_dasktoon_anime.register()`.
+  Không gây lỗi.
+- Độ lệch bề rộng outline với Unity đúng bằng ngưỡng 1.5 px. Test vẫn qua nhưng không còn khoảng dư.
+- Project Unity dùng cho test nằm trong `%TEMP%`, nơi Windows có thể dọn mất file. Có thể đặt biến
+  `DASKTOON_UNITY_PROJECT` trỏ sang thư mục khác.
 
 ## Quyết định tôi tự đưa ra (kèm cái giá nếu sai)
 

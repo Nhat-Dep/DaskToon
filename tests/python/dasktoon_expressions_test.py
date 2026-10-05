@@ -120,6 +120,36 @@ class ExpressionPanelsTest(unittest.TestCase):
         self.assertFalse(skm.DaskHUDState.is_active)
         self.assertFalse(self.obj.dask_shape_controllers.hud_enabled)
 
+    def test_hud_leaves_events_over_other_editors_alone(self):
+        # The HUD is opened from Properties: I and right click over another editor belong to that editor.
+        self.obj.shape_key_add(name="Basis")
+        self.obj.dask_shape_controllers.groups.add()
+        skm.DaskHUDState.is_active = True
+        skm.DaskHUDState.session += 1
+        self.addCleanup(setattr, skm.DaskHUDState, "is_active", False)
+
+        class Operator:
+            _session = skm.DaskHUDState.session
+
+            def cancel(self, context):
+                skm._close_hud(context)
+
+        class Area:
+            def tag_redraw(self):
+                pass
+
+        context = types.SimpleNamespace(object=self.obj, area=Area(), screen=None,
+                                        region=types.SimpleNamespace(width=800, height=600))
+        modal = skm.DASKTOON_OT_shape_axis_toggle_hud.modal
+        for kind in ('I', 'RIGHTMOUSE', 'LEFTMOUSE'):
+            event = types.SimpleNamespace(type=kind, value='PRESS', mouse_region_x=1000, mouse_region_y=300)
+            self.assertEqual(modal(Operator(), context, event), {'PASS_THROUGH'}, kind)
+        self.assertTrue(skm.DaskHUDState.is_active)
+        self.assertIsNone(self.obj.animation_data)
+        inside = types.SimpleNamespace(type='RIGHTMOUSE', value='PRESS', mouse_region_x=400, mouse_region_y=300)
+        self.assertEqual(modal(Operator(), context, inside), {'CANCELLED'})
+        self.assertFalse(skm.DaskHUDState.is_active)
+
     def test_placeholders_create_the_52_arkit_shapes(self):
         self.assertEqual(bpy.ops.dasktoon.arkit_init_placeholders(), {'FINISHED'})
         names = set(self.obj.data.shape_keys.key_blocks.keys())

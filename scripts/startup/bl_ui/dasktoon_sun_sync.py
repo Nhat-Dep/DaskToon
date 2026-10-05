@@ -13,6 +13,7 @@ from mathutils import Vector
 SOCKET = "Light Vector"
 EPSILON = 1e-6
 _busy = False
+_last = {"vector": None}  # direction last written; frame changes with a still Sun then cost one comparison
 classes = ()
 
 
@@ -64,16 +65,18 @@ def sync_materials(materials, vector):
     return changed
 
 
-def _sync_scene(scene, materials):
+def _sync_scene(scene, materials, depsgraph=None):
     global _busy
     sun = find_sun(scene)
     if sun is None:
         return
+    vector = sun_vector(sun.evaluated_get(depsgraph) if depsgraph is not None else sun)
     _busy = True
     try:
-        sync_materials(materials, sun_vector(sun))
+        sync_materials(materials, vector)
     finally:
         _busy = False
+    _last["vector"] = vector
 
 
 @persistent
@@ -94,6 +97,22 @@ def sun_depsgraph_post(scene, depsgraph):
 
 
 @persistent
+def sun_frame_change_post(scene, depsgraph):
+    """An animated Sun turns on frame changes, which run this handler but not depsgraph_update_post. Blender evaluates
+    the frame again when a handler changes data, so playback and animation renders see the new direction."""
+    if _busy:
+        return
+    sun = find_sun(scene)
+    if sun is None:
+        return
+    vector = sun_vector(sun.evaluated_get(depsgraph) if depsgraph is not None else sun)
+    last = _last["vector"]
+    if last is not None and (vector - last).length <= EPSILON:
+        return
+    _sync_scene(scene, bpy.data.materials, depsgraph)
+
+
+@persistent
 def sun_load_post(_filepath):
     if bpy.context.scene is not None:
         _sync_scene(bpy.context.scene, bpy.data.materials)
@@ -102,6 +121,8 @@ def sun_load_post(_filepath):
 def register():
     if sun_depsgraph_post not in bpy.app.handlers.depsgraph_update_post:
         bpy.app.handlers.depsgraph_update_post.append(sun_depsgraph_post)
+    if sun_frame_change_post not in bpy.app.handlers.frame_change_post:
+        bpy.app.handlers.frame_change_post.append(sun_frame_change_post)
     if sun_load_post not in bpy.app.handlers.load_post:
         bpy.app.handlers.load_post.append(sun_load_post)
 
@@ -109,5 +130,7 @@ def register():
 def unregister():
     if sun_depsgraph_post in bpy.app.handlers.depsgraph_update_post:
         bpy.app.handlers.depsgraph_update_post.remove(sun_depsgraph_post)
+    if sun_frame_change_post in bpy.app.handlers.frame_change_post:
+        bpy.app.handlers.frame_change_post.remove(sun_frame_change_post)
     if sun_load_post in bpy.app.handlers.load_post:
         bpy.app.handlers.load_post.remove(sun_load_post)
