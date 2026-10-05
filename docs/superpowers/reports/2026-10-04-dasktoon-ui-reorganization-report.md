@@ -25,13 +25,60 @@
 |---|---|---|
 | Bóng mặt (Face Shading) | Thanh bên › DaskToon › Bóng mặt (+ Nâng cao) | Properties › Object Data › **Face Shading**. Panel hiện cả khi đang chọn khối trứng. |
 | VRM, ARKit, Shape Axis | Thanh bên › tab Shape Axis và tab ARKit | Properties › Object Data › Shape Keys, 4 panel con: **Expression Sets**, **Expression Tools**, **Expression Preview**, **Controllers** |
-| Zero All, Mirror (X-Axis) | Nút DaskToon | Menu ⌄ của Shape Keys: **Clear Shape Key Values**, **Mirror Shape Key** (lệnh có sẵn của Blender) |
+| Zero All, Mirror (X-Axis) | Nút DaskToon | Lệnh có sẵn của Blender trong panel Shape Keys: **Flip** (Mirror Shape Key) trong menu ⌄; nút **✕** cuối hàng **Relative** (Clear Shape Keys) đưa mọi giá trị về 0. Expression Preview cũng có nút **Clear Values** |
 | Hiệu ứng anime | Thanh bên › Anime Visual Effects | 3D Viewport › Add (Shift+A) › **Anime Effect**, chia nhóm Impact và Atmosphere. Thông số chỉnh trong Adjust Last Operation |
 | Gộp material | Thanh bên › Material Optimizer | Properties › Material › menu ⌄ cạnh danh sách slot › **Combine Materials**. **Restore Original Slots** chỉ hiện khi có slot để khôi phục |
 | Dự án | Thanh bên › Dự án | File › **DaskToon Project**: New Project, Open Project, Open Recent. Khi đang mở dự án có thêm Models, Export This Model, Reinstall Shaders và Open Project Folder |
 | Outline | Properties › Material › DaskToon Outline, và trên node | Chỉ trên node Anime BSDF / Dask Cel. Material dùng outline kiểu cũ có lệnh **Remove DaskToon Outline** trong menu ⌄ của slot. **Prepare Outline for Games** tìm bằng F3 |
 | Hướng Sun cho node | Nút Sync Sun (3 chỗ) | Tự động, cả khi Sun có animation |
 | Engine Export, Shading Style, menu node DaskToon | — | Giữ nguyên chỗ cũ |
+
+## Ảnh chụp
+
+Ảnh chụp từ DaskToon với một cảnh mẫu: đầu nhân vật có Face Shading, bộ biểu cảm VRM 0.x, các controller do Auto Setup
+tạo và một dự án tạm. Bản giao diện tiếng Việt có cùng tên file trong thư mục `ui-reorganization/vi/`. Các panel con của
+Shape Keys mặc định đóng; trong ảnh chúng được mở sẵn.
+
+**Face Shading**, cuối tab Properties › Object Data của mesh:
+
+![Face Shading trong Object Data](ui-reorganization/en/01_face_shading.png)
+
+Cùng panel khi đang chọn khối trứng:
+
+![Face Shading của khối trứng](ui-reorganization/en/02_face_shading_proxy.png)
+
+**Shape Keys › Expression Sets và Expression Tools.** Nút **✕** cuối hàng Relative là Clear Shape Keys của Blender:
+
+![Expression Sets và Expression Tools](ui-reorganization/en/03_shape_keys_sets_tools.png)
+
+**Shape Keys › Expression Preview:**
+
+![Expression Preview](ui-reorganization/en/04_shape_keys_preview.png)
+
+**Shape Keys › Controllers:**
+
+![Controllers](ui-reorganization/en/05_shape_keys_controllers.png)
+
+**Menu ⌄ của Shape Keys** (Shape Key Specials của Blender). **Flip** là lệnh Mirror Shape Key:
+
+![Shape Key Specials](ui-reorganization/en/06_shape_key_specials.png)
+
+**Outline và Shading Style trên node Anime BSDF** (Shader Editor). Bật ô Outline thì hiện Outline Mode, Outline Width,
+Outline Color và Outline Lighting Mix. Ở chế độ Ramp có menu Style:
+
+![Outline trên node](ui-reorganization/en/07_outline_on_node.png)
+
+**3D Viewport › Add (Shift+A) › Anime Effect:**
+
+![Add › Anime Effect](ui-reorganization/en/08_add_anime_effect.png)
+
+**File › DaskToon Project**, khi đang mở dự án:
+
+![File › DaskToon Project](ui-reorganization/en/09_file_dasktoon_project.png)
+
+**Properties › Material › menu ⌄ cạnh danh sách slot.** Restore Original Slots hiện ra sau khi đã gộp:
+
+![Menu slot material](ui-reorganization/en/10_material_slot_menu.png)
 
 ## Đã bỏ và vì sao
 
@@ -60,10 +107,13 @@
   Blender.
 - **Kiểm tra bản cài dùng `filecmp` cho kết quả sai 4 lần trên 5.** `filecmp` coi hai file là giống nhau khi trùng kích
   thước và thời điểm sửa. Giờ so từng byte.
+- **Menu Anime Effect (và panel cũ trước đó) vẽ lỗi ở mục Fire Embers.** Icon `FIRE` không có trong Blender 5.2, nên
+  Blender ngừng vẽ ở đó và hai mục cuối không hiện. Lỗi này lộ ra khi chụp ảnh giao diện thật; test cũ dùng layout giả
+  nên không bắt được. Đã đổi icon và thêm test kiểm mọi tên icon của DaskToon.
 
 ## Kiểm thử
 
-- Toàn bộ 30 mục test DaskToon trong `tests/python/CMakeLists.txt`: 242 test, tất cả OK, chạy lại sau lượt sửa cuối.
+- Toàn bộ 30 mục test DaskToon trong `tests/python/CMakeLists.txt`: 244 test, tất cả OK, chạy lại sau lượt sửa cuối.
   Riêng shading baseline chạy khoảng 6 phút.
 - Test mới của phần này:
   - bản cài khớp repo;
@@ -76,6 +126,7 @@
   - tự đồng bộ Sun;
   - Light Bleed và Hand Wobble cố định;
   - các menu và panel mới (Anime Effect, gộp material, 4 panel Shape Keys, HUD, File › DaskToon Project).
+  - mọi tên icon trong bảng Anime Effect và trong các `icon=` của DaskToon đều có trong Blender.
 - Unity 6 (6000.5.4f1): `dasktoon_unity_render_test.py` OK và `dasktoon_unity_model_test.py` OK.
   - Test render so 20 ca giữa DaskToon và Unity. Cel và diffuse lệch tối đa 0.025, dưới ngưỡng 0.03.
   - Hai ca outline dùng Light Bleed 0.70 và Hand Wobble 0.15 cố định:
