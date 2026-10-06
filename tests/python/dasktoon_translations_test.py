@@ -42,6 +42,8 @@ TRANSLATED = [
     "scripts/modules/dasktoon_export/unity_yaml.py",
     "scripts/modules/dasktoon_project/__init__.py",
     "scripts/modules/dasktoon_project/textures.py",
+    "scripts/modules/dasktoon_project/scene.py",
+    "scripts/startup/bl_ui/dasktoon_model.py",
     "scripts/startup/bl_ui/dasktoon_face_shading_nodes.py",
     "scripts/startup/bl_ui/dasktoon_outline_nodes.py",
     "scripts/startup/bl_ui/dasktoon_shading_styles.py",

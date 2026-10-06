@@ -587,6 +587,29 @@ VI = {
     "%s: image sequences are not copied into the project": "%s: chuỗi ảnh không được chép vào dự án",
     "%s: file not found: %s": "%s: không tìm thấy file: %s",
 
+    # bl_ui/dasktoon_model.py
+    "New Model": "Tạo model",
+    "New Model…": "Tạo model…",
+    "Create a model in the selected project: Models/<name>.blend, saved at once and opened":
+        "Tạo model trong dự án đang chọn: Models/<tên>.blend, được lưu ngay và mở ra",
+    "Start From": "Bắt đầu từ",
+    "DaskToon Scene": "Cảnh DaskToon",
+    "An empty scene with a Sun, a camera looking at the origin, the DaskToon Anime engine and the Standard view":
+        "Cảnh trống có một Sun, một camera nhìn vào gốc tọa độ, engine DaskToon Anime và view Standard",
+    "A completely empty scene": "Cảnh trống hoàn toàn",
+    "Current Scene": "Cảnh hiện tại",
+    "Save the scene that is open now as the new model": "Lưu cảnh đang mở làm model mới",
+    "Copy of Model": "Bản sao của model",
+    "Start from a copy of another model of the project": "Bắt đầu từ bản sao của một model khác trong dự án",
+    "Create or open a project first": "Hãy tạo hoặc mở một dự án trước",
+    "Choose the model to copy": "Hãy chọn model để sao chép",
+    "Created model %s": "Đã tạo model %s",
+    "Finish New Model": "Hoàn tất tạo model",
+    "Finish New Model once the startup file or the model to copy has been read":
+        "Hoàn tất tạo model sau khi đã đọc file khởi động hoặc model cần sao chép",
+    "Image %s has unsaved paint changes: save it with Image › Save":
+        "Ảnh %s có nét vẽ chưa lưu: hãy lưu bằng Image › Save",
+
     # bl_ui/dasktoon_shading_styles.py
     "Shading Style": "Kiểu đổ bóng",
     "Anime 2-Tone": "Anime 2 tông",
