@@ -57,6 +57,7 @@ TRANSLATED = [
     "scripts/modules/dasktoon_rig/parts.py",
     "scripts/modules/dasktoon_rig/weights.py",
     "scripts/modules/dasktoon_rig/build.py",
+    "scripts/modules/dasktoon_rig/spring.py",
     "scripts/startup/bl_ui/dasktoon_rig.py",
 ]
 # Blender files DaskToon rewrote parts of (project workflow spec 13): only these classes are DaskToon's.
