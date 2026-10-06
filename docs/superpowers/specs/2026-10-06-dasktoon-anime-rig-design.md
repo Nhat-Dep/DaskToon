@@ -87,7 +87,8 @@ là **khung chuẩn**, kể cả khi người dùng xóa ngón, mắt, hàm hay 
 - Các mesh đang chọn thành **phần** của rig (§5.3, đoán vai trò theo tên).
 - Armature mới: `show_in_front`, bật **X-Axis Mirror** khi sửa khớp, được chọn và active. Thông báo: "Fit the joints in
   Edit Mode, then press Build Rig in Properties › Object Data".
-- **Fit to Parts** (panel Skeleton): khớp lại khung theo các mesh của phần; thay vị trí khớp hiện có (hỏi xác nhận).
+- **Fit to Parts** (panel con Joints): khớp lại khung theo các mesh của phần; thay vị trí khớp hiện có (hỏi xác
+  nhận); không tạo lại xương người dùng đã xóa; không dời object armature (mesh đã gắn không bị kéo theo).
 
 ## 5. Phần và vai trò (R1)
 
@@ -131,18 +132,20 @@ cùng vai trò thì phần đứng sau trong danh sách thắng.
 
 ### 5.3 Đoán vai trò
 
-Theo tên object (hoặc tên material với phần theo material), không phân biệt hoa thường, khớp từ khóa:
+Theo tên object (hoặc tên material với phần theo material), không phân biệt hoa thường, bỏ dấu tiếng Việt trước khi so
+(`Tóc` → `toc`), khớp từ khóa:
 
 | Vai trò | Từ khóa |
 |---|---|
-| Hair | `hair`, `bang`, `fringe`, `ponytail`, `twintail`, `ahoge`, `toc`, `tóc`, `髪`, `kami` |
-| Skirt | `skirt`, `vay`, `váy`, `スカート` |
-| Accessory | `eye`, `glass`, `ribbon`, `hairpin`, `clip`, `earring`, `hat`, `mat`, `mắt`, `目` |
-| Clothing | `cloth`, `shirt`, `jacket`, `coat`, `dress`, `pant`, `shoe`, `sock`, `glove`, `uniform`, `ao`, `áo`, `quan`, `quần`, `服` |
-| Body | `body`, `skin`, `face`, `head`, `than`, `thân`, `mặt`, `体` |
+| Hair | `hair`, `bang(s)`, `fringe`, `ponytail`, `twintail(s)`, `tail(s)`, `ahoge`, `braid`, `toc`, `kami`, `髪` |
+| Skirt | `skirt`, `vay`, `スカート` |
+| Accessory | `eye(s)`, `eyeball`, `glass(es)`, `ribbon`, `hairpin`, `clip`, `earring`, `hat`, `cap`, `bow`, `目` |
+| Clothing | `cloth(es)`, `shirt`, `tshirt`, `jacket`, `coat`, `dress`, `pant(s)`, `shoe(s)`, `sock(s)`, `glove(s)`, `uniform`, `服` |
+| Body | `body`, `skin`, `face`, `head`, `体` |
 
 Không khớp từ nào: mesh cao nhất (hộp bao) là Body nếu rig chưa có Body, còn lại là Clothing. So khớp theo từ (tách theo
-ký tự không phải chữ/số và theo chỗ đổi hoa thường), nên `Hat` không làm `Chatty` thành Accessory.
+ký tự không phải chữ cái và theo chỗ đổi chữ thường sang hoa), nên `Hat` không làm `Chatty` thành Accessory. Từ tiếng
+Việt ngắn dễ trùng (`ao`, `mat`, `than`, `quan`) không dùng. Vai trò khớp trước trong bảng thắng.
 
 ## 6. Dựng rig (R1)
 
@@ -150,7 +153,8 @@ Lệnh **Build Rig** (`dasktoon.rig_build`) chạy trong Object Mode, làm lại
 
 ### 6.1 Kiểm tra trước
 
-Báo lỗi và **không đổi gì** khi: armature không phải khung chuẩn (liệt kê xương thiếu); không có phần; phần trỏ tới
+Báo lỗi và **không đổi gì** khi: armature không phải khung chuẩn (liệt kê xương thiếu); armature hoặc mesh đang ẩn; không
+có phần; phần trỏ tới
 object không còn hoặc không phải mesh; material/vertex group của phần không có trên mesh hoặc không có đỉnh nào; có
 Clothing mà không có Body; mesh dùng chung dữ liệu với mesh khác (weight nằm trên dữ liệu mesh); mesh hoặc armature link
 từ thư viện.
@@ -174,12 +178,14 @@ theo `matrix_local` của rig.
 
 Cho mỗi mảnh của phần Hair:
 
-1. **Gốc**: các đỉnh có khoảng cách tới đoạn thẳng của xương gắn trong khoảng `dmin + 10% (dmax − dmin)`.
-2. **Khoảng cách trắc địa** từ gốc, đi theo cạnh mesh (Dijkstra). Chiều dài mảnh L = khoảng cách lớn nhất.
-3. Mảnh **ngắn hoặc bè** (L < 1,5 × đường kính vòng gốc, đường kính = 2 × khoảng cách trung bình từ các đỉnh gốc tới
-   tâm của chúng) hoặc có dưới 4 đỉnh thành Accessory trên xương gắn.
-4. **Khớp** k = 0…N (N = `bone_count`): tâm các đỉnh có khoảng cách trong khoảng k·L/N ± L/(4N); khớp 0 là tâm vòng gốc,
-   khớp N là tâm 5% đỉnh xa nhất; khoảng trống thì nội suy từ hai khớp bên cạnh.
+1. Mảnh có dưới 4 đỉnh, hoặc **bè** (độ trải theo trục chính PCA < 1,5 × độ trải theo trục thứ hai, vd. mũ tóc) thành
+   Accessory trên xương gắn.
+2. **Gốc**: các đỉnh có khoảng cách tới đoạn thẳng của xương gắn ≤ `dmin + 10% (dmax − dmin)`: phần tóc nằm sát đầu, theo
+   hẳn xương gắn.
+3. **Khoảng cách trắc địa** từ gốc, đi theo cạnh mesh (Dijkstra). Chiều dài mảnh L = khoảng cách lớn nhất.
+4. **Khớp** k = 0…N (N = `bone_count`): khớp 0 là tâm các đỉnh gốc nằm ở mép vùng gốc (có cạnh nối ra ngoài); khớp k là
+   tâm các đỉnh có khoảng cách trong khoảng k·L/N ± L/(4N); khớp N là tâm 5% đỉnh xa nhất; khoảng trống thì nội suy từ
+   hai khớp bên cạnh.
 5. **Weight**: u = d/L·N. Xương thứ j (1…N) đạt đỉnh ở u = j, xương gắn đạt đỉnh ở u = 0; weight hình nón
    `max(0, 1 − |u − tâm|)`. Gốc dính hẳn vào đầu, đuôi theo xương cuối.
 6. **Tên**: một mảnh: `<Phần>_<k>`; nhiều mảnh: `<Phần><i>_<k>`, mảnh đánh số theo X từ phải nhân vật (−X) sang trái
@@ -203,10 +209,11 @@ có panel DaskToon ở thanh bên viewport.
 
 ### 7.1 Properties › Object Data của armature: panel **Anime Rig**
 
-Panel cha `DATA_PT_dasktoon_rig` "Anime Rig" (chỉ khi object active là armature), ba panel con:
+Panel cha `DATA_PT_dasktoon_rig` "Anime Rig" (chỉ khi object active là armature), ba panel con `_joints`, `_parts`,
+`_build`:
 
-- **Skeleton**: dòng trạng thái (khung chuẩn, hoặc "Missing bones: …"); **Edit Joints** (vào Edit Mode, bật X-Axis
-  Mirror); **Fit to Parts**.
+- **Joints** (không gọi là Skeleton vì Blender đã có panel Skeleton): dòng trạng thái (khung chuẩn, hoặc "Missing
+  bones: …"); **Edit Joints** (vào Edit Mode, bật X-Axis Mirror); **Fit to Parts**.
 - **Parts**: UIList các phần (icon theo vai trò, tên, object); nút **Add Selected Meshes** (mỗi mesh đang chọn thành một
   phần cả object), **Add Material Part** (chọn material trong các material của object phần đang chọn), Remove. Dưới danh
   sách: thiết lập của phần đang chọn: Object, Scope, Material/Vertex Group (ô tìm theo dữ liệu của mesh), Role, Bone
