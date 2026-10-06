@@ -123,6 +123,17 @@ class ExportRigTest(unittest.TestCase):
         self.assertTrue(os.path.isfile(os.path.join(target.root, si.SCRIPT_DIR, "DaskToonSpringBone.cs")))
         self.assertIn("Hero/Model/Hero.rig.json", "\n".join(rep.lines()))
 
+    def test_folder_readme_says_scripts_go_in_once(self):
+        rig, objs = built()
+        target, _rep = export(rig, objs)
+        with open(os.path.join(target.root, "README.txt"), encoding="utf-8") as f:
+            readme = f.read()
+        self.assertIn("Scripts folder may be in a Unity project only once", readme)
+        rig, objs = built(roles=(("Body", 'BODY'),))
+        target, _rep = export(rig, {"Body": objs["Body"]})
+        with open(os.path.join(target.root, "README.txt"), encoding="utf-8") as f:
+            self.assertNotIn("Scripts folder", f.read())
+
     def test_no_chains_no_rig_files(self):
         rig, objs = built(roles=(("Body", 'BODY'),))
         target, rep = export(rig, {"Body": objs["Body"]})

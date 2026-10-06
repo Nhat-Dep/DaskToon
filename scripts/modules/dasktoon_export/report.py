@@ -114,8 +114,12 @@ def readme_text(report):
              "for the Shaders folder."),
         rpt_("The materials still work. To avoid it, choose the Unity project folder itself when exporting, or use "
              "a DaskToon Project."),
-        "",
     ]
+    if report.rig:
+        # Two copies of the same C# classes do not compile, unlike two copies of a shader.
+        head.append(rpt_("Note: the Scripts folder may be in a Unity project only once. With a second character, "
+                         "delete its Scripts folder after dragging it in, or export into the Unity project itself."))
+    head.append("")
     return "\n".join(head + report.lines()) + "\n"
 
 

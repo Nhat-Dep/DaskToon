@@ -1184,6 +1184,9 @@ VI = {
         "Rig: %s (spring bone của DaskToon cho tóc và váy lắc trong Unity)",
     "Part %s sways in Unity, but its bones have sway keys: Unity would sway it twice. Set Sway in Unity to Baked, or remove the keys":
         "Phần %s lắc trong Unity nhưng xương của nó có key lắc: Unity sẽ lắc hai lần. Đặt Lắc trong Unity thành Đã bake, hoặc xóa các key đó",
+    # dasktoon_export/report.py (scripts once per project)
+    "Note: the Scripts folder may be in a Unity project only once. With a second character, delete its Scripts folder after dragging it in, or export into the Unity project itself.":
+        "Lưu ý: mỗi project Unity chỉ được có một thư mục Scripts này. Với nhân vật thứ hai, xóa thư mục Scripts của nó sau khi kéo vào, hoặc xuất thẳng vào project Unity.",
 }
 
 # Words that need their own translation context, because Blender's own translation of the same word in the default
