@@ -135,6 +135,10 @@ class TranslationTest(unittest.TestCase):
         with iu.language('vi_VN'):
             self.assertEqual(iu.untranslated(strings, dt.KEEP), [])
 
+    def test_project_has_its_own_vietnamese_word(self):
+        with iu.language('vi_VN'):
+            self.assertEqual(bpy.app.translations.pgettext_iface("Project", "DaskToon"), "Dự án")
+
     def test_translation_table_is_vietnamese(self):
         for msgid, msgstr in dt.VI.items():
             self.assertTrue(msgstr.strip(), msgid)

@@ -14,6 +14,7 @@ KEEP = {
     "DaskToon", "Unity", "Unity 6 (URP)", "VRM", "VRoid", "ARKit", "FBX", "URP",
     "VRM 0.x", "VRM 1.0", "_L / _R", "_l / _r", "Left / Right",
     "Anime BSDF", "Manga BSDF", "DaskToon Anime", "DaskToon Manga", "Manga", "Unity 6, Universal Render Pipeline 17.5",
+    "Engine: %s",
 }
 
 VI = {
@@ -522,7 +523,6 @@ VI = {
     "Sticks the tip of the tongue out past the lips.": "Đầu lưỡi thò ra ngoài môi.",
 
     # bl_ui/dasktoon_project.py and dasktoon_project/project.py
-    "DaskToon Project": "Dự án DaskToon",
     "New Project…": "Tạo dự án…",
     "Open Project…": "Mở dự án…",
     "No recent projects": "Chưa có dự án gần đây",
@@ -531,17 +531,9 @@ VI = {
     "Models": "Các model",
     "Shaders: version %d": "Shader: phiên bản %d",
     "Shaders: not installed": "Shader: chưa cài",
-    "Create DaskToon Project": "Tạo dự án DaskToon",
-    "Create a DaskToon project linked to a Unity project and install the DaskToon shaders into it":
-        "Tạo dự án DaskToon gắn với một project Unity và cài shader DaskToon vào đó",
-    "Project Folder": "Thư mục dự án",
     "Unity Project": "Project Unity",
     "Created project %s": "Đã tạo dự án %s",
-    "Open DaskToon Project": "Mở dự án DaskToon",
-    "Open a DaskToon project (dasktoon_project.json)": "Mở một dự án DaskToon (dasktoon_project.json)",
     "Opened project %s": "Đã mở dự án %s",
-    "Open this .blend file of the project (DaskToon asks to save the current file first when it has changes)":
-        "Mở file .blend này của dự án (DaskToon hỏi lưu file hiện tại trước nếu file có thay đổi)",
     "Export This Model": "Xuất model này",
     "Export this file's model, materials and shaders straight into the project's Unity project":
         "Xuất model, material và shader của file này thẳng vào project Unity của dự án",
@@ -560,6 +552,34 @@ VI = {
     "%s is already a DaskToon project": "%s đã là một dự án DaskToon",
     "The name is empty": "Tên đang để trống",
     "The project already has a model named %s": "Dự án đã có model tên %s",
+    "New Project": "Tạo dự án",
+    "Create a DaskToon project: a folder with Models/ and Textures/; link a Unity project now or later":
+        "Tạo dự án DaskToon: một thư mục có Models/ và Textures/; gắn project Unity ngay hoặc để sau",
+    "The folder that receives the project folder": "Thư mục sẽ chứa thư mục dự án",
+    "Optional: the Unity project models are exported to (link it later in Project Settings)":
+        "Không bắt buộc: project Unity nhận model khi xuất (có thể gắn sau trong Cài đặt dự án)",
+    "Open Project": "Mở dự án",
+    "Open a DaskToon project (its dasktoon_project.json or its folder) and show its models on the start screen":
+        "Mở một dự án DaskToon (file dasktoon_project.json hoặc thư mục của nó) và hiện các model của nó ở màn hình đầu",
+    "%s is not a DaskToon project": "%s không phải dự án DaskToon",
+    "Choose Project": "Chọn dự án",
+    "Choose this project: the start screen shows its models": "Chọn dự án này: màn hình đầu hiện các model của nó",
+    "Project Settings": "Cài đặt dự án",
+    "Project Settings…": "Cài đặt dự án…",
+    "Rename the project and link it to a Unity project; the DaskToon shaders are installed when the link is new or changes":
+        "Đổi tên dự án và gắn với một project Unity; shader DaskToon được cài khi gắn mới hoặc đổi project",
+    "The Unity project models are exported to; leave empty to unlink":
+        "Project Unity nhận model khi xuất; để trống để bỏ gắn",
+    "Saved the settings of project %s": "Đã lưu cài đặt của dự án %s",
+    "Project %s is not linked to a Unity project yet: link it in Project Settings":
+        "Dự án %s chưa gắn với project Unity: hãy gắn trong Cài đặt dự án",
+    "Open this model of the project (DaskToon asks to save the current file first when it has changes)":
+        "Mở model này của dự án (DaskToon hỏi lưu file hiện tại trước nếu file có thay đổi)",
+    "File not found: %s": "Không tìm thấy file: %s",
+    "Create or open a project": "Hãy tạo hoặc mở một dự án",
+    "No models yet": "Chưa có model nào",
+    "Engine: not linked": "Engine: chưa gắn",
+    "Draft (not in a project)": "Bản nháp (chưa thuộc dự án)",
 
     # dasktoon_project/textures.py
     "Copied 1 texture into Textures/": "Đã chép 1 texture vào Textures/",
@@ -968,11 +988,22 @@ VI = {
     "Value (V)": "Giá trị (V)",
 }
 
+# Words that need their own translation context, because Blender's own translation of the same word in the default
+# context means something else here, and Blender's translation always wins in that context.
+VI_CONTEXT = {
+    "DaskToon": {
+        "Project": "Dự án",
+    },
+}
+
 
 def _table():
     table = {}
     for msgid, msgstr in VI.items():
         for context in ("*", "Operator"):
+            table[(context, msgid)] = msgstr
+    for context, entries in VI_CONTEXT.items():
+        for msgid, msgstr in entries.items():
             table[(context, msgid)] = msgstr
     return {"vi_VN": table}
 

@@ -19,7 +19,7 @@ def default_directory(context):
     """(directory, engine) the dialog opens with: the open DaskToon project's engine project (spec 7), else the
     target remembered in this .blend file, else the .blend file's folder."""
     from . import dasktoon_project
-    project = dasktoon_project.active_project()
+    project = dasktoon_project.selected_project()
     if project is not None and project.engine_path:
         return project.engine_path, project.engine
     remembered = targets.remembered_target(context.scene)
