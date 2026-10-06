@@ -1137,6 +1137,9 @@ VI = {
     "Standard skeleton the part belongs to": "Khung chuẩn chứa phần này",
     # bl_ui/dasktoon_rig.py (collection)
     "Parts of the character": "Các phần của nhân vật",
+    # dasktoon_rig/build.py (attach bone)
+    "Part %s: bone %s is made by Build Rig; pick a bone of the skeleton":
+        "Phần %s: xương %s do Dựng rig tạo ra; hãy chọn một xương của khung",
 }
 
 # Words that need their own translation context, because Blender's own translation of the same word in the default

@@ -204,6 +204,16 @@ class ModeAndErrorTest(unittest.TestCase):
             build.build(bpy.context, self.rig, separate_parts(self.objs))
         self.assertIn("Spine", str(caught.exception))
 
+    def test_attach_bone_must_not_be_generated(self):
+        build.build(bpy.context, self.rig, separate_parts(self.objs))
+        before = sorted(b.name for b in self.rig.data.bones)
+        hanging = separate_parts(self.objs)
+        hanging[2].bone = "Skirt1_1"  # hair hanging from a bone the next build removes and makes again
+        with self.assertRaises(build.BuildError) as caught:
+            build.build(bpy.context, self.rig, hanging)
+        self.assertIn("Skirt1_1", str(caught.exception))
+        self.assertEqual(sorted(b.name for b in self.rig.data.bones), before)
+
     def test_shared_mesh_is_refused(self):
         twin = bpy.data.objects.new("Twin", self.objs["Body"].data)
         bpy.context.scene.collection.objects.link(twin)

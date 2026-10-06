@@ -61,6 +61,9 @@ def check(rig, parts):
             raise BuildError(rpt_("%s is hidden; show it before building") % obj.name)
         if part.bone and rig.data.bones.get(part.bone) is None:
             raise BuildError(rpt_("Part %s: bone %s is not in %s") % (part.name, part.bone, rig.name))
+        if part.bone and MARK in rig.data.bones[part.bone]:  # removed and made again by the build
+            raise BuildError(rpt_("Part %s: bone %s is made by Build Rig; pick a bone of the skeleton")
+                             % (part.name, part.bone))
         try:
             rig_parts.part_vertices(part)
         except rig_parts.PartError as ex:
