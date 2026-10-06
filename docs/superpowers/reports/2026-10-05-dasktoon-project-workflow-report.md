@@ -160,6 +160,19 @@ Quyết định phát sinh khi làm:
 - Tên model trong ô chọn Copy of Model có thể bị dịch nếu trùng một chữ có sẵn trong bản dịch của Blender (hiếm).
 - Test có cửa sổ không nằm trong danh sách CMake vì cần màn hình.
 
+## Duyệt cuối
+
+Tôi tự duyệt toàn bộ mã của nhánh, không dùng người duyệt riêng, vì bạn chưa đồng ý tạo agent. Người viết tự duyệt thì dễ
+bỏ sót hơn người duyệt mới, nên bạn quyết định có cần duyệt thêm trước khi merge hay không.
+
+- Không có lỗi nghiêm trọng hay quan trọng. Năm điểm "Review Focus" của kế hoạch đều có test.
+- Đã thử thêm: DaskToon vừa mở là bản nháp sạch, nên New Model chọn sẵn DaskToon Scene như spec.
+- Ba điểm nhỏ để lại, chưa sửa:
+  - màn hình đầu và Open Recent gọi dự án gần đây bằng tên thư mục, nên dự án đổi tên trong Project Settings vẫn hiện tên
+    thư mục cũ ở đó;
+  - nhãn thanh trên cùng đọc `dasktoon_project.json` mỗi lần thanh này vẽ lại (nhẹ, nhưng vẽ lại nhiều khi render);
+  - phím tắt của lệnh không chạy được lúc đó (Ctrl+Alt+S trên bản nháp) không làm gì và cũng không báo gì.
+
 ## Việc cần làm
 
 - Mở DaskToon từ bản cài như thường. Lần đầu sẽ thấy màn hình đầu chưa có dự án: bấm New Project để bắt đầu.
