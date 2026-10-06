@@ -8,7 +8,15 @@ parts, Add Part from Selection). The work is done by the dasktoon_rig module."""
 
 import bpy
 from bpy.app.translations import pgettext_rpt as rpt_
-from bpy.props import CollectionProperty, EnumProperty, IntProperty, PointerProperty, StringProperty
+from bpy.props import (
+    BoolProperty,
+    CollectionProperty,
+    EnumProperty,
+    FloatProperty,
+    IntProperty,
+    PointerProperty,
+    StringProperty,
+)
 from bpy.types import Operator, Panel, PropertyGroup, UIList
 
 ROLE_ITEMS = (
@@ -23,6 +31,11 @@ ROLE_ICONS = {item[0]: item[3] for item in ROLE_ITEMS}
 
 def _is_mesh(_self, obj):
     return obj.type == 'MESH'
+
+
+def _sway_changed(_self, _context):
+    from dasktoon_rig import sway
+    sway.clear_cache()
 
 
 class DaskRigPart(PropertyGroup):
@@ -51,12 +64,31 @@ class DaskRigPart(PropertyGroup):
     bone_count: IntProperty(name="Bones per Chain", description="Number of bones along each chain", default=4, min=1,
                             max=12)
     chain_count: IntProperty(name="Chains", description="Number of chains around the skirt", default=8, min=3, max=24)
+    stiffness: FloatProperty(name="Stiffness", description="How strongly the chain springs back to its pose",
+                             default=1.0, min=0.0, max=4.0, update=_sway_changed)
+    gravity: FloatProperty(name="Gravity", description="How strongly the chain is pulled down", default=0.2, min=0.0,
+                           max=2.0, update=_sway_changed)
+    drag: FloatProperty(name="Drag", description="How quickly the swing dies down: 0 keeps swinging, 1 stops at once",
+                        default=0.4, min=0.0, max=1.0, update=_sway_changed)
+    radius: FloatProperty(name="Radius", description="How far each joint keeps from the colliders", default=0.03,
+                          min=0.0, max=1.0, unit='LENGTH', update=_sway_changed)
+
+
+class DaskRigCollider(PropertyGroup):
+    """A capsule along a bone that hair and skirts do not go through"""
+    bone: StringProperty(name="Bone", description="Bone the capsule runs along, from its head to its tail")
+    radius: FloatProperty(name="Radius", description="Radius of the capsule", default=0.05, min=0.0, unit='LENGTH',
+                          update=_sway_changed)
 
 
 class DaskRig(PropertyGroup):
     """The parts of an anime rig"""
     parts: CollectionProperty(type=DaskRigPart, name="Parts", description="Parts of the character")
     active_part_index: IntProperty(name="Active Part", description="Part shown below the list", default=0)
+    colliders: CollectionProperty(type=DaskRigCollider, name="Colliders",
+                                  description="Capsules that hair and skirts do not go through; Build Rig makes them")
+    live_sway: BoolProperty(name="Live Sway", description="Sway hair and skirts while the animation plays",
+                            default=True, update=_sway_changed)
 
 
 def rig_of(context):
@@ -465,6 +497,7 @@ def menu_func(self, _context):
 
 classes = (
     DaskRigPart,
+    DaskRigCollider,
     DaskRig,
     DASKTOON_OT_rig_add_humanoid,
     DASKTOON_OT_rig_edit_joints,

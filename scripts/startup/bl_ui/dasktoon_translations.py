@@ -1140,6 +1140,24 @@ VI = {
     # dasktoon_rig/build.py (attach bone)
     "Part %s: bone %s is made by Build Rig; pick a bone of the skeleton":
         "Phần %s: xương %s do Dựng rig tạo ra; hãy chọn một xương của khung",
+    # bl_ui/dasktoon_rig.py (sway settings and colliders)
+    "Stiffness": "Độ cứng",
+    "How strongly the chain springs back to its pose": "Mức chuỗi bật về lại tư thế của nó",
+    "Gravity": "Trọng lực",
+    "How strongly the chain is pulled down": "Mức chuỗi bị kéo xuống",
+    "Drag": "Lực cản",
+    "How quickly the swing dies down: 0 keeps swinging, 1 stops at once":
+        "Độ nhanh mà chuyển động lắc tắt dần: 0 lắc mãi, 1 dừng ngay",
+    "How far each joint keeps from the colliders": "Khoảng cách mỗi khớp giữ với collider",
+    "A capsule along a bone that hair and skirts do not go through":
+        "Một khối capsule dọc theo xương mà tóc và váy không xuyên qua",
+    "Bone the capsule runs along, from its head to its tail": "Xương mà capsule chạy dọc theo, từ đầu tới đuôi xương",
+    "Radius of the capsule": "Bán kính của capsule",
+    "Colliders": "Collider",
+    "Capsules that hair and skirts do not go through; Build Rig makes them":
+        "Các capsule mà tóc và váy không xuyên qua; Dựng rig tạo ra chúng",
+    "Live Sway": "Lắc trực tiếp",
+    "Sway hair and skirts while the animation plays": "Cho tóc và váy lắc khi animation đang phát",
 }
 
 # Words that need their own translation context, because Blender's own translation of the same word in the default

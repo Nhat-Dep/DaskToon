@@ -232,6 +232,27 @@ class ModeAndErrorTest(unittest.TestCase):
         self.assertEqual({dominant(body, self.rig, v) for v in top}, {("Neck", 1.0)})
 
 
+class ColliderTest(unittest.TestCase):
+    def test_build_makes_body_colliders(self):
+        bpy.ops.wm.read_factory_settings(use_empty=True)
+        objs = fx.character()
+        rig = fx.rig_for()
+        result = build.build(bpy.context, rig, separate_parts(objs))
+        colliders = {c.bone: c.radius for c in rig.data.dasktoon_rig.colliders}
+        self.assertEqual(set(colliders), set(build.COLLIDER_BONES))
+        self.assertEqual([name for name, _radius in result.colliders], list(colliders))
+        np.testing.assert_allclose([radius for _name, radius in result.colliders], list(colliders.values()), rtol=1e-6)
+        body_radius = 0.07 * fx.HEIGHT
+        self.assertTrue(0.3 * body_radius < colliders["Chest"] < body_radius, colliders["Chest"])
+        self.assertTrue(all(r > 0.0 for r in colliders.values()))
+        build.build(bpy.context, rig, separate_parts(objs))
+        self.assertEqual(len(rig.data.dasktoon_rig.colliders), len(build.COLLIDER_BONES))
+
+    def test_part_sway_defaults(self):
+        part = parts.Part("Hair", None, 'HAIR')
+        self.assertEqual((part.stiffness, part.gravity, part.drag, part.radius), (1.0, 0.2, 0.4, 0.03))
+
+
 class HumanoidTest(unittest.TestCase):
     def test_export_is_humanoid_for_one_standard_skeleton(self):
         import dasktoon_export

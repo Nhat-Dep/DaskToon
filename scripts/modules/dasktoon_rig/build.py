@@ -14,6 +14,10 @@ from . import chains, parts as rig_parts, skeleton, weights
 
 MARK = "dt_part"
 MIN_BONE = 1e-4
+COLLIDER_BONES = ("Head", "Neck", "UpperChest", "Chest", "Spine", "Hips", "LeftUpperArm", "RightUpperArm",
+                  "LeftLowerArm", "RightLowerArm", "LeftUpperLeg", "RightUpperLeg", "LeftLowerLeg", "RightLowerLeg")
+COLLIDER_SHARE = 0.9
+COLLIDER_FALLBACK = 0.03  # of the skeleton's height, for a bone no Body vertex follows
 
 
 class BuildError(Exception):
@@ -28,6 +32,7 @@ class Result:
         self.chains = 0
         self.objects = []
         self.warnings = []
+        self.colliders = []
 
     def summary(self):
         return rpt_("Built %d bones in %d chains, weights on %d objects") % (
@@ -235,6 +240,45 @@ def _tidy(rig, owners):
         weights.write(obj, rows, names, weights.tidy(matrix[rows]))
 
 
+def collider_radii(rig, parts, owners):
+    """[(bone, world radius)] of a capsule along each COLLIDER_BONES bone of the rig (spec 9.2): COLLIDER_SHARE of the
+    mean distance from the bone to the Body vertices whose largest weight is that bone."""
+    names = [name for name in COLLIDER_BONES if rig.data.bones.get(name) is not None]
+    body_ids = [i for i, part in enumerate(parts) if part.role == 'BODY']
+    deform = [bone.name for bone in rig.data.bones if bone.use_deform]
+    distances = {name: [] for name in names}
+    for obj, owner in owners.items():
+        vertices = np.nonzero(np.isin(owner, body_ids))[0]
+        if len(vertices) == 0:
+            continue
+        world, _edges = rig_parts.mesh_arrays(obj)
+        matrix = weights.read(obj, deform)[vertices]
+        dominant = np.array(deform)[matrix.argmax(axis=1)]
+        weighted = matrix.max(axis=1) > 0.0
+        for name in names:
+            mine = vertices[(dominant == name) & weighted]
+            if len(mine):
+                distances[name].append(chains.segment_distance(world[mine], *rig_parts.bone_segment(rig, name)))
+    ends = [rig.matrix_world @ point for bone in rig.data.bones for point in (bone.head_local, bone.tail_local)]
+    height = max(p.z for p in ends) - min(p.z for p in ends)
+    out = []
+    for name in names:
+        found = np.concatenate(distances[name]) if distances[name] else np.zeros(0)
+        out.append((name, float(found.mean()) * COLLIDER_SHARE if len(found) else COLLIDER_FALLBACK * height))
+    return out
+
+
+def _write_colliders(rig, radii):
+    data = getattr(rig.data, "dasktoon_rig", None)
+    if data is None:
+        return
+    data.colliders.clear()
+    for name, radius in radii:
+        item = data.colliders.add()
+        item.bone = name
+        item.radius = radius
+
+
 def build(context, rig, parts):
     """Build the rig from `parts` (spec 6.2); BuildError, before any change, when it cannot be built. The active object
     and its mode come back afterwards."""
@@ -261,6 +305,8 @@ def build(context, rig, parts):
         _paint(context, rig, parts, owners, plan, actual, result)
         _drop_stale_groups(owners, removed, set(actual.values()))
         _tidy(rig, owners)
+        result.colliders = collider_radii(rig, parts, owners)
+        _write_colliders(rig, result.colliders)
         result.bones = list(actual.values())
         result.chains = plan.chains
         result.objects = [obj.name for obj in owners]
