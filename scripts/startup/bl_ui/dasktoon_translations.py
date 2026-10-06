@@ -1036,6 +1036,10 @@ VI = {
     "Use fixed Outline Color": "Dùng màu viền cố định",
     "Use specified Outline Color input": "Dùng ô màu viền được chỉ định",
     "Value (V)": "Giá trị (V)",
+    # dasktoon_rig/parts.py
+    "Part %s: material %s is not on %s": "Phần %s: material %s không có trên %s",
+    "Part %s: vertex group %s is not on %s": "Phần %s: vertex group %s không có trên %s",
+    "Part %s has no vertices": "Phần %s không có đỉnh nào",
 }
 
 # Words that need their own translation context, because Blender's own translation of the same word in the default
