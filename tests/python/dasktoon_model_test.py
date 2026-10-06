@@ -2,7 +2,8 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-"""Models (project workflow spec 6, 12): New Model and its four starting scenes, model names, and what stops it."""
+"""Models and drafts (project workflow spec 4, 6, 9, 10, 12): New Model and its four starting scenes, Open, Save, Save to
+Project, Save Model As, Save Copy, Save Incremental, drafts and the recent models."""
 
 import os
 import sys
@@ -122,6 +123,131 @@ class NewModelTest(ModelTestCase):
         self.assertTrue(model_ui.keeps_current(True, "", True))
         self.assertTrue(model_ui.keeps_current(True, "D:/outside/a.blend", False))
         self.assertFalse(model_ui.keeps_current(False, "D:/Hero/Models/a.blend", True))
+
+
+class DraftTest(ModelTestCase):
+    def outside(self, name):
+        path = os.path.join(self.base, "outside", name)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        return path
+
+    def test_unsaved_scenes_and_outside_files_are_drafts(self):
+        self.assertTrue(project_ui.is_draft())
+        bpy.ops.wm.save_as_mainfile(filepath=self.outside("a.blend"))
+        self.assertTrue(project_ui.is_draft())
+        bpy.ops.wm.save_as_mainfile(filepath=self.model("A"))
+        self.assertFalse(project_ui.is_draft())
+
+    def test_save_to_project_saves_a_copy_and_leaves_the_draft_file_alone(self):
+        tu.add_sphere(segments=8, rings=4).name = "Body"
+        draft = self.outside("draft.blend")
+        bpy.ops.wm.save_as_mainfile(filepath=draft)
+        before = read(draft)
+        tu.add_plane().name = "Floor"
+        self.assertEqual(bpy.ops.dasktoon.save_to_project(project=self.project.file, name="Hero"), {'FINISHED'})
+        self.assertOpen(self.model("Hero"))
+        self.assertIn("Floor", bpy.data.objects)
+        self.assertEqual(read(draft), before)
+        with self.assertRaises(RuntimeError):
+            bpy.ops.dasktoon.save_to_project(project=self.project.file, name="HERO")
+
+    def test_save_on_a_draft_writes_nothing_without_a_window(self):
+        draft = self.outside("draft.blend")
+        bpy.ops.wm.save_as_mainfile(filepath=draft)
+        before = read(draft)
+        self.assertEqual(bpy.ops.dasktoon.project_save(), {'CANCELLED'})
+        self.assertEqual(bpy.ops.dasktoon.model_save_as(name="X"), {'CANCELLED'})
+        self.assertEqual(read(draft), before)
+        self.assertEqual(os.listdir(self.project.models_folder), [])
+
+    def test_a_model_whose_project_file_is_gone_is_a_draft(self):
+        bpy.ops.wm.save_as_mainfile(filepath=self.model("A"))
+        os.remove(self.project.file)
+        self.assertTrue(project_ui.is_draft())
+        before = read(self.model("A"))
+        self.assertEqual(bpy.ops.dasktoon.project_save(), {'CANCELLED'})
+        self.assertEqual(read(self.model("A")), before)
+
+
+class SaveTest(ModelTestCase):
+    def setUp(self):
+        super().setUp()
+        texture = write_png(os.path.join(self.base, "outside", "skin.png"))
+        bpy.data.images.load(texture).use_fake_user = True
+        tu.add_sphere(segments=8, rings=4).name = "Body"
+        bpy.ops.wm.save_as_mainfile(filepath=self.model("Hero"))  # a script save: the texture stays outside
+
+    def test_save_copies_outside_textures_then_saves_in_place(self):
+        self.assertEqual(bpy.ops.dasktoon.project_save(), {'FINISHED'})
+        self.assertOpen(self.model("Hero"))
+        self.assertTrue(os.path.isfile(os.path.join(self.project.textures_folder, "skin.png")))
+        self.assertEqual(bpy.data.images["skin.png"].filepath_raw, "//../Textures/skin.png")
+
+    def test_save_model_as_switches_to_the_new_model(self):
+        self.assertEqual(bpy.ops.dasktoon.model_save_as(name="Hero2"), {'FINISHED'})
+        self.assertOpen(self.model("Hero2"))
+        self.assertTrue(os.path.isfile(self.model("Hero")))
+        with self.assertRaises(RuntimeError):
+            bpy.ops.dasktoon.model_save_as(name="hero")
+
+    def test_save_copy_keeps_the_current_file(self):
+        self.assertEqual(bpy.ops.dasktoon.model_save_copy(name="Backup"), {'FINISHED'})
+        self.assertOpen(self.model("Hero"))
+        with bpy.data.libraries.load(self.model("Backup")) as (src, _dst):
+            self.assertIn("Body", src.objects)
+
+    def test_save_incremental_numbers_the_file_next_to_it(self):
+        self.assertEqual(bpy.ops.dasktoon.model_save_incremental(), {'FINISHED'})
+        self.assertOpen(self.model("Hero_001"))
+        bpy.ops.dasktoon.model_save_incremental()
+        self.assertOpen(self.model("Hero_002"))
+        self.assertTrue(os.path.isfile(os.path.join(self.project.textures_folder, "skin.png")))
+
+    def test_copy_and_incremental_need_a_model_of_a_project(self):
+        bpy.ops.wm.read_homefile(use_empty=True)
+        self.assertFalse(bpy.ops.dasktoon.model_save_copy.poll())
+        self.assertFalse(bpy.ops.dasktoon.model_save_incremental.poll())
+
+
+class OpenTest(ModelTestCase):
+    def test_open_takes_models_drafts_and_projects(self):
+        model = self.model("Hero")
+        bpy.ops.wm.save_as_mainfile(filepath=model)
+        outside = os.path.join(self.base, "outside", "loose.blend")
+        os.makedirs(os.path.dirname(outside))
+        bpy.ops.wm.save_as_mainfile(filepath=outside)
+        bpy.ops.wm.read_homefile(use_empty=True)
+        self.assertEqual(bpy.ops.dasktoon.open(filepath=model), {'FINISHED'})
+        self.assertOpen(model)
+        self.assertFalse(project_ui.is_draft())
+        bpy.ops.dasktoon.open(filepath=outside)
+        self.assertOpen(outside)
+        self.assertTrue(project_ui.is_draft())
+        other = dtp.create_project("Other", os.path.join(self.base, "Other"))
+        project_ui.select_project(self.project)
+        self.assertEqual(bpy.ops.dasktoon.open(filepath=other.file), {'FINISHED'})
+        self.assertEqual(project_ui.selected_project().name, "Other")
+        self.assertOpen(outside)
+
+    def test_open_reports_a_missing_file(self):
+        with self.assertRaises(RuntimeError):
+            bpy.ops.dasktoon.open(filepath=os.path.join(self.base, "missing.blend"))
+
+
+class RecentModelsTest(ModelTestCase):
+    def test_models_are_remembered_and_drafts_are_not(self):
+        model = self.model("Hero")
+        bpy.ops.wm.save_as_mainfile(filepath=model)
+        model_ui.remember(model)
+        model_ui.remember(os.path.join(self.base, "outside", "loose.blend"))
+        self.assertEqual(dtp.recent_models(), [model])
+        self.assertEqual(dtp.recent_projects()[0], self.project.file)
+        self.assertIn(model_ui.remember_on_file_change, bpy.app.handlers.load_post)
+        self.assertIn(model_ui.remember_on_file_change, bpy.app.handlers.save_post)
+
+    def test_the_commands_the_core_hands_over_to_are_registered(self):
+        for name in ("model_new", "open", "project_save", "model_save_incremental", "model_save_as", "model_save_copy"):
+            self.assertTrue(hasattr(bpy.types, "DASKTOON_OT_" + name), name)
 
 
 if __name__ == "__main__":

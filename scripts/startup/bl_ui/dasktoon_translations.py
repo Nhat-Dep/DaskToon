@@ -609,6 +609,24 @@ VI = {
         "Hoàn tất tạo model sau khi đã đọc file khởi động hoặc model cần sao chép",
     "Image %s has unsaved paint changes: save it with Image › Save":
         "Ảnh %s có nét vẽ chưa lưu: hãy lưu bằng Image › Save",
+    "Open a model, a .blend file from outside any project (as a draft), or a project":
+        "Mở một model, một file .blend ngoài mọi dự án (làm bản nháp), hoặc một dự án",
+    "Save this model in its project, copying textures from outside into Textures/ first; a draft is saved into a project":
+        "Lưu model này vào dự án của nó, chép trước texture ở ngoài vào Textures/; bản nháp thì được lưu vào một dự án",
+    "Save to Project": "Lưu vào dự án",
+    "Save this draft as a new model of a project; the file it came from is not changed":
+        "Lưu bản nháp này thành model mới của một dự án; file gốc không bị thay đổi",
+    "Choose a project": "Hãy chọn một dự án",
+    "Saved model %s in project %s": "Đã lưu model %s vào dự án %s",
+    "Save Model As": "Lưu model thành",
+    "Save this model under a new name in its project's Models/ folder and keep working on the new file":
+        "Lưu model này với tên mới trong thư mục Models/ của dự án và làm việc tiếp trên file mới",
+    "Saved as model %s": "Đã lưu thành model %s",
+    "Write a copy of this model into its project's Models/ folder and keep working on this file":
+        "Ghi bản sao của model này vào thư mục Models/ của dự án và làm việc tiếp trên file này",
+    "Saved a copy as model %s": "Đã lưu bản sao thành model %s",
+    "Save this model as the next numbered file next to it (Hero.blend gives Hero_001.blend) and keep working on that one":
+        "Lưu model này thành file đánh số tiếp theo cạnh nó (Hero.blend thành Hero_001.blend) và làm việc tiếp trên file đó",
 
     # bl_ui/dasktoon_shading_styles.py
     "Shading Style": "Kiểu đổ bóng",
