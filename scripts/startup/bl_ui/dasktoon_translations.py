@@ -628,6 +628,15 @@ VI = {
     "Save this model as the next numbered file next to it (Hero.blend gives Hero_001.blend) and keep working on that one":
         "Lưu model này thành file đánh số tiếp theo cạnh nó (Hero.blend thành Hero_001.blend) và làm việc tiếp trên file đó",
 
+    # bl_ui/dasktoon_splash.py, and DaskToon's parts of space_topbar.py and bl_operators/wm.py
+    "%d more in File › Models": "còn %d model trong File › Models",
+    "Continue as Draft": "Tiếp tục với bản nháp",
+    "Close the start screen and keep working on the open scene as a draft, outside any project":
+        "Đóng màn hình đầu và làm tiếp trên cảnh đang mở như một bản nháp, ngoài mọi dự án",
+    "Open…": "Mở…",
+    "Save Model As…": "Lưu model thành…",
+    "Save Copy…": "Lưu bản sao…",
+
     # bl_ui/dasktoon_shading_styles.py
     "Shading Style": "Kiểu đổ bóng",
     "Anime 2-Tone": "Anime 2 tông",

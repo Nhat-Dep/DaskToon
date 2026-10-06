@@ -31,6 +31,7 @@ REMOVED = (
     "DASKTOON_OT_vrm_zero_all_shapes", "DASKTOON_OT_vrm_mirror_shape_key",
     "VIEW3D_PT_dasktoon_project",
     "TOPBAR_MT_dasktoon_project_recent",
+    "TOPBAR_MT_templates_more",
 )
 REMOVED_MODULES = ("dasktoon_light_groups", "bl_ui.dasktoon_anime_nodes", "bl_ui.dasktoon_face_normals",
                    "bl_ui.properties_dasktoon")

@@ -44,6 +44,7 @@ TRANSLATED = [
     "scripts/modules/dasktoon_project/textures.py",
     "scripts/modules/dasktoon_project/scene.py",
     "scripts/startup/bl_ui/dasktoon_model.py",
+    "scripts/startup/bl_ui/dasktoon_splash.py",
     "scripts/startup/bl_ui/dasktoon_face_shading_nodes.py",
     "scripts/startup/bl_ui/dasktoon_outline_nodes.py",
     "scripts/startup/bl_ui/dasktoon_shading_styles.py",
@@ -51,6 +52,11 @@ TRANSLATED = [
     "scripts/startup/bl_ui/engine_dasktoon_anime.py",
     "scripts/startup/dasktoon_init.py",
 ]
+# Blender files DaskToon rewrote parts of (project workflow spec 13): only these classes are DaskToon's.
+TRANSLATED_CLASSES = {
+    "scripts/startup/bl_ui/space_topbar.py": ("TOPBAR_MT_file", "TOPBAR_MT_file_new", "TOPBAR_HT_upper_bar"),
+    "scripts/startup/bl_operators/wm.py": ("WM_MT_splash",),
+}
 
 
 def path(rel):
@@ -140,6 +146,15 @@ class TranslationTest(unittest.TestCase):
     def test_project_has_its_own_vietnamese_word(self):
         with iu.language('vi_VN'):
             self.assertEqual(bpy.app.translations.pgettext_iface("Project", "DaskToon"), "Dự án")
+
+    def test_rewritten_blender_classes_are_english_and_translated(self):
+        with iu.language('vi_VN'):
+            for rel, classes in TRANSLATED_CLASSES.items():
+                strings, dynamic = iu.module_strings(path(rel), classes)
+                self.assertEqual(dynamic, [], rel)
+                self.assertEqual(iu.untranslated(strings, dt.KEEP), [], rel)
+                bad = sorted(s for s in iu.all_strings(path(rel), classes) if iu.VI_CHARS.search(s) or iu.EMOJI.search(s))
+                self.assertEqual(bad, [], rel)
 
     def test_translation_table_is_vietnamese(self):
         for msgid, msgstr in dt.VI.items():

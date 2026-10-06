@@ -27,7 +27,14 @@ def _literal(node):
     return node.value if isinstance(node, ast.Constant) and isinstance(node.value, str) else None
 
 
-def module_strings(path):
+def _roots(tree, classes):
+    """The parts of `tree` to scan: the whole file, or only the named top-level classes."""
+    if classes is None:
+        return [tree]
+    return [node for node in tree.body if isinstance(node, ast.ClassDef) and node.name in classes]
+
+
+def module_strings(path, classes=None):
     """(strings, dynamic): the user-visible string literals of a Python file, and the places where a visible string
     is built at run time (f-string or concatenation in text=/report/an error message), which cannot be translated."""
     with open(path, encoding="utf-8") as f:
@@ -41,7 +48,7 @@ def module_strings(path):
         elif isinstance(node, ast.JoinedStr) or (isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add)):
             dynamic.append("%s line %d: %s" % (where, node.lineno, ast.unparse(node)[:80]))
 
-    for node in ast.walk(tree):
+    for node in (n for root in _roots(tree, classes) for n in ast.walk(root)):
         if isinstance(node, ast.Call):
             name = _name(node.func)
             if name in TRANSLATE_CALLS and node.args:
@@ -73,17 +80,17 @@ def module_strings(path):
     return strings, dynamic
 
 
-def all_strings(path):
+def all_strings(path, classes=None):
     """Every string constant of a Python file except docstrings of modules and functions: what may reach the user."""
     with open(path, encoding="utf-8") as f:
         tree = ast.parse(f.read())
     docstrings = set()
-    for node in ast.walk(tree):
+    for node in (n for root in _roots(tree, classes) for n in ast.walk(root)):
         if isinstance(node, (ast.Module, ast.FunctionDef, ast.AsyncFunctionDef)) and node.body:
             first = node.body[0]
             if isinstance(first, ast.Expr) and _literal(first.value) is not None:
                 docstrings.add(id(first.value))
-    return {node.value for node in ast.walk(tree)
+    return {node.value for node in (n for root in _roots(tree, classes) for n in ast.walk(root))
             if isinstance(node, ast.Constant) and isinstance(node.value, str) and id(node) not in docstrings}
 
 
