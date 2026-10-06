@@ -151,7 +151,7 @@ class SwayPanelTest(unittest.TestCase):
         rig.data.dasktoon_rig.active_part_index = 1  # Hair
         log = tu.draw(ui.DATA_PT_dasktoon_rig_sway, panel_context(rig))
         props = [entry[1] for entry in log if entry[0] == "prop"]
-        self.assertEqual(props, ["live_sway", "stiffness", "gravity", "drag", "radius"])
+        self.assertEqual(props, ["live_sway", "stiffness", "gravity", "drag", "radius", "sway_in_unity"])
         self.assertIn("dasktoon.rig_bake_sway", [name for name, _text in tu.operators(log)])
         self.assertEqual(ui.DATA_PT_dasktoon_rig_colliders.bl_parent_id, "DATA_PT_dasktoon_rig_sway")
         self.assertIn('DEFAULT_CLOSED', ui.DATA_PT_dasktoon_rig_colliders.bl_options)

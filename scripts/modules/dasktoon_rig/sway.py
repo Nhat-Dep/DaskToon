@@ -8,6 +8,8 @@ is at rest; after it (frame_change_post) the spring solver steps from the previo
 rotations. States are cached per frame, so going back to a frame shows it again; the first frame of the scene starts
 over. Bake Sway keys the result. No drivers: these are DaskToon's own handlers."""
 
+from contextlib import contextmanager
+
 import bpy
 import numpy as np
 from bpy.app.handlers import persistent
@@ -18,6 +20,7 @@ from . import build, spring
 MAX_CATCH_UP = 300
 ROTATION_PATHS = ("rotation_quaternion", "rotation_euler", "rotation_axis_angle")
 _cache = {}  # session_uid of the rig → {frame: [spring.State per chain]}
+_suppressed = {}  # session_uid of the rig → part names whose chains do not sway (Engine Export, spec 9.5)
 
 
 def clear_cache(rig=None):
@@ -90,7 +93,8 @@ def apply(rig, names, world_rotations):
         parent_pose = pose
 
 
-def _colliders(rig):
+def world_colliders(rig):
+    """[(head, tail, radius)] world capsules of the rig's colliders in its current pose."""
     world = rig.matrix_world
     out = []
     for collider in rig.data.dasktoon_rig.colliders:
@@ -114,7 +118,8 @@ def _live(rig):
 
 def sway(rig, scene):
     """Sway the chains of `rig` for the scene's current frame."""
-    found = chains(rig)
+    skipped = _suppressed.get(rig.session_uid, set())
+    found = [(part, names) for part, names in chains(rig) if part not in skipped]
     if not found:
         return
     frame = scene.frame_current
@@ -124,7 +129,7 @@ def sway(rig, scene):
     shape = [len(names) for _part, names in found]
     if store and [len(s.current) for s in next(iter(store.values()))] != shape:
         store.clear()
-    colliders = _colliders(rig)
+    colliders = world_colliders(rig)
     if frame in store and frame != scene.frame_start:
         states = [s.copy() for s in store[frame]]
         results = [spring.rotations(state, pose) for state, pose in zip(states, poses)]
@@ -169,6 +174,26 @@ def depsgraph_post(_scene, depsgraph):
     """Keys edited (an Action updated): the cached sway no longer matches the animation."""
     if any(isinstance(update.id, bpy.types.Action) for update in depsgraph.updates):
         clear_cache()
+
+
+@contextmanager
+def suppressed(rig, part_names):
+    """Meanwhile the chains of `part_names` rest and do not sway on a frame change; afterwards their rotations come
+    back and the rig's cache is cleared (Engine Export writes the FBX in between, spec 9.5)."""
+    names = [name for part, chain in chains(rig) if part in part_names for name in chain]
+    saved = {name: tuple(getattr(rig.pose.bones[name], _rotation_path(rig.pose.bones[name]))) for name in names}
+    _suppressed[rig.session_uid] = set(part_names)
+    identity = Matrix.Identity(3)
+    try:
+        for name in names:
+            _set_rotation(rig.pose.bones[name], identity)
+        yield
+    finally:
+        _suppressed.pop(rig.session_uid, None)
+        for name, value in saved.items():
+            pb = rig.pose.bones[name]
+            setattr(pb, _rotation_path(pb), value)
+        clear_cache(rig)
 
 
 def remove_rotation_keys(rig, names):

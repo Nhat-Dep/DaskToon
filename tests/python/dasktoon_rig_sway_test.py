@@ -136,5 +136,30 @@ class SwayTest(unittest.TestCase):
             np.testing.assert_allclose(quat(self.rig, BONE), first[frame], atol=1e-5)
 
 
+class SuppressTest(unittest.TestCase):
+    def test_suppressed_chains_rest_and_come_back(self):
+        rig = character()
+        play(rig, 8)
+        swayed = quat(rig, BONE)
+        hair = quat(rig, "Hair_2")
+        self.assertLess(abs(swayed[0]), 0.999)
+        with sway.suppressed(rig, {"Skirt"}):
+            np.testing.assert_allclose(quat(rig, BONE), (1.0, 0.0, 0.0, 0.0), atol=1e-6)
+            np.testing.assert_allclose(quat(rig, "Hair_2"), hair, atol=1e-6)
+            bpy.context.scene.frame_set(9)
+            np.testing.assert_allclose(quat(rig, BONE), (1.0, 0.0, 0.0, 0.0), atol=1e-6)
+            self.assertNotEqual(tuple(quat(rig, "Hair_2")), tuple(hair))
+        np.testing.assert_allclose(quat(rig, BONE), swayed, atol=1e-6)
+        self.assertFalse(sway._cache.get(rig.session_uid))
+
+    def test_world_colliders(self):
+        rig = character()
+        found = sway.world_colliders(rig)
+        self.assertEqual(len(found), len(build.COLLIDER_BONES))
+        head, tail, radius = found[0]
+        self.assertGreater(np.linalg.norm(tail - head), 0.0)
+        self.assertGreater(radius, 0.0)
+
+
 if __name__ == "__main__":
     tu.run_tests()

@@ -74,6 +74,15 @@ class DaskRigPart(PropertyGroup):
                         default=0.4, min=0.0, max=1.0, update=_sway_changed)
     radius: FloatProperty(name="Radius", description="How far each joint keeps from the colliders", default=0.03,
                           min=0.0, max=1.0, unit='LENGTH', update=_sway_changed)
+    sway_in_unity: EnumProperty(
+        name="Sway in Unity",
+        description="How the chain sways in Unity",
+        items=[
+            ('RUNTIME', "Runtime", "DaskToon's spring bone script sways the chain while the game runs"),
+            ('BAKED', "Baked", "Unity plays the sway baked into the exported animation"),
+        ],
+        default='RUNTIME',
+    )
 
 
 class DaskRigCollider(PropertyGroup):
@@ -497,6 +506,7 @@ class DATA_PT_dasktoon_rig_sway(DaskRigPanel, Panel):
             col.prop(part, "gravity")
             col.prop(part, "drag")
             col.prop(part, "radius")
+            layout.prop(part, "sway_in_unity")
         else:
             layout.label(text="Select a hair or skirt part to set how it sways")
         layout.operator("dasktoon.rig_bake_sway", icon='REC')

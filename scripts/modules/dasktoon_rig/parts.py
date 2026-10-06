@@ -41,7 +41,8 @@ class Part:
     """A part outside Blender data (tests, scripts); the interface passes DaskRigPart items with the same fields."""
 
     def __init__(self, name, obj, role='BODY', scope='OBJECT', material="", vertex_group="", bone="",
-                 bone_count=None, chain_count=CHAIN_COUNT, stiffness=1.0, gravity=0.2, drag=0.4, radius=0.03):
+                 bone_count=None, chain_count=CHAIN_COUNT, stiffness=1.0, gravity=0.2, drag=0.4, radius=0.03,
+                 sway_in_unity='RUNTIME'):
         self.name = name
         self.object = obj
         self.role = role
@@ -55,6 +56,7 @@ class Part:
         self.gravity = gravity
         self.drag = drag
         self.radius = radius
+        self.sway_in_unity = sway_in_unity
 
 
 def _plain(name):

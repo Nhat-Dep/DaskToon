@@ -1166,6 +1166,15 @@ VI = {
     "Sway": "Lắc",
     "Build Rig first to make the hair and skirt chains": "Hãy Dựng rig trước để có chuỗi xương tóc và váy",
     "Select a hair or skirt part to set how it sways": "Chọn một phần tóc hoặc váy để chỉnh cách nó lắc",
+    # bl_ui/dasktoon_rig.py (Sway in Unity)
+    "Sway in Unity": "Lắc trong Unity",
+    "How the chain sways in Unity": "Cách chuỗi lắc trong Unity",
+    "Runtime": "Khi chạy",
+    "DaskToon's spring bone script sways the chain while the game runs":
+        "Script spring bone của DaskToon cho chuỗi lắc khi game chạy",
+    "Baked": "Đã bake",
+    "Unity plays the sway baked into the exported animation":
+        "Unity phát chuyển động lắc đã bake trong animation xuất ra",
 }
 
 # Words that need their own translation context, because Blender's own translation of the same word in the default
