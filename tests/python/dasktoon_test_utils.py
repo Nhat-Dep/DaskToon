@@ -7,6 +7,7 @@
 import os
 import sys
 import tempfile
+import types
 import unittest
 
 import bpy
@@ -218,6 +219,79 @@ def render_center(name):
 def is_shader_error(rgba):
     """EEVEE draws materials whose shader failed to compile in magenta (1, 0, 1)."""
     return rgba[0] > 0.99 and rgba[1] < 0.01 and rgba[2] > 0.99
+
+
+class Props:
+    """Operator properties a draw function sets (RecordingLayout.operator returns one)."""
+
+
+class RecordingLayout:
+    """Stands in for UILayout in draw tests. Each operator, menu, label, prop and separator is logged as
+    (kind, name, text, icon, enabled, props); sub-layouts share the log and pass `enabled` down. Any other call
+    (template_ID, ...) is logged as ("call", name, ...) and returns a sub-layout."""
+
+    def __init__(self, log=None, parent=None):
+        self.log = [] if log is None else log
+        self.parent = parent
+        self.enabled = True
+
+    def is_enabled(self):
+        layout = self
+        while layout is not None:
+            if not layout.enabled:
+                return False
+            layout = layout.parent
+        return True
+
+    def _add(self, kind, name, text="", icon='NONE', props=None):
+        self.log.append((kind, name, text, icon, self.is_enabled(), props))
+
+    def _child(self, *_args, **_kwargs):
+        return RecordingLayout(self.log, self)
+
+    split = column = row = box = _child
+
+    def operator(self, idname, text="", icon='NONE', **_kwargs):
+        props = Props()
+        self._add("operator", idname, text, icon, props)
+        return props
+
+    def menu(self, idname, text="", icon='NONE', **_kwargs):
+        self._add("menu", idname, text, icon)
+
+    def label(self, text="", icon='NONE', **_kwargs):
+        self._add("label", "", text, icon)
+
+    def prop(self, _data, name, text="", icon='NONE', **_kwargs):
+        self._add("prop", name, text, icon)
+
+    def separator(self, **_kwargs):
+        self._add("separator", "")
+
+    def __getattr__(self, name):
+        if name.startswith("__"):
+            raise AttributeError(name)
+
+        def call(*_args, **_kwargs):
+            self._add("call", name)
+            return RecordingLayout(self.log, self)
+        return call
+
+
+def draw(menu, context=None):
+    """The log of `menu`'s draw: a Menu or Header class, or anything with draw(self, context)."""
+    layout = RecordingLayout()
+    menu.draw(types.SimpleNamespace(layout=layout), context or bpy.context)
+    return layout.log
+
+
+def operators(log):
+    """[(idname, text)] of the logged operators, enabled or not."""
+    return [(entry[1], entry[2]) for entry in log if entry[0] == "operator"]
+
+
+def labels(log):
+    return [entry[2] for entry in log if entry[0] == "label"]
 
 
 def run_tests():

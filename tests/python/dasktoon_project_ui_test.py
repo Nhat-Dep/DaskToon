@@ -115,7 +115,7 @@ class ProjectUITest(unittest.TestCase):
         log = draw_menu(bpy.types.TOPBAR_MT_dasktoon_project)
         self.assertIn(("operator", "dasktoon.project_create"), log)
         self.assertIn(("operator", "dasktoon.project_open"), log)
-        self.assertIn(("menu", "TOPBAR_MT_dasktoon_project_recent"), log)
+        self.assertIn(("menu", "TOPBAR_MT_file_open_recent"), log)
         self.assertNotIn(("operator", "dasktoon.project_export"), log)
         self.assertEqual(self.create(), {'FINISHED'})
         log = draw_menu(bpy.types.TOPBAR_MT_dasktoon_project)
@@ -132,15 +132,16 @@ class ProjectUITest(unittest.TestCase):
         self.assertEqual(fake.layout.log, [("menu", "TOPBAR_MT_dasktoon_project")])
 
     def test_recent_and_models_submenus_list_their_files(self):
-        self.assertEqual(draw_menu(bpy.types.TOPBAR_MT_dasktoon_project_recent), [("label", "No recent projects")])
+        self.assertEqual(draw_menu(bpy.types.TOPBAR_MT_file_open_recent), [("label", "No recent models or projects")])
         self.assertEqual(self.create(), {'FINISHED'})
-        self.assertEqual(draw_menu(bpy.types.TOPBAR_MT_dasktoon_project_recent), [("operator", "dasktoon.project_open")])
+        self.assertEqual(draw_menu(bpy.types.TOPBAR_MT_file_open_recent),
+                         [("label", "Projects"), ("operator", "dasktoon.project_open")])
         self.assertEqual(draw_menu(bpy.types.TOPBAR_MT_dasktoon_project_models),
                          [("operator", "dasktoon.project_open_model")])
 
     def test_ui_is_registered(self):
         self.assertFalse(hasattr(bpy.types, "VIEW3D_PT_dasktoon_project"))
-        for name in ("TOPBAR_MT_dasktoon_project", "TOPBAR_MT_dasktoon_project_recent",
+        for name in ("TOPBAR_MT_dasktoon_project", "TOPBAR_MT_file_open_recent",
                      "TOPBAR_MT_dasktoon_project_models"):
             self.assertTrue(hasattr(bpy.types, name), name)
         ours = [f for f in bpy.types.TOPBAR_MT_file._dyn_ui_initialize()

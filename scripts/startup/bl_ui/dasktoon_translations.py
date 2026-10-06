@@ -526,6 +526,8 @@ VI = {
     "New Project…": "Tạo dự án…",
     "Open Project…": "Mở dự án…",
     "No recent projects": "Chưa có dự án gần đây",
+    "No recent models or projects": "Chưa có model hay dự án gần đây",
+    "Projects": "Dự án",
     "Models": "Các model",
     "Shaders: version %d": "Shader: phiên bản %d",
     "Shaders: not installed": "Shader: chưa cài",

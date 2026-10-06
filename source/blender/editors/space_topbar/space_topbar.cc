@@ -148,7 +148,8 @@ static void topbar_header_listener(const wmRegionListenerParams *params)
   /* context changes */
   switch (wmn->category) {
     case NC_WM:
-      if (wmn->data == ND_JOB) {
+      /* DaskToon: the top bar names the open project and model, which change on save and open. */
+      if (ELEM(wmn->data, ND_JOB, ND_FILESAVE, ND_FILEREAD)) {
         ED_region_tag_redraw(region);
       }
       break;
@@ -186,41 +187,6 @@ static void topbar_header_region_message_subscribe(const wmRegionMessageSubscrib
 
   WM_msg_subscribe_rna_prop(
       mbus, &workspace->id, workspace, WorkSpace, tools, &msg_sub_value_region_tag_redraw);
-}
-
-static void recent_files_menu_draw(const bContext *C, Menu *menu)
-{
-  ui::Layout &layout = *menu->layout;
-  layout.operator_context_set(wm::OpCallContext::InvokeDefault);
-  const bool is_menu_search = CTX_data_int_get(C, "is_menu_search").value_or(false);
-  if (is_menu_search) {
-    template_recent_files(&layout, U.recent_files);
-  }
-  else {
-    const int limit = std::min<int>(U.recent_files, 20);
-    if (template_recent_files(&layout, limit) != 0) {
-      layout.separator();
-      PointerRNA search_props = layout.op(
-          "WM_OT_search_single_menu", IFACE_("More..."), ICON_VIEWZOOM);
-      RNA_string_set(&search_props, "menu_idname", "TOPBAR_MT_file_open_recent");
-      layout.op("WM_OT_clear_recent_files", IFACE_("Clear Recent Files List..."), ICON_TRASH);
-    }
-    else {
-      layout.label(IFACE_("No Recent Files"), ICON_NONE);
-    }
-  }
-}
-
-static void recent_files_menu_register()
-{
-  MenuType *mt;
-
-  mt = MEM_new_zeroed<MenuType>("spacetype info menu recent files");
-  STRNCPY_UTF8(mt->idname, "TOPBAR_MT_file_open_recent");
-  STRNCPY_UTF8(mt->label, N_("Open Recent"));
-  STRNCPY_UTF8(mt->translation_context, BLT_I18NCONTEXT_DEFAULT_BPYRNA);
-  mt->draw = recent_files_menu_draw;
-  WM_menutype_add(mt);
 }
 
 static void undo_history_draw_menu(const bContext *C, Menu *menu)
@@ -328,7 +294,7 @@ void ED_spacetype_topbar()
 
   BLI_addhead(&st->regiontypes, art);
 
-  recent_files_menu_register();
+  /* DaskToon: "Open Recent" (TOPBAR_MT_file_open_recent) is a Python menu, scripts/startup/bl_ui/dasktoon_project.py. */
   undo_history_menu_register();
 
   BKE_spacetype_register(std::move(st));

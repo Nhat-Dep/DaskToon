@@ -168,19 +168,32 @@ class DASKTOON_OT_project_open_folder(Operator):
         return {'FINISHED'}
 
 
-class TOPBAR_MT_dasktoon_project_recent(Menu):
-    bl_idname = "TOPBAR_MT_dasktoon_project_recent"
+class TOPBAR_MT_file_open_recent(Menu):
+    # Replaces Blender's list of recent files (project workflow spec 7): recent models first, then recent projects.
+    bl_idname = "TOPBAR_MT_file_open_recent"
     bl_label = "Open Recent"
 
     def draw(self, _context):
         layout = self.layout
-        recent = dtp.recent_projects()
-        if not recent:
-            layout.label(text="No recent projects")
-        for path in recent:
-            op = layout.operator(DASKTOON_OT_project_open.bl_idname, text=os.path.basename(os.path.dirname(path)),
-                                 icon='FILE_FOLDER', translate=False)
-            op.filepath = path
+        layout.operator_context = 'EXEC_DEFAULT'
+        recent_models, recent_projects = dtp.recent_models(), dtp.recent_projects()
+        if not recent_models and not recent_projects:
+            layout.label(text="No recent models or projects")
+            return
+        if recent_models:
+            layout.label(text="Models")
+            for path in recent_models:
+                project = dtp.find_project(path)
+                text = "%s › %s" % (project.name, dtp.model_label(project, path)) if project else os.path.basename(path)
+                layout.operator(DASKTOON_OT_project_open_model.bl_idname, text=text, icon='FILE_BLEND',
+                                translate=False).filepath = path
+        if recent_projects:
+            if recent_models:
+                layout.separator()
+            layout.label(text="Projects")
+            for path in recent_projects:
+                layout.operator(DASKTOON_OT_project_open.bl_idname, text=os.path.basename(os.path.dirname(path)),
+                                icon='FILE_FOLDER', translate=False).filepath = path
 
 
 class TOPBAR_MT_dasktoon_project_models(Menu):
@@ -209,7 +222,7 @@ class TOPBAR_MT_dasktoon_project(Menu):
         layout = self.layout
         layout.operator(DASKTOON_OT_project_create.bl_idname, text="New Project…", icon='NEWFOLDER')
         layout.operator(DASKTOON_OT_project_open.bl_idname, text="Open Project…", icon='FILE_FOLDER')
-        layout.menu(TOPBAR_MT_dasktoon_project_recent.bl_idname, icon='RECOVER_LAST')
+        layout.menu(TOPBAR_MT_file_open_recent.bl_idname, icon='RECOVER_LAST')
         project = active_project()
         if project is None:
             return
@@ -239,7 +252,7 @@ classes = (
     DASKTOON_OT_project_export,
     DASKTOON_OT_project_reinstall_shaders,
     DASKTOON_OT_project_open_folder,
-    TOPBAR_MT_dasktoon_project_recent,
+    TOPBAR_MT_file_open_recent,
     TOPBAR_MT_dasktoon_project_models,
     TOPBAR_MT_dasktoon_project,
 )
