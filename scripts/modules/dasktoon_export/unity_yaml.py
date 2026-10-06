@@ -141,6 +141,11 @@ def include_meta(guid):
     return _meta(guid, ["ShaderIncludeImporter:", "  externalObjects: {}"])
 
 
+def script_meta(guid):
+    return _meta(guid, ["MonoImporter:", "  externalObjects: {}", "  serializedVersion: 2", "  defaultReferences: []",
+                        "  executionOrder: 0", "  icon: {instanceID: 0}"])
+
+
 def texture_meta(guid, kind, size=(1024, 1024), point_filter=False):
     srgb, tex_type, wrap, mips, compression = TEXTURE_KINDS[kind]
     max_size = 2048

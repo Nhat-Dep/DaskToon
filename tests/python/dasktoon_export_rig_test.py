@@ -65,5 +65,40 @@ class RigJsonTest(unittest.TestCase):
         self.assertIsNone(rig_json.find_rig([rig, objs["Body"]]))
 
 
+class ScriptsInstallTest(unittest.TestCase):
+    def target(self, root, mode='PROJECT'):
+        from dasktoon_export import targets
+        return targets.ExportTarget('UNITY_URP', mode, root, "Hero", None)
+
+    def test_install_writes_scripts_with_fixed_guids(self):
+        from dasktoon_export import scripts_install as si
+        root = os.path.join(tempfile.mkdtemp(prefix="dt_scripts_"), "Assets", "DaskToon")
+        warnings = []
+        self.assertTrue(si.install_scripts(self.target(root), warnings))
+        self.assertEqual(warnings, [])
+        for rel, guid in si.FILE_GUIDS.items():
+            path = os.path.join(root, si.SCRIPT_DIR, *rel.split("/"))
+            self.assertTrue(os.path.isfile(path), rel)
+            with open(path + ".meta", encoding="utf-8") as f:
+                meta = f.read()
+            self.assertIn("guid: %s" % guid, meta)
+            self.assertIn("MonoImporter:", meta)
+        self.assertTrue(os.path.isfile(os.path.join(root, si.SCRIPT_DIR, "Editor.meta")))
+        self.assertEqual(si.installed_version(root), si.SCRIPTS_VERSION)
+        with open(os.path.join(root, si.SCRIPT_DIR, "DaskToonSpringBone.cs"), encoding="utf-8") as f:
+            code = f.read()
+        self.assertIn("public void Step(float dt)", code)
+        self.assertIn("Vector3.down", code)
+
+    def test_newer_scripts_are_kept(self):
+        from dasktoon_export import scripts_install as si
+        root = os.path.join(tempfile.mkdtemp(prefix="dt_scripts_"), "Assets", "DaskToon")
+        self.assertTrue(si.install_scripts(self.target(root), []))
+        with open(os.path.join(root, si.SCRIPT_DIR, si.VERSION_FILE), "w", encoding="utf-8") as f:
+            f.write("%d\n" % (si.SCRIPTS_VERSION + 1))
+        self.assertFalse(si.install_scripts(self.target(root), []))
+        self.assertTrue(si.install_scripts(self.target(root), [], force=True))
+
+
 if __name__ == "__main__":
     tu.run_tests()
