@@ -1,0 +1,8 @@
+saved 21_add_armature_menu (631, 493, 837, 594)
+parts [('Body', 'BODY'), ('Shirt', 'CLOTHING'), ('Hair', 'HAIR'), ('Skirt', 'SKIRT'), ('Ribbon', 'ACCESSORY'), ('Eye', 'ACCESSORY')]
+bones 83
+saved 22_rest (2, 95, 1576, 983)
+saved 23_posed (2, 95, 1576, 983)
+build from Properties {'FINISHED'} 83 52
+saved 24_rig_panel (2, 95, 1576, 983)
+done
