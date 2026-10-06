@@ -315,6 +315,26 @@ class DASKTOON_OT_rig_build(Operator):
         return {'FINISHED'}
 
 
+class DASKTOON_OT_rig_bake_sway(Operator):
+    """Key the sway of hair and skirts on every frame of the scene; Live Sway turns off so the keys play as they are"""
+    bl_idname = "dasktoon.rig_bake_sway"
+    bl_label = "Bake Sway"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        from dasktoon_rig import sway
+        rig = rig_of(context)
+        return rig is not None and bool(sway.chains(rig))
+
+    def execute(self, context):
+        from dasktoon_rig import sway
+        scene = context.scene
+        frames, bones = sway.bake(context, rig_of(context), scene.frame_start, scene.frame_end)
+        self.report({'INFO'}, rpt_("Baked %d frames of %d bones") % (frames, bones))
+        return {'FINISHED'}
+
+
 _rig_items = []
 
 
@@ -453,6 +473,37 @@ class DATA_PT_dasktoon_rig_parts(DaskRigPanel, Panel):
             layout.prop(part, "chain_count")
 
 
+class DATA_PT_dasktoon_rig_sway(DaskRigPanel, Panel):
+    bl_label = "Sway"
+    bl_parent_id = "DATA_PT_dasktoon_rig"
+
+    def draw(self, context):
+        from dasktoon_rig import sway
+        layout = self.layout
+        rig = rig_of(context)
+        data = rig.data.dasktoon_rig
+        if not sway.chains(rig):
+            layout.label(text="Build Rig first to make the hair and skirt chains", icon='INFO')
+            return
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+        layout.prop(data, "live_sway")
+        part = _active_part(rig)
+        if part is not None and part.role in ('HAIR', 'SKIRT'):
+            col = layout.column(align=True)
+            col.prop(part, "stiffness")
+            col.prop(part, "gravity")
+            col.prop(part, "drag")
+            col.prop(part, "radius")
+        else:
+            layout.label(text="Select a hair or skirt part to set how it sways")
+        layout.label(text="Colliders")
+        for collider in data.colliders:
+            row = layout.row()
+            row.prop(collider, "radius", text=collider.bone, translate=False)
+        layout.operator("dasktoon.rig_bake_sway", icon='REC')
+
+
 class DATA_PT_dasktoon_rig_build(DaskRigPanel, Panel):
     bl_label = "Build"
     bl_parent_id = "DATA_PT_dasktoon_rig"
@@ -506,11 +557,13 @@ classes = (
     DASKTOON_OT_rig_add_material_part,
     DASKTOON_OT_rig_remove_part,
     DASKTOON_OT_rig_build,
+    DASKTOON_OT_rig_bake_sway,
     DASKTOON_OT_rig_part_from_selection,
     DASKTOON_UL_rig_parts,
     DATA_PT_dasktoon_rig,
     DATA_PT_dasktoon_rig_joints,
     DATA_PT_dasktoon_rig_parts,
+    DATA_PT_dasktoon_rig_sway,
     DATA_PT_dasktoon_rig_build,
     DATA_PT_dasktoon_rig_mesh,
 )

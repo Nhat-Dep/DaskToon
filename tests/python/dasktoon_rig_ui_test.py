@@ -138,15 +138,37 @@ class PanelTest(unittest.TestCase):
         self.assertIn("role", [entry[1] for entry in log if entry[0] == "prop"])
 
 
+class SwayPanelTest(unittest.TestCase):
+    def test_sway_panel_and_bake(self):
+        bpy.ops.wm.read_factory_settings(use_empty=True)
+        objs = fx.character()
+        rig = fx.rig_for()
+        select_only([rig, objs["Body"], objs["Hair"]], rig)
+        bpy.ops.dasktoon.rig_add_selected()
+        log = tu.draw(ui.DATA_PT_dasktoon_rig_sway, panel_context(rig))
+        self.assertIn("Build Rig first to make the hair and skirt chains", tu.labels(log))
+        bpy.ops.dasktoon.rig_build()
+        rig.data.dasktoon_rig.active_part_index = 1  # Hair
+        log = tu.draw(ui.DATA_PT_dasktoon_rig_sway, panel_context(rig))
+        props = [entry[1] for entry in log if entry[0] == "prop"]
+        self.assertEqual(props[:5], ["live_sway", "stiffness", "gravity", "drag", "radius"])
+        self.assertIn("radius", props[5:])
+        self.assertIn("dasktoon.rig_bake_sway", [name for name, _text in tu.operators(log)])
+        bpy.context.scene.frame_start, bpy.context.scene.frame_end = 1, 5
+        bpy.ops.dasktoon.rig_bake_sway()
+        self.assertFalse(rig.data.dasktoon_rig.live_sway)
+
+
 class TextTest(unittest.TestCase):
     def test_properties_and_enums_are_translated(self):
         # Registered property groups are not in bpy.types: take the classes from the module.
-        strings = {ui.DaskRigPart.bl_rna.description, ui.DaskRig.bl_rna.description}
+        strings = {ui.DaskRigPart.bl_rna.description, ui.DaskRig.bl_rna.description,
+                   ui.DaskRigCollider.bl_rna.description}
         operators = [cls for cls in ui.classes if issubclass(cls, bpy.types.Operator)]
-        self.assertEqual(len(operators), 8)
+        self.assertEqual(len(operators), 9)
         for struct in operators:
             strings.update((struct.bl_label, struct.__doc__))
-        for struct in [ui.DaskRigPart, ui.DaskRig] + operators:
+        for struct in [ui.DaskRigPart, ui.DaskRigCollider, ui.DaskRig] + operators:
             for prop in struct.bl_rna.properties:
                 if prop.identifier not in struct.__annotations__:  # Operator's own RNA (bl_options...) is Blender's
                     continue

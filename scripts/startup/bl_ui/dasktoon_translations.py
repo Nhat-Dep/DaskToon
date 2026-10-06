@@ -1158,6 +1158,14 @@ VI = {
         "Các capsule mà tóc và váy không xuyên qua; Dựng rig tạo ra chúng",
     "Live Sway": "Lắc trực tiếp",
     "Sway hair and skirts while the animation plays": "Cho tóc và váy lắc khi animation đang phát",
+    # bl_ui/dasktoon_rig.py (Sway panel)
+    "Bake Sway": "Bake chuyển động lắc",
+    "Key the sway of hair and skirts on every frame of the scene; Live Sway turns off so the keys play as they are":
+        "Đặt keyframe chuyển động lắc của tóc và váy ở mọi khung của scene; Lắc trực tiếp tắt để phát đúng các keyframe",
+    "Baked %d frames of %d bones": "Đã bake %d khung cho %d xương",
+    "Sway": "Lắc",
+    "Build Rig first to make the hair and skirt chains": "Hãy Dựng rig trước để có chuỗi xương tóc và váy",
+    "Select a hair or skirt part to set how it sways": "Chọn một phần tóc hoặc váy để chỉnh cách nó lắc",
 }
 
 # Words that need their own translation context, because Blender's own translation of the same word in the default
