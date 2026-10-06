@@ -1,10 +1,10 @@
-# DaskToon: rig anime R1 và R2, báo cáo
+# DaskToon: rig anime R1, R2, R2b, báo cáo
 
 - Ngày: 2026-10-06, làm tự động khi người dùng giao "tự động trong 3 tiếng" (từ 16:44), rồi "tiếp tục".
 - Nhánh: `dasktoon-anime-rig`, tách từ `dasktoon-project-workflow` (`5857d6a4619`). Chưa push, chưa merge.
 - Spec: `docs/superpowers/specs/2026-10-06-dasktoon-anime-rig-design.md`. Kế hoạch:
-  `docs/superpowers/plans/2026-10-06-dasktoon-anime-rig-r1.md`, `docs/superpowers/plans/2026-10-06-dasktoon-anime-rig-r2.md`.
-- R2 ở đây là phần lắc **trong DaskToon**; phần Unity của R2 (script spring bone C#, file `.rig.json`, spec §9.5) chưa làm.
+  `docs/superpowers/plans/2026-10-06-dasktoon-anime-rig-r1.md`, `...-r2.md` (lắc trong DaskToon), `...-r2b.md` (lắc trong
+  Unity).
 
 ## 1. Đã làm được gì
 
@@ -30,8 +30,9 @@ Cách dùng, 4 bước:
 ## 2. Kiểm thử
 
 - 6 file test mới (`dasktoon_rig_*_test.py`, 68 test) và test xuất Humanoid; đăng ký trong `tests/python/CMakeLists.txt`.
-- Toàn bộ bộ test DaskToon trong CMake đều qua: sau R1 là 40 file (370 test), sau R2 là 42 file (392 test), cộng script
-  baseline.
+- Toàn bộ bộ test DaskToon trong CMake đều qua: sau R1 là 40 file (370 test), sau R2 là 42 file (392 test), sau R2b là 43
+  file (404 test), cộng script baseline. Test Unity (ngoài CMake, chạy Unity 6000.5.4f1 thật): rig mới, model, shader đều
+  qua.
 - Kiểm tra trong cửa sổ thật (`tools/dasktoon_rig_screenshots.py`): thêm khung qua menu, Build Rig bằng operator cả từ
   viewport lẫn từ Properties editor, tạo dáng, chụp ảnh tiếng Anh và tiếng Việt.
 
@@ -112,13 +113,38 @@ Review R2 (tự review): không có lỗi Critical/Important. Để lại (Minor
 - bán kính collider không đổi theo khi scale object rig sau Build;
 - render animation vẫn lắc qua handler, nhưng để chắc chắn khi render cuối hay xuất Unity thì nên Bake Sway trước.
 
-Lưu ý cho Unity hiện nay: khi Engine Export xuất animation, lắc trực tiếp cũng chạy trong lúc FBX bake từng khung, nên clip
-trong Unity đã có chuyển động lắc (như bake). Script lắc chạy trong Unity là việc của R2b.
+## 7. R2b: lắc trong Unity
 
-## 7. Còn lại
+| Phần | Nội dung |
+|---|---|
+| Lắc trong Unity | Mỗi phần tóc/váy có **Sway in Unity**: **Runtime** (mặc định, script của DaskToon cho lắc khi game chạy) hoặc **Baked** (Unity phát keyframe lắc đã bake) |
+| File rig | Engine Export ghi `<Model>.rig.json` cạnh FBX: mỗi chuỗi (tên xương, độ dài, Stiffness, Gravity, Drag, Radius, chế độ Unity), mỗi collider (xương, bán kính, độ dài). Không cần tọa độ: đã thử trong Unity, trục +Y của xương sau khi import vẫn chỉ dọc xương như Blender |
+| Script Unity | Cài vào `Assets/DaskToon/Scripts/` như shader (GUID cố định, file phiên bản, không ghi đè bản mới hơn): `DaskToonSpringBone.cs` (bản dịch từng dòng của `spring.py`), `DaskToonSpringCollider.cs`, `Editor/DaskToonRigImporter.cs` (lúc Unity import FBX, đọc json và gắn component vào prefab của model, nên kéo model vào scene là lắc) |
+| FBX | Lúc ghi FBX, chuỗi Runtime về tư thế nghỉ và không lắc (Unity tự lắc), chuỗi Baked giữ lắc; ghi xong mọi thứ trở lại. Chuỗi Runtime mà đã có key lắc (Bake Sway) thì báo cáo cảnh báo "Unity would sway it twice" |
+| Báo cáo, README | Dòng "Rig: … (DaskToon spring bones sway the hair and skirts in Unity)", trạng thái script; README của bản xuất ra thư mục dặn chỉ đưa thư mục Scripts vào một project Unity một lần |
 
-- **R2b**: phần Unity của lắc (spec §9.5): `DaskToonSpringBone.cs`, collider, trình import đọc `<Model>.rig.json`, thuộc
-  tính **Sway in Unity**, test bằng Unity 6000.5 (đã có harness).
+Kiểm thử R2b: test Python của file rig, cài script, xuất (10 test trong `dasktoon_export_rig_test.py`, thêm test lắc/panel),
+và **test trong Unity thật** `tests/python/dasktoon_unity_rig_test.py`: Unity biên dịch ba script, trình import gắn 9 spring
+bone và 14 collider, xương con nằm trên trục +Y của xương cha (lệch 1,5e-8), và sau 20 bước đuôi xương trong Unity lệch so
+với `spring.py` **9,4e-7 m**. Thử với kỳ vọng cố ý sai (Gravity +0,5) thì test báo lỗi (lệch 15 mm), nên test có tác dụng.
+
+Ghi chú khi làm R2b:
+
+- Project Unity tạm của harness (`%TEMP%\dasktoon_unity_test`) bị hỏng bộ nhớ gói (thiếu file `.meta`, NUnit bị bỏ qua, mọi
+  test Unity lỗi biên dịch). Đã xóa `Library` của project tạm để Unity dựng lại; project của người dùng không bị đụng.
+- `runtime_parts` ban đầu tính cả phần Body; test bắt được, đã sửa.
+- Trình import chỉ phụ thuộc vào file rig khi file có thật.
+
+Review R2b (tự review):
+
+- **Đã sửa** (Important): bản xuất ra thư mục của hai nhân vật kéo vào cùng project Unity sẽ có hai bản các lớp C# và cả
+  project không biên dịch được (shader trùng chỉ cảnh báo). README nay dặn chỉ đưa thư mục Scripts vào một lần; xuất thẳng
+  vào project Unity hoặc dùng dự án DaskToon thì không gặp.
+- **Để lại** (Minor): khi game tạm dừng (`Time.deltaTime = 0`) tóc còn trôi vài khung theo quán tính rồi mới đứng; thêm file
+  rig sau mà không xuất lại thì Unity không tự import lại model.
+
+## 8. Còn lại
+
 - **R3 mắt và miệng** (spec §10).
 - **A**: tab Animation gọn, tiếp từ phần thiết kế 2 (bộ lọc "cả nhân vật"). Sau đó B, C.
 - Nhánh `dasktoon-project-workflow` (Phần 2) vẫn chờ người dùng chọn merge / PR / giữ.
