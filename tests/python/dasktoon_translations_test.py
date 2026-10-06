@@ -55,6 +55,7 @@ TRANSLATED = [
     "scripts/modules/dasktoon_rig/skeleton.py",
     "scripts/modules/dasktoon_rig/chains.py",
     "scripts/modules/dasktoon_rig/parts.py",
+    "scripts/modules/dasktoon_rig/weights.py",
 ]
 # Blender files DaskToon rewrote parts of (project workflow spec 13): only these classes are DaskToon's.
 TRANSLATED_CLASSES = {
