@@ -222,5 +222,36 @@ class ModeAndErrorTest(unittest.TestCase):
         self.assertEqual({dominant(body, self.rig, v) for v in top}, {("Neck", 1.0)})
 
 
+class HumanoidTest(unittest.TestCase):
+    def test_export_is_humanoid_for_one_standard_skeleton(self):
+        import dasktoon_export
+        from dasktoon_rig import skeleton
+        bpy.ops.wm.read_factory_settings(use_empty=True)
+        objs = fx.character()
+        rig = fx.rig_for()
+        self.assertTrue(dasktoon_export._humanoid([rig] + list(objs.values())))
+        self.assertFalse(dasktoon_export._humanoid(list(objs.values())))
+        second = fx.rig_for()
+        self.assertFalse(dasktoon_export._humanoid([rig, second]))
+        with skeleton.editing(bpy.context, second) as edit:
+            edit.remove(edit["Head"])
+        self.assertFalse(dasktoon_export._humanoid([second]))
+
+    def test_exported_model_meta_is_humanoid(self):
+        import tempfile
+        import dasktoon_export
+        from dasktoon_export import targets
+        bpy.ops.wm.read_factory_settings(use_empty=True)
+        objs = fx.character()
+        rig = fx.rig_for()
+        build.build(bpy.context, rig, separate_parts(objs))
+        target = targets.make_target(tempfile.mkdtemp(prefix="dt_rig_"), "Hero")
+        options = dasktoon_export.ExportOptions(include_animation=False, bake_size=32, bake_samples=2)
+        rep = dasktoon_export.export_model(bpy.context, target, [rig] + list(objs.values()), options)
+        self.assertEqual(rep.model, "Hero/Model/Hero.fbx")
+        with open(os.path.join(target.root, "Hero", "Model", "Hero.fbx.meta"), encoding="utf-8") as f:
+            self.assertIn("  animationType: 3\n", f.read())
+
+
 if __name__ == "__main__":
     tu.run_tests()

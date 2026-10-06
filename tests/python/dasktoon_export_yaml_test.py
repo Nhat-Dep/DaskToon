@@ -156,6 +156,10 @@ class YamlTest(unittest.TestCase):
         self.assertIn("    blendShapeNormalImportMode: 0\n", uy.model_meta(TEX, {}, False))
         self.assertIn("    blendShapeNormalImportMode: 2\n", uy.model_meta(TEX, {}, False, blend_shape_normals=False))
 
+    def test_model_meta_humanoid(self):
+        self.assertIn("  animationType: 2\n", uy.model_meta(TEX, {}, True))
+        self.assertIn("  animationType: 3\n", uy.model_meta(TEX, {}, True, humanoid=True))
+
 
 if __name__ == "__main__":
     tu.run_tests()

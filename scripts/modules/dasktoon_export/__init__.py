@@ -171,6 +171,13 @@ class _Writer:
         return guid
 
 
+def _humanoid(objects):
+    """True when the model has exactly one armature and it is a DaskToon standard skeleton (anime rig spec 8)."""
+    from dasktoon_rig import skeleton
+    rigs = [obj for obj in objects if obj.type == 'ARMATURE']
+    return len(rigs) == 1 and skeleton.is_humanoid(rigs[0])
+
+
 def _write_model(context, target, objects, meshes, options, rep):
     """Outline data, materials, shaders and the FBX (spec 3-5)."""
     from . import assets, graph, model_fbx, shaders_install, unity_yaml
@@ -198,7 +205,7 @@ def _write_model(context, target, objects, meshes, options, rep):
         rel = "%s/%s.fbx" % (model_dir, safe_name(target.name))
         guid = writer.guid(rel)
         meta = unity_yaml.model_meta(guid, mat_guids, options.include_animation,
-                                     blend_shape_normals=not rep.face_meshes)
+                                     blend_shape_normals=not rep.face_meshes, humanoid=_humanoid(objects))
         left_out = []
 
         def write_fbx(path):
