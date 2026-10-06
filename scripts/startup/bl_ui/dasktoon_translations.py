@@ -559,6 +559,12 @@ VI = {
     "The name is empty": "Tên đang để trống",
     "The project already has a model named %s": "Dự án đã có model tên %s",
 
+    # dasktoon_project/textures.py
+    "Copied 1 texture into Textures/": "Đã chép 1 texture vào Textures/",
+    "Copied %d textures into Textures/": "Đã chép %d texture vào Textures/",
+    "%s: image sequences are not copied into the project": "%s: chuỗi ảnh không được chép vào dự án",
+    "%s: file not found: %s": "%s: không tìm thấy file: %s",
+
     # bl_ui/dasktoon_shading_styles.py
     "Shading Style": "Kiểu đổ bóng",
     "Anime 2-Tone": "Anime 2 tông",
