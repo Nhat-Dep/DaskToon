@@ -137,7 +137,8 @@ def build_scene():
     unity = os.path.join(WORK, "MyGame")
     for sub in ("Assets", "ProjectSettings"):
         os.makedirs(os.path.join(unity, sub), exist_ok=True)
-    dtp.create_project("Hero", os.path.join(WORK, "Hero"), 'UNITY_URP', unity, save_current=True)
+    project = dtp.create_project("Hero", os.path.join(WORK, "Hero"), unity)
+    bpy.ops.wm.save_as_mainfile(filepath=dtp.new_model_path(project, "Hero"))
     log("scene ready", bpy.data.filepath)
     return head
 

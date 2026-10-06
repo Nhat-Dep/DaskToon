@@ -534,8 +534,7 @@ VI = {
         "Tạo dự án DaskToon gắn với một project Unity và cài shader DaskToon vào đó",
     "Project Folder": "Thư mục dự án",
     "Unity Project": "Project Unity",
-    "Save Current File in Project": "Lưu file hiện tại vào dự án",
-    "Created project %s and installed the shaders into %s": "Đã tạo dự án %s và cài shader vào %s",
+    "Created project %s": "Đã tạo dự án %s",
     "Open DaskToon Project": "Mở dự án DaskToon",
     "Open a DaskToon project (dasktoon_project.json)": "Mở một dự án DaskToon (dasktoon_project.json)",
     "Opened project %s": "Đã mở dự án %s",
@@ -557,8 +556,8 @@ VI = {
     "%s is not a Unity project (it needs Assets/ and ProjectSettings/)":
         "%s không phải project Unity (cần có Assets/ và ProjectSettings/)",
     "%s is already a DaskToon project": "%s đã là một dự án DaskToon",
-    "%s already has another file named %s: rename the current file or turn off Save Current File in Project":
-        "%s đã có file khác tên %s: hãy đổi tên file hiện tại hoặc bỏ chọn Lưu file hiện tại vào dự án",
+    "The name is empty": "Tên đang để trống",
+    "The project already has a model named %s": "Dự án đã có model tên %s",
 
     # bl_ui/dasktoon_shading_styles.py
     "Shading Style": "Kiểu đổ bóng",

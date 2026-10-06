@@ -69,8 +69,10 @@ class ProjectUITest(unittest.TestCase):
         self.folder = os.path.join(tempfile.mkdtemp(prefix="dt_projui_"), "Proj")
 
     def create(self):
-        return bpy.ops.dasktoon.project_create(name="Proj", folder=self.folder, engine='UNITY_URP',
-                                               engine_path=self.unity, save_current=True)
+        result = bpy.ops.dasktoon.project_create(name="Proj", folder=self.folder, engine='UNITY_URP',
+                                                 engine_path=self.unity)
+        bpy.ops.wm.save_as_mainfile(filepath=os.path.join(self.folder, "Proj.blend"))
+        return result
 
     def test_create_makes_the_saved_file_part_of_the_project(self):
         self.assertEqual(self.create(), {'FINISHED'})
@@ -83,7 +85,7 @@ class ProjectUITest(unittest.TestCase):
                                             engine_path=tempfile.mkdtemp(prefix="dt_not_unity_"))
 
     def test_open_sets_the_session_project_for_an_unsaved_file(self):
-        project = dtp.create_project("Opened", self.folder, 'UNITY_URP', self.unity)
+        project = dtp.create_project("Opened", self.folder, self.unity)
         self.assertIsNone(project_ui.active_project())
         self.assertEqual(bpy.ops.dasktoon.project_open(filepath=project.file), {'FINISHED'})
         self.assertEqual(project_ui.active_project().name, "Opened")

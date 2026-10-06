@@ -10,7 +10,7 @@ import time
 
 import bpy
 from bpy.app.translations import pgettext_iface as iface_, pgettext_rpt as rpt_
-from bpy.props import BoolProperty, EnumProperty, StringProperty
+from bpy.props import EnumProperty, StringProperty
 from bpy.types import Menu, Operator
 
 from dasktoon_export import targets
@@ -63,21 +63,19 @@ class DASKTOON_OT_project_create(Operator):
     folder: StringProperty(name="Project Folder", subtype='DIR_PATH')
     engine: EnumProperty(name="Engine", items=targets.ENGINES, default='UNITY_URP')
     engine_path: StringProperty(name="Unity Project", subtype='DIR_PATH')
-    save_current: BoolProperty(name="Save Current File in Project", default=True)
 
     def invoke(self, context, _event):
         return context.window_manager.invoke_props_dialog(self, width=520)
 
     def execute(self, _context):
         try:
-            project = dtp.create_project(self.name, bpy.path.abspath(self.folder), self.engine,
-                                         bpy.path.abspath(self.engine_path), self.save_current)
+            project = dtp.create_project(self.name, bpy.path.abspath(self.folder),
+                                         bpy.path.abspath(self.engine_path) if self.engine_path else "", self.engine)
         except (ValueError, OSError) as ex:
             self.report({'ERROR'}, str(ex))
             return {'CANCELLED'}
         _session["project_file"] = project.file
-        self.report({'INFO'}, rpt_("Created project %s and installed the shaders into %s")
-                    % (project.name, project.engine_path))
+        self.report({'INFO'}, rpt_("Created project %s") % project.name)
         return {'FINISHED'}
 
 
