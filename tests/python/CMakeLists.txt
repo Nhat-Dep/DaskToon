@@ -270,6 +270,7 @@ foreach(dasktoon_test
     dasktoon_rig_chains_test
     dasktoon_rig_parts_test
     dasktoon_rig_weights_test
+    dasktoon_rig_build_test
 )
   add_blender_test(
     ${dasktoon_test}

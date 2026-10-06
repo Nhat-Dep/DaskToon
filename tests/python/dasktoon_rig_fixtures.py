@@ -26,8 +26,9 @@ def mesh_object(name, verts, faces, materials=(), face_materials=None):
 
 
 def tube(z_top, z_bottom, r_top, r_bottom, rings=12, segments=16):
-    """(verts, faces) of an open tube around the Z axis from z_top down to z_bottom; vertex s of a ring is at angle
-    360 * s / segments degrees from +X (s = 12 of 16 is the front, -Y)."""
+    """(verts, faces) of an open tube around the Z axis from z_top down to z_bottom, normals pointing out (Blender's
+    automatic weights rely on them); vertex s of a ring is at angle 360 * s / segments degrees from +X (s = 12 of 16 is
+    the front, -Y)."""
     verts, faces = [], []
     for r in range(rings + 1):
         t = r / rings
@@ -39,7 +40,7 @@ def tube(z_top, z_bottom, r_top, r_bottom, rings=12, segments=16):
     for r in range(rings):
         for s in range(segments):
             a, b = r * segments + s, r * segments + (s + 1) % segments
-            faces.append((a, b, b + segments, a + segments))
+            faces.append((a, a + segments, b + segments, b))
     return verts, faces
 
 

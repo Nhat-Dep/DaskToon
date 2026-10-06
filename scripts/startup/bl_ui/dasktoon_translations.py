@@ -1040,6 +1040,23 @@ VI = {
     "Part %s: material %s is not on %s": "Phần %s: material %s không có trên %s",
     "Part %s: vertex group %s is not on %s": "Phần %s: vertex group %s không có trên %s",
     "Part %s has no vertices": "Phần %s không có đỉnh nào",
+    # dasktoon_rig/build.py
+    "Built %d bones in %d chains, weights on %d objects": "Đã dựng %d xương trong %d chuỗi, vẽ weight trên %d object",
+    "The active object is not an armature": "Object đang chọn không phải armature",
+    "%s is linked from a library": "%s được link từ thư viện",
+    "%s is not a standard skeleton; missing bones: %s": "%s không phải khung chuẩn; thiếu xương: %s",
+    "%s is hidden; show it before building": "%s đang ẩn; hãy hiện nó trước khi dựng",
+    "Add parts before building the rig": "Hãy thêm phần trước khi dựng rig",
+    "Part %s has no object": "Phần %s chưa có object",
+    "Part %s: %s is not a mesh": "Phần %s: %s không phải mesh",
+    "%s shares its mesh with other objects; make it single user first":
+        "%s dùng chung mesh với object khác; hãy tách riêng (Single User) trước",
+    "Part %s: bone %s is not in %s": "Phần %s: xương %s không có trong %s",
+    "Clothing copies its weights from a Body part; add a Body part first":
+        "Quần áo chép weight từ phần Body; hãy thêm phần Body trước",
+    "%s: %d vertices took the nearest bone (automatic weights found no solution there)":
+        "%s: %d đỉnh lấy theo xương gần nhất (weight tự động không tìm được nghiệm ở đó)",
+    "%s: no Body surface to copy weights from": "%s: không có bề mặt Body để chép weight",
 }
 
 # Words that need their own translation context, because Blender's own translation of the same word in the default
