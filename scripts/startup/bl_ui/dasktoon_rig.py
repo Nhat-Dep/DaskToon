@@ -516,14 +516,27 @@ classes = (
 )
 
 
-# bl_ui registers `classes`; register() adds the rig data to armatures and the Add › Armature entry.
+def _sway_handlers():
+    from dasktoon_rig import sway
+    return ((bpy.app.handlers.frame_change_pre, sway.frame_pre),
+            (bpy.app.handlers.frame_change_post, sway.frame_post),
+            (bpy.app.handlers.depsgraph_update_post, sway.depsgraph_post))
+
+
+# bl_ui registers `classes`; register() adds the rig data to armatures, the Add › Armature entry and the sway handlers.
 def register():
     from .space_view3d import VIEW3D_MT_armature_add
     bpy.types.Armature.dasktoon_rig = PointerProperty(type=DaskRig)
     VIEW3D_MT_armature_add.append(menu_func)
+    for handlers, function in _sway_handlers():
+        if function not in handlers:
+            handlers.append(function)
 
 
 def unregister():
     from .space_view3d import VIEW3D_MT_armature_add
+    for handlers, function in _sway_handlers():
+        if function in handlers:
+            handlers.remove(function)
     VIEW3D_MT_armature_add.remove(menu_func)
     del bpy.types.Armature.dasktoon_rig

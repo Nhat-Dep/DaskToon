@@ -310,6 +310,8 @@ def build(context, rig, parts):
         result.bones = list(actual.values())
         result.chains = plan.chains
         result.objects = [obj.name for obj in owners]
+        from . import sway  # sway imports build
+        sway.clear_cache(rig)
         return result
     finally:
         view_layer.objects.active = active

@@ -273,6 +273,7 @@ foreach(dasktoon_test
     dasktoon_rig_build_test
     dasktoon_rig_ui_test
     dasktoon_rig_spring_test
+    dasktoon_rig_sway_test
 )
   add_blender_test(
     ${dasktoon_test}
