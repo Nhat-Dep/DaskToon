@@ -13,7 +13,9 @@ presses Build Rig, poses the spine, head, hair and skirt, and saves:
 
 - 21_add_armature_menu: the Add › Armature menu with Anime Humanoid;
 - 22_rest, 23_posed: the character from the side before and after posing (the hair and skirt chains bend);
-- 24_rig_panel: the Anime Rig panel in Properties › Object Data of the armature.
+- 25_sway: R2, the hips dash sideways from frame 1 to 6; on frame 8 the skirt and hair lag behind (Live Sway);
+- 24_rig_panel: the Anime Rig panel in Properties › Object Data of the armature, the skirt part active (Sway shows its
+  settings and the colliders).
 """
 import datetime
 import math
@@ -164,6 +166,27 @@ def steps():
     save(grab(), area_rect(view), "23_posed")
     with bpy.context.temp_override(window=win, area=view, region=region):
         bpy.ops.object.mode_set(mode='OBJECT')
+    for bone in rig.pose.bones:
+        bone.rotation_mode = 'QUATERNION'
+        bone.rotation_quaternion = (1.0, 0.0, 0.0, 0.0)
+
+    # 25. Live Sway: the hips dash sideways, the skirt and hair lag behind.
+    hips = rig.pose.bones["Hips"]
+    for frame, x in ((1, 0.0), (6, 0.35), (14, 0.35)):
+        hips.location = (x, 0.0, 0.0)
+        hips.keyframe_insert("location", frame=frame)
+    scene = bpy.context.scene
+    scene.frame_start, scene.frame_end = 1, 14
+    with bpy.context.temp_override(window=win, area=view, region=region):
+        bpy.ops.view3d.view_axis(type='FRONT')
+        bpy.ops.view3d.view_all(center=False)
+    for frame in range(1, 9):
+        scene.frame_set(frame)
+    log("sway frame", scene.frame_current, tuple(round(v, 3) for v in rig.pose.bones["Skirt1_3"].rotation_quaternion))
+    yield datetime.timedelta(seconds=1.5)
+    save(grab(), area_rect(view), "25_sway")
+    data = rig.data.dasktoon_rig
+    data.active_part_index = next(i for i, p in enumerate(data.parts) if p.role == 'SKIRT')
 
     # 24. The Anime Rig panel: the big area becomes a Properties editor on the armature's Object Data tab.
     view.type = 'PROPERTIES'
@@ -178,6 +201,7 @@ def steps():
     e.cursor_position_set(view.x + view.width // 2, view.y + view.height // 2, move=True)
     for _ in range(40):
         e.wheeldownmouse()
+    e.cursor_position_set(view.x + 12, view.y + 20, move=True)  # park on the tab column, away from tooltips
     yield datetime.timedelta(seconds=1.5)
     save(grab(), area_rect(view), "24_rig_panel")
     view.type = 'VIEW_3D'

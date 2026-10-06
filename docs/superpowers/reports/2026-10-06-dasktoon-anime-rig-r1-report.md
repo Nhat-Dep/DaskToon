@@ -1,9 +1,10 @@
-# DaskToon: rig anime R1, báo cáo
+# DaskToon: rig anime R1 và R2, báo cáo
 
-- Ngày: 2026-10-06, làm tự động khi người dùng giao "tự động trong 3 tiếng" (từ 16:44).
+- Ngày: 2026-10-06, làm tự động khi người dùng giao "tự động trong 3 tiếng" (từ 16:44), rồi "tiếp tục".
 - Nhánh: `dasktoon-anime-rig`, tách từ `dasktoon-project-workflow` (`5857d6a4619`). Chưa push, chưa merge.
 - Spec: `docs/superpowers/specs/2026-10-06-dasktoon-anime-rig-design.md`. Kế hoạch:
-  `docs/superpowers/plans/2026-10-06-dasktoon-anime-rig-r1.md`.
+  `docs/superpowers/plans/2026-10-06-dasktoon-anime-rig-r1.md`, `docs/superpowers/plans/2026-10-06-dasktoon-anime-rig-r2.md`.
+- R2 ở đây là phần lắc **trong DaskToon**; phần Unity của R2 (script spring bone C#, file `.rig.json`, spec §9.5) chưa làm.
 
 ## 1. Đã làm được gì
 
@@ -29,7 +30,8 @@ Cách dùng, 4 bước:
 ## 2. Kiểm thử
 
 - 6 file test mới (`dasktoon_rig_*_test.py`, 68 test) và test xuất Humanoid; đăng ký trong `tests/python/CMakeLists.txt`.
-- Toàn bộ 40 bộ test DaskToon trong CMake đều qua (370 test, cộng script baseline), chạy lại sau bản sửa của bước review.
+- Toàn bộ bộ test DaskToon trong CMake đều qua: sau R1 là 40 file (370 test), sau R2 là 42 file (392 test), cộng script
+  baseline.
 - Kiểm tra trong cửa sổ thật (`tools/dasktoon_rig_screenshots.py`): thêm khung qua menu, Build Rig bằng operator cả từ
   viewport lẫn từ Properties editor, tạo dáng, chụp ảnh tiếng Anh và tiếng Việt.
 
@@ -42,7 +44,8 @@ Trong `docs/superpowers/reports/anime-rig/en/` và `.../vi/`:
 | `21_add_armature_menu.png` | Add › Armature có **Anime Humanoid** |
 | `22_rest.png` | Nhân vật thử nhìn từ bên phải, sau Build Rig |
 | `23_posed.png` | Tạo dáng: chuỗi tóc cong ra sau, dải váy trước và sau xòe ra, áo theo ngực |
-| `24_rig_panel.png` | Panel Anime Rig trong Object Data của armature |
+| `24_rig_panel.png` | Panel Anime Rig trong Object Data của armature, phần váy đang chọn: Parts, Sway, Colliders (đóng), Build |
+| `25_sway.png` | R2: hông lướt sang phải từ khung 1 tới 6; ở khung 8 váy còn trễ lại và xòe ngược chiều (Live Sway) |
 
 ## 4. Quyết định Claude tự chốt
 
@@ -80,9 +83,42 @@ Tự review (phiên này không tạo subagent khi người dùng chưa yêu c�
   - mesh quay pháp tuyến vào trong cho weight tự động kém mà không có cảnh báo (giống Parent › With Automatic Weights
     của Blender).
 
-## 6. Còn lại
+## 6. R2: lắc trong DaskToon
 
-- **R2 lắc** (spec §9): thông số lắc, collider, mô phỏng spring bone trong DaskToon (xem trước, bake), script Unity.
+| Phần | Nội dung |
+|---|---|
+| Bộ giải | `dasktoon_rig/spring.py`: spring bone kiểu VRM bằng numpy thuần (quán tính, Drag, Stiffness kéo về tư thế đang animate, Gravity, giữ chiều dài xương, đẩy đuôi ra khỏi capsule). Viết riêng để sau này dịch y hệt sang C# cho Unity |
+| Lắc trực tiếp | `dasktoon_rig/sway.py`: trước khi animation của khung chạy, xương chuỗi về tư thế nghỉ (nên keyframe của người dùng là tư thế gốc, xương không key thì ở rest); sau đó bộ giải bước một nhịp `fps_base / fps` và ghi góc xoay vào xương. Không dùng driver |
+| Bộ nhớ đệm | Lưu trạng thái theo khung: quay lại khung đã qua ra đúng như cũ; về khung đầu scene thì hết lắc; nhảy tới thì tính tiếp từ khung gần nhất (tối đa 300 khung). Sửa keyframe, đổi thông số, Build lại thì bỏ bộ nhớ đệm |
+| Collider | Build Rig sinh capsule dọc 14 xương thân (Head, Neck, ngực, Spine, Hips, tay, chân); bán kính = 0,9 × khoảng cách trung bình từ xương tới các đỉnh Body theo xương đó |
+| Bake Sway | Ghi keyframe xoay cho mọi xương chuỗi trên khoảng khung của scene (thay key xoay cũ của chúng), rồi tắt Live Sway để keyframe phát đúng như lúc xem trực tiếp |
+| Giao diện | Panel con **Sway** (Live Sway, Stiffness, Gravity, Drag, Radius của phần tóc/váy đang chọn, Bake Sway) và panel con **Colliders** (đóng sẵn, chỉnh bán kính từng capsule). "Chains" có bản Việt riêng "Số chuỗi" (bản của Blender nghĩa là dây chuyền) |
+
+Kiểm thử R2: `dasktoon_rig_spring_test.py` (8 test), `dasktoon_rig_sway_test.py` (10 test: hông lướt thì váy lắc, về khung đầu
+thì hết, quay lại khung ra như cũ, đuôi xương sau khi Blender tính lại khớp với bộ giải tới 1e-4, Live Sway tắt thì không đụng
+xương, xương có key là tư thế gốc, đổi thông số bỏ bộ nhớ đệm, Bake khớp lúc xem trực tiếp, Bake hai lần không cộng dồn),
+thêm test collider và panel Sway. Toàn bộ suite xem §2.
+
+Quyết định khi làm R2:
+
+- Radius mặc định là hằng số 0,03 m (spec ghi 2% chiều cao khung, gần bằng với nhân vật 1,6 m).
+- Chưa thêm **Sway in Unity** (spec §9.1): chưa có phần Unity thì nút này không có tác dụng (quy tắc Phần 1).
+- So quaternion lưu bằng float32 với sai số 1e-6.
+- Sau khi chụp ảnh: đổi bản dịch "Chains" và tách danh sách collider sang panel con.
+
+Review R2 (tự review): không có lỗi Critical/Important. Để lại (Minor):
+
+- dời object rig mà không đặt key thì bộ nhớ đệm cũ, khung sau giật một nhịp;
+- bán kính collider không đổi theo khi scale object rig sau Build;
+- render animation vẫn lắc qua handler, nhưng để chắc chắn khi render cuối hay xuất Unity thì nên Bake Sway trước.
+
+Lưu ý cho Unity hiện nay: khi Engine Export xuất animation, lắc trực tiếp cũng chạy trong lúc FBX bake từng khung, nên clip
+trong Unity đã có chuyển động lắc (như bake). Script lắc chạy trong Unity là việc của R2b.
+
+## 7. Còn lại
+
+- **R2b**: phần Unity của lắc (spec §9.5): `DaskToonSpringBone.cs`, collider, trình import đọc `<Model>.rig.json`, thuộc
+  tính **Sway in Unity**, test bằng Unity 6000.5 (đã có harness).
 - **R3 mắt và miệng** (spec §10).
 - **A**: tab Animation gọn, tiếp từ phần thiết kế 2 (bộ lọc "cả nhân vật"). Sau đó B, C.
 - Nhánh `dasktoon-project-workflow` (Phần 2) vẫn chờ người dùng chọn merge / PR / giữ.

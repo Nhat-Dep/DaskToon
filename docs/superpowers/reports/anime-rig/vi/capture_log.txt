@@ -3,6 +3,8 @@ parts [('Body', 'BODY'), ('Shirt', 'CLOTHING'), ('Hair', 'HAIR'), ('Skirt', 'SKI
 bones 83
 saved 22_rest (2, 95, 1576, 983)
 saved 23_posed (2, 95, 1576, 983)
+sway frame 8 (0.889, -0.062, 0.0, -0.454)
+saved 25_sway (2, 95, 1576, 983)
 build from Properties {'FINISHED'} 83 52
 saved 24_rig_panel (2, 95, 1576, 983)
 done
