@@ -1057,6 +1057,86 @@ VI = {
     "%s: %d vertices took the nearest bone (automatic weights found no solution there)":
         "%s: %d đỉnh lấy theo xương gần nhất (weight tự động không tìm được nghiệm ở đó)",
     "%s: no Body surface to copy weights from": "%s: không có bề mặt Body để chép weight",
+    # bl_ui/dasktoon_rig.py
+    "Anime Humanoid": "Khung người anime",
+    "Add the DaskToon standard skeleton, fitted to the selected meshes, which become its parts":
+        "Thêm khung xương chuẩn của DaskToon, khớp với các mesh đang chọn và lấy chúng làm phần",
+    "Edit Joints": "Sửa khớp",
+    "Edit the joints of the skeleton with X-Axis Mirror on, so both sides move together":
+        "Sửa khớp của khung xương với X-Axis Mirror bật, hai bên cùng di chuyển",
+    "Fit to Parts": "Khớp theo các phần",
+    "Move and scale the skeleton to the meshes of the parts; the joints you placed are replaced":
+        "Dời và co giãn khung xương theo mesh của các phần; vị trí khớp bạn đã đặt sẽ bị thay",
+    "Add Selected Meshes": "Thêm các mesh đang chọn",
+    "Add each selected mesh as a part of the rig, with the role its name suggests":
+        "Thêm mỗi mesh đang chọn thành một phần của rig, với vai trò đoán theo tên",
+    "Add Material Part": "Thêm phần theo material",
+    "Add the faces of one material of the active part's mesh as a new part":
+        "Thêm các mặt mang một material của mesh thuộc phần đang chọn thành một phần mới",
+    "Remove Part": "Xóa phần",
+    "Remove the active part from the rig; its weights stay until the next build":
+        "Xóa phần đang chọn khỏi rig; weight của nó còn giữ tới lần dựng sau",
+    "Build Rig": "Dựng rig",
+    "Generate the hair and skirt chains and paint the weights of every part":
+        "Sinh chuỗi xương tóc, váy và vẽ weight cho mọi phần",
+    "Add Part from Selection": "Thêm phần từ vùng chọn",
+    "Make the selected vertices a part of the rig, kept in a new vertex group":
+        "Biến các đỉnh đang chọn thành một phần của rig, lưu trong một vertex group mới",
+    "Fit the joints in Edit Mode, then press Build Rig in Properties › Object Data":
+        "Chỉnh khớp trong Edit Mode, rồi bấm Dựng rig ở Properties › Object Data",
+    "The selected meshes are already parts": "Các mesh đang chọn đã là phần của rig",
+    "No standard skeleton to add the part to": "Không có khung chuẩn nào để thêm phần vào",
+    "Select the vertices of the part first": "Hãy chọn các đỉnh của phần trước",
+    "Added part %s to %s": "Đã thêm phần %s vào %s",
+    "Anime Rig": "Rig anime",
+    "Joints": "Khớp",
+    "Parts": "Các phần",
+    "Build": "Dựng",
+    "Missing bones: %s": "Thiếu xương: %s",
+    "Add › Armature › Anime Humanoid adds a standard skeleton":
+        "Add › Armature › Khung người anime thêm một khung chuẩn",
+    "Standard skeleton": "Khung chuẩn",
+    "Select meshes and press + to add them as parts": "Chọn mesh rồi bấm + để thêm chúng làm phần",
+    "Build replaces the weights of every part": "Dựng lại sẽ thay weight của mọi phần",
+    "Select the vertices of a part in Edit Mode": "Chọn các đỉnh của một phần trong Edit Mode",
+    "A part of the character and how it is rigged": "Một phần của nhân vật và cách rig nó",
+    "Name of the part; generated bones start with it": "Tên phần; tên các xương sinh ra bắt đầu bằng nó",
+    "Mesh that holds the part": "Mesh chứa phần",
+    "Scope": "Phạm vi",
+    "Which vertices of the mesh make the part": "Những đỉnh nào của mesh tạo nên phần",
+    "Whole Object": "Cả object",
+    "Every vertex of the mesh": "Mọi đỉnh của mesh",
+    "The faces that use a material": "Các mặt dùng một material",
+    "The vertices of a vertex group": "Các đỉnh của một vertex group",
+    "Material whose faces make the part": "Material có các mặt tạo nên phần",
+    "Vertex group whose vertices make the part": "Vertex group có các đỉnh tạo nên phần",
+    "Role": "Vai trò",
+    "How the part is rigged": "Cách rig phần này",
+    "Skin and face: automatic weights from the body bones": "Da và mặt: weight tự động theo xương thân",
+    "Clothing": "Quần áo",
+    "Follows the body: weights copied from the nearest Body surface":
+        "Đi theo thân: weight chép từ bề mặt Body gần nhất",
+    "Accessory": "Phụ kiện",
+    "Rigid on one bone": "Gắn cứng vào một xương",
+    "Hair": "Tóc",
+    "A chain of bones for each long lock": "Một chuỗi xương cho mỗi lọn tóc dài",
+    "Skirt": "Váy",
+    "Chains of bones around the hips": "Các chuỗi xương quanh hông",
+    "Bone the part hangs from or sits on; empty picks one automatically (Head for hair, Hips for a skirt, the nearest bone for an accessory)":
+        "Xương mà phần treo vào hoặc gắn lên; để trống thì tự chọn (Head cho tóc, Hips cho váy, xương gần nhất cho phụ kiện)",
+    "Bones per Chain": "Số xương mỗi chuỗi",
+    "Number of bones along each chain": "Số xương dọc mỗi chuỗi",
+    "Chains": "Số chuỗi",
+    "Number of chains around the skirt": "Số chuỗi quanh váy",
+    "The parts of an anime rig": "Các phần của một rig anime",
+    "Active Part": "Phần đang chọn",
+    "Part shown below the list": "Phần hiện bên dưới danh sách",
+    "Parts of the anime rig": "Các phần của rig anime",
+    "Material whose faces make the new part": "Material có các mặt tạo nên phần mới",
+    "Name of the new part": "Tên của phần mới",
+    "Standard skeleton the part belongs to": "Khung chuẩn chứa phần này",
+    # bl_ui/dasktoon_rig.py (collection)
+    "Parts of the character": "Các phần của nhân vật",
 }
 
 # Words that need their own translation context, because Blender's own translation of the same word in the default
