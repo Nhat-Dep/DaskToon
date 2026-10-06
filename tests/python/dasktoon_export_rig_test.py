@@ -100,5 +100,76 @@ class ScriptsInstallTest(unittest.TestCase):
         self.assertTrue(si.install_scripts(self.target(root), [], force=True))
 
 
+def export(rig, objs, folder=None):
+    import dasktoon_export
+    from dasktoon_export import targets
+    target = targets.make_target(folder or tempfile.mkdtemp(prefix="dt_rig_export_"), "Hero")
+    options = dasktoon_export.ExportOptions(include_animation=False, bake_size=32, bake_samples=2)
+    return target, dasktoon_export.export_model(bpy.context, target, [rig] + list(objs.values()), options)
+
+
+class ExportRigTest(unittest.TestCase):
+    def test_export_writes_rig_json_and_scripts(self):
+        from dasktoon_export import scripts_install as si
+        rig, objs = built()
+        target, rep = export(rig, objs)
+        self.assertEqual(rep.rig, "Hero/Model/Hero.rig.json")
+        self.assertEqual(rep.scripts, 'INSTALLED')
+        path = os.path.join(target.root, "Hero", "Model", "Hero.rig.json")
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+        self.assertEqual(len(data["chains"]), 9)
+        self.assertTrue(os.path.isfile(path + ".meta"))
+        self.assertTrue(os.path.isfile(os.path.join(target.root, si.SCRIPT_DIR, "DaskToonSpringBone.cs")))
+        self.assertIn("Hero/Model/Hero.rig.json", "\n".join(rep.lines()))
+
+    def test_no_chains_no_rig_files(self):
+        rig, objs = built(roles=(("Body", 'BODY'),))
+        target, rep = export(rig, {"Body": objs["Body"]})
+        self.assertEqual(rep.rig, "")
+        self.assertEqual(rep.scripts, 'SKIPPED')
+        self.assertFalse(os.path.exists(os.path.join(target.root, "Hero", "Model", "Hero.rig.json")))
+        self.assertFalse(os.path.exists(os.path.join(target.root, "Scripts")))
+
+    def test_runtime_chains_rest_while_the_fbx_is_written(self):
+        import dasktoon_export
+        from dasktoon_export import model_fbx
+        rig, objs = built()
+        rig.data.dasktoon_rig.parts["Hair"].sway_in_unity = 'BAKED'
+        scene = bpy.context.scene
+        hips = rig.pose.bones["Hips"]
+        for frame, x in ((1, 0.0), (6, 0.3)):
+            hips.location = (x, 0.0, 0.0)
+            hips.keyframe_insert("location", frame=frame)
+        for frame in range(1, 9):
+            scene.frame_set(frame)
+        seen = {}
+        original = model_fbx.write_fbx
+
+        def spy(context, objects, filepath, include_animation):
+            seen["skirt"] = tuple(rig.pose.bones["Skirt1_3"].rotation_quaternion)
+            seen["hair"] = tuple(rig.pose.bones["Hair_4"].rotation_quaternion)
+            return original(context, objects, filepath, include_animation)
+
+        model_fbx.write_fbx = spy
+        try:
+            export(rig, objs)
+        finally:
+            model_fbx.write_fbx = original
+        self.assertAlmostEqual(abs(seen["skirt"][0]), 1.0, places=6)   # Runtime: at rest in the FBX
+        self.assertLess(abs(seen["hair"][0]), 0.9999)                  # Baked: keeps its sway
+        self.assertLess(abs(rig.pose.bones["Skirt1_3"].rotation_quaternion[0]), 0.9999)  # back afterwards
+
+    def test_runtime_chain_with_keys_warns(self):
+        from dasktoon_rig import sway
+        rig, objs = built()
+        scene = bpy.context.scene
+        scene.frame_start, scene.frame_end = 1, 3
+        sway.bake(bpy.context, rig, 1, 3)
+        _target, rep = export(rig, objs)
+        self.assertTrue(any("Skirt" in w and "twice" in w for w in rep.warnings), rep.warnings)
+        self.assertTrue(any("Hair" in w and "twice" in w for w in rep.warnings), rep.warnings)
+
+
 if __name__ == "__main__":
     tu.run_tests()

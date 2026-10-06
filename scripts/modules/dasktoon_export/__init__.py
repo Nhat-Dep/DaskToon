@@ -5,6 +5,7 @@
 """DaskToon Engine Export: model, materials and shaders for game engines.
 Design: docs/superpowers/specs/2026-10-03-dasktoon-unity-export-design.md"""
 
+import contextlib
 from dataclasses import dataclass
 
 from bpy.app.translations import pgettext_rpt as rpt_
@@ -178,6 +179,50 @@ def _humanoid(objects):
     return len(rigs) == 1 and skeleton.is_humanoid(rigs[0])
 
 
+def _keyed_runtime_parts(rig):
+    """Parts Unity sways at run time whose chain bones also have rotation keys (from Bake Sway): Unity would sway them
+    twice (anime rig spec 9.5)."""
+    import bpy
+    from bpy_extras import anim_utils
+    from dasktoon_rig import sway
+    from . import rig_json
+    anim = rig.animation_data
+    if anim is None or anim.action is None:
+        return []
+    channelbag = anim_utils.action_get_channelbag_for_slot(anim.action, anim.action_slot)
+    if channelbag is None:
+        return []
+    keyed = {curve.data_path for curve in channelbag.fcurves}
+    runtime = rig_json.runtime_parts(rig)
+    out = []
+    for part, names in sway.chains(rig):
+        if part in runtime and part not in out and any(
+                'pose.bones["%s"].%s' % (bpy.utils.escape_identifier(name), prop) in keyed
+                for name in names for prop in sway.ROTATION_PATHS):
+            out.append(part)
+    return out
+
+
+def _write_rig(target, writer, model_dir, objects, rep):
+    """<Model>.rig.json beside the FBX and the Unity scripts, for an armature with chains (anime rig spec 9.5).
+    Returns the armature, or None when there is nothing to write."""
+    from . import assets, rig_json, scripts_install, unity_yaml
+    rig = rig_json.find_rig(objects)
+    data = rig_json.rig_data(rig) if rig is not None else None
+    if data is None:
+        return None
+    rel = "%s/%s.rig.json" % (model_dir, safe_name(target.name))
+    guid = writer.guid(rel)
+    if assets.write_asset(target.root, rel, guid, unity_yaml.text_meta(guid), rep.warnings,
+                          data=rig_json.text(data).encode("utf-8")):
+        rep.rig = rel
+    rep.scripts = 'INSTALLED' if scripts_install.install_scripts(target, rep.warnings) else 'UP_TO_DATE'
+    for part in _keyed_runtime_parts(rig):
+        rep.warnings.append(rpt_("Part %s sways in Unity, but its bones have sway keys: Unity would sway it twice. Set "
+                                 "Sway in Unity to Baked, or remove the keys") % part)
+    return rig
+
+
 def _write_model(context, target, objects, meshes, options, rep):
     """Outline data, materials, shaders and the FBX (spec 3-5)."""
     from . import assets, graph, model_fbx, shaders_install, unity_yaml
@@ -211,8 +256,17 @@ def _write_model(context, target, objects, meshes, options, rep):
         def write_fbx(path):
             left_out.extend(model_fbx.write_fbx(context, objects, path, options.include_animation))
 
-        if assets.write_asset(target.root, rel, guid, meta, rep.warnings, writer=write_fbx):
-            rep.model = rel
+        # The rig file goes first, so Unity finds it when it imports the FBX.
+        rig = _write_rig(target, writer, model_dir, objects, rep)
+        if rig is not None:
+            from dasktoon_rig import sway
+            from . import rig_json
+            quiet = sway.suppressed(rig, rig_json.runtime_parts(rig))  # Unity sways these chains itself
+        else:
+            quiet = contextlib.nullcontext()
+        with quiet:
+            if assets.write_asset(target.root, rel, guid, meta, rep.warnings, writer=write_fbx):
+                rep.model = rel
         if left_out:
             rep.warnings.append(rpt_("Not in the FBX: %s (not in the current view layer, for example in an excluded "
                                      "collection)") % ", ".join(left_out))

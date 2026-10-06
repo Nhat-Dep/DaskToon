@@ -1175,6 +1175,15 @@ VI = {
     "Baked": "Đã bake",
     "Unity plays the sway baked into the exported animation":
         "Unity phát chuyển động lắc đã bake trong animation xuất ra",
+    # dasktoon_export (anime rig for Unity)
+    "Scripts: installed or updated": "Script: đã cài hoặc cập nhật",
+    "Scripts: the project already has a recent enough version, not written again":
+        "Script: project đã có bản đủ mới, không ghi lại",
+    "Scripts: not needed (no hair or skirt chains)": "Script: không cần (không có chuỗi tóc hay váy)",
+    "Rig: %s (DaskToon spring bones sway the hair and skirts in Unity)":
+        "Rig: %s (spring bone của DaskToon cho tóc và váy lắc trong Unity)",
+    "Part %s sways in Unity, but its bones have sway keys: Unity would sway it twice. Set Sway in Unity to Baked, or remove the keys":
+        "Phần %s lắc trong Unity nhưng xương của nó có key lắc: Unity sẽ lắc hai lần. Đặt Lắc trong Unity thành Đã bake, hoặc xóa các key đó",
 }
 
 # Words that need their own translation context, because Blender's own translation of the same word in the default
