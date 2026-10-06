@@ -151,9 +151,12 @@ class SwayPanelTest(unittest.TestCase):
         rig.data.dasktoon_rig.active_part_index = 1  # Hair
         log = tu.draw(ui.DATA_PT_dasktoon_rig_sway, panel_context(rig))
         props = [entry[1] for entry in log if entry[0] == "prop"]
-        self.assertEqual(props[:5], ["live_sway", "stiffness", "gravity", "drag", "radius"])
-        self.assertIn("radius", props[5:])
+        self.assertEqual(props, ["live_sway", "stiffness", "gravity", "drag", "radius"])
         self.assertIn("dasktoon.rig_bake_sway", [name for name, _text in tu.operators(log)])
+        self.assertEqual(ui.DATA_PT_dasktoon_rig_colliders.bl_parent_id, "DATA_PT_dasktoon_rig_sway")
+        self.assertIn('DEFAULT_CLOSED', ui.DATA_PT_dasktoon_rig_colliders.bl_options)
+        log = tu.draw(ui.DATA_PT_dasktoon_rig_colliders, panel_context(rig))
+        self.assertEqual([entry[1] for entry in log if entry[0] == "prop"], ["radius"] * 14)
         bpy.context.scene.frame_start, bpy.context.scene.frame_end = 1, 5
         bpy.ops.dasktoon.rig_bake_sway()
         self.assertFalse(rig.data.dasktoon_rig.live_sway)
@@ -179,6 +182,11 @@ class TextTest(unittest.TestCase):
         strings.discard("")
         with iu.language('vi_VN'):
             self.assertEqual(iu.untranslated(strings, dt.KEEP), [])
+
+    def test_chains_has_its_own_vietnamese_word(self):
+        self.assertEqual(ui.DaskRigPart.bl_rna.properties["chain_count"].translation_context, "DaskToon")
+        with iu.language('vi_VN'):
+            self.assertEqual(bpy.app.translations.pgettext_iface("Chains", "DaskToon"), "Số chuỗi")
 
     def test_role_icons_exist(self):
         icons = {i.identifier for i in bpy.types.UILayout.bl_rna.functions["label"].parameters["icon"].enum_items}

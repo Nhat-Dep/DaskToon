@@ -63,7 +63,9 @@ class DaskRigPart(PropertyGroup):
     )
     bone_count: IntProperty(name="Bones per Chain", description="Number of bones along each chain", default=4, min=1,
                             max=12)
-    chain_count: IntProperty(name="Chains", description="Number of chains around the skirt", default=8, min=3, max=24)
+    # Its own translation context: Blender's Vietnamese for "Chains" means jewellery chains.
+    chain_count: IntProperty(name="Chains", description="Number of chains around the skirt", default=8, min=3, max=24,
+                             translation_context="DaskToon")
     stiffness: FloatProperty(name="Stiffness", description="How strongly the chain springs back to its pose",
                              default=1.0, min=0.0, max=4.0, update=_sway_changed)
     gravity: FloatProperty(name="Gravity", description="How strongly the chain is pulled down", default=0.2, min=0.0,
@@ -497,11 +499,25 @@ class DATA_PT_dasktoon_rig_sway(DaskRigPanel, Panel):
             col.prop(part, "radius")
         else:
             layout.label(text="Select a hair or skirt part to set how it sways")
-        layout.label(text="Colliders")
-        for collider in data.colliders:
-            row = layout.row()
-            row.prop(collider, "radius", text=collider.bone, translate=False)
         layout.operator("dasktoon.rig_bake_sway", icon='REC')
+
+
+class DATA_PT_dasktoon_rig_colliders(DaskRigPanel, Panel):
+    bl_label = "Colliders"
+    bl_parent_id = "DATA_PT_dasktoon_rig_sway"
+    bl_options = {'DEFAULT_CLOSED'}
+
+    @classmethod
+    def poll(cls, context):
+        rig = rig_of(context)
+        return rig is not None and len(rig.data.dasktoon_rig.colliders) > 0
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+        for collider in rig_of(context).data.dasktoon_rig.colliders:
+            layout.prop(collider, "radius", text=collider.bone, translate=False)
 
 
 class DATA_PT_dasktoon_rig_build(DaskRigPanel, Panel):
@@ -564,6 +580,7 @@ classes = (
     DATA_PT_dasktoon_rig_joints,
     DATA_PT_dasktoon_rig_parts,
     DATA_PT_dasktoon_rig_sway,
+    DATA_PT_dasktoon_rig_colliders,
     DATA_PT_dasktoon_rig_build,
     DATA_PT_dasktoon_rig_mesh,
 )

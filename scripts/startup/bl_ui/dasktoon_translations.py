@@ -1173,6 +1173,7 @@ VI = {
 VI_CONTEXT = {
     "DaskToon": {
         "Project": "Dự án",
+        "Chains": "Số chuỗi",
     },
 }
 
