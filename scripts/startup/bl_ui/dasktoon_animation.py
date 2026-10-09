@@ -2,14 +2,15 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-"""The character side of DaskToon's Animation tab (docs/superpowers/specs/2026-10-10-dasktoon-animation-tab-design.md,
-sections 5 and 7): the "DaskToon Character" keying set, Key Pose, and the part of the Dope Sheet header that shows when
-Whole Character is on."""
+"""DaskToon's Animation tab (docs/superpowers/specs/2026-10-10-dasktoon-animation-tab-design.md, sections 5 to 7): the
+"DaskToon Character" keying set, Key Pose, the part of the Dope Sheet header that shows when Whole Character is on, and
+the file-load handler that puts DaskToon's tab in place of Blender's."""
 
 import types
 
 import bpy
 import _keyingsets_utils as keyingsets_utils
+from bpy.app.handlers import persistent
 from bpy.app.translations import pgettext_rpt as rpt_
 from bpy.types import KeyingSetInfo, Operator
 from keyingsets_builtins import WholeCharacterMixin
@@ -112,7 +113,29 @@ def use_character_keying_set(scene):
     return True
 
 
+@persistent
+def load_post(_filepath):
+    """A file was opened (the startup file and New too): DaskToon's Animation tab, and the character keying set for I
+    in scenes without one (spec 5, 6)."""
+    from dasktoon_animation import tab
+    tab.ensure_animation_tab()
+    tab.show_render_in_camera_view()
+    for scene in bpy.data.scenes:
+        use_character_keying_set(scene)
+
+
 classes = (
     DASKTOON_KS_character,
     DASKTOON_OT_key_pose,
 )
+
+
+# bl_ui registers `classes`; register() adds the file-load handler.
+def register():
+    if load_post not in bpy.app.handlers.load_post:
+        bpy.app.handlers.load_post.append(load_post)
+
+
+def unregister():
+    if load_post in bpy.app.handlers.load_post:
+        bpy.app.handlers.load_post.remove(load_post)
