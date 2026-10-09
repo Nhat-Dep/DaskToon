@@ -1,7 +1,8 @@
 // SPDX-FileCopyrightText: 2026 DaskToon Authors
 // SPDX-License-Identifier: GPL-2.0-or-later
 // Checks the anime rig in Unity: the importer added DaskToon spring bones and colliders from <model>.rig.json, chain
-// bones sit along their parent's +Y, and 20 steps of the C# spring bone land where DaskToon's spring.py does.
+// bones sit along their parent's +Y, 20 steps of the C# spring bone land where DaskToon's spring.py does, a paused step
+// (dt 0) moves nothing, and a rig file added after its model imports the model again.
 // The DaskToon scripts are reached by reflection, so this file compiles before any export installed them.
 
 using System;
@@ -67,7 +68,41 @@ public static class DaskToonRigTests
             maxError = Mathf.Max(maxError, (actual - expected).magnitude);
         }
         result["maxError"] = maxError;
+        var before = new Vector3[chainBones.Length];
+        for (var i = 0; i < chainBones.Length; i++) before[i] = (Vector3)tail.Invoke(chain, new object[] { i });
+        step.Invoke(chain, new object[] { 0f });
+        var drift = 0f;
+        for (var i = 0; i < chainBones.Length; i++)
+        {
+            drift = Mathf.Max(drift, ((Vector3)tail.Invoke(chain, new object[] { i }) - before[i]).magnitude);
+        }
+        result["pausedDrift"] = drift;
         UnityEngine.Object.DestroyImmediate(go);
         return result;
     });
+
+    public static void CheckLateRig() => DaskToonTests.Run(() =>
+    {
+        var args = JsonUtility.FromJson<DtRigArgs>(File.ReadAllText(DaskToonTests.ArgsPath));
+        AssetDatabase.Refresh();
+        var result = new Dictionary<string, object>();
+        var springType = Type.GetType("DaskToon.DaskToonSpringBone, Assembly-CSharp");
+        result["scripts"] = springType != null;
+        if (springType == null) return result;
+        var rig = Path.ChangeExtension(args.model, ".rig.json");
+        var text = File.ReadAllText(rig);
+        AssetDatabase.DeleteAsset(rig);
+        AssetDatabase.ImportAsset(args.model, ImportAssetOptions.ForceUpdate);
+        result["withoutRig"] = Springs(args.model, springType);
+        File.WriteAllText(rig, text);
+        AssetDatabase.ImportAsset(rig);
+        result["withRig"] = Springs(args.model, springType);
+        return result;
+    });
+
+    static int Springs(string model, Type springType)
+    {
+        var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(model);
+        return prefab == null ? -1 : prefab.GetComponents(springType).Length;
+    }
 }

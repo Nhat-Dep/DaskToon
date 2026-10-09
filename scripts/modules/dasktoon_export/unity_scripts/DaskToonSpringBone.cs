@@ -58,6 +58,7 @@ namespace DaskToon
         /// <summary>One step of `dt` seconds.</summary>
         public void Step(float dt)
         {
+            if (dt <= 0f) return;  // paused (Time.timeScale 0): the hair stays where it is
             if (current.Length != bones.Length) Setup();
             for (var i = 0; i < bones.Length; i++)
             {

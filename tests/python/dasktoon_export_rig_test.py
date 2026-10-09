@@ -94,6 +94,19 @@ class ScriptsInstallTest(unittest.TestCase):
             code = f.read()
         self.assertIn("public void Step(float dt)", code)
         self.assertIn("Vector3.down", code)
+        self.assertIn("if (dt <= 0f) return;", code)
+        with open(os.path.join(root, si.SCRIPT_DIR, "Editor", "DaskToonRigImporter.cs"), encoding="utf-8") as f:
+            self.assertIn("static void OnPostprocessAllAssets(", f.read())
+        self.assertEqual(si.SCRIPTS_VERSION, 2)
+
+    def test_older_scripts_are_replaced(self):
+        from dasktoon_export import scripts_install as si
+        root = os.path.join(tempfile.mkdtemp(prefix="dt_scripts_"), "Assets", "DaskToon")
+        self.assertTrue(si.install_scripts(self.target(root), []))
+        with open(os.path.join(root, si.SCRIPT_DIR, si.VERSION_FILE), "w", encoding="utf-8") as f:
+            f.write("%d\n" % (si.SCRIPTS_VERSION - 1))
+        self.assertTrue(si.install_scripts(self.target(root), []))
+        self.assertEqual(si.installed_version(root), si.SCRIPTS_VERSION)
 
     def test_newer_scripts_are_kept(self):
         from dasktoon_export import scripts_install as si
