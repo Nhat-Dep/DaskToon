@@ -33,9 +33,11 @@ def _is_mesh(_self, obj):
     return obj.type == 'MESH'
 
 
-def _sway_changed(_self, _context):
+def _sway_changed(self, _context):
     from dasktoon_rig import sway
-    sway.clear_cache()
+    for obj in bpy.data.objects:
+        if obj.type == 'ARMATURE' and obj.data == self.id_data:
+            sway.sync(obj)
 
 
 class DaskRigPart(PropertyGroup):
@@ -88,8 +90,8 @@ class DaskRigPart(PropertyGroup):
 class DaskRigCollider(PropertyGroup):
     """A capsule along a bone that hair and skirts do not go through"""
     bone: StringProperty(name="Bone", description="Bone the capsule runs along, from its head to its tail")
-    radius: FloatProperty(name="Radius", description="Radius of the capsule", default=0.05, min=0.0, unit='LENGTH',
-                          update=_sway_changed)
+    radius: FloatProperty(name="Radius", description="Radius of the capsule, in armature units", default=0.05,
+                          min=0.0, unit='LENGTH', update=_sway_changed)
 
 
 class DaskRig(PropertyGroup):
@@ -596,27 +598,15 @@ classes = (
 )
 
 
-def _sway_handlers():
-    from dasktoon_rig import sway
-    return ((bpy.app.handlers.frame_change_pre, sway.frame_pre),
-            (bpy.app.handlers.frame_change_post, sway.frame_post),
-            (bpy.app.handlers.depsgraph_update_post, sway.depsgraph_post))
-
-
-# bl_ui registers `classes`; register() adds the rig data to armatures, the Add › Armature entry and the sway handlers.
+# bl_ui registers `classes`; register() adds the rig data to armatures and the Add › Armature entry. The chains sway
+# with Spring constraints, which the depsgraph evaluates: there are no frame handlers.
 def register():
     from .space_view3d import VIEW3D_MT_armature_add
     bpy.types.Armature.dasktoon_rig = PointerProperty(type=DaskRig)
     VIEW3D_MT_armature_add.append(menu_func)
-    for handlers, function in _sway_handlers():
-        if function not in handlers:
-            handlers.append(function)
 
 
 def unregister():
     from .space_view3d import VIEW3D_MT_armature_add
-    for handlers, function in _sway_handlers():
-        if function in handlers:
-            handlers.remove(function)
     VIEW3D_MT_armature_add.remove(menu_func)
     del bpy.types.Armature.dasktoon_rig

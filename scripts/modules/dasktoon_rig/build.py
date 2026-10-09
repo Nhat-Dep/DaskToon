@@ -268,7 +268,8 @@ def collider_radii(rig, parts, owners):
     return out
 
 
-def _write_colliders(rig, radii):
+def _write_colliders(rig, radii, scale):
+    """The rig's colliders from [(bone, world radius)]; they keep the radius in armature units (world / `scale`)."""
     data = getattr(rig.data, "dasktoon_rig", None)
     if data is None:
         return
@@ -276,7 +277,7 @@ def _write_colliders(rig, radii):
     for name, radius in radii:
         item = data.colliders.add()
         item.bone = name
-        item.radius = radius
+        item["radius"] = radius / scale  # no update: Build syncs the Spring constraints once, at the end
 
 
 def build(context, rig, parts):
@@ -305,12 +306,13 @@ def build(context, rig, parts):
         _paint(context, rig, parts, owners, plan, actual, result)
         _drop_stale_groups(owners, removed, set(actual.values()))
         _tidy(rig, owners)
+        from . import sway  # sway imports build
         result.colliders = collider_radii(rig, parts, owners)
-        _write_colliders(rig, result.colliders)
+        _write_colliders(rig, result.colliders, sway.rig_scale(rig))
         result.bones = list(actual.values())
         result.chains = plan.chains
         result.objects = [obj.name for obj in owners]
-        from . import sway  # sway imports build
+        sway.sync(rig)
         sway.clear_cache(rig)
         return result
     finally:
