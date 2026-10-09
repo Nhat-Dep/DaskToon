@@ -14,7 +14,8 @@ Animation tab with only the body selected, presses Key Pose on frame 1 and, with
 
 - 30_animation_tab: the whole window on frame 6: camera view, main viewport, Properties, the character timeline;
 - 31_character_timeline: the Dope Sheet: Key Pose and Whole Character in its header, the rig's bones and the body's
-  shape key as rows although only the body is selected.
+  shape key as rows although only the body is selected;
+- 32_clips: the clip menu of the character timeline: Walk (Loop on) and Wave, New Clip, Delete Clip.
 """
 import datetime
 import math
@@ -141,6 +142,23 @@ def steps():
     save(px, (0, 0, win.width, win.height), "30_animation_tab")
     save(px, (dopesheet.x, dopesheet.y, dopesheet.x + dopesheet.width, dopesheet.y + dopesheet.height),
          "31_character_timeline")
+
+    # 32. Clips: the animation so far becomes a clip (renamed Walk, Loop on), a second clip Wave; the clip menu open.
+    from dasktoon_animation import clips
+    log("clip new", bpy.ops.dasktoon.clip_new())
+    walk = bpy.data.actions["Clip"]
+    walk.name, walk.use_cyclic = "Walk", True
+    clips.current(rig).name = "Wave"
+    clips.use(rig, list(bpy.context.view_layer.objects), walk, scene)
+    header = next(r for r in dopesheet.regions if r.type == 'HEADER')
+    top = dopesheet.y + dopesheet.height
+    e.cursor_position_set(dopesheet.x + 330, top - 14, move=True)
+    yield datetime.timedelta(seconds=0.5)
+    with bpy.context.temp_override(window=win, area=dopesheet, region=header):
+        bpy.ops.wm.call_menu(name="DASKTOON_MT_character_clips")
+    yield datetime.timedelta(seconds=0.5)
+    save(grab(), (dopesheet.x, top - 330, dopesheet.x + 1000, top), "32_clips")
+    e.esc()
     log("done")
     LOG.close()
     bpy.ops.wm.quit_blender()

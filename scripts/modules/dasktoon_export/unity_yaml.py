@@ -13,7 +13,9 @@ SHADER_FILE_ID = 4800000
 
 _PLAIN = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9_ .()\-]*$")
 _RESERVED = {"true", "false", "yes", "no", "on", "off", "null", "~"}
-_TAIL = ["  userData: ", "  assetBundleName: ", "  assetBundleVariant: "]
+_TAIL = ["  assetBundleName: ", "  assetBundleVariant: "]
+HUMANOID_MARK = "DaskToonHumanoid"  # DaskToonAvatarImporter makes these models Humanoid (anime rig spec 8)
+HUMANOID_CLIP_MARK = "DaskToonHumanoidClip"  # ...and these clip files copy their avatar (clips spec 6)
 
 # kind: (sRGBTexture, textureType, wrap, mipmaps, platform textureCompression) - spec 4, texture table.
 TEXTURE_KINDS = {
@@ -64,8 +66,8 @@ def _list(indent, key, items):
     return ["%s%s:" % (indent, key)] + ["%s- %s" % (indent, item) for item in items]
 
 
-def _meta(guid, lines):
-    return "\n".join(["fileFormatVersion: 2", "guid: " + guid] + lines + _TAIL) + "\n"
+def _meta(guid, lines, user_data=""):
+    return "\n".join(["fileFormatVersion: 2", "guid: " + guid] + lines + ["  userData: " + user_data] + _TAIL) + "\n"
 
 
 def material_yaml(name, shader_guid, keywords, queue, render_type, disabled_passes, floats, colors, textures):
@@ -272,10 +274,11 @@ def model_meta(guid, materials, import_animation, blend_shape_normals=True, huma
                avatar_source=None):
     """ModelImporter of an exported FBX. `materials` maps an FBX material name to the GUID of its .mat, so Unity
     uses the exported materials without Search and Remap (spec 4). `blend_shape_normals` False sets the blend shape
-    normals to None (face shading, face spec 6). `humanoid` makes Unity build a Humanoid avatar, mapping the bones by
-    their names (anime rig spec 8). `clip` (name, take, first, last, loop) cuts one clip from the file's take and
+    normals to None (face shading, face spec 6). `humanoid`: Unity's own bone mapping leaves out bones of the DaskToon
+    skeleton, so the model is written Generic and marked, and DaskToonAvatarImporter makes it Humanoid from the
+    imported bones (anime rig spec 8). `clip` (name, take, first, last, loop) cuts one clip from the file's take and
     `avatar_source` is the GUID of the model whose avatar the clip uses (clips spec 6); such a file makes no
-    materials."""
+    materials, and a Humanoid one is marked so that it copies the Humanoid avatar once the model has it."""
     remap = []
     for name in sorted(materials):
         remap += ["  - first:", "      type: UnityEngine:Material", "      assembly: UnityEngine.CoreModule",
@@ -376,7 +379,7 @@ def model_meta(guid, materials, import_animation, blend_shape_normals=True, huma
         "    skeletonHasParents: 1",
         "  lastHumanDescriptionAvatarSource: " + avatar,
         "  autoGenerateAvatarMappingIfUnspecified: 1",
-        "  animationType: %d" % (3 if humanoid else 2),
+        "  animationType: 2",
         "  humanoidOversampling: 1",
         "  avatarSetup: %d" % (2 if avatar_source else 1),
         "  addHumanoidExtraRootOnlyWhenUsingAvatar: 1",
@@ -384,4 +387,5 @@ def model_meta(guid, materials, import_animation, blend_shape_normals=True, huma
         "  remapMaterialsIfMaterialImportModeIsNone: 0",
         "  additionalBone: 0",
     ]
-    return _meta(guid, lines)
+    mark = (HUMANOID_CLIP_MARK if avatar_source else HUMANOID_MARK) if humanoid else ""
+    return _meta(guid, lines, mark)

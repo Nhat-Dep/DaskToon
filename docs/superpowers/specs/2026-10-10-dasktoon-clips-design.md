@@ -68,8 +68,13 @@ không bị xóa.
 - Ghi một clip: gán clip cho mọi thành phần, đặt khoảng khung của scene theo clip, bake một take (tên take là tên scene),
   chuỗi lắc Runtime bị mute như khi ghi model (R2b); xong thì trả lại clip, khoảng khung, mute như cũ.
 - Meta của mỗi file clip: `importAnimation: 1`, một mục `clipAnimations`: `name` = tên clip, `takeName` = tên scene,
-  `firstFrame`/`lastFrame` = khoảng khung của clip, `loopTime` = cờ lặp; cùng kiểu rig với model (Humanoid hay Generic),
-  avatar chép từ model (`avatarSetup: 2`, nguồn là avatar của FBX model). Không tạo material.
+  `firstFrame`/`lastFrame` = khoảng khung của clip, `loopTime` = cờ lặp; avatar chép từ model (`avatarSetup: 2`, nguồn là
+  avatar của FBX model). Không tạo material.
+- **Humanoid** (phát hiện khi làm B): Unity tự ghép xương thì bỏ sót hai tay của khung DaskToon, avatar của model không
+  phải Humanoid nên clip không chép được. Model Humanoid nay ghi Generic kèm `userData: DaskToonHumanoid`, file clip ghi
+  Generic kèm `DaskToonHumanoidClip`. Script `Editor/DaskToonAvatarImporter.cs` (phiên bản script 3; Engine Export cài nó
+  cả khi model không có chuỗi lắc) dựng mô tả Humanoid từ cây xương Unity đã import, chuyển model sang Humanoid và import
+  lại, rồi cho các file clip của nó chép avatar đó. Không có script thì mọi thứ ở Generic, không báo lỗi.
 - Không có clip thì như cũ (một FBX, `include_animation` quyết định có animation hay không). `include_animation` tắt thì
   không ghi file clip.
 - Báo cáo xuất có dòng "Clips: Idle, Walk (loop) …".
@@ -106,3 +111,4 @@ Mọi chữ mới có bản tiếng Việt; tên clip là dữ liệu, không d�
 | Mỗi clip một file `<Model>@<Clip>.fbx`, model không animation (một FBX nhiều take không giữ được thân và mặt chung một take; một take cắt khúc thì lắc của clip trước tràn sang clip sau) | Claude (chờ xem lại) |
 | Gom animation có sẵn thành clip "Clip" khi tạo clip đầu tiên | Claude (chờ xem lại) |
 | Chuyển clip thì bật khoảng xem trước theo clip | Claude (chờ xem lại) |
+| Avatar Humanoid do script DaskToon dựng trong Unity (model ghi Generic kèm dấu), vì Unity tự ghép thì bỏ sót xương; tính tư thế T từ Blender sẽ phải lặp lại phép đổi trục của FBX | Claude (chờ xem lại) |

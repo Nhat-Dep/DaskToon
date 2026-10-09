@@ -158,7 +158,13 @@ class YamlTest(unittest.TestCase):
 
     def test_model_meta_humanoid(self):
         self.assertIn("  animationType: 2\n", uy.model_meta(TEX, {}, True))
-        self.assertIn("  animationType: 3\n", uy.model_meta(TEX, {}, True, humanoid=True))
+        self.assertIn("  userData: \n", uy.model_meta(TEX, {}, True))
+        # Written Generic and marked: DaskToon's importer makes it Humanoid from the imported bones.
+        humanoid = uy.model_meta(TEX, {}, True, humanoid=True)
+        self.assertIn("  animationType: 2\n", humanoid)
+        self.assertIn("  userData: DaskToonHumanoid\n", humanoid)
+        clip = uy.clip_meta(TEX, TEX, "Walk", "Scene", 1, 12, True, humanoid=True)
+        self.assertIn("  userData: DaskToonHumanoidClip\n", clip)
 
 
 if __name__ == "__main__":

@@ -342,7 +342,7 @@ class HumanoidTest(unittest.TestCase):
         rep = dasktoon_export.export_model(bpy.context, target, [rig] + list(objs.values()), options)
         self.assertEqual(rep.model, "Hero/Model/Hero.fbx")
         with open(os.path.join(target.root, "Hero", "Model", "Hero.fbx.meta"), encoding="utf-8") as f:
-            self.assertIn("  animationType: 3\n", f.read())
+            self.assertIn("  userData: DaskToonHumanoid\n", f.read())  # its importer makes it Humanoid
 
 
 if __name__ == "__main__":

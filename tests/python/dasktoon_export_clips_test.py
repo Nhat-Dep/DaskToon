@@ -34,8 +34,9 @@ def character_with_clips():
         hips.location = (x, 0.0, 0.0)
         hips.keyframe_insert("location", frame=frame)
     smile = body.data.shape_keys.key_blocks["Smile"]
-    smile.value = 1.0
-    smile.keyframe_insert("value", frame=12)
+    for frame, value in ((1, 0.0), (12, 1.0)):
+        smile.value = value
+        smile.keyframe_insert("value", frame=frame)
     walk.use_cyclic = True
     wave = clips.new(rig, everything, "Wave")
     for frame, z in ((5, 0.0), (20, 0.1)):
@@ -78,7 +79,7 @@ class ExportClipsTest(unittest.TestCase):
             for line in ("importAnimation: 1", "      name: %s" % clip.name, "      takeName: %s" % scene.name,
                          "      firstFrame: %d" % first, "      lastFrame: %d" % last, "      loopTime: %d" % loop,
                          "avatarSetup: 2", "guid: %s, type: 3}" % model_guid, "materialImportMode: 0",
-                         "animationType: 3"):
+                         "animationType: 2", "userData: DaskToonHumanoidClip"):
                 self.assertIn(line, text, (clip.name, line))
         self.assertEqual(rep.clips, [("Walk", True), ("Wave", False)])
         self.assertIn("Clips: Walk (loop), Wave", rep.lines())

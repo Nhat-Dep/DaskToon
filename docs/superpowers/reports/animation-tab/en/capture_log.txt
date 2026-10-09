@@ -3,4 +3,6 @@ key 1 {'FINISHED'}
 key 12 {'FINISHED'}
 saved 30_animation_tab (0, 0, 1920, 1009)
 saved 31_character_timeline (2, 23, 1576, 426)
+clip new {'FINISHED'}
+saved 32_clips (2, 96, 1002, 426)
 done

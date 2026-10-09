@@ -308,6 +308,10 @@ def _write_model(context, target, objects, meshes, options, rep):
 
         # The rig file goes first, so Unity finds it when it imports the FBX.
         rig = _write_rig(target, writer, model_dir, objects, rep)
+        if rig is None and (clip_rig is not None or _humanoid(objects)):
+            # DaskToon's importer makes the Humanoid avatar and lets the clips copy it.
+            from . import scripts_install
+            rep.scripts = 'INSTALLED' if scripts_install.install_scripts(target, rep.warnings) else 'UP_TO_DATE'
         if rig is not None:
             from dasktoon_rig import sway
             from . import rig_json
