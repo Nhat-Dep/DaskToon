@@ -1224,6 +1224,18 @@ VI = {
     "parented to it and the meshes it deforms (DaskToon)":
         "Hiện mọi kênh của các nhân vật có một phần đang được chọn: armature với mọi xương, các object là con của nó "
         "và các mesh nó điều khiển (DaskToon)",
+    # Animation tab: Key Pose and the DaskToon Character keying set (spec 5)
+    "DaskToon Character": "Nhân vật DaskToon",
+    "Key the whole pose of the selected characters: every bone, every shape key of their meshes and every expression "
+    "controller; other selected objects get location, rotation and scale":
+        "Chèn khung khóa cho cả dáng của các nhân vật đang chọn: mọi xương, mọi hình mẫu của các mesh và mọi bộ điều "
+        "khiển biểu cảm; object khác đang chọn được chèn vị trí, xoay và tỉ lệ",
+    "Key Pose": "Khóa cả dáng",
+    "Key the whole pose of the selected characters at the current frame: every bone, shape key and controller":
+        "Chèn khung khóa cho cả dáng của các nhân vật đang chọn tại khung hiện tại: mọi xương, hình mẫu và bộ điều "
+        "khiển",
+    "Select a part of a character to key its pose": "Hãy chọn một phần của nhân vật để chèn khung khóa cho dáng của nó",
+    "Keyed the pose of %s": "Đã chèn khung khóa cho dáng của %s",
 }
 
 # Words that need their own translation context, because Blender's own translation of the same word in the default

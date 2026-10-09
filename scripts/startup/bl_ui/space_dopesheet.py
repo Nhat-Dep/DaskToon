@@ -237,6 +237,11 @@ class DOPESHEET_HT_editor_buttons:
             layout.separator_spacer()
             cls._draw_action_selector(context, layout)
 
+        # DaskToon: the character timeline (Animation tab spec 5).
+        if st.mode == 'DOPESHEET' and st.dopesheet.show_whole_character:
+            from bl_ui.dasktoon_animation import draw_character_header
+            draw_character_header(layout, context)
+
         # Layer management
         if st.mode == 'GPENCIL':
             ob = context.active_object

@@ -75,6 +75,7 @@ _modules = [
     "dasktoon_material_combiner",
     "dasktoon_shape_key_manager",
     "dasktoon_rig",
+    "dasktoon_animation",
     "properties_collection",
     "properties_strip",
     "properties_strip_modifier",
