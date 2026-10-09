@@ -218,21 +218,75 @@ def texture_meta(guid, kind, size=(1024, 1024), point_filter=False):
     return _meta(guid, lines)
 
 
-def model_meta(guid, materials, import_animation, blend_shape_normals=True, humanoid=False):
+AVATAR_FILE_ID = 9000000  # the Avatar inside a model asset
+BODY_MASK = "01000000" * 13  # every body part of a Humanoid clip
+
+
+def _clip_lines(clip):
+    """clipAnimations of a model meta: [] or the one clip (name, take, first, last, loop) of a clip file."""
+    if not clip:
+        return ["    clipAnimations: []"]
+    name, take, first, last, loop = clip
+    return [
+        "    clipAnimations:",
+        "    - serializedVersion: 16",
+        "      name: " + scalar(name),
+        "      takeName: " + scalar(take),
+        "      internalID: 0",
+        "      firstFrame: %d" % first,
+        "      lastFrame: %d" % last,
+        "      wrapMode: 0",
+        "      orientationOffsetY: 0",
+        "      level: 0",
+        "      cycleOffset: 0",
+        "      loop: 0",
+        "      hasAdditiveReferencePose: 0",
+        "      loopTime: %d" % (1 if loop else 0),
+        "      loopBlend: 0",
+        "      loopBlendOrientation: 0",
+        "      loopBlendPositionY: 0",
+        "      loopBlendPositionXZ: 0",
+        "      keepOriginalOrientation: 0",
+        "      keepOriginalPositionY: 1",
+        "      keepOriginalPositionXZ: 0",
+        "      heightFromFeet: 0",
+        "      mirror: 0",
+        "      bodyMask: " + BODY_MASK,
+        "      curves: []",
+        "      events: []",
+        "      transformMask: []",
+        "      maskType: 3",
+        "      maskSource: {instanceID: 0}",
+        "      additiveReferencePoseFrame: 0",
+    ]
+
+
+def clip_meta(guid, model_guid, name, take, first, last, loop, humanoid=False):
+    """ModelImporter of <Model>@<Clip>.fbx (clips spec 6): the one clip `name` cut from take `take` (frames first to
+    last, looping or not), with the avatar of the model `model_guid`; no materials."""
+    return model_meta(guid, {}, True, humanoid=humanoid, clip=(name, take, first, last, loop),
+                      avatar_source=model_guid)
+
+
+def model_meta(guid, materials, import_animation, blend_shape_normals=True, humanoid=False, clip=None,
+               avatar_source=None):
     """ModelImporter of an exported FBX. `materials` maps an FBX material name to the GUID of its .mat, so Unity
     uses the exported materials without Search and Remap (spec 4). `blend_shape_normals` False sets the blend shape
     normals to None (face shading, face spec 6). `humanoid` makes Unity build a Humanoid avatar, mapping the bones by
-    their names (anime rig spec 8)."""
+    their names (anime rig spec 8). `clip` (name, take, first, last, loop) cuts one clip from the file's take and
+    `avatar_source` is the GUID of the model whose avatar the clip uses (clips spec 6); such a file makes no
+    materials."""
     remap = []
     for name in sorted(materials):
         remap += ["  - first:", "      type: UnityEngine:Material", "      assembly: UnityEngine.CoreModule",
                   "      name: " + scalar(name),
                   "    second: {fileID: %d, guid: %s, type: 2}" % (MATERIAL_FILE_ID, materials[name])]
+    avatar = "{fileID: %d, guid: %s, type: 3}" % (AVATAR_FILE_ID, avatar_source) if avatar_source else "{instanceID: 0}"
     lines = ["ModelImporter:", "  serializedVersion: 22200", "  internalIDToNameTable: []"]
     lines += (["  externalObjects:"] + remap) if remap else ["  externalObjects: {}"]
     lines += [
         "  materials:",
-        "    materialImportMode: 2",
+        "    materialImportMode: %d" % (0 if clip else 2),
         "    materialName: 0",
         "    materialSearch: 1",
         "    materialLocation: 1",
@@ -256,7 +310,7 @@ def model_meta(guid, materials, import_animation, blend_shape_normals=True, huma
         "    animationWrapMode: 0",
         "    extraExposedTransformPaths: []",
         "    extraUserProperties: []",
-        "    clipAnimations: []",
+    ] + _clip_lines(clip) + [
         "    isReadable: 0",
         "  meshes:",
         "    lODScreenPercentages: []",
@@ -320,11 +374,11 @@ def model_meta(guid, materials, import_animation, blend_shape_normals=True, huma
         "    hasTranslationDoF: 0",
         "    hasExtraRoot: 0",
         "    skeletonHasParents: 1",
-        "  lastHumanDescriptionAvatarSource: {instanceID: 0}",
+        "  lastHumanDescriptionAvatarSource: " + avatar,
         "  autoGenerateAvatarMappingIfUnspecified: 1",
         "  animationType: %d" % (3 if humanoid else 2),
         "  humanoidOversampling: 1",
-        "  avatarSetup: 1",
+        "  avatarSetup: %d" % (2 if avatar_source else 1),
         "  addHumanoidExtraRootOnlyWhenUsingAvatar: 1",
         "  importBlendShapeDeformPercent: 1",
         "  remapMaterialsIfMaterialImportModeIsNone: 0",

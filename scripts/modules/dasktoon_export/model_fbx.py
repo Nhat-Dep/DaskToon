@@ -79,9 +79,11 @@ def modifier_notes(objects):
     return notes
 
 
-def write_fbx(context, objects, filepath, include_animation):
+def write_fbx(context, objects, filepath, include_animation, single_take=False):
     """Export `objects` with the fixed settings of spec 4; the user's selection and active object are restored.
-    Returns the names of objects left out because they cannot be selected (e.g. in an excluded collection)."""
+    `single_take` bakes one take of the scene's frame range, named after the scene (a clip, clips spec 6), instead of a
+    take per action. Returns the names of objects left out because they cannot be selected (e.g. in an excluded
+    collection)."""
     view_layer = context.view_layer
     selected = [o for o in view_layer.objects if o.select_get()]
     active = view_layer.objects.active
@@ -94,7 +96,9 @@ def write_fbx(context, objects, filepath, include_animation):
                 obj.select_set(True)
             except RuntimeError:
                 left_out.append(obj.name)
-        bpy.ops.export_scene.fbx(filepath=filepath, use_selection=True, bake_anim=include_animation, **FBX_SETTINGS)
+        takes = dict(bake_anim_use_all_actions=False, bake_anim_use_nla_strips=False) if single_take else {}
+        bpy.ops.export_scene.fbx(filepath=filepath, use_selection=True, bake_anim=include_animation, **FBX_SETTINGS,
+                                 **takes)
         return left_out
     finally:
         for obj in view_layer.objects:

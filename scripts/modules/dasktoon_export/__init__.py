@@ -223,6 +223,54 @@ def _write_rig(target, writer, model_dir, objects, rep):
     return rig
 
 
+def _clip_rig(objects):
+    """The first armature of `objects` with clips (clips spec 6), or None."""
+    from dasktoon_animation import clips
+    return next((obj for obj in objects if obj.type == 'ARMATURE' and clips.clips_of(obj)), None)
+
+
+def _set_frame_range(scene, first, last):
+    if first > scene.frame_end:
+        scene.frame_end = last
+        scene.frame_start = first
+    else:
+        scene.frame_start = first
+        scene.frame_end = last
+
+
+def _write_clips(context, target, writer, model_dir, objects, armature, model_guid, rep):
+    """Each clip of the character as <Model>@<Clip>.fbx: the clip played by every part over its own frame range, baked
+    as one take; its meta cuts that take into the clip with the model's avatar (clips spec 6). The clip in use, the
+    scene's frame range and its frame come back afterwards."""
+    from dasktoon_animation import clips
+    from . import assets, model_fbx, unity_yaml
+    scene = context.scene
+    everything = list(context.view_layer.objects)
+    saved = clips.current(armature), scene.frame_start, scene.frame_end, scene.frame_current
+    humanoid = _humanoid(objects)
+    try:
+        for clip in clips.clips_of(armature):
+            if not clips.has_keys(clip):
+                continue
+            first, last = clips.frame_range(clip)
+            rel = "%s/%s@%s.fbx" % (model_dir, safe_name(target.name), safe_name(clip.name))
+            guid = writer.guid(rel)
+            meta = unity_yaml.clip_meta(guid, model_guid, clip.name, scene.name, first, last, clip.use_cyclic,
+                                        humanoid)
+            clips.use(armature, everything, clip)
+            _set_frame_range(scene, first, last)
+
+            def write_clip(path):
+                model_fbx.write_fbx(context, objects, path, True, single_take=True)
+
+            if assets.write_asset(target.root, rel, guid, meta, rep.warnings, writer=write_clip):
+                rep.clips.append((clip.name, clip.use_cyclic))
+    finally:
+        clips.use(armature, everything, saved[0])
+        _set_frame_range(scene, saved[1], saved[2])
+        scene.frame_set(saved[3])
+
+
 def _write_model(context, target, objects, meshes, options, rep):
     """Outline data, materials, shaders and the FBX (spec 3-5)."""
     from . import assets, graph, model_fbx, shaders_install, unity_yaml
@@ -249,12 +297,14 @@ def _write_model(context, target, objects, meshes, options, rep):
         writer.folder(model_dir)
         rel = "%s/%s.fbx" % (model_dir, safe_name(target.name))
         guid = writer.guid(rel)
-        meta = unity_yaml.model_meta(guid, mat_guids, options.include_animation,
-                                     blend_shape_normals=not rep.face_meshes, humanoid=_humanoid(objects))
+        clip_rig = _clip_rig(objects) if options.include_animation else None
+        animation = options.include_animation and clip_rig is None  # with clips, they carry the animation
+        meta = unity_yaml.model_meta(guid, mat_guids, animation, blend_shape_normals=not rep.face_meshes,
+                                     humanoid=_humanoid(objects))
         left_out = []
 
         def write_fbx(path):
-            left_out.extend(model_fbx.write_fbx(context, objects, path, options.include_animation))
+            left_out.extend(model_fbx.write_fbx(context, objects, path, animation))
 
         # The rig file goes first, so Unity finds it when it imports the FBX.
         rig = _write_rig(target, writer, model_dir, objects, rep)
@@ -267,6 +317,8 @@ def _write_model(context, target, objects, meshes, options, rep):
         with quiet:
             if assets.write_asset(target.root, rel, guid, meta, rep.warnings, writer=write_fbx):
                 rep.model = rel
+            if clip_rig is not None:
+                _write_clips(context, target, writer, model_dir, objects, clip_rig, guid, rep)
         if left_out:
             rep.warnings.append(rpt_("Not in the FBX: %s (not in the current view layer, for example in an excluded "
                                      "collection)") % ", ".join(left_out))

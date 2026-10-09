@@ -1254,6 +1254,9 @@ VI = {
     "Play this clip on the whole character: body and face": "Dùng clip này cho cả nhân vật: thân và mặt",
     "Select a part of a character": "Hãy chọn một phần của nhân vật",
     "Use Clip": "Dùng clip",
+    # Engine Export: clips (clips spec 6)
+    "Clips: %s": "Clip: %s",
+    "%s (loop)": "%s (lặp)",
 }
 
 # Words that need their own translation context, because Blender's own translation of the same word in the default
