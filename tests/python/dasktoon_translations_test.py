@@ -51,6 +51,17 @@ TRANSLATED = [
     "scripts/startup/bl_ui/dasktoon_upgrade.py",
     "scripts/startup/bl_ui/engine_dasktoon_anime.py",
     "scripts/startup/dasktoon_init.py",
+    "scripts/modules/dasktoon_rig/__init__.py",
+    "scripts/modules/dasktoon_rig/skeleton.py",
+    "scripts/modules/dasktoon_rig/chains.py",
+    "scripts/modules/dasktoon_rig/parts.py",
+    "scripts/modules/dasktoon_rig/weights.py",
+    "scripts/modules/dasktoon_rig/build.py",
+    "scripts/modules/dasktoon_rig/spring.py",
+    "scripts/modules/dasktoon_rig/sway.py",
+    "scripts/modules/dasktoon_export/rig_json.py",
+    "scripts/modules/dasktoon_export/scripts_install.py",
+    "scripts/startup/bl_ui/dasktoon_rig.py",
 ]
 # Blender files DaskToon rewrote parts of (project workflow spec 13): only these classes are DaskToon's.
 TRANSLATED_CLASSES = {
@@ -69,7 +80,7 @@ def dasktoon_files():
     found = set()
     for pattern in ("scripts/startup/bl_ui/dasktoon_*.py", "scripts/startup/bl_ui/engine_dasktoon_anime.py",
                     "scripts/startup/dasktoon_*.py", "scripts/modules/dasktoon_export/*.py",
-                    "scripts/modules/dasktoon_project/*.py"):
+                    "scripts/modules/dasktoon_project/*.py", "scripts/modules/dasktoon_rig/*.py"):
         found.update(os.path.relpath(p, REPO).replace(os.sep, "/") for p in glob.glob(path(pattern)))
     found.discard("scripts/startup/bl_ui/dasktoon_translations.py")
     return found

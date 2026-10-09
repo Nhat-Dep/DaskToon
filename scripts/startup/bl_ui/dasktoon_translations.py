@@ -1036,6 +1036,157 @@ VI = {
     "Use fixed Outline Color": "Dùng màu viền cố định",
     "Use specified Outline Color input": "Dùng ô màu viền được chỉ định",
     "Value (V)": "Giá trị (V)",
+    # dasktoon_rig/parts.py
+    "Part %s: material %s is not on %s": "Phần %s: material %s không có trên %s",
+    "Part %s: vertex group %s is not on %s": "Phần %s: vertex group %s không có trên %s",
+    "Part %s has no vertices": "Phần %s không có đỉnh nào",
+    # dasktoon_rig/build.py
+    "Built %d bones in %d chains, weights on %d objects": "Đã dựng %d xương trong %d chuỗi, vẽ weight trên %d object",
+    "The active object is not an armature": "Object đang chọn không phải armature",
+    "%s is linked from a library": "%s được link từ thư viện",
+    "%s is not a standard skeleton; missing bones: %s": "%s không phải khung chuẩn; thiếu xương: %s",
+    "%s is hidden; show it before building": "%s đang ẩn; hãy hiện nó trước khi dựng",
+    "Add parts before building the rig": "Hãy thêm phần trước khi dựng rig",
+    "Part %s has no object": "Phần %s chưa có object",
+    "Part %s: %s is not a mesh": "Phần %s: %s không phải mesh",
+    "%s shares its mesh with other objects; make it single user first":
+        "%s dùng chung mesh với object khác; hãy tách riêng (Single User) trước",
+    "Part %s: bone %s is not in %s": "Phần %s: xương %s không có trong %s",
+    "Clothing copies its weights from a Body part; add a Body part first":
+        "Quần áo chép weight từ phần Body; hãy thêm phần Body trước",
+    "%s: %d vertices took the nearest bone (automatic weights found no solution there)":
+        "%s: %d đỉnh lấy theo xương gần nhất (weight tự động không tìm được nghiệm ở đó)",
+    "%s: no Body surface to copy weights from": "%s: không có bề mặt Body để chép weight",
+    # bl_ui/dasktoon_rig.py
+    "Anime Humanoid": "Khung người anime",
+    "Add the DaskToon standard skeleton, fitted to the selected meshes, which become its parts":
+        "Thêm khung xương chuẩn của DaskToon, khớp với các mesh đang chọn và lấy chúng làm phần",
+    "Edit Joints": "Sửa khớp",
+    "Edit the joints of the skeleton with X-Axis Mirror on, so both sides move together":
+        "Sửa khớp của khung xương với X-Axis Mirror bật, hai bên cùng di chuyển",
+    "Fit to Parts": "Khớp theo các phần",
+    "Move and scale the skeleton to the meshes of the parts; the joints you placed are replaced":
+        "Dời và co giãn khung xương theo mesh của các phần; vị trí khớp bạn đã đặt sẽ bị thay",
+    "Add Selected Meshes": "Thêm các mesh đang chọn",
+    "Add each selected mesh as a part of the rig, with the role its name suggests":
+        "Thêm mỗi mesh đang chọn thành một phần của rig, với vai trò đoán theo tên",
+    "Add Material Part": "Thêm phần theo material",
+    "Add the faces of one material of the active part's mesh as a new part":
+        "Thêm các mặt mang một material của mesh thuộc phần đang chọn thành một phần mới",
+    "Remove Part": "Xóa phần",
+    "Remove the active part from the rig; its weights stay until the next build":
+        "Xóa phần đang chọn khỏi rig; weight của nó còn giữ tới lần dựng sau",
+    "Build Rig": "Dựng rig",
+    "Generate the hair and skirt chains and paint the weights of every part":
+        "Sinh chuỗi xương tóc, váy và vẽ weight cho mọi phần",
+    "Add Part from Selection": "Thêm phần từ vùng chọn",
+    "Make the selected vertices a part of the rig, kept in a new vertex group":
+        "Biến các đỉnh đang chọn thành một phần của rig, lưu trong một vertex group mới",
+    "Fit the joints in Edit Mode, then press Build Rig in Properties › Object Data":
+        "Chỉnh khớp trong Edit Mode, rồi bấm Dựng rig ở Properties › Object Data",
+    "The selected meshes are already parts": "Các mesh đang chọn đã là phần của rig",
+    "No standard skeleton to add the part to": "Không có khung chuẩn nào để thêm phần vào",
+    "Select the vertices of the part first": "Hãy chọn các đỉnh của phần trước",
+    "Added part %s to %s": "Đã thêm phần %s vào %s",
+    "Anime Rig": "Rig anime",
+    "Joints": "Khớp",
+    "Parts": "Các phần",
+    "Build": "Dựng",
+    "Missing bones: %s": "Thiếu xương: %s",
+    "Add › Armature › Anime Humanoid adds a standard skeleton":
+        "Add › Armature › Khung người anime thêm một khung chuẩn",
+    "Standard skeleton": "Khung chuẩn",
+    "Select meshes and press + to add them as parts": "Chọn mesh rồi bấm + để thêm chúng làm phần",
+    "Build replaces the weights of every part": "Dựng lại sẽ thay weight của mọi phần",
+    "Select the vertices of a part in Edit Mode": "Chọn các đỉnh của một phần trong Edit Mode",
+    "A part of the character and how it is rigged": "Một phần của nhân vật và cách rig nó",
+    "Name of the part; generated bones start with it": "Tên phần; tên các xương sinh ra bắt đầu bằng nó",
+    "Mesh that holds the part": "Mesh chứa phần",
+    "Scope": "Phạm vi",
+    "Which vertices of the mesh make the part": "Những đỉnh nào của mesh tạo nên phần",
+    "Whole Object": "Cả object",
+    "Every vertex of the mesh": "Mọi đỉnh của mesh",
+    "The faces that use a material": "Các mặt dùng một material",
+    "The vertices of a vertex group": "Các đỉnh của một vertex group",
+    "Material whose faces make the part": "Material có các mặt tạo nên phần",
+    "Vertex group whose vertices make the part": "Vertex group có các đỉnh tạo nên phần",
+    "Role": "Vai trò",
+    "How the part is rigged": "Cách rig phần này",
+    "Skin and face: automatic weights from the body bones": "Da và mặt: weight tự động theo xương thân",
+    "Clothing": "Quần áo",
+    "Follows the body: weights copied from the nearest Body surface":
+        "Đi theo thân: weight chép từ bề mặt Body gần nhất",
+    "Accessory": "Phụ kiện",
+    "Rigid on one bone": "Gắn cứng vào một xương",
+    "Hair": "Tóc",
+    "A chain of bones for each long lock": "Một chuỗi xương cho mỗi lọn tóc dài",
+    "Skirt": "Váy",
+    "Chains of bones around the hips": "Các chuỗi xương quanh hông",
+    "Bone the part hangs from or sits on; empty picks one automatically (Head for hair, Hips for a skirt, the nearest bone for an accessory)":
+        "Xương mà phần treo vào hoặc gắn lên; để trống thì tự chọn (Head cho tóc, Hips cho váy, xương gần nhất cho phụ kiện)",
+    "Bones per Chain": "Số xương mỗi chuỗi",
+    "Number of bones along each chain": "Số xương dọc mỗi chuỗi",
+    "Chains": "Số chuỗi",
+    "Number of chains around the skirt": "Số chuỗi quanh váy",
+    "The parts of an anime rig": "Các phần của một rig anime",
+    "Active Part": "Phần đang chọn",
+    "Part shown below the list": "Phần hiện bên dưới danh sách",
+    "Parts of the anime rig": "Các phần của rig anime",
+    "Material whose faces make the new part": "Material có các mặt tạo nên phần mới",
+    "Name of the new part": "Tên của phần mới",
+    "Standard skeleton the part belongs to": "Khung chuẩn chứa phần này",
+    # bl_ui/dasktoon_rig.py (collection)
+    "Parts of the character": "Các phần của nhân vật",
+    # dasktoon_rig/build.py (attach bone)
+    "Part %s: bone %s is made by Build Rig; pick a bone of the skeleton":
+        "Phần %s: xương %s do Dựng rig tạo ra; hãy chọn một xương của khung",
+    # bl_ui/dasktoon_rig.py (sway settings and colliders)
+    "Stiffness": "Độ cứng",
+    "How strongly the chain springs back to its pose": "Mức chuỗi bật về lại tư thế của nó",
+    "Gravity": "Trọng lực",
+    "How strongly the chain is pulled down": "Mức chuỗi bị kéo xuống",
+    "Drag": "Lực cản",
+    "How quickly the swing dies down: 0 keeps swinging, 1 stops at once":
+        "Độ nhanh mà chuyển động lắc tắt dần: 0 lắc mãi, 1 dừng ngay",
+    "How far each joint keeps from the colliders": "Khoảng cách mỗi khớp giữ với collider",
+    "A capsule along a bone that hair and skirts do not go through":
+        "Một khối capsule dọc theo xương mà tóc và váy không xuyên qua",
+    "Bone the capsule runs along, from its head to its tail": "Xương mà capsule chạy dọc theo, từ đầu tới đuôi xương",
+    "Radius of the capsule": "Bán kính của capsule",
+    "Colliders": "Collider",
+    "Capsules that hair and skirts do not go through; Build Rig makes them":
+        "Các capsule mà tóc và váy không xuyên qua; Dựng rig tạo ra chúng",
+    "Live Sway": "Lắc trực tiếp",
+    "Sway hair and skirts while the animation plays": "Cho tóc và váy lắc khi animation đang phát",
+    # bl_ui/dasktoon_rig.py (Sway panel)
+    "Bake Sway": "Bake chuyển động lắc",
+    "Key the sway of hair and skirts on every frame of the scene; Live Sway turns off so the keys play as they are":
+        "Đặt keyframe chuyển động lắc của tóc và váy ở mọi khung của scene; Lắc trực tiếp tắt để phát đúng các keyframe",
+    "Baked %d frames of %d bones": "Đã bake %d khung cho %d xương",
+    "Sway": "Lắc",
+    "Build Rig first to make the hair and skirt chains": "Hãy Dựng rig trước để có chuỗi xương tóc và váy",
+    "Select a hair or skirt part to set how it sways": "Chọn một phần tóc hoặc váy để chỉnh cách nó lắc",
+    # bl_ui/dasktoon_rig.py (Sway in Unity)
+    "Sway in Unity": "Lắc trong Unity",
+    "How the chain sways in Unity": "Cách chuỗi lắc trong Unity",
+    "Runtime": "Khi chạy",
+    "DaskToon's spring bone script sways the chain while the game runs":
+        "Script spring bone của DaskToon cho chuỗi lắc khi game chạy",
+    "Baked": "Đã bake",
+    "Unity plays the sway baked into the exported animation":
+        "Unity phát chuyển động lắc đã bake trong animation xuất ra",
+    # dasktoon_export (anime rig for Unity)
+    "Scripts: installed or updated": "Script: đã cài hoặc cập nhật",
+    "Scripts: the project already has a recent enough version, not written again":
+        "Script: project đã có bản đủ mới, không ghi lại",
+    "Scripts: not needed (no hair or skirt chains)": "Script: không cần (không có chuỗi tóc hay váy)",
+    "Rig: %s (DaskToon spring bones sway the hair and skirts in Unity)":
+        "Rig: %s (spring bone của DaskToon cho tóc và váy lắc trong Unity)",
+    "Part %s sways in Unity, but its bones have sway keys: Unity would sway it twice. Set Sway in Unity to Baked, or remove the keys":
+        "Phần %s lắc trong Unity nhưng xương của nó có key lắc: Unity sẽ lắc hai lần. Đặt Lắc trong Unity thành Đã bake, hoặc xóa các key đó",
+    # dasktoon_export/report.py (scripts once per project)
+    "Note: the Scripts folder may be in a Unity project only once. With a second character, delete its Scripts folder after dragging it in, or export into the Unity project itself.":
+        "Lưu ý: mỗi project Unity chỉ được có một thư mục Scripts này. Với nhân vật thứ hai, xóa thư mục Scripts của nó sau khi kéo vào, hoặc xuất thẳng vào project Unity.",
 }
 
 # Words that need their own translation context, because Blender's own translation of the same word in the default
@@ -1043,6 +1194,7 @@ VI = {
 VI_CONTEXT = {
     "DaskToon": {
         "Project": "Dự án",
+        "Chains": "Số chuỗi",
     },
 }
 

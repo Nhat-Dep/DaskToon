@@ -19,6 +19,11 @@ SHADER_STATE = {
     'UP_TO_DATE': n_("Shaders: the project already has a recent enough version, not written again"),
     'SKIPPED': n_("Shaders: not exported (material export is off)"),
 }
+SCRIPT_STATE = {
+    'INSTALLED': n_("Scripts: installed or updated"),
+    'UP_TO_DATE': n_("Scripts: the project already has a recent enough version, not written again"),
+    'SKIPPED': n_("Scripts: not needed (no hair or skirt chains)"),
+}
 
 
 @dataclass
@@ -28,6 +33,8 @@ class Report:
     name: str
     shaders: str = 'SKIPPED'
     model: str = ""
+    rig: str = ""
+    scripts: str = 'SKIPPED'
     materials: list = field(default_factory=list)
     skipped: list = field(default_factory=list)
     baked: list = field(default_factory=list)
@@ -48,6 +55,9 @@ class Report:
         out = [rpt_("Destination: %s (%s)") % (self.root, where), rpt_(SHADER_STATE[self.shaders])]
         if self.model:
             out.append(rpt_("Model: %s") % self.model)
+        if self.rig:
+            out.append(rpt_("Rig: %s (DaskToon spring bones sway the hair and skirts in Unity)") % self.rig)
+            out.append(rpt_(SCRIPT_STATE[self.scripts]))
         out.append(rpt_("Exported materials (%d): %s") % (len(self.materials), ", ".join(self.materials) or rpt_("none")))
         out += [rpt_("Skipped material %s: %s (Unity keeps the default material of the FBX)") % item
                 for item in self.skipped]
@@ -104,8 +114,12 @@ def readme_text(report):
              "for the Shaders folder."),
         rpt_("The materials still work. To avoid it, choose the Unity project folder itself when exporting, or use "
              "a DaskToon Project."),
-        "",
     ]
+    if report.rig:
+        # Two copies of the same C# classes do not compile, unlike two copies of a shader.
+        head.append(rpt_("Note: the Scripts folder may be in a Unity project only once. With a second character, "
+                         "delete its Scripts folder after dragging it in, or export into the Unity project itself."))
+    head.append("")
     return "\n".join(head + report.lines()) + "\n"
 
 

@@ -141,6 +141,11 @@ def include_meta(guid):
     return _meta(guid, ["ShaderIncludeImporter:", "  externalObjects: {}"])
 
 
+def script_meta(guid):
+    return _meta(guid, ["MonoImporter:", "  externalObjects: {}", "  serializedVersion: 2", "  defaultReferences: []",
+                        "  executionOrder: 0", "  icon: {instanceID: 0}"])
+
+
 def texture_meta(guid, kind, size=(1024, 1024), point_filter=False):
     srgb, tex_type, wrap, mips, compression = TEXTURE_KINDS[kind]
     max_size = 2048
@@ -213,10 +218,11 @@ def texture_meta(guid, kind, size=(1024, 1024), point_filter=False):
     return _meta(guid, lines)
 
 
-def model_meta(guid, materials, import_animation, blend_shape_normals=True):
+def model_meta(guid, materials, import_animation, blend_shape_normals=True, humanoid=False):
     """ModelImporter of an exported FBX. `materials` maps an FBX material name to the GUID of its .mat, so Unity
     uses the exported materials without Search and Remap (spec 4). `blend_shape_normals` False sets the blend shape
-    normals to None (face shading, face spec 6)."""
+    normals to None (face shading, face spec 6). `humanoid` makes Unity build a Humanoid avatar, mapping the bones by
+    their names (anime rig spec 8)."""
     remap = []
     for name in sorted(materials):
         remap += ["  - first:", "      type: UnityEngine:Material", "      assembly: UnityEngine.CoreModule",
@@ -316,7 +322,7 @@ def model_meta(guid, materials, import_animation, blend_shape_normals=True):
         "    skeletonHasParents: 1",
         "  lastHumanDescriptionAvatarSource: {instanceID: 0}",
         "  autoGenerateAvatarMappingIfUnspecified: 1",
-        "  animationType: 2",
+        "  animationType: %d" % (3 if humanoid else 2),
         "  humanoidOversampling: 1",
         "  avatarSetup: 1",
         "  addHumanoidExtraRootOnlyWhenUsingAvatar: 1",

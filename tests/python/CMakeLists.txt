@@ -266,6 +266,15 @@ foreach(dasktoon_test
     dasktoon_ui_layout_test
     dasktoon_translations_test
     dasktoon_sun_sync_test
+    dasktoon_rig_skeleton_test
+    dasktoon_rig_chains_test
+    dasktoon_rig_parts_test
+    dasktoon_rig_weights_test
+    dasktoon_rig_build_test
+    dasktoon_rig_ui_test
+    dasktoon_rig_spring_test
+    dasktoon_rig_sway_test
+    dasktoon_export_rig_test
 )
   add_blender_test(
     ${dasktoon_test}
