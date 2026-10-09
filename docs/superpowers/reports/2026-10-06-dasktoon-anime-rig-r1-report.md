@@ -85,6 +85,8 @@ Tự review (phiên này không tạo subagent khi người dùng chưa yêu c�
   - mesh quay pháp tuyến vào trong cho weight tự động kém mà không có cảnh báo (giống Parent › With Automatic Weights
     của Blender).
 
+  Cả bốn đã sửa ngày 2026-10-10: `docs/superpowers/reports/2026-10-10-dasktoon-minor-fixes-report.md`.
+
 ## 6. R2: lắc trong DaskToon
 
 | Phần | Nội dung |
@@ -142,7 +144,7 @@ Review R2b (tự review):
   project không biên dịch được (shader trùng chỉ cảnh báo). README nay dặn chỉ đưa thư mục Scripts vào một lần; xuất thẳng
   vào project Unity hoặc dùng dự án DaskToon thì không gặp.
 - **Để lại** (Minor): khi game tạm dừng (`Time.deltaTime = 0`) tóc còn trôi vài khung theo quán tính rồi mới đứng; thêm file
-  rig sau mà không xuất lại thì Unity không tự import lại model.
+  rig sau mà không xuất lại thì Unity không tự import lại model. Cả hai đã sửa ngày 2026-10-10 (báo cáo sửa lỗi nhỏ).
 
 ## 8. Constraint Spring (C++)
 
@@ -190,5 +192,5 @@ Review (tự review):
 
 ## 9. Còn lại
 
-- Sửa các Minor còn lại và cảnh báo scale âm/không đều (người dùng duyệt 2026-10-10), rồi **A**: tab Animation gọn (tiếp
-  từ phần thiết kế 3), rồi **R3** mắt và miệng (spec §10), B, C.
+- Các Minor còn lại và cảnh báo scale âm/không đều: đã sửa (`docs/superpowers/reports/2026-10-10-dasktoon-minor-fixes-report.md`).
+- Tiếp: **A**, tab Animation gọn (tiếp từ phần thiết kế 3), rồi **R3** mắt và miệng (spec §10), B, C.
