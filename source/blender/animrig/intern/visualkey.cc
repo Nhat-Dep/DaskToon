@@ -135,6 +135,11 @@ bool visualkey_can_use(PointerRNA *ptr, PropertyRNA *prop)
           return true;
         }
         break;
+      case CONSTRAINT_TYPE_SPRING:
+        if (searchtype == VISUALKEY_ROT) {
+          return true;
+        }
+        break;
       case CONSTRAINT_TYPE_DAMPTRACK:
         if (searchtype == VISUALKEY_ROT) {
           return true;

@@ -2727,6 +2727,9 @@ TreeElementIcon tree_element_get_icon(TreeStoreElem *tselem, TreeElement *te)
           case CONSTRAINT_TYPE_ARMATURE:
             data.icon = ICON_CON_ARMATURE;
             break;
+          case CONSTRAINT_TYPE_SPRING:
+            data.icon = ICON_FORCE_HARMONIC;
+            break;
           case CONSTRAINT_TYPE_CHILDOF:
             data.icon = ICON_CON_CHILDOF;
             break;

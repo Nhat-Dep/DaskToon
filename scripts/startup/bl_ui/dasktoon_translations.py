@@ -1187,6 +1187,28 @@ VI = {
     # dasktoon_export/report.py (scripts once per project)
     "Note: the Scripts folder may be in a Unity project only once. With a second character, delete its Scripts folder after dragging it in, or export into the Unity project itself.":
         "Lưu ý: mỗi project Unity chỉ được có một thư mục Scripts này. Với nhân vật thứ hai, xóa thư mục Scripts của nó sau khi kéo vào, hoặc xuất thẳng vào project Unity.",
+    # Spring constraint (C++ RNA, bl_ui/properties_constraint.py)
+    "Spring": "Lò xo",
+    "Sway the bone like a spring: it swings with the motion, hangs down and keeps out of collider bones (DaskToon)":
+        "Cho xương lắc như lò xo: đung đưa theo chuyển động, rủ xuống và không xuyên qua xương collider (DaskToon)",
+    "Spring Constraint": "Constraint lò xo",
+    "Sway a bone like a spring bone: it swings with the motion, hangs down and keeps out of collider bones":
+        "Cho xương lắc như spring bone: đung đưa theo chuyển động, rủ xuống và không xuyên qua xương collider",
+    "Spring Collider": "Collider của lò xo",
+    "A capsule along a bone that the spring keeps out of": "Một capsule dọc theo xương mà lò xo tránh",
+    "Armature of the collider bone": "Armature chứa xương collider",
+    "Radius of the capsule, in armature units": "Bán kính của capsule, theo đơn vị của armature",
+    "Capsules along bones that the spring keeps out of": "Các capsule dọc theo xương mà lò xo tránh",
+    "How strongly the bone springs back to its pose": "Mức xương bật về lại tư thế của nó",
+    "How strongly the bone is pulled down": "Mức xương bị kéo xuống",
+    "How far the bone's tail keeps from the colliders, in armature units":
+        "Khoảng cách đuôi xương giữ với collider, theo đơn vị của armature",
+    "Spring Colliders": "Các collider của lò xo",
+    "Collider bones of a Spring constraint": "Các xương collider của một constraint lò xo",
+    "Add a collider; its armature is the constraint's owner":
+        "Thêm một collider; armature của nó là chủ của constraint",
+    "Remove all colliders": "Xóa mọi collider",
+    "No colliders: Build Rig adds the body bones": "Chưa có collider: Dựng rig sẽ thêm các xương thân",
 }
 
 # Words that need their own translation context, because Blender's own translation of the same word in the default

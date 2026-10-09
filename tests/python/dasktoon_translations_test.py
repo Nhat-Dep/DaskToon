@@ -67,6 +67,7 @@ TRANSLATED = [
 TRANSLATED_CLASSES = {
     "scripts/startup/bl_ui/space_topbar.py": ("TOPBAR_MT_file", "TOPBAR_MT_file_new", "TOPBAR_HT_upper_bar"),
     "scripts/startup/bl_operators/wm.py": ("WM_MT_splash",),
+    "scripts/startup/bl_ui/properties_constraint.py": ("SpringConstraintPanel", "SpringConstraintCollidersPanel"),
 }
 
 

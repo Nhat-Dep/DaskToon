@@ -2220,6 +2220,8 @@ static bool get_new_constraint_target(
     case CONSTRAINT_TYPE_ROTLIMIT:
     case CONSTRAINT_TYPE_SIZELIMIT:
     case CONSTRAINT_TYPE_SAMEVOL:
+    /* DaskToon: the anime rig's Build Rig manages the colliders of a Spring constraint. */
+    case CONSTRAINT_TYPE_SPRING:
       return false;
 
     /* restricted target-type constraints -------------- */

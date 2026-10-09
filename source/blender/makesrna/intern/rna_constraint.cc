@@ -172,6 +172,12 @@ const EnumPropertyItem rna_enum_constraint_type_items[] = {
      ICON_CON_SHRINKWRAP,
      "Shrinkwrap",
      "Restrict movements to surface of target mesh"},
+    {CONSTRAINT_TYPE_SPRING,
+     "SPRING",
+     ICON_FORCE_HARMONIC,
+     "Spring",
+     "Sway the bone like a spring: it swings with the motion, hangs down and keeps out of collider bones "
+     "(DaskToon)"},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
@@ -360,6 +366,8 @@ static StructRNA *rna_ConstraintType_refine(PointerRNA *ptr)
       return RNA_MaintainVolumeConstraint;
     case CONSTRAINT_TYPE_ARMATURE:
       return RNA_ArmatureConstraint;
+    case CONSTRAINT_TYPE_SPRING:
+      return RNA_SpringConstraint;
     case CONSTRAINT_TYPE_ACTION:
       return RNA_ActionConstraint;
     case CONSTRAINT_TYPE_LOCKTRACK:
@@ -622,6 +630,41 @@ static const EnumPropertyItem *rna_Constraint_target_space_itemf(bContext * /*C*
   }
 
   return target_space_object_items;
+}
+
+static std::optional<std::string> rna_SpringConstraintCollider_path(const PointerRNA *ptr)
+{
+  Object *ob = id_cast<Object *>(ptr->owner_id);
+  bConstraintTarget *tgt = static_cast<bConstraintTarget *>(ptr->data);
+  bConstraint *con = rna_constraint_from_target(ptr);
+  if (con != nullptr && con->type == CONSTRAINT_TYPE_SPRING) {
+    const int index = BLI_findindex(&static_cast<bSpringConstraint *>(con->data)->targets, tgt);
+    if (index >= 0) {
+      return fmt::format(
+          "{}.colliders[{}]", rna_Constraint_do_compute_path(ob, con).value_or(""), index);
+    }
+  }
+  return std::nullopt;
+}
+
+static bConstraintTarget *rna_SpringConstraint_collider_new(ID *id, bConstraint *con, Main *bmain)
+{
+  bSpringConstraint *scon = static_cast<bSpringConstraint *>(con->data);
+  bConstraintTarget *tgt = MEM_new<bConstraintTarget>("Spring Collider");
+  tgt->tar = id_cast<Object *>(id);
+  tgt->weight = 0.05f;
+  BLI_addtail(&scon->targets, tgt);
+  BKE_constraint_spring_cache_clear(id_cast<Object *>(id));
+  ed::object::constraint_dependency_tag_update(bmain, id_cast<Object *>(id), con);
+  return tgt;
+}
+
+static void rna_SpringConstraint_collider_clear(ID *id, bConstraint *con, Main *bmain)
+{
+  bSpringConstraint *scon = static_cast<bSpringConstraint *>(con->data);
+  scon->targets.free_no_destruct();
+  BKE_constraint_spring_cache_clear(id_cast<Object *>(id));
+  ed::object::constraint_dependency_tag_update(bmain, id_cast<Object *>(id), con);
 }
 
 static bConstraintTarget *rna_ArmatureConstraint_target_new(ID *id, bConstraint *con, Main *bmain)
@@ -1193,6 +1236,110 @@ static void rna_def_constraint_armature_deform_targets(BlenderRNA *brna, Propert
   func = RNA_def_function(srna, "clear", "rna_ArmatureConstraint_target_clear");
   RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN);
   RNA_def_function_ui_description(func, "Delete all targets from object");
+}
+
+static void rna_def_constraint_spring_collider(BlenderRNA *brna)
+{
+  StructRNA *srna = RNA_def_struct(brna, "SpringConstraintCollider", nullptr);
+  RNA_def_struct_ui_text(
+      srna, "Spring Collider", "A capsule along a bone that the spring keeps out of");
+  RNA_def_struct_path_func(srna, "rna_SpringConstraintCollider_path");
+  RNA_def_struct_sdna(srna, "bConstraintTarget");
+
+  RNA_define_lib_overridable(true);
+
+  PropertyRNA *prop = RNA_def_property(srna, "target", PROP_POINTER, PROP_NONE);
+  RNA_def_property_pointer_sdna(prop, nullptr, "tar");
+  RNA_def_property_ui_text(prop, "Armature", "Armature of the collider bone");
+  RNA_def_property_pointer_funcs(
+      prop, nullptr, "rna_ConstraintTargetBone_target_set", nullptr, "rna_Armature_object_poll");
+  RNA_def_property_flag(prop, PROP_EDITABLE);
+  RNA_def_property_update(
+      prop, NC_OBJECT | ND_CONSTRAINT, "rna_ConstraintTarget_dependency_update");
+
+  prop = RNA_def_property(srna, "subtarget", PROP_STRING, PROP_NONE);
+  RNA_def_property_string_sdna(prop, nullptr, "subtarget");
+  RNA_def_property_ui_text(prop, "Bone", "Bone the capsule runs along, from its head to its tail");
+  RNA_def_property_update(
+      prop, NC_OBJECT | ND_CONSTRAINT, "rna_ConstraintTarget_dependency_update");
+
+  prop = RNA_def_property(srna, "radius", PROP_FLOAT, PROP_DISTANCE);
+  RNA_def_property_float_sdna(prop, nullptr, "weight");
+  RNA_def_property_range(prop, 0.0f, FLT_MAX);
+  RNA_def_property_ui_range(prop, 0.0f, 1.0f, 1, 3);
+  RNA_def_property_ui_text(prop, "Radius", "Radius of the capsule, in armature units");
+  RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_ConstraintTarget_update");
+
+  RNA_define_lib_overridable(false);
+}
+
+static void rna_def_constraint_spring_colliders(BlenderRNA *brna, PropertyRNA *cprop)
+{
+  RNA_def_property_srna(cprop, "SpringConstraintColliders");
+  StructRNA *srna = RNA_def_struct(brna, "SpringConstraintColliders", nullptr);
+  RNA_def_struct_sdna(srna, "bConstraint");
+  RNA_def_struct_ui_text(srna, "Spring Colliders", "Collider bones of a Spring constraint");
+
+  FunctionRNA *func = RNA_def_function(srna, "new", "rna_SpringConstraint_collider_new");
+  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN);
+  RNA_def_function_ui_description(func, "Add a collider; its armature is the constraint's owner");
+  PropertyRNA *parm = RNA_def_pointer(
+      func, "collider", "SpringConstraintCollider", "", "New collider");
+  RNA_def_function_return(func, parm);
+
+  func = RNA_def_function(srna, "clear", "rna_SpringConstraint_collider_clear");
+  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN);
+  RNA_def_function_ui_description(func, "Remove all colliders");
+}
+
+static void rna_def_constraint_spring(BlenderRNA *brna)
+{
+  rna_def_constraint_spring_collider(brna);
+
+  StructRNA *srna = RNA_def_struct(brna, "SpringConstraint", "Constraint");
+  RNA_def_struct_ui_text(srna,
+                         "Spring Constraint",
+                         "Sway a bone like a spring bone: it swings with the motion, hangs down and "
+                         "keeps out of collider bones");
+  RNA_def_struct_sdna_from(srna, "bSpringConstraint", "data");
+  RNA_def_struct_ui_icon(srna, ICON_FORCE_HARMONIC);
+
+  RNA_define_lib_overridable(true);
+
+  PropertyRNA *prop = RNA_def_property(srna, "colliders", PROP_COLLECTION, PROP_NONE);
+  RNA_def_property_collection_sdna(prop, nullptr, "targets", nullptr);
+  RNA_def_property_struct_type(prop, "SpringConstraintCollider");
+  RNA_def_property_ui_text(prop, "Colliders", "Capsules along bones that the spring keeps out of");
+  rna_def_constraint_spring_colliders(brna, prop);
+
+  prop = RNA_def_property(srna, "stiffness", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_sdna(prop, nullptr, "stiffness");
+  RNA_def_property_range(prop, 0.0f, 4.0f);
+  RNA_def_property_ui_text(prop, "Stiffness", "How strongly the bone springs back to its pose");
+  RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_Constraint_update");
+
+  prop = RNA_def_property(srna, "gravity", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_sdna(prop, nullptr, "gravity");
+  RNA_def_property_range(prop, 0.0f, 2.0f);
+  RNA_def_property_ui_text(prop, "Gravity", "How strongly the bone is pulled down");
+  RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_Constraint_update");
+
+  prop = RNA_def_property(srna, "drag", PROP_FLOAT, PROP_FACTOR);
+  RNA_def_property_float_sdna(prop, nullptr, "drag");
+  RNA_def_property_range(prop, 0.0f, 1.0f);
+  RNA_def_property_ui_text(
+      prop, "Drag", "How quickly the swing dies down: 0 keeps swinging, 1 stops at once");
+  RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_Constraint_update");
+
+  prop = RNA_def_property(srna, "radius", PROP_FLOAT, PROP_DISTANCE);
+  RNA_def_property_float_sdna(prop, nullptr, "radius");
+  RNA_def_property_range(prop, 0.0f, FLT_MAX);
+  RNA_def_property_ui_range(prop, 0.0f, 1.0f, 1, 3);
+  RNA_def_property_ui_text(
+      prop, "Radius", "How far the bone's tail keeps from the colliders, in armature units");
+  RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_Constraint_update");
+
+  RNA_define_lib_overridable(false);
 }
 
 static void rna_def_constraint_armature_deform(BlenderRNA *brna)
@@ -3907,6 +4054,7 @@ void RNA_def_constraint(BlenderRNA *brna)
 
   rna_def_constraint_childof(brna);
   rna_def_constraint_armature_deform(brna);
+  rna_def_constraint_spring(brna);
   rna_def_constraint_stretch_to(brna);
   rna_def_constraint_follow_path(brna);
   rna_def_constraint_locked_track(brna);

@@ -153,6 +153,9 @@ const bConstraintTypeInfo *BKE_constraint_typeinfo_get(struct bConstraint *con);
  */
 const bConstraintTypeInfo *BKE_constraint_typeinfo_from_type(int type);
 
+/** DaskToon: forget the cached sway of every Spring constraint on `ob`, so it starts again. */
+void BKE_constraint_spring_cache_clear(const struct Object *ob);
+
 /* ---------------------------------------------------------------------------- */
 
 /* Constraint function prototypes */

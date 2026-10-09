@@ -2762,6 +2762,71 @@ static bConstraintTypeInfo CTI_ARMATURE = {
     /*evaluate_constraint*/ armdef_evaluate,
 };
 
+/* -------- Spring Constraint (DaskToon) ----------- */
+
+static void spring_new_data(void *cdata)
+{
+  bSpringConstraint *data = static_cast<bSpringConstraint *>(cdata);
+  data->stiffness = 1.0f;
+  data->gravity = 0.2f;
+  data->drag = 0.4f;
+  data->radius = 0.03f;
+}
+
+static void spring_free(bConstraint *con)
+{
+  bSpringConstraint *data = static_cast<bSpringConstraint *>(con->data);
+  data->targets.free_no_destruct();
+}
+
+static void spring_copy(bConstraint *con, bConstraint *srccon)
+{
+  bSpringConstraint *pcon = static_cast<bSpringConstraint *>(con->data);
+  bSpringConstraint *opcon = static_cast<bSpringConstraint *>(srccon->data);
+  BLI_duplicatelist(&pcon->targets, &opcon->targets);
+}
+
+static int spring_get_tars(bConstraint *con, ListBaseT<bConstraintTarget> *list)
+{
+  if (con && list) {
+    bSpringConstraint *data = static_cast<bSpringConstraint *>(con->data);
+    *list = data->targets;
+    return data->targets.count();
+  }
+  return 0;
+}
+
+static void spring_id_looper(bConstraint *con, ConstraintIDFunc func, void *userdata)
+{
+  bSpringConstraint *data = static_cast<bSpringConstraint *>(con->data);
+  for (bConstraintTarget &ct : data->targets) {
+    func(con, reinterpret_cast<ID **>(&ct.tar), false, userdata);
+  }
+}
+
+void BKE_constraint_spring_cache_clear(const Object * /*ob*/) {}
+
+static void spring_evaluate(bConstraint * /*con*/,
+                            bConstraintOb * /*cob*/,
+                            ListBaseT<bConstraintTarget> * /*targets*/)
+{
+}
+
+static bConstraintTypeInfo CTI_SPRING = {
+    /*type*/ CONSTRAINT_TYPE_SPRING,
+    /*size*/ sizeof(bSpringConstraint),
+    /*name*/ N_("Spring"),
+    /*struct_name*/ "bSpringConstraint",
+    /*free_data*/ spring_free,
+    /*id_looper*/ spring_id_looper,
+    /*copy_data*/ spring_copy,
+    /*new_data*/ spring_new_data,
+    /*get_constraint_targets*/ spring_get_tars,
+    /*flush_constraint_targets*/ nullptr,
+    /*get_target_matrix*/ nullptr,
+    /*evaluate_constraint*/ spring_evaluate,
+};
+
 /* -------- Action Constraint ----------- */
 
 static void actcon_new_data(void *cdata)
@@ -5873,6 +5938,7 @@ static void constraints_init_typeinfo()
   constraintsTypeInfo[29] = &CTI_TRANSFORM_CACHE; /* Transform Cache Constraint */
   constraintsTypeInfo[30] = &CTI_ARMATURE;        /* Armature Constraint */
   constraintsTypeInfo[31] = &CTI_ATTRIBUTE;       /* Attribute Transform Constraint */
+  constraintsTypeInfo[32] = &CTI_SPRING;          /* Spring Constraint (DaskToon) */
 }
 
 const bConstraintTypeInfo *BKE_constraint_typeinfo_from_type(int type)
@@ -6450,6 +6516,9 @@ static bConstraint *constraint_list_find_from_target(ListBaseT<bConstraint> *con
     if (con.type == CONSTRAINT_TYPE_ARMATURE) {
       targets = &(static_cast<bArmatureConstraint *>(con.data))->targets;
     }
+    else if (con.type == CONSTRAINT_TYPE_SPRING) {
+      targets = &(static_cast<bSpringConstraint *>(con.data))->targets;
+    }
 
     if (targets && BLI_findindex(targets, tgt) != -1) {
       return &con;
@@ -6706,8 +6775,8 @@ void BKE_constraint_targets_for_solving_get(Depsgraph *depsgraph,
      */
     cti->get_constraint_targets(con, targets);
 
-    /* The Armature constraint doesn't need ct->matrix for evaluate at all. */
-    if (ELEM(cti->type, CONSTRAINT_TYPE_ARMATURE)) {
+    /* The Armature and Spring constraints don't need ct->matrix for evaluate at all. */
+    if (ELEM(cti->type, CONSTRAINT_TYPE_ARMATURE, CONSTRAINT_TYPE_SPRING)) {
       return;
     }
 
@@ -6854,6 +6923,16 @@ void BKE_constraint_blend_write(BlendWriter *writer, ListBaseT<bConstraint> *con
 
           break;
         }
+        case CONSTRAINT_TYPE_SPRING: {
+          bSpringConstraint *data = static_cast<bSpringConstraint *>(con.data);
+
+          /* write colliders */
+          for (bConstraintTarget &ct : data->targets) {
+            writer->write_struct(&ct);
+          }
+
+          break;
+        }
         case CONSTRAINT_TYPE_SPLINEIK: {
           bSplineIKConstraint *data = static_cast<bSplineIKConstraint *>(con.data);
 
@@ -6908,6 +6987,13 @@ void BKE_constraint_blend_read_data(BlendDataReader *reader,
     switch (con.type) {
       case CONSTRAINT_TYPE_ARMATURE: {
         bArmatureConstraint *data = static_cast<bArmatureConstraint *>(con.data);
+
+        BLO_read_struct_list(reader, bConstraintTarget, &data->targets);
+
+        break;
+      }
+      case CONSTRAINT_TYPE_SPRING: {
+        bSpringConstraint *data = static_cast<bSpringConstraint *>(con.data);
 
         BLO_read_struct_list(reader, bConstraintTarget, &data->targets);
 
