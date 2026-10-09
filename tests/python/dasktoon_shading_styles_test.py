@@ -24,7 +24,7 @@ class StylesTest(unittest.TestCase):
         self.node.shading_mode = 'RAMP'
 
     def test_builtin_style_applies_exactly(self):
-        style = styles.BUILTIN_STYLES["Anime 3 tông"]
+        style = styles.BUILTIN_STYLES["Anime 3-Tone"]
         styles.apply_style(self.node.shading_ramp, style)
         ramp = self.node.shading_ramp
         self.assertEqual(ramp.interpolation, 'CONSTANT')
@@ -39,7 +39,7 @@ class StylesTest(unittest.TestCase):
         path = styles.save_user_style("Style của tôi", self.node.shading_ramp)
         self.assertTrue(os.path.isfile(path))
         self.assertIn("Style của tôi", styles.list_user_styles())
-        styles.apply_style(self.node.shading_ramp, styles.BUILTIN_STYLES["Anime 2 tông"])
+        styles.apply_style(self.node.shading_ramp, styles.BUILTIN_STYLES["Anime 2-Tone"])
         styles.apply_style(self.node.shading_ramp, styles.get_style("Style của tôi"))
         self.assertAlmostEqual(self.node.shading_ramp.elements[0].color[0], 0.10, places=4)
         self.assertTrue(styles.delete_user_style("Style của tôi"))

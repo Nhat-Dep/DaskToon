@@ -106,16 +106,14 @@ def eye():
     return mat
 
 
-def outlined(name, tint_mode='CUSTOM', bleed=0.0, wobble=0.0):
-    """Anime BSDF with the thickest outline, so its width can be measured in pixels."""
+def outlined(name, tint_mode='CUSTOM'):
+    """Anime BSDF with the thickest outline, so its width can be measured in pixels. Light Bleed and Hand Wobble are
+    the fixed ones (UI spec 4)."""
     mat, node = bsdf(name, use_outline=True, outline_tint_mode=tint_mode)
     node.inputs["Outline Width"].default_value = 0.05
     node.inputs["Outline Color"].default_value = (0.0, 0.0, 0.5, 1.0)
     node.inputs["Outline Lighting Mix"].default_value = 0.0
     outline.sync_material(mat)
-    dask = outline.outline_node(outline.outline_material_for(mat))
-    dask.inputs["Light Bleed"].default_value = bleed
-    dask.inputs["Hand Wobble"].default_value = wobble
     return mat
 
 
@@ -135,18 +133,18 @@ CASES = [
     ("bsdf_light_multiply", lambda: bsdf("bsdf_light_multiply", use_light=True, light_blend_mode='MULTIPLY')[0], True),
     ("bsdf_rim", lambda: bsdf("bsdf_rim", use_rim=True)[0], True),
     ("bsdf_grade", lambda: bsdf("bsdf_grade", use_grade=True)[0], True),
-    ("bsdf_ramp_3tone", lambda: with_style(bsdf("bsdf_ramp_3tone"), "Anime 3 tông"), True),
-    ("bsdf_ramp_soft", lambda: with_style(bsdf("bsdf_ramp_soft"), "Mềm như vẽ"), True),
+    ("bsdf_ramp_3tone", lambda: with_style(bsdf("bsdf_ramp_3tone"), "Anime 3-Tone"), True),
+    ("bsdf_ramp_soft", lambda: with_style(bsdf("bsdf_ramp_soft"), "Soft Painted"), True),
     ("bsdf_ao", lambda: bsdf("bsdf_ao", use_ao=True)[0], False),
     ("cel_simple", lambda: anime_cel("cel_simple"), True),
-    ("cel_ramp", lambda: anime_cel("cel_ramp", style="Anime 2 tông"), True),
+    ("cel_ramp", lambda: anime_cel("cel_ramp", style="Anime 2-Tone"), True),
     ("cel_spec", lambda: anime_cel("cel_spec", spec_size=0.08), False),
     ("hair", hair, True),
     ("eye", eye, True),
     ("daskcel_simple", lambda: dask_cel("daskcel_simple"), True),
     ("daskcel_manga", lambda: dask_cel("daskcel_manga", style="Manga"), True),
     ("outline_custom", lambda: outlined("outline_custom"), True),
-    ("outline_harmonic", lambda: outlined("outline_harmonic", 'HARMONIC_KYOTO', 0.7, 0.15), True),
+    ("outline_harmonic", lambda: outlined("outline_harmonic", 'HARMONIC_KYOTO'), True),
     (FACE_CASE, lambda: bsdf(FACE_CASE)[0], True),
 ]
 

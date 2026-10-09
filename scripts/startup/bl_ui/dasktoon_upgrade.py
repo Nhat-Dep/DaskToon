@@ -5,6 +5,7 @@
 """One-time upgrade of files saved before the shading/outline rewrite (spec section 6)."""
 
 import bpy
+from bpy.app.translations import pgettext_rpt as rpt_
 from bpy.app.handlers import persistent
 
 from . import dasktoon_outline as outline
@@ -37,7 +38,8 @@ def upgrade_nodes(lines):
                 node.light_blend_mode = 'MULTIPLY'
                 count += 1
     if count:
-        lines.append("Anime Cel: %d node chuyển sang Ambient HUE_SAT / Light MULTIPLY (gần cách cũ nhất)" % count)
+        lines.append(rpt_("Anime Cel: %d nodes switched to Ambient HUE_SAT / Light MULTIPLY (closest to the old look)")
+                     % count)
 
 
 def _is_legacy_outline_material(mat):
@@ -76,7 +78,7 @@ def _enable_outline(mat, width):
 
 
 def upgrade_legacy_outline(lines):
-    from .dasktoon_anime_nodes import _sync_outline_socket
+    from .dasktoon_outline import _sync_outline_socket
     copied = {}
     removed_slots = 0
     for obj in list(bpy.data.objects):
@@ -87,7 +89,7 @@ def upgrade_legacy_outline(lines):
         if not mods and not slots:
             continue
         if obj.library is not None or obj.data.library is not None:
-            lines.append("Bỏ qua %s (dữ liệu link từ thư viện)" % obj.name)
+            lines.append(rpt_("Skipped %s (data linked from a library)") % obj.name)
             continue
         width = mods[0].thickness if mods else None
         legacy_mat = obj.data.materials[slots[0]] if slots else bpy.data.materials.get(obj.name + "_DaskOutline")
@@ -105,7 +107,7 @@ def upgrade_legacy_outline(lines):
                 continue
             if mat in copied:
                 if copied[mat] != obj.name:
-                    lines.append("Xung đột: %s dùng chung material %s, giữ thiết lập của %s"
+                    lines.append(rpt_("Conflict: %s shares material %s; kept the settings of %s")
                                  % (obj.name, mat.name, copied[mat]))
                 continue
             companion = outline.outline_material_for(mat)
@@ -115,26 +117,26 @@ def upgrade_legacy_outline(lines):
                 dask.inputs[name].default_value = value
             _sync_outline_socket(settings["color_socket"], companion.node_tree, dask.inputs["Outline Color"], {})
             copied[mat] = obj.name
-        lines.append("Đã nâng cấp outline của %s" % obj.name)
+        lines.append(rpt_("Upgraded the outline of %s") % obj.name)
     orphans = [m for m in bpy.data.materials if _is_legacy_outline_material(m) and m.users == 0]
     for mat in orphans:
         bpy.data.materials.remove(mat)
     if removed_slots or orphans:
-        lines.append("Đã dọn %d slot thừa và %d material _DaskOutline" % (removed_slots, len(orphans)))
+        lines.append(rpt_("Removed %d extra slots and %d _DaskOutline materials") % (removed_slots, len(orphans)))
 
 
 def _report(lines):
     text = bpy.data.texts.get(REPORT_TEXT) or bpy.data.texts.new(REPORT_TEXT)
     text.clear()
     text.write("\n".join(lines) + "\n")
-    summary = "DaskToon đã nâng cấp file: %s" % (lines[0] if lines else "không có gì")
+    summary = rpt_("DaskToon upgraded the file: %s") % (lines[0] if lines else rpt_("nothing"))
     print(summary)
     if bpy.app.background:
         return
 
     def draw(self, _context):
         for line in lines[:8]:
-            self.layout.label(text=line)
+            self.layout.label(text=line, translate=False)
 
     def show():
         wm = bpy.context.window_manager

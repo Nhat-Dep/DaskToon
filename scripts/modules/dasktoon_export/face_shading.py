@@ -9,6 +9,7 @@ was (custom_normal and sharp_edge, which normals_split_custom_set may change).""
 from contextlib import contextmanager
 
 import bpy
+from bpy.app.translations import pgettext_rpt as rpt_
 import numpy as np
 
 # Attribute data type -> (foreach key, values per element, numpy type)
@@ -117,9 +118,9 @@ def bake_rest_normals(context, objects):
     targets, warnings = [], []
     for obj in face_shaded(objects):
         if obj.data.library is not None:
-            warnings.append("%s: mesh link từ thư viện, không ghi được bóng mặt" % obj.name)
+            warnings.append(rpt_("%s: mesh linked from a library, face shading not written") % obj.name)
         elif not _supported(obj.data):
-            warnings.append("%s: custom normal kiểu lạ, không ghi được bóng mặt" % obj.name)
+            warnings.append(rpt_("%s: unusual custom normals, face shading not written") % obj.name)
         else:
             targets.append(obj)
     if not targets:
@@ -135,8 +136,9 @@ def bake_rest_normals(context, objects):
                 mesh.corner_normals.foreach_get("vector", values)
                 normals[obj] = values.reshape(-1, 3)
             else:
-                warnings.append("%s: modifier %s đổi số đỉnh trước Face Shading; hãy Apply trước khi export, bóng mặt "
-                                "chưa được ghi" % (obj.name, ", ".join(_before_face_shading(obj)) or "?"))
+                warnings.append(rpt_("%s: modifier %s changes the vertex count before Face Shading; apply it before "
+                                     "exporting. Face shading not written")
+                                % (obj.name, ", ".join(_before_face_shading(obj)) or "?"))
             evaluated.to_mesh_clear()
     snapshots, names = [], []
     try:

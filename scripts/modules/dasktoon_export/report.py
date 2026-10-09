@@ -8,15 +8,16 @@ import math
 from dataclasses import dataclass, field
 
 import bpy
+from bpy.app.translations import pgettext_iface as iface_, pgettext_n as n_, pgettext_rpt as rpt_
 
 from . import unity_yaml
 
 REPORT_TEXT = "DaskToon Engine Export Report"
 POPUP_LINES = 14
 SHADER_STATE = {
-    'INSTALLED': "Shader: đã cài hoặc cập nhật",
-    'UP_TO_DATE': "Shader: project đã có bản đủ mới, không ghi lại",
-    'SKIPPED': "Shader: không xuất (đã tắt xuất material)",
+    'INSTALLED': n_("Shaders: installed or updated"),
+    'UP_TO_DATE': n_("Shaders: the project already has a recent enough version, not written again"),
+    'SKIPPED': n_("Shaders: not exported (material export is off)"),
 }
 
 
@@ -38,28 +39,30 @@ class Report:
     ambient_hint: str = ""
 
     def summary(self):
-        return "Engine Export: %d material, %s, %d cảnh báo" % (
-            len(self.materials), "có FBX" if self.model else "không có model", len(self.warnings))
+        return rpt_("Engine Export: %d materials, %s, %d warnings") % (
+            len(self.materials), rpt_("with FBX") if self.model else rpt_("no model"), len(self.warnings))
 
     def lines(self):
-        where = "ghi thẳng vào project Unity" if self.mode == 'PROJECT' else "thư mục để kéo vào Unity"
-        out = ["Đích: %s (%s)" % (self.root, where), SHADER_STATE[self.shaders]]
+        where = rpt_("written straight into the Unity project") if self.mode == 'PROJECT' else \
+            rpt_("a folder to drag into Unity")
+        out = [rpt_("Destination: %s (%s)") % (self.root, where), rpt_(SHADER_STATE[self.shaders])]
         if self.model:
-            out.append("Model: " + self.model)
-        out.append("Material đã xuất (%d): %s" % (len(self.materials), ", ".join(self.materials) or "không có"))
-        out += ["Bỏ qua material %s: %s (Unity giữ material mặc định của FBX)" % item for item in self.skipped]
+            out.append(rpt_("Model: %s") % self.model)
+        out.append(rpt_("Exported materials (%d): %s") % (len(self.materials), ", ".join(self.materials) or rpt_("none")))
+        out += [rpt_("Skipped material %s: %s (Unity keeps the default material of the FBX)") % item
+                for item in self.skipped]
         if self.baked:
-            out.append("Đã bake: " + ", ".join(self.baked))
+            out.append(rpt_("Baked: %s") % ", ".join(self.baked))
         if self.outline_meshes:
-            out.append("Đã ghi DT_OutlineN/W cho: " + ", ".join(self.outline_meshes))
+            out.append(rpt_("Wrote DT_OutlineN/W for: %s") % ", ".join(self.outline_meshes))
         if self.face_meshes:
-            out.append("Bóng mặt: đã ghi normal khối trứng (tư thế nghỉ) cho: %s; blend shape trong FBX không đổi normal"
-                       % ", ".join(self.face_meshes))
+            out.append(rpt_("Face shading: wrote the egg proxy normals (rest pose) for: %s; blend shapes in the FBX do "
+                            "not change normals") % ", ".join(self.face_meshes))
         out += self.modifier_notes
-        out += ["Cảnh báo: " + w for w in self.warnings]
+        out += [rpt_("Warning: %s") % w for w in self.warnings]
         out += [hint for hint in (self.light_hint, self.ambient_hint) if hint]
-        out.append("Project Unity phải dùng Linear color space (mặc định của URP).")
-        out.append("Export lại sẽ ghi đè mọi chỉnh sửa tay trên các asset này trong Unity.")
+        out.append(rpt_("The Unity project must use the Linear color space (the URP default)."))
+        out.append(rpt_("Exporting again overwrites any manual edits to these assets in Unity."))
         return out
 
 
@@ -68,8 +71,8 @@ def light_hint(scene):
     for obj in scene.objects:
         if obj.type == 'LIGHT' and obj.data.type == 'SUN':
             strength = obj.data.energy
-            return "Đèn gợi ý: Sun %s → Directional %.3f" % (round(strength, 3), strength / math.pi)
-    return "Đèn gợi ý: scene không có Sun; Directional của Unity = Sun strength ÷ π"
+            return rpt_("Suggested light: Sun %s → Directional %.3f") % (round(strength, 3), strength / math.pi)
+    return rpt_("Suggested light: the scene has no Sun; Unity Directional = Sun strength ÷ π")
 
 
 def ambient_hint(scene):
@@ -79,24 +82,28 @@ def ambient_hint(scene):
     if world is not None and world.node_tree is not None:
         background = next((n for n in world.node_tree.nodes if n.bl_idname == 'ShaderNodeBackground'), None)
     if background is None or background.inputs["Color"].is_linked or background.inputs["Strength"].is_linked:
-        return "Ambient: World không phải một màu đơn; tự đặt Environment Lighting trong Unity"
+        return rpt_("Ambient: the World is not a single color; set Environment Lighting in Unity yourself")
     strength = background.inputs["Strength"].default_value
     linear = [c * strength for c in background.inputs["Color"].default_value[:3]]
     hexa = "".join("%02X" % min(255, int(round(unity_yaml.linear_to_srgb(c) * 255))) for c in linear)
-    return "Ambient gợi ý (Environment Lighting › Source: Color): #%s (linear %.3f, %.3f, %.3f)" % (hexa, *linear)
+    return rpt_("Suggested ambient (Environment Lighting › Source: Color): #%s (linear %.3f, %.3f, %.3f)") % (
+        hexa, *linear)
 
 
 def readme_text(report):
     head = [
-        "DaskToon Engine Export: %s" % report.name,
+        rpt_("DaskToon Engine Export: %s") % report.name,
         "",
-        "Cách dùng (Unity 6, URP 17.5):",
-        "1. Kéo cả thư mục %s_Unity vào cửa sổ Project của Unity." % report.name,
-        "2. Project phải dùng Linear color space (Project Settings › Player › Other Settings › Color Space).",
-        "3. Đặt Directional Light và Ambient theo gợi ý bên dưới.",
+        rpt_("How to use (Unity 6, URP 17.5):"),
+        rpt_("1. Drag the whole %s_Unity folder into the Project window of Unity.") % report.name,
+        rpt_("2. The project must use the Linear color space (Project Settings › Player › Other Settings › "
+             "Color Space)."),
+        rpt_("3. Set the Directional Light and the Ambient as suggested below."),
         "",
-        "Lưu ý: kéo thư mục của nhân vật thứ hai vào cùng project, Unity sẽ báo trùng GUID của thư mục Shaders.",
-        "Material vẫn chạy đúng. Để tránh, hãy chọn thẳng thư mục project Unity khi export, hoặc dùng Dự án DaskToon.",
+        rpt_("Note: drag the folder of a second character into the same project and Unity reports a duplicate GUID "
+             "for the Shaders folder."),
+        rpt_("The materials still work. To avoid it, choose the Unity project folder itself when exporting, or use "
+             "a DaskToon Project."),
         "",
     ]
     return "\n".join(head + report.lines()) + "\n"
@@ -116,8 +123,8 @@ def show_popup(report):
 
     def draw(self, _context):
         for line in lines[:POPUP_LINES]:
-            self.layout.label(text=line)
+            self.layout.label(text=line, translate=False)
         if len(lines) > POPUP_LINES:
-            self.layout.label(text="… xem đầy đủ trong Text '%s'" % REPORT_TEXT)
+            self.layout.label(text=iface_("… the full report is in the Text %s") % REPORT_TEXT, translate=False)
 
-    bpy.context.window_manager.popup_menu(draw, title="DaskToon Engine Export", icon='INFO')
+    bpy.context.window_manager.popup_menu(draw, title=iface_("DaskToon Engine Export"), icon='INFO')

@@ -1,21 +1,14 @@
 # SPDX-FileCopyrightText: 2026 DaskToon Authors
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-"""
-DaskToon 1-Click Anime FX Suite:
-  - 💥 Anime Action & Impact FX (Shockwave Ring, Hit Spark Burst, Debris Blast, Slash Arc)
-  - 🫧 Floating Anime Bubbles (Up / Down / Slow Chill)
-  - 🌸 Sakura Petals Drift (Cánh hoa anh đào rơi)
-  - ✨ Magic Sparkles & Stardust (Bụi ma thuật phát sáng)
-  - 🍃 Wind Gust Leaves (Lá cây bay theo gió)
-  - 🌧️ Anime Cel Rain (Mưa hoạt hình)
-  - 🔥 Magic Fire Embers (Tàn lửa ma thuật)
-"""
+"""Anime effects, added from Add › Anime Effect: impact effects (shockwave ring, hit spark, slash arc, debris blast)
+and atmosphere particles (bubbles, sakura petals, magic sparkles, falling leaves, cel rain, fire embers)."""
 
 import bpy
 import math
-from bpy.types import Operator, Panel
-from bpy.props import EnumProperty, FloatProperty, IntProperty, BoolProperty, FloatVectorProperty
+from bpy.app.translations import pgettext_iface as iface_, pgettext_n as n_, pgettext_rpt as rpt_
+from bpy.types import Menu, Operator
+from bpy.props import EnumProperty, FloatProperty, IntProperty
 
 
 def get_or_create_collection(col_name="[FX] DaskToon_Anime_Effects"):
@@ -194,70 +187,74 @@ def create_star_sparkle_mesh(col):
 # =============================================================================
 
 class DASKTOON_OT_add_anime_fx(Operator):
-    """Add 1-Click Anime Atmospheric FX & Action Impact Effects"""
+    """Add an anime effect: an impact effect or atmosphere particles"""
     bl_idname = "dasktoon.add_anime_fx"
     bl_label = "Add Anime Effect"
     bl_options = {'REGISTER', 'UNDO'}
 
     fx_type: EnumProperty(
-        name="Effect Type",
-        description="Choose the Anime effect to generate",
+        name="Effect",
+        description="Effect to add",
         items=[
             # Impact FX
-            ('IMPACT_SHOCKWAVE', "💥 Impact Shockwave Ring", "Expanding 3D Anime shockwave ring with sharp energy teeth"),
-            ('IMPACT_HIT_SPARK', "⚡ Impact Hit Spark Burst", "8-point stylized Anime hit spark explosion with sharp rays"),
-            ('IMPACT_SLASH_ARC', "🗡️ Impact Slash Arc", "Curved glowing Anime energy crescent slash blade"),
-            ('IMPACT_DEBRIS', "🪨 Ground Debris Blast", "Stylized rock fragments blasting outward from impact point"),
+            ('IMPACT_SHOCKWAVE', "Shockwave Ring", "An expanding ring with sharp energy teeth"),
+            ('IMPACT_HIT_SPARK', "Hit Spark", "An 8-point spark burst with sharp rays"),
+            ('IMPACT_SLASH_ARC', "Slash Arc", "A curved glowing crescent, like a sword slash"),
+            ('IMPACT_DEBRIS', "Debris Blast", "Rock fragments blasting outward from the point of impact"),
             # Atmospheric FX
-            ('BUBBLES_UP', "🫧 Floating Bubbles (Up)", "Anime bubbles gently floating upwards with rainbow iridescence"),
-            ('BUBBLES_DOWN', "🫧 Sinking Bubbles (Down / Reverse)", "Anime bubbles floating downwards slowly"),
-            ('SAKURA', "🌸 Sakura Petals Fall", "Anime cherry blossom petals drifting and tumbling in the wind"),
-            ('SPARKLES', "✨ Magic Sparkles & Stars", "Glowing 4-point anime stars and floating magic stardust"),
-            ('LEAVES', "🍃 Wind Gust Leaves", "Anime autumn momiji / green leaves swirling in a breeze"),
-            ('RAIN', "🌧️ Anime Cel Rain", "Stylized straight rain streaks falling from above"),
-            ('EMBERS', "🔥 Fire Embers & Sparks", "Glowing anime flame sparks rising into the air"),
+            ('BUBBLES_UP', "Bubbles Rising", "Bubbles floating gently upward, with a rainbow sheen"),
+            ('BUBBLES_DOWN', "Bubbles Sinking", "Bubbles drifting slowly downward"),
+            ('SAKURA', "Sakura Petals", "Cherry blossom petals drifting and tumbling in the wind"),
+            ('SPARKLES', "Magic Sparkles", "Glowing 4-point stars and floating stardust"),
+            ('LEAVES', "Falling Leaves", "Leaves swirling in a breeze"),
+            ('RAIN', "Cel Rain", "Straight rain streaks falling from above"),
+            ('EMBERS', "Fire Embers", "Glowing sparks rising into the air"),
         ],
         default='IMPACT_SHOCKWAVE'
     )
 
     particle_count: IntProperty(
         name="Count",
-        description="Number of particles / debris count",
+        description="Number of particles or debris pieces",
         default=120,
         min=5,
         max=5000
     )
 
     flow_speed: FloatProperty(
-        name="Speed / Power",
-        description="Speed of floating movement or shockwave burst expansion",
+        name="Speed",
+        description="How fast the particles drift or the impact expands",
         default=1.0,
         min=0.01,
         max=20.0
     )
 
     wobble_strength: FloatProperty(
-        name="Wobble / Turbulence",
-        description="Strength of chaotic gentle swaying in wind/water",
+        name="Turbulence",
+        description="How strongly the particles sway in the wind or water",
         default=0.8,
         min=0.0,
         max=5.0
     )
 
     size_scale: FloatProperty(
-        name="Size Scale",
+        name="Size",
         description="Scale of the effect",
         default=1.0,
         min=0.05,
         max=10.0
     )
 
+    def _added(self):
+        self.report({'INFO'}, rpt_("Added %s") % iface_(effect_names()[self.fx_type]))
+        return {'FINISHED'}
+
     def execute(self, context):
         col = get_or_create_collection()
         cur_frame = context.scene.frame_current
 
         # ---------------------------------------------------------------------
-        # 1. 💥 IMPACT SHOCKWAVE RING
+        # 1. IMPACT SHOCKWAVE RING
         # ---------------------------------------------------------------------
         if self.fx_type == 'IMPACT_SHOCKWAVE':
             ring_name = "FX_Anime_Shockwave_Ring"
@@ -286,11 +283,10 @@ class DASKTOON_OT_add_anime_fx(Operator):
             ring.scale = (4.0 * self.size_scale, 4.0 * self.size_scale, 0.8 * self.size_scale)
             ring.keyframe_insert(data_path="scale", frame=cur_frame + int(8 / max(0.1, self.flow_speed)))
 
-            self.report({'INFO'}, "💥 Created Anime Impact Shockwave Ring with Snappy Timing!")
-            return {'FINISHED'}
+            return self._added()
 
         # ---------------------------------------------------------------------
-        # 2. ⚡ IMPACT HIT SPARK BURST
+        # 2. IMPACT HIT SPARK BURST
         # ---------------------------------------------------------------------
         elif self.fx_type == 'IMPACT_HIT_SPARK':
             spark_name = "FX_Anime_Hit_Spark_Burst"
@@ -330,11 +326,10 @@ class DASKTOON_OT_add_anime_fx(Operator):
             spark_obj.scale = (0.01, 0.01, 0.01)
             spark_obj.keyframe_insert(data_path="scale", frame=cur_frame + 6)
 
-            self.report({'INFO'}, "⚡ Created Anime Hit Spark Burst!")
-            return {'FINISHED'}
+            return self._added()
 
         # ---------------------------------------------------------------------
-        # 3. 🗡️ IMPACT SLASH ARC
+        # 3. IMPACT SLASH ARC
         # ---------------------------------------------------------------------
         elif self.fx_type == 'IMPACT_SLASH_ARC':
             arc_name = "FX_Anime_Slash_Arc"
@@ -389,11 +384,10 @@ class DASKTOON_OT_add_anime_fx(Operator):
             arc_obj.scale = (0.01, 0.01, 0.01)
             arc_obj.keyframe_insert(data_path="scale", frame=cur_frame + 6)
 
-            self.report({'INFO'}, "🗡️ Created Anime Slash Arc FX!")
-            return {'FINISHED'}
+            return self._added()
 
         # ---------------------------------------------------------------------
-        # 4. 🪨 IMPACT GROUND DEBRIS / ATMOSPHERIC PARTICLE SYSTEMS
+        # 4. IMPACT GROUND DEBRIS / ATMOSPHERIC PARTICLE SYSTEMS
         # ---------------------------------------------------------------------
         emitter_name = f"FX_{self.fx_type}_Emitter"
         is_falling = self.fx_type in {'BUBBLES_DOWN', 'SAKURA', 'LEAVES', 'RAIN'}
@@ -407,7 +401,7 @@ class DASKTOON_OT_add_anime_fx(Operator):
         col.objects.link(emitter)
         emitter.hide_render = True
 
-        ps_mod = emitter.modifiers.new(name=f"PS_{self.fx_type}", type='PARTICLE_SYSTEM')
+        ps_mod = emitter.modifiers.new("PS_" + self.fx_type, 'PARTICLE_SYSTEM')
         ps = ps_mod.particle_system
         pset = ps.settings
 
@@ -526,82 +520,56 @@ class DASKTOON_OT_add_anime_fx(Operator):
                 for c in turb_obj.users_collection: c.objects.unlink(turb_obj)
                 col.objects.link(turb_obj)
 
-        self.report({'INFO'}, f"✨ Created 1-Click Anime Effect: {self.fx_type}!")
-        return {'FINISHED'}
+        return self._added()
 
 
 # =============================================================================
-# UI Panel in DaskToon Sidebar
+# Add › Anime Effect
 # =============================================================================
 
-class VIEW3D_PT_dasktoon_anime_fx(Panel):
-    bl_space_type = 'VIEW_3D'
-    bl_region_type = 'UI'
-    bl_category = "DaskToon"
-    bl_label = "Anime Visual Effects (Impact & Atmosphere)"
-    bl_options = {'DEFAULT_CLOSED'}
-
-    def draw(self, context):
-        layout = self.layout
-
-        # 1. Action & Impact FX Box
-        box_impact = layout.box()
-        box_impact.label(text="💥 Anime Action & Impact FX:", icon='PHYSICS')
-        col_imp = box_impact.column(align=True)
-        
-        r_imp1 = col_imp.row(align=True)
-        op_shock = r_imp1.operator("dasktoon.add_anime_fx", text="💥 Shockwave Ring", icon='SPHERE')
-        op_shock.fx_type = 'IMPACT_SHOCKWAVE'
-        op_spark = r_imp1.operator("dasktoon.add_anime_fx", text="⚡ Hit Spark", icon='LIGHT_SUN')
-        op_spark.fx_type = 'IMPACT_HIT_SPARK'
-
-        r_imp2 = col_imp.row(align=True)
-        op_slash = r_imp2.operator("dasktoon.add_anime_fx", text="🗡️ Slash Arc", icon='CURVE_DATA')
-        op_slash.fx_type = 'IMPACT_SLASH_ARC'
-        op_debris = r_imp2.operator("dasktoon.add_anime_fx", text="🪨 Debris Blast", icon='MOD_EXPLODE')
-        op_debris.fx_type = 'IMPACT_DEBRIS'
-
-        layout.separator()
-
-        # 2. Atmospheric & Particle FX Box
-        box_atmo = layout.box()
-        box_atmo.label(text="🫧 Atmospheric & Weather Particles:", icon='PARTICLES')
-        col_atmo = box_atmo.column(align=True)
-
-        r1 = col_atmo.row(align=True)
-        op = r1.operator("dasktoon.add_anime_fx", text="🫧 Bubbles (Up)", icon='META_BALL')
-        op.fx_type = 'BUBBLES_UP'
-        op_down = r1.operator("dasktoon.add_anime_fx", text="🫧 Sinking (Down)", icon='MOD_FLUID')
-        op_down.fx_type = 'BUBBLES_DOWN'
-
-        r2 = col_atmo.row(align=True)
-        op_sakura = r2.operator("dasktoon.add_anime_fx", text="🌸 Sakura Fall", icon='COMMUNITY')
-        op_sakura.fx_type = 'SAKURA'
-        op_leaves = r2.operator("dasktoon.add_anime_fx", text="🍃 Wind Leaves", icon='FORCE_WIND')
-        op_leaves.fx_type = 'LEAVES'
-
-        r3 = col_atmo.row(align=True)
-        op_sparkle = r3.operator("dasktoon.add_anime_fx", text="✨ Magic Sparkles", icon='LIGHT_SUN')
-        op_sparkle.fx_type = 'SPARKLES'
-        op_embers = r3.operator("dasktoon.add_anime_fx", text="🔥 Fire Sparks", icon='FIRE')
-        op_embers.fx_type = 'EMBERS'
-
-        col_atmo.separator()
-        op_rain = col_atmo.operator("dasktoon.add_anime_fx", text="🌧️ Anime Cel Rain", icon='MOD_WAVE')
-        op_rain.fx_type = 'RAIN'
+def effect_names():
+    """The English name of every effect, by fx_type."""
+    rna = bpy.ops.dasktoon.add_anime_fx.get_rna_type()
+    return {item.identifier: item.name for item in rna.properties["fx_type"].enum_items}
 
 
-classes = (
-    DASKTOON_OT_add_anime_fx,
-    VIEW3D_PT_dasktoon_anime_fx,
+EFFECTS = (
+    (n_("Impact"), (('IMPACT_SHOCKWAVE', 'SPHERE'), ('IMPACT_HIT_SPARK', 'LIGHT_SUN'),
+                    ('IMPACT_SLASH_ARC', 'CURVE_DATA'), ('IMPACT_DEBRIS', 'MOD_EXPLODE'))),
+    (n_("Atmosphere"), (('BUBBLES_UP', 'META_BALL'), ('BUBBLES_DOWN', 'MOD_FLUID'), ('SAKURA', 'COMMUNITY'),
+                        ('LEAVES', 'FORCE_WIND'), ('SPARKLES', 'LIGHT_SUN'), ('EMBERS', 'LIGHT_POINT'),
+                        ('RAIN', 'MOD_WAVE'))),
 )
 
 
+class VIEW3D_MT_dasktoon_anime_effect(Menu):
+    bl_idname = "VIEW3D_MT_dasktoon_anime_effect"
+    bl_label = "Anime Effect"
+
+    def draw(self, _context):
+        layout = self.layout
+        names = effect_names()
+        for index, (group, effects) in enumerate(EFFECTS):
+            if index:
+                layout.separator()
+            layout.label(text=group)
+            for fx_type, icon in effects:
+                layout.operator(DASKTOON_OT_add_anime_fx.bl_idname, text=names[fx_type], icon=icon).fx_type = fx_type
+
+
+def menu_func(self, _context):
+    self.layout.menu(VIEW3D_MT_dasktoon_anime_effect.bl_idname, icon='PARTICLES')
+
+
+classes = (DASKTOON_OT_add_anime_fx, VIEW3D_MT_dasktoon_anime_effect)
+
+
+# bl_ui registers `classes`; register() only adds the submenu to Add (space_view3d registers after this module).
 def register():
-    for cls in classes:
-        bpy.utils.register_class(cls)
+    from .space_view3d import VIEW3D_MT_add
+    VIEW3D_MT_add.append(menu_func)
 
 
 def unregister():
-    for cls in reversed(classes):
-        bpy.utils.unregister_class(cls)
+    from .space_view3d import VIEW3D_MT_add
+    VIEW3D_MT_add.remove(menu_func)

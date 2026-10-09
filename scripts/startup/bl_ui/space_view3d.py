@@ -5094,10 +5094,6 @@ class VIEW3D_MT_edit_mesh_normals(Menu):
 
         layout.separator()
 
-        layout.operator("dasktoon.fix_face_normals", text="DaskToon: Spherize Face Normals", icon='SPHERE')
-
-        layout.separator()
-
         layout.menu("VIEW3D_MT_edit_mesh_normals_select_strength")
         layout.menu("VIEW3D_MT_edit_mesh_normals_set_strength")
         layout.template_node_operator_asset_menu_items(catalog_path="Mesh/Normals")

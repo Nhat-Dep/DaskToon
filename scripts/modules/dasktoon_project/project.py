@@ -8,6 +8,8 @@ import json
 import os
 from dataclasses import dataclass, field
 
+from bpy.app.translations import pgettext_rpt as rpt_
+
 PROJECT_FILE = "dasktoon_project.json"
 PROJECT_VERSION = 1
 MAX_RECENT = 8
@@ -43,7 +45,7 @@ def load(path):
     with open(path, encoding="utf-8") as f:
         data = json.load(f)
     if data.get("version") != PROJECT_VERSION:
-        raise ValueError("%s: phiên bản dự án %r không được hỗ trợ" % (path, data.get("version")))
+        raise ValueError(rpt_("%s: project version %r is not supported") % (path, data.get("version")))
     return Project(os.path.dirname(os.path.abspath(path)), data.get("name", ""), list(data.get("engines", [])))
 
 
@@ -93,20 +95,20 @@ def create_project(name, folder, engine, engine_path, save_current=False):
     import bpy
     from dasktoon_export import safe_name, targets
     if engine not in targets.SUPPORTED_ENGINES:
-        raise ValueError("Engine %s chưa được hỗ trợ" % engine)
+        raise ValueError(rpt_("Engine %s is not supported yet") % engine)
     engine_path = os.path.abspath(engine_path)
     if not targets.is_unity_project(engine_path):
-        raise ValueError("%s không phải project Unity (cần có Assets/ và ProjectSettings/)" % engine_path)
+        raise ValueError(rpt_("%s is not a Unity project (it needs Assets/ and ProjectSettings/)") % engine_path)
     folder = os.path.abspath(folder)
     if os.path.exists(os.path.join(folder, PROJECT_FILE)):
-        raise ValueError("%s đã là một dự án DaskToon" % folder)
+        raise ValueError(rpt_("%s is already a DaskToon project") % folder)
     save_path = ""
     if save_current:
         save_path = os.path.join(folder, os.path.basename(bpy.data.filepath) or safe_name(name) + ".blend")
         current = os.path.normcase(os.path.abspath(bpy.data.filepath)) if bpy.data.filepath else ""
         if os.path.exists(save_path) and os.path.normcase(save_path) != current:
-            raise ValueError("%s đã có file %s khác; đổi tên file hiện tại hoặc bỏ chọn \"Lưu file hiện tại vào dự án\""
-                             % (folder, os.path.basename(save_path)))
+            raise ValueError(rpt_("%s already has another file named %s: rename the current file or turn off "
+                                  "Save Current File in Project") % (folder, os.path.basename(save_path)))
     project = Project(folder, name, [{"engine": engine, "path": engine_path.replace("\\", "/")}])
     save(project)
     install_project_shaders(project)

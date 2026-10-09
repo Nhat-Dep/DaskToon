@@ -318,13 +318,24 @@ class FaceShadingUITest(unittest.TestCase):
     def test_classes_are_registered_and_the_old_panel_is_gone(self):
         for name in ("DASKTOON_OT_face_shading_setup", "DASKTOON_OT_face_shading_refit",
                      "DASKTOON_OT_face_shading_remove", "DASKTOON_OT_face_shading_select_proxy",
-                     "DASKTOON_PT_face_shading", "DASKTOON_PT_face_shading_advanced",
-                     "DASKTOON_OT_fix_face_normals", "DASKTOON_OT_reset_face_normals"):
+                     "DATA_PT_dasktoon_face_shading"):
             self.assertTrue(hasattr(bpy.types, name), name)
         self.assertFalse(hasattr(bpy.types, "DASKTOON_PT_face_normals"))
-        panel = bpy.types.DASKTOON_PT_face_shading
-        self.assertEqual((panel.bl_space_type, panel.bl_region_type, panel.bl_category), ('VIEW_3D', 'UI', "DaskToon"))
-        self.assertEqual(bpy.types.DASKTOON_PT_face_shading_advanced.bl_parent_id, "DASKTOON_PT_face_shading")
+        self.assertFalse(hasattr(bpy.types, "DASKTOON_PT_face_shading"))
+        panel = bpy.types.DATA_PT_dasktoon_face_shading
+        self.assertEqual((panel.bl_space_type, panel.bl_region_type, panel.bl_context), ('PROPERTIES', 'WINDOW', "data"))
+
+    def test_panel_shows_only_for_meshes_and_face_proxies(self):
+        head, _rig = tu.add_test_head()
+        proxy = fs.setup(head)
+        panel = bpy.types.DATA_PT_dasktoon_face_shading
+        self.assertTrue(panel.poll(bpy.context))
+        bpy.context.view_layer.objects.active = proxy
+        self.assertTrue(panel.poll(bpy.context))
+        other = bpy.data.objects.new("Plain", None)
+        bpy.context.scene.collection.objects.link(other)
+        bpy.context.view_layer.objects.active = other
+        self.assertFalse(panel.poll(bpy.context))
 
     def test_setup_operator_on_the_active_mesh(self):
         head, _rig = tu.add_test_head()
@@ -360,31 +371,24 @@ class FaceShadingUITest(unittest.TestCase):
         self.assertIsNone(fsn.get_modifier(head))
 
     def test_panel_offers_setup_then_the_sliders(self):
-        log = draw(bpy.types.DASKTOON_PT_face_shading)
-        self.assertEqual(log[0][0], "label")
         head, _rig = tu.add_test_head()
-        self.assertIn(("operator", "dasktoon.face_shading_setup"), draw(bpy.types.DASKTOON_PT_face_shading))
+        self.assertIn(("operator", "dasktoon.face_shading_setup"), draw(bpy.types.DATA_PT_dasktoon_face_shading))
         fs.setup(head)
-        log = draw(bpy.types.DASKTOON_PT_face_shading)
+        log = draw(bpy.types.DATA_PT_dasktoon_face_shading)
         self.assertEqual([text for kind, text in log if kind == "prop"],
-                         ["Độ phủ", "Vùng chuyển", "Giữ bóng mũi", "Giữ bóng cằm"])
+                         ["Coverage", "Falloff", "Keep Nose Shadow", "Keep Chin Shadow"])
         for idname in ("dasktoon.face_shading_select_proxy", "dasktoon.face_shading_refit",
                        "dasktoon.face_shading_remove"):
             self.assertIn(("operator", idname), log)
-        self.assertNotIn(("operator", "dasktoon.reset_face_normals"), log)
+        self.assertNotIn(("operator", "mesh.customdata_custom_splitnormals_clear"), log)
         bpy.context.view_layer.objects.active = fs.proxy_of(head)
-        self.assertIn(("label", "Khối trứng của Head"), draw(bpy.types.DASKTOON_PT_face_shading))
+        self.assertIn(("label", "Proxy of Head"), draw(bpy.types.DATA_PT_dasktoon_face_shading))
 
     def test_panel_suggests_clearing_old_custom_normals(self):
         head, _rig = tu.add_test_head()
         head.data.normals_split_custom_set_from_vertices([v.normal for v in head.data.vertices])
-        self.assertIn(("operator", "dasktoon.reset_face_normals"), draw(bpy.types.DASKTOON_PT_face_shading))
-
-    def test_advanced_panel_holds_the_old_tools(self):
-        log = draw(bpy.types.DASKTOON_PT_face_shading_advanced)
-        for idname in ("dasktoon.fix_face_normals", "dasktoon.reset_face_normals",
-                       "dasktoon.toggle_face_normals_display"):
-            self.assertIn(("operator", idname), log)
+        self.assertIn(("operator", "mesh.customdata_custom_splitnormals_clear"),
+                      draw(bpy.types.DATA_PT_dasktoon_face_shading))
 
 
 class OutlineCompatibilityTest(unittest.TestCase):

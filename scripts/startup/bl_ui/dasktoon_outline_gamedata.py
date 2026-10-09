@@ -6,6 +6,7 @@
 and the painted width mask in DT_OutlineW (spec section 5)."""
 
 import bpy
+from bpy.app.translations import pgettext_rpt as rpt_
 import numpy as np
 from bpy.types import Operator
 
@@ -91,9 +92,9 @@ def _ensure_layer(mesh, name):
 def write_outline_uvs(obj):
     mesh = obj.data
     if not mesh.uv_layers:
-        return False, "%s: cần ít nhất một UV map" % obj.name
+        return False, rpt_("%s: needs at least one UV map") % obj.name
     if any(p.loop_total > 4 for p in mesh.polygons):
-        return False, "%s: có mặt nhiều hơn 4 cạnh (ngon); hãy Triangulate hoặc chia lại trước" % obj.name
+        return False, rpt_("%s: has faces with more than 4 sides (n-gons); triangulate or split them first") % obj.name
     uv0 = mesh.uv_layers[0].name
     active_name = mesh.uv_layers.active.name
     render_name = next(uv.name for uv in mesh.uv_layers if uv.active_render)
@@ -116,7 +117,7 @@ def write_outline_uvs(obj):
     mesh.uv_layers.active = mesh.uv_layers[active_name]
     mesh.uv_layers[render_name].active_render = True
     mesh[SIG_PROP] = _signature(mesh)
-    return True, "%s: đã ghi %s và %s" % (obj.name, UV_NORMAL, UV_MASK)
+    return True, rpt_("%s: wrote %s and %s") % (obj.name, UV_NORMAL, UV_MASK)
 
 
 def _signature(mesh):
@@ -134,7 +135,7 @@ def is_outline_data_stale(mesh):
 class DASKTOON_OT_outline_prepare_game_data(Operator):
     """Write smoothed outline normals and the width mask into real UV maps for game export"""
     bl_idname = "dasktoon.outline_prepare_game_data"
-    bl_label = "Chuẩn bị outline cho game"
+    bl_label = "Prepare Outline for Games"
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
@@ -153,7 +154,7 @@ class DASKTOON_OT_outline_prepare_game_data(Operator):
                 errors.append(msg)
         for msg in errors:
             self.report({'WARNING'}, msg)
-        self.report({'INFO'}, "Đã chuẩn bị %d mesh, %d lỗi" % (done, len(errors)))
+        self.report({'INFO'}, rpt_("Prepared %d mesh(es), %d error(s)") % (done, len(errors)))
         return {'FINISHED'} if done else {'CANCELLED'}
 
 

@@ -9,6 +9,7 @@ from contextlib import contextmanager
 
 import bpy
 import numpy as np
+from bpy.app.translations import pgettext_iface as iface_, pgettext_n as n_, pgettext_rpt as rpt_
 from bpy.types import Operator, Panel
 from mathutils import Matrix, Vector
 
@@ -71,9 +72,9 @@ def rest_pose(armatures):
 
 def _check_editable(obj):
     if obj is None or obj.type != 'MESH':
-        raise FaceShadingError("Hãy chọn mesh nhân vật")
+        raise FaceShadingError(rpt_("Select a character mesh"))
     if obj.library is not None or obj.data.library is not None:
-        raise FaceShadingError("Mesh %s được link từ thư viện, không sửa được" % obj.name)
+        raise FaceShadingError(rpt_("Mesh %s is linked from a library and cannot be edited") % obj.name)
 
 
 def _group_weights(obj, name):
@@ -96,8 +97,8 @@ def head_vertices(obj, bone, selected=None):
             return found
     if selected is not None and len(selected):
         return np.array(sorted(selected), dtype=np.int64)
-    raise FaceShadingError("Không tìm thấy vùng đầu (không có xương đầu có trọng số). "
-                           "Hãy vào Edit Mode, chọn vùng mặt rồi bấm lại")
+    raise FaceShadingError(rpt_("No head found (no head bone with weights): select the face in Edit Mode and try "
+                                "again"))
 
 
 def _world_coords(obj):
@@ -177,7 +178,8 @@ def face_island(obj, head):
                 return island
             first = island if first is None else first
     if first is None:
-        raise FaceShadingError("Không thấy da mặt ở giữa vùng đầu; hãy chọn cả vùng mặt (gồm mũi) rồi bấm lại")
+        raise FaceShadingError(rpt_("No face skin in the middle of the head: select the whole face, nose included, and "
+                                    "try again"))
     return first
 
 
@@ -186,7 +188,7 @@ def fit(points):
     low, high = points.min(axis=0), points.max(axis=0)
     rx, rz = (high[0] - low[0]) / 2.0, (high[2] - low[2]) / 2.0
     if min(rx, rz) < 1e-5:
-        raise FaceShadingError("Vùng mặt quá nhỏ để đặt khối trứng")
+        raise FaceShadingError(rpt_("The face is too small to fit a proxy"))
     ry = max((high[1] - low[1]) / 2.0, MIN_DEPTH * rx)
     front = float(np.percentile(points[:, 1], FRONT_PERCENTILE))
     return Vector(((low[0] + high[0]) / 2.0, front + ry, (low[2] + high[2]) / 2.0)), Vector((rx, ry, rz))
@@ -195,7 +197,7 @@ def fit(points):
 def _face_points(obj, head, face):
     points = _world_coords(obj)[np.intersect1d(head, face)]
     if not len(points):
-        raise FaceShadingError("Vùng %s không nằm trong vùng đầu; hãy tô lại vertex group đó" % fsn.MASK_NAME)
+        raise FaceShadingError(rpt_("%s is not inside the head: paint that vertex group again") % fsn.MASK_NAME)
     return points
 
 
@@ -297,7 +299,7 @@ def refit(obj, selected=None):
     """Face spec 3.4: place and size the proxy again from the face (DT_Face as painted); the sliders stay."""
     _check_editable(obj)
     if fsn.get_modifier(obj) is None:
-        raise FaceShadingError("%s chưa có bóng mặt; bấm Tạo bóng mặt anime trước" % obj.name)
+        raise FaceShadingError(rpt_("%s has no face shading yet: press Set Up Face Shading first") % obj.name)
     armature, bone = _rig(obj)
     with rest_pose([armature]):
         face = np.flatnonzero(_group_weights(obj, fsn.MASK_NAME) >= HEAD_WEIGHT)
@@ -332,8 +334,8 @@ def remove(obj):
 
 
 def panel_target(context):
-    """The mesh the panel works on: the active mesh, or the first mesh using the active proxy."""
-    obj = context.active_object
+    """The mesh the panel works on: the shown (or active) mesh, or the first mesh using the shown proxy."""
+    obj = getattr(context, "object", None) or context.active_object
     if obj is None:
         return None
     if obj.type == 'MESH':
@@ -344,16 +346,16 @@ def panel_target(context):
     return None
 
 
-SLIDERS = (("Coverage", "Độ phủ"), ("Falloff", "Vùng chuyển"), ("Nose Keep", "Giữ bóng mũi"),
-           ("Chin Keep", "Giữ bóng cằm"))
+SLIDERS = (("Coverage", n_("Coverage")), ("Falloff", n_("Falloff")), ("Nose Keep", n_("Keep Nose Shadow")),
+           ("Chin Keep", n_("Keep Chin Shadow")))
 
 
 def _run(operator, context, action, done):
-    """Run action(mesh, selected) on the panel's mesh. In Edit Mode the selection is read and Edit Mode is left
-    meanwhile (vertex groups cannot be written in Edit Mode)."""
+    """Run action(mesh, selected) on the panel's mesh and report `done` (a template taking the mesh name). In Edit
+    Mode the selection is read and Edit Mode is left meanwhile (vertex groups cannot be written in Edit Mode)."""
     obj = panel_target(context)
     if obj is None:
-        operator.report({'ERROR'}, "Hãy chọn mesh nhân vật")
+        operator.report({'ERROR'}, rpt_("Select a character mesh"))
         return {'CANCELLED'}
     editing = obj.mode == 'EDIT'
     selected = None
@@ -371,51 +373,51 @@ def _run(operator, context, action, done):
     finally:
         if editing:
             bpy.ops.object.mode_set(mode='EDIT')
-    operator.report({'INFO'}, done % obj.name)
+    operator.report({'INFO'}, rpt_(done) % obj.name)
     return {'FINISHED'}
 
 
 class DASKTOON_OT_face_shading_setup(Operator):
     """Shade the face like an egg: find the head, fit an egg-shaped proxy to it and add the Face Shading modifier"""
     bl_idname = "dasktoon.face_shading_setup"
-    bl_label = "Tạo bóng mặt anime"
+    bl_label = "Set Up Face Shading"
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
-        return _run(self, context, setup, "Đã tạo bóng mặt cho %s: kéo khối trứng hoặc chỉnh thanh trượt")
+        return _run(self, context, setup, n_("Face shading set up on %s: drag the proxy or use the sliders"))
 
 
 class DASKTOON_OT_face_shading_refit(Operator):
     """Fit the egg-shaped proxy to the face again (position and size); the sliders stay"""
     bl_idname = "dasktoon.face_shading_refit"
-    bl_label = "Căn lại khối trứng"
+    bl_label = "Fit Proxy"
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
-        return _run(self, context, refit, "Đã căn lại khối trứng của %s")
+        return _run(self, context, refit, n_("Proxy of %s fitted again"))
 
 
 class DASKTOON_OT_face_shading_remove(Operator):
     """Remove the face shading of the mesh: the modifier, DT_Face and the proxy when no other mesh uses it"""
     bl_idname = "dasktoon.face_shading_remove"
-    bl_label = "Gỡ bóng mặt"
+    bl_label = "Remove Face Shading"
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
-        return _run(self, context, lambda obj, _selected: remove(obj), "Đã gỡ bóng mặt của %s")
+        return _run(self, context, lambda obj, _selected: remove(obj), n_("Face shading removed from %s"))
 
 
 class DASKTOON_OT_face_shading_select_proxy(Operator):
     """Select the egg-shaped proxy to move, rotate or scale it; the face shading follows right away"""
     bl_idname = "dasktoon.face_shading_select_proxy"
-    bl_label = "Chọn khối trứng"
+    bl_label = "Select Proxy"
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
         obj = panel_target(context)
         proxy = proxy_of(obj) if obj is not None else None
         if proxy is None:
-            self.report({'ERROR'}, "Mesh chưa có khối trứng: bấm Tạo bóng mặt anime hoặc Căn lại khối trứng")
+            self.report({'ERROR'}, rpt_("This mesh has no proxy yet: press Set Up Face Shading or Fit Proxy"))
             return {'CANCELLED'}
         if context.mode != 'OBJECT':
             bpy.ops.object.mode_set(mode='OBJECT')
@@ -426,28 +428,30 @@ class DASKTOON_OT_face_shading_select_proxy(Operator):
                 other.select_set(False)
             proxy.select_set(True)
         except RuntimeError:
-            self.report({'ERROR'}, "Khối trứng %s không nằm trong view layer đang mở" % proxy.name)
+            self.report({'ERROR'}, rpt_("Proxy %s is not in the open view layer") % proxy.name)
             return {'CANCELLED'}
         context.view_layer.objects.active = proxy
         return {'FINISHED'}
 
 
-class DASKTOON_PT_face_shading(Panel):
-    bl_label = "Bóng mặt"
-    bl_idname = "DASKTOON_PT_face_shading"
-    bl_space_type = 'VIEW_3D'
-    bl_region_type = 'UI'
-    bl_category = "DaskToon"
-    bl_order = 15
+# Properties › Object Data of a mesh, and of its face shading proxy (UI spec 3.1).
+class DATA_PT_dasktoon_face_shading(Panel):
+    bl_label = "Face Shading"
+    bl_idname = "DATA_PT_dasktoon_face_shading"
+    bl_space_type = 'PROPERTIES'
+    bl_region_type = 'WINDOW'
+    bl_context = "data"
+
+    @classmethod
+    def poll(cls, context):
+        return panel_target(context) is not None
 
     def draw(self, context):
         layout = self.layout
         obj = panel_target(context)
-        if obj is None:
-            layout.label(text="Chọn mesh nhân vật hoặc khối trứng", icon='INFO')
-            return
+        shown = getattr(context, "object", None) or context.active_object
         if obj.library is not None or obj.data.library is not None:
-            layout.label(text="Mesh link từ thư viện, không sửa được", icon='ERROR')
+            layout.label(text="Linked from a library, cannot be edited", icon='ERROR')
             return
         modifier = fsn.get_modifier(obj)
         if modifier is None:
@@ -455,40 +459,22 @@ class DASKTOON_PT_face_shading(Panel):
             col.scale_y = 1.4
             col.operator(DASKTOON_OT_face_shading_setup.bl_idname, icon='SHADING_RENDERED')
         else:
-            if context.active_object != obj:
-                layout.label(text="Khối trứng của " + obj.name, icon='MESH_UVSPHERE')
+            if shown != obj:
+                layout.label(text=iface_("Proxy of %s") % obj.name, icon='MESH_UVSPHERE', translate=False)
             if proxy_of(obj) is None:
-                layout.label(text="Chưa có khối trứng: bấm Căn lại khối trứng", icon='ERROR')
+                layout.label(text="No proxy yet: press Fit Proxy", icon='ERROR')
             layout.operator(DASKTOON_OT_face_shading_select_proxy.bl_idname, icon='RESTRICT_SELECT_OFF')
             col = layout.column(align=True)
             for name, label in SLIDERS:
-                col.prop(fsn.input_socket(modifier, name), "value", text=label, slider=True)
+                col.prop(fsn.input_socket(modifier, name), "value", text=iface_(label), translate=False, slider=True)
             row = layout.row(align=True)
             row.operator(DASKTOON_OT_face_shading_refit.bl_idname, icon='FILE_REFRESH')
             row.operator(DASKTOON_OT_face_shading_remove.bl_idname, icon='X')
-        if obj.data.has_custom_normals and context.active_object == obj:
+        if obj.data.has_custom_normals and shown == obj:
             box = layout.box()
-            box.label(text="Mesh còn custom normal cũ: bóng mũi, cằm", icon='INFO')
-            box.label(text="sẽ theo normal đó, không theo hình khối thật")
-            box.operator("dasktoon.reset_face_normals", text="Xóa normal tùy chỉnh cũ", icon='LOOP_BACK')
-
-
-class DASKTOON_PT_face_shading_advanced(Panel):
-    bl_label = "Nâng cao"
-    bl_idname = "DASKTOON_PT_face_shading_advanced"
-    bl_parent_id = "DASKTOON_PT_face_shading"
-    bl_space_type = 'VIEW_3D'
-    bl_region_type = 'UI'
-    bl_category = "DaskToon"
-    bl_options = {'DEFAULT_CLOSED'}
-
-    def draw(self, _context):
-        layout = self.layout
-        layout.label(text="Công cụ cũ: ghi thẳng normal vào mesh", icon='INFO')
-        layout.operator("dasktoon.fix_face_normals", icon='SPHERE')
-        row = layout.row(align=True)
-        row.operator("dasktoon.reset_face_normals", text="Reset Normals", icon='LOOP_BACK')
-        row.operator("dasktoon.toggle_face_normals_display", text="Normal Lines", icon='HIDE_OFF')
+            box.label(text="This mesh still has old custom normals:", icon='INFO')
+            box.label(text="the nose and chin shadows follow them, not the real shape")
+            box.operator("mesh.customdata_custom_splitnormals_clear", icon='LOOP_BACK')
 
 
 classes = (
@@ -496,6 +482,5 @@ classes = (
     DASKTOON_OT_face_shading_refit,
     DASKTOON_OT_face_shading_remove,
     DASKTOON_OT_face_shading_select_proxy,
-    DASKTOON_PT_face_shading,
-    DASKTOON_PT_face_shading_advanced,
+    DATA_PT_dasktoon_face_shading,
 )

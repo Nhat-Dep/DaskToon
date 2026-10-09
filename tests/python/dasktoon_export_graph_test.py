@@ -156,7 +156,7 @@ class NodeTest(unittest.TestCase):
         spec, reason = analyze(mat, sphere_with(mat))
         self.assertIsNone(spec)
         self.assertIn("ShaderNodeBsdfPrincipled", reason)
-        self.assertEqual(graph.analyze_material(None, []), (None, "slot trống"))
+        self.assertEqual(graph.analyze_material(None, []), (None, "empty slot"))
 
 
 class SourceTest(unittest.TestCase):
@@ -298,14 +298,16 @@ class OutlineTest(unittest.TestCase):
         obj = sphere_with(mat)
         outline.sync_material(mat)
         companion = outline.outline_material_for(mat)
-        outline.outline_node(companion).inputs["Light Bleed"].default_value = 0.3
+        outline.outline_node(companion).inputs["Light Bleed"].default_value = 0.3  # put back by the sync
+        outline.sync_material(mat)
         ok, _msg = gamedata.write_outline_uvs(obj)
         self.assertTrue(ok)
         spec, _ = analyze(mat, obj)
         self.assertIn("_DT_OUTLINE", spec.keywords)
         self.assertEqual(spec.disabled_passes, [])
         self.assertAlmostEqual(spec.floats["_DT_OutlineWidth"], 0.004, places=6)
-        self.assertAlmostEqual(spec.floats["_DT_OutlineLightBleed"], 0.3, places=5)
+        self.assertAlmostEqual(spec.floats["_DT_OutlineLightBleed"], outline.LIGHT_BLEED, places=5)
+        self.assertAlmostEqual(spec.floats["_DT_OutlineWobble"], outline.HAND_WOBBLE, places=5)
         self.assertEqual(spec.floats["_DT_OutlineTintMode"], 1.0)
         self.assertEqual(spec.floats["_DT_OutlineUV"], float(obj.data.uv_layers.find("DT_OutlineN")))
         self.assertEqual(spec.floats["_DT_OutlineWUV"], float(obj.data.uv_layers.find("DT_OutlineW")))
@@ -327,7 +329,7 @@ class OutlineTest(unittest.TestCase):
         for obj in (a, b):
             gamedata.write_outline_uvs(obj)
         spec, _ = graph.analyze_material(mat, [a.data, b.data])
-        self.assertTrue(any("thứ tự UV" in w for w in spec.warnings), spec.warnings)
+        self.assertTrue(any("UV order" in w for w in spec.warnings), spec.warnings)
 
     def test_companion_is_recognised(self):
         mat, node = tu.node_material("Owner", 'ShaderNodeAnimeCharacter')

@@ -7,6 +7,8 @@ anything (spec 4, 9)."""
 
 import os
 
+from bpy.app.translations import pgettext_rpt as rpt_
+
 from . import unity_yaml
 
 
@@ -46,7 +48,8 @@ def write_asset(root, relpath, guid, meta, warnings, data=None, writer=None):
     """Write <root>/<relpath> and its .meta (meta first, so a file is never left without its GUID)."""
     path = os.path.join(root, relpath)
     if not is_ours(path, guid):
-        warnings.append("Bỏ qua %s: file đã có sẵn và không do DaskToon tạo" % relpath.replace("\\", "/"))
+        warnings.append(rpt_("Skipped %s: the file already exists and was not made by DaskToon")
+                        % relpath.replace("\\", "/"))
         return False
     os.makedirs(os.path.dirname(path), exist_ok=True)
     _write_bytes(path + ".meta", meta.encode("utf-8"))

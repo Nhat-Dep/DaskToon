@@ -8,6 +8,7 @@
 import os
 
 import bpy
+from bpy.app.translations import pgettext_iface as iface_, pgettext_rpt as rpt_
 from bpy.props import BoolProperty, EnumProperty, IntProperty, StringProperty
 from bpy.types import Operator
 
@@ -35,18 +36,19 @@ class EXPORT_SCENE_OT_dasktoon_engine(Operator):
     bl_label = "Engine Export"
     bl_options = {'REGISTER'}
 
-    directory: StringProperty(name="Thư mục", subtype='DIR_PATH')
+    directory: StringProperty(name="Folder", subtype='DIR_PATH')
     filter_folder: BoolProperty(default=True, options={'HIDDEN'})
     engine: EnumProperty(name="Engine", items=targets.ENGINES, default='UNITY_URP')
     model_format: EnumProperty(
         name="Model",
-        items=(('FBX', "FBX", "Xuất model dạng FBX"), ('NONE', "Không xuất model", "Chỉ xuất material và shader")),
+        items=(('FBX', "FBX", "Export the model as FBX"),
+               ('NONE', "No Model", "Export only the materials and shaders")),
         default='FBX')
-    use_selection: BoolProperty(name="Chỉ object đang chọn", default=True)
-    include_animation: BoolProperty(name="Kèm animation", default=True)
-    export_materials: BoolProperty(name="Xuất material và shader", default=True)
-    bake_size: IntProperty(name="Bake", default=1024, min=64, max=8192, subtype='PIXEL')
-    bake_samples: IntProperty(name="Sample", default=16, min=1, max=4096)
+    use_selection: BoolProperty(name="Selected Objects Only", default=True)
+    include_animation: BoolProperty(name="Include Animation", default=True)
+    export_materials: BoolProperty(name="Export Materials and Shaders", default=True)
+    bake_size: IntProperty(name="Bake Size", default=1024, min=64, max=8192, subtype='PIXEL')
+    bake_samples: IntProperty(name="Bake Samples", default=16, min=1, max=4096)
 
     def invoke(self, context, _event):
         directory, engine = default_directory(context)
@@ -74,23 +76,24 @@ class EXPORT_SCENE_OT_dasktoon_engine(Operator):
             target = targets.make_target(self.directory, targets.blend_name(bpy.data.filepath), self.engine)
             box = layout.box()
             if target.mode == 'PROJECT':
-                box.label(text="Ghi thẳng vào project Unity", icon='CHECKMARK')
-                box.label(text=os.path.basename(target.project) + "/Assets/DaskToon")
+                box.label(text="Writes straight into the Unity project", icon='CHECKMARK')
+                box.label(text="%s/Assets/DaskToon" % os.path.basename(target.project), translate=False)
             else:
-                box.label(text="Tạo thư mục " + os.path.basename(target.root), icon='FILE_FOLDER')
+                box.label(text=iface_("Creates the folder %s") % os.path.basename(target.root), icon='FILE_FOLDER',
+                          translate=False)
 
     def execute(self, context):
         import dasktoon_export
         from dasktoon_export import model_fbx, report
         if self.engine not in targets.SUPPORTED_ENGINES:
-            self.report({'ERROR'}, "Engine này sắp có; hiện chỉ hỗ trợ Unity 6 (URP)")
+            self.report({'ERROR'}, rpt_("This engine is coming soon; only Unity 6 (URP) is supported for now"))
             return {'CANCELLED'}
         if not self.directory:
-            self.report({'ERROR'}, "Chưa chọn thư mục đích")
+            self.report({'ERROR'}, rpt_("No destination folder chosen"))
             return {'CANCELLED'}
         objects = model_fbx.export_objects(context, self.use_selection)
         if not objects:
-            self.report({'ERROR'}, "Không có object nào để export (chưa chọn object?)")
+            self.report({'ERROR'}, rpt_("Nothing to export (no object selected?)"))
             return {'CANCELLED'}
         directory = bpy.path.abspath(self.directory)
         target = targets.make_target(directory, targets.blend_name(bpy.data.filepath), self.engine)

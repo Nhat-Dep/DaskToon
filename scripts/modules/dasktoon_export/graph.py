@@ -8,6 +8,8 @@ through project 1's sync_material."""
 
 from dataclasses import dataclass, field
 
+from bpy.app.translations import pgettext_rpt as rpt_
+
 from . import node_maps
 
 LIGHT_NODES = {
@@ -85,11 +87,11 @@ def _is_dasktoon(idname):
 
 def _node_reason(node, out):
     if out.type == 'SHADER':
-        return "nhánh chứa shader (%s)" % node.name
+        return rpt_("a branch with a shader (%s)") % node.name
     if node.bl_idname in LIGHT_NODES or _is_dasktoon(node.bl_idname):
-        return "nhánh phụ thuộc ánh sáng hoặc góc nhìn (%s)" % node.name
+        return rpt_("a branch that depends on light or view (%s)") % node.name
     if out.name in LIGHT_OUTPUTS.get(node.bl_idname, ()):
-        return "nhánh phụ thuộc góc nhìn (%s › %s)" % (node.name, out.name)
+        return rpt_("a branch that depends on the view (%s › %s)") % (node.name, out.name)
     if node.bl_idname == 'ShaderNodeGroup' and node.node_tree is not None:
         return _group_reason(node.node_tree, set())
     return None
@@ -103,7 +105,7 @@ def _group_reason(tree, seen):
         linked = [o for o in node.outputs if o.is_linked]
         if (node.bl_idname in LIGHT_NODES or _is_dasktoon(node.bl_idname) or any(o.type == 'SHADER' for o in linked)
                 or any(o.name in LIGHT_OUTPUTS.get(node.bl_idname, ()) for o in linked)):
-            return "node group %s phụ thuộc ánh sáng hoặc góc nhìn" % tree.name
+            return rpt_("node group %s depends on light or view") % tree.name
         if node.bl_idname == 'ShaderNodeGroup' and node.node_tree is not None:
             reason = _group_reason(node.node_tree, seen)
             if reason:
@@ -194,11 +196,11 @@ def _read_input(owner, node, im, spec, meshes):
         return
     label = "%s › %s" % (owner.name, im.socket)
     if not im.map_prop:
-        spec.warnings.append("%s: input này không nhận texture trong Unity; dùng giá trị đang đặt" % label)
+        spec.warnings.append(rpt_("%s: this input takes no texture in Unity; using its value") % label)
         return
     tex = _texture_source(owner, node, sock, src, im, meshes)
     if isinstance(tex, str):
-        spec.warnings.append("%s: %s; dùng giá trị đang đặt" % (label, tex))
+        spec.warnings.append(rpt_("%s: %s; using its value") % (label, tex))
         return
     spec.textures[im.map_prop] = tex
     spec.floats[im.flag_prop] = 1.0
@@ -222,10 +224,10 @@ def _normal_map(owner, node, spec, meshes):
             spec.floats["_DT_NormalStrength"] = float(strength.default_value)
             spec.keywords.add("_DT_NORMALMAP")
             if strength.is_linked:
-                spec.warnings.append("%s › Normal Map: Strength có nối node; dùng giá trị đang đặt" % owner.name)
+                spec.warnings.append(rpt_("%s › Normal Map: Strength is linked; using its value") % owner.name)
             return
-    spec.warnings.append("%s › Normal: chỉ hỗ trợ Normal Map (Tangent) nối từ Image Texture; dùng normal của mesh"
-                         % owner.name)
+    spec.warnings.append(rpt_("%s › Normal: only a Normal Map (Tangent) fed by an Image Texture is supported; using "
+                              "the mesh normals") % owner.name)
 
 
 def _eye_uv(owner, node, spec):
@@ -236,7 +238,7 @@ def _eye_uv(owner, node, spec):
     is_uv = ((src.node.bl_idname == 'ShaderNodeTexCoord' and src.identifier == "UV")
              or src.node.bl_idname == 'ShaderNodeUVMap')
     if not is_uv:
-        spec.warnings.append("%s › UV Vector: chỉ hỗ trợ UV map đầu tiên; Unity dùng uv0" % owner.name)
+        spec.warnings.append(rpt_("%s › UV Vector: only the first UV map is supported; Unity uses uv0") % owner.name)
 
 
 def _node_inputs(owner, node, spec, meshes):
@@ -304,9 +306,9 @@ def _hair(mat, emission, parts, spec, meshes):
     strength = emission.inputs["Strength"]
     spec.floats["_DT_EmissionStrength"] = float(strength.default_value)
     if strength.is_linked:
-        spec.warnings.append("%s › Emission Strength: có nối node; dùng giá trị đang đặt" % mat.name)
+        spec.warnings.append(rpt_("%s › Emission Strength: linked; using its value") % mat.name)
     if ring.inputs["Normal"].is_linked:
-        spec.warnings.append("%s › Angel Ring › Normal: Unity dùng normal của bề mặt" % mat.name)
+        spec.warnings.append(rpt_("%s › Angel Ring › Normal: Unity uses the surface normal") % mat.name)
 
 
 def _render_state(mat, spec):
@@ -332,11 +334,11 @@ def _outline_channels(mat, spec, meshes):
         pairs.append((n if n < MAX_UNITY_UV else -1, w if w < MAX_UNITY_UV else -1))
     first = pairs[0] if pairs else (-1, -1)
     if any(pair != first for pair in pairs):
-        spec.warnings.append("%s: các mesh dùng material này có thứ tự UV khác nhau; Unity dùng thứ tự của %s"
-                             % (mat.name, meshes[0].name))
+        spec.warnings.append(rpt_("%s: the meshes using this material have a different UV order; Unity uses the "
+                                  "order of %s") % (mat.name, meshes[0].name))
     if first[0] < 0:
-        spec.warnings.append("%s: mesh chưa có %s (hoặc vượt 8 UV map); outline trong Unity đẩy theo normal của mesh"
-                             % (mat.name, UV_NORMAL))
+        spec.warnings.append(rpt_("%s: the mesh has no %s (or more than 8 UV maps); the outline in Unity follows "
+                                  "the mesh normals") % (mat.name, UV_NORMAL))
     spec.floats["_DT_OutlineUV"] = float(first[0])
     spec.floats["_DT_OutlineWUV"] = float(first[1])
 
@@ -350,12 +352,14 @@ def _outline(mat, spec, meshes):
         companion = outline.outline_material_for(mat)
         dask = outline.outline_node(companion)
         if dask is None:
-            spec.warnings.append("%s: %s thiếu node Dask Outline; tắt outline" % (mat.name, companion.name))
+            spec.warnings.append(rpt_("%s: %s has no Dask Outline node; outline off") % (mat.name, companion.name))
     if dask is None:
         spec.disabled_passes.append(OUTLINE_PASS)
         return
     for im in node_maps.OUTLINE_INPUTS:
         _read_input(companion, dask, im, spec, meshes)
+    spec.floats["_DT_OutlineLightBleed"] = outline.LIGHT_BLEED
+    spec.floats["_DT_OutlineWobble"] = outline.HAND_WOBBLE
     main = source[1]
     if main is not None:
         spec.floats["_DT_OutlineWidth"] = float(main.inputs["Outline Width"].default_value)
@@ -379,10 +383,10 @@ def _surface(mat):
 def analyze_material(mat, meshes):
     """(MaterialSpec, "") for a supported material, or (None, reason). `meshes` are the meshes using it."""
     if mat is None:
-        return None, "slot trống"
+        return None, rpt_("empty slot")
     source = _surface(mat)
     if source is None:
-        return None, "Material Output › Surface không nối với node nào"
+        return None, rpt_("Material Output › Surface is not linked")
     node = source.node
     spec = None
     if node.bl_idname in node_maps.NODE_MAPS and source.identifier == "BSDF":
@@ -394,7 +398,7 @@ def analyze_material(mat, meshes):
             spec = MaterialSpec(mat, "AnimeCel")
             _hair(mat, node, parts, spec, meshes)
     if spec is None:
-        return None, "mẫu node chưa được hỗ trợ (%s)" % node.bl_idname
+        return None, rpt_("node setup not supported (%s)") % node.bl_idname
     _render_state(mat, spec)
     _outline(mat, spec, meshes)
     _toggles(spec)

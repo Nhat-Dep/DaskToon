@@ -293,32 +293,6 @@ class DATA_PT_light_animation(DataButtonsPanel, PropertiesAnimationMixin, Proper
             self.draw_action_and_slot_selector(context, col, node_tree)
 
 
-class DATA_PT_DaskToon_light_npr(DataButtonsPanel, Panel):
-    bl_label = "DaskToon Anime & NPR Light"
-    bl_parent_id = "DATA_PT_EEVEE_light"
-    COMPAT_ENGINES = {'DASKTOON_ANIME', 'BLENDER_EEVEE'}
-
-    def draw(self, context):
-        layout = self.layout
-        layout.use_property_split = True
-        light = context.light
-
-        col = layout.column(align=True)
-        col.prop(light, "diffuse_factor", text="Cel Diffuse")
-        col.prop(light, "specular_factor", text="Anime Glossy")
-
-        if light.type != 'SUN':
-            col.separator()
-            col.prop(light, "use_custom_distance", text="Linear Distance")
-            if light.use_custom_distance:
-                col.prop(light, "cutoff_distance", text="Max Range")
-
-        col.separator()
-        col.prop(light, "shadow_filter_radius", text="Shadow Filter")
-        if hasattr(light, "shadow_jitter_overblur"):
-            col.prop(light, "shadow_jitter_overblur", text="Overblur Softness")
-
-
 class DATA_PT_custom_props_light(DataButtonsPanel, PropertyPanel, Panel):
     COMPAT_ENGINES = {
         'BLENDER_RENDER',
@@ -335,7 +309,6 @@ classes = (
     DATA_PT_preview,
     DATA_PT_light,
     DATA_PT_EEVEE_light,
-    DATA_PT_DaskToon_light_npr,
     DATA_PT_spot,
     DATA_PT_EEVEE_light_shadow,
     DATA_PT_EEVEE_light_influence,

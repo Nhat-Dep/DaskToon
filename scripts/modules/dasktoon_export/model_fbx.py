@@ -6,6 +6,7 @@
 hull stays out of the file; Unity draws the outline in the shader from DT_OutlineN/W."""
 
 import bpy
+from bpy.app.translations import pgettext_rpt as rpt_
 
 EXPORT_TYPES = {'ARMATURE', 'MESH', 'EMPTY'}
 FBX_SETTINGS = dict(
@@ -50,12 +51,12 @@ def prepare_outline_data(objects):
             continue
         seen.add(obj.data)
         if obj.data.library is not None:
-            errors.append("%s: mesh link từ thư viện, không ghi được dữ liệu outline" % obj.name)
+            errors.append(rpt_("%s: mesh linked from a library, outline data not written") % obj.name)
             continue
         try:
             ok, message = gamedata.write_outline_uvs(obj)
         except Exception as ex:  # e.g. the mesh already has Blender's maximum of 8 UV maps
-            ok, message = False, "%s: không ghi được dữ liệu outline (%s)" % (obj.name, ex)
+            ok, message = False, rpt_("%s: outline data not written (%s)") % (obj.name, ex)
         if ok:
             done.append(obj.name)
         else:
@@ -73,7 +74,7 @@ def modifier_notes(objects):
         extra = [m.name for m in getattr(obj, "modifiers", ()) if m.type != 'ARMATURE'
                  and m.name not in (gn.MODIFIER_NAME, fsn.MODIFIER_NAME)]
         if obj.type == 'MESH' and extra:
-            notes.append("%s: modifier %s không được áp dụng vào FBX; hãy Apply trước khi export nếu cần"
+            notes.append(rpt_("%s: modifiers %s are not applied in the FBX; apply them before exporting if needed")
                          % (obj.name, ", ".join(extra)))
     return notes
 
