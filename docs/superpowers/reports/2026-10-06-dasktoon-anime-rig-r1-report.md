@@ -1,4 +1,4 @@
-# DaskToon: rig anime R1, R2, R2b, báo cáo
+# DaskToon: rig anime R1, R2, R2b và constraint Spring, báo cáo
 
 - Ngày: 2026-10-06, làm tự động khi người dùng giao "tự động trong 3 tiếng" (từ 16:44), rồi "tiếp tục".
 - Nhánh: `dasktoon-anime-rig`, tách từ `dasktoon-project-workflow` (`5857d6a4619`). Chưa push, chưa merge.
@@ -44,9 +44,10 @@ Trong `docs/superpowers/reports/anime-rig/en/` và `.../vi/`:
 |---|---|
 | `21_add_armature_menu.png` | Add › Armature có **Anime Humanoid** |
 | `22_rest.png` | Nhân vật thử nhìn từ bên phải, sau Build Rig |
-| `23_posed.png` | Tạo dáng: chuỗi tóc cong ra sau, dải váy trước và sau xòe ra, áo theo ngực |
+| `23_posed.png` | Tạo dáng: chuỗi tóc cong ra sau, dải váy trước và sau xòe ra, áo theo ngực (từ §8 xương chuỗi màu xanh: Blender tô như vậy xương có constraint) |
 | `24_rig_panel.png` | Panel Anime Rig trong Object Data của armature, phần váy đang chọn: Parts, Sway, Colliders (đóng), Build |
-| `25_sway.png` | R2: hông lướt sang phải từ khung 1 tới 6; ở khung 8 váy còn trễ lại và xòe ngược chiều (Live Sway) |
+| `25_sway.png` | R2: hông lướt sang phải từ khung 1 tới 6; ở khung 8 váy còn trễ lại và xòe ngược chiều (Live Sway; từ §8 là constraint Spring) |
+| `26_spring_constraint.png` | §8: tab Bone Constraints của xương `Hair_2`, constraint Spring do Build Rig gắn, với thông số và collider |
 
 ## 4. Quyết định Claude tự chốt
 
@@ -143,8 +144,51 @@ Review R2b (tự review):
 - **Để lại** (Minor): khi game tạm dừng (`Time.deltaTime = 0`) tóc còn trôi vài khung theo quán tính rồi mới đứng; thêm file
   rig sau mà không xuất lại thì Unity không tự import lại model.
 
-## 8. Còn lại
+## 8. Constraint Spring (C++)
 
-- **R3 mắt và miệng** (spec §10).
-- **A**: tab Animation gọn, tiếp từ phần thiết kế 2 (bộ lọc "cả nhân vật"). Sau đó B, C.
-- Nhánh `dasktoon-project-workflow` (Phần 2) vẫn chờ người dùng chọn merge / PR / giữ.
+- Ngày: 2026-10-10, sau khi người dùng duyệt (spec §16 "Người dùng duyệt (2026-10-10)": chuyển spring bone sang C++ ngay,
+  thành một constraint mới trong depsgraph), làm tự động.
+- Nhánh: `dasktoon-spring-constraint`, tách từ `dasktoon-master` (`240f2531ddf`). Chưa push, chưa merge.
+- Kế hoạch: `docs/superpowers/plans/2026-10-10-dasktoon-spring-constraint.md` (spec §9.4 viết lại).
+
+| Phần | Nội dung |
+|---|---|
+| Loại constraint mới | **Spring** (`CONSTRAINT_TYPE_SPRING`, `bSpringConstraint`): Stiffness, Gravity, Drag, Radius và danh sách **Colliders** (một xương của armature và bán kính). Lưu vào file, chép theo object, Python tạo được (`colliders.new()`, `colliders.clear()`, `clear_cache()`). Panel trong tab Bone Constraints, panel con Colliders; có tiếng Việt |
+| Cách tính | Cùng công thức với `spring.py` và script Unity: quán tính, kéo về hướng đang tạo dáng, trọng lực, giữ chiều dài xương, đẩy đuôi ra khỏi capsule. Depsgraph tính constraint cùng tư thế, nên tua, render, xuất FBX đều có lắc mà không cần bake. Xương collider là target nên depsgraph tính chúng trước |
+| Bộ nhớ đệm | Theo object và xương, mỗi khung một trạng thái kèm vị trí đầu xương và hướng của nó: cùng khung, cùng đầu vào thì ra như cũ; khung đầu scene luôn bắt đầu lại; đầu vào đổi (sửa key, dời rig) thì bắt đầu lại tại khung đó, không giật; khung mới tính tiếp từ khung gần nhất trước nó (tối đa 300 khung); thời điểm giữa hai khung (motion blur) đi tiếp từ khung nguyên trước đó theo vận tốc mà không đụng bộ nhớ đệm. Đổi thông số thì bỏ bộ nhớ đệm của object |
+| Bán kính theo scale | Bán kính của constraint và collider theo đơn vị armature, nhân scale của object: scale rig ×2 thì khoảng cách tới collider ×2. Build Rig ghi bán kính collider theo đơn vị armature; `rig.json` nhân scale nên Unity vẫn nhận mét |
+| Rig anime | Build Rig gắn constraint `DaskToon Spring` vào mọi xương chuỗi, thông số theo phần, collider theo rig. Đổi thông số hay Live Sway trong panel Sway thì constraint đổi theo (tắt Live Sway là mute). Bỏ các handler khung hình Python. Bake Sway ghi key từ tư thế constraint cho ra; Engine Export mute constraint của chuỗi Runtime trong lúc ghi FBX |
+
+Ba Minor của R2 hết theo: dời rig không còn giật, bán kính đổi theo scale, render có lắc không cần bake.
+
+Kiểm thử: `dasktoon_spring_constraint_test.py` (13 test: tạo, lưu rồi mở lại, chép, panel và bản dịch, khớp `spring.py` tới
+1e-4 qua 12 khung, khung đầu, tua lại, đầu vào đổi, khung lẻ, mute và đổi thông số, collider đẩy ra, bán kính theo scale, không
+còn handler); `dasktoon_rig_sway_test.py` viết lại (13 test) theo hướng xương thay cho góc xoay; test collider theo đơn vị
+armature; test xuất (mute lúc ghi FBX, bán kính trong `rig.json` theo scale). Toàn bộ suite CMake: 44 file
+(419 test) đều qua, cộng script nạp module; test Unity (rig, model, shader) qua.
+
+Quyết định khi làm (ledger):
+
+- Bản object đã tính (evaluated) có session UID 0, nên khóa bộ nhớ đệm dùng UID của bản gốc. Nếu không, mọi rig trùng tên
+  xương dùng chung bộ nhớ đệm và `clear_cache()` không xóa được gì. Test bắt được.
+- Khung đầu scene luôn bắt đầu lại (kế hoạch giữ khung đầu đã tính, làm lịch sử cũ còn sót).
+- Build ghi bán kính collider thẳng vào ID property, rồi đồng bộ constraint một lần ở cuối (qua RNA thì 14 bán kính là 14
+  lần đồng bộ cả rig).
+- Mô tả bán kính collider của rig thêm "in armature units".
+- Rig dựng trước thay đổi này chưa có constraint: bấm Build Rig lại, hoặc đổi một thông số lắc (ví dụ tắt rồi bật Live
+  Sway), là có.
+- Nhảy cóc nhiều khung: constraint bước từng xương k lần với đầu xương của khung cuối, còn `spring.py` bước cả chuỗi cùng
+  nhau, nên kết quả hơi khác; phát tuần tự thì khớp.
+
+Review (tự review):
+
+- **Đã sửa** (Important): khung lẻ khi render có motion blur được làm tròn thành khung nguyên và ghi vào bộ nhớ đệm với đầu
+  xương của khung lẻ; tới khung nguyên thật thì đầu vào khác nên lắc bắt đầu lại, render có motion blur gần như không lắc.
+  Nay khung lẻ đi tiếp từ khung nguyên trước đó theo vận tốc và không ghi gì (test `test_subframes_leave_the_cache_alone`).
+- **Để lại** (Minor): bộ nhớ đệm không xóa khi xóa object (vài chục byte mỗi xương mỗi khung, mất khi thoát); phát ngược thì
+  không lắc (lắc chỉ tính tới).
+
+## 9. Còn lại
+
+- Sửa các Minor còn lại và cảnh báo scale âm/không đều (người dùng duyệt 2026-10-10), rồi **A**: tab Animation gọn (tiếp
+  từ phần thiết kế 3), rồi **R3** mắt và miệng (spec §10), B, C.
