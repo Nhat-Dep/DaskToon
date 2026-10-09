@@ -18,6 +18,7 @@ COLLIDER_BONES = ("Head", "Neck", "UpperChest", "Chest", "Spine", "Hips", "LeftU
                   "LeftLowerArm", "RightLowerArm", "LeftUpperLeg", "RightUpperLeg", "LeftLowerLeg", "RightLowerLeg")
 COLLIDER_SHARE = 0.9
 COLLIDER_FALLBACK = 0.03  # of the skeleton's height, for a bone no Body vertex follows
+INWARD_RATIO = -0.5  # signed over unsigned volume of a Body below this: its faces point inward (about -1)
 
 
 class BuildError(Exception):
@@ -88,6 +89,43 @@ def ownership(parts):
             owners[obj] = np.full(len(obj.data.vertices), -1, np.int64)
         owners[obj][rig_parts.part_vertices(parts[i])] = i
     return owners
+
+
+def _signed_volume_ratio(obj, vertices):
+    """Signed over unsigned volume of the triangles of `obj` whose corners are all in `vertices`, in world space around
+    their centre: about 1 for a surface facing out (closed or not), about -1 facing in, near 0 for a flat card."""
+    mesh = obj.data
+    mesh.calc_loop_triangles()
+    tris = np.empty(len(mesh.loop_triangles) * 3, np.int64)
+    mesh.loop_triangles.foreach_get("vertices", tris)
+    tris = tris.reshape(-1, 3)
+    inside = np.zeros(len(mesh.vertices), bool)
+    inside[vertices] = True
+    tris = tris[inside[tris].all(axis=1)]
+    world, _edges = rig_parts.mesh_arrays(obj)
+    world = world - world[vertices].mean(axis=0)
+    volumes = np.einsum("ij,ij->i", world[tris[:, 0]], np.cross(world[tris[:, 1]], world[tris[:, 2]]))
+    total = np.abs(volumes).sum()
+    return float(volumes.sum() / total) if total > 1e-12 else 0.0
+
+
+def mesh_warnings(parts, owners):
+    """Warnings about the meshes of the parts (spec 12): a negative or non-uniform scale (apply it before exporting to
+    Unity); Body faces that point inward, which give automatic weights the wrong bones (not checked under a negative
+    scale, whose warning says what to do)."""
+    out = []
+    body_ids = [i for i, part in enumerate(parts) if part.role == 'BODY']
+    for obj, owner in owners.items():
+        scale = obj.matrix_world.to_scale()
+        negative = obj.matrix_world.is_negative
+        if negative or max(scale) > min(scale) * (1.0 + 1e-4):
+            out.append(rpt_("%s has a negative or non-uniform scale: apply its scale (Object › Apply › Scale) before "
+                            "building and exporting to Unity") % obj.name)
+        vertices = np.nonzero(np.isin(owner, body_ids))[0]
+        if not negative and len(vertices) and _signed_volume_ratio(obj, vertices) < INWARD_RATIO:
+            out.append(rpt_("%s: the faces of the body point inward, so automatic weights may pick the wrong bones. "
+                            "Recalculate the normals outside (Edit Mode, Mesh › Normals)") % obj.name)
+    return out
 
 
 class _Plan:
@@ -293,6 +331,7 @@ def build(context, rig, parts):
         check(rig, parts)
         result = Result()
         owners = ownership(parts)
+        result.warnings.extend(mesh_warnings(parts, owners))
         plan = _Plan()
         for i, part in enumerate(parts):
             vertices = np.nonzero(owners[part.object] == i)[0]
