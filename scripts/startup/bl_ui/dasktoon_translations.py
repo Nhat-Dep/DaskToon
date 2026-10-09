@@ -1217,6 +1217,8 @@ VI = {
     "outside (Edit Mode, Mesh › Normals)":
         "%s: mặt của phần thân quay vào trong nên weight tự động có thể chọn sai xương. Hãy tính lại pháp tuyến hướng "
         "ra ngoài (Edit Mode, Mesh › Normals)",
+    # Save Copy, Save Incremental on a draft (project workflow)
+    "This file is a draft: save it into a project first": "File này là bản nháp: hãy lưu nó vào một dự án trước",
 }
 
 # Words that need their own translation context, because Blender's own translation of the same word in the default

@@ -333,6 +333,15 @@ class DASKTOON_OT_model_save_as(Operator):
         return {'FINISHED'}
 
 
+def _refuse_draft(op):
+    """Save Copy and Save Incremental need a model of a project. They stay available, so that a shortcut pressed on a
+    draft says why instead of doing nothing; True when `op` must stop."""
+    if projects.open_project() is not None:
+        return False
+    op.report({'ERROR'}, rpt_("This file is a draft: save it into a project first"))
+    return True
+
+
 class DASKTOON_OT_model_save_copy(Operator):
     """Write a copy of this model into its project's Models/ folder and keep working on this file"""
     bl_idname = "dasktoon.model_save_copy"
@@ -340,15 +349,15 @@ class DASKTOON_OT_model_save_copy(Operator):
 
     name: StringProperty(name="Name")
 
-    @classmethod
-    def poll(cls, _context):
-        return projects.open_project() is not None
-
     def invoke(self, context, _event):
+        if _refuse_draft(self):
+            return {'CANCELLED'}
         self.name = dtp.free_model_name(projects.open_project(), _current_name())
         return context.window_manager.invoke_props_dialog(self, width=420)
 
     def execute(self, _context):
+        if _refuse_draft(self):
+            return {'CANCELLED'}
         project = projects.open_project()
         try:
             path = dtp.new_model_path(project, self.name)
@@ -370,14 +379,14 @@ class DASKTOON_OT_model_save_incremental(Operator):
 
     show_save_modified_images_dialog: BoolProperty(options={'HIDDEN', 'SKIP_SAVE'})
 
-    @classmethod
-    def poll(cls, _context):
-        return projects.open_project() is not None
-
     def invoke(self, _context, _event):
+        if _refuse_draft(self):
+            return {'CANCELLED'}
         return save_here(self, projects.call_mode(), dtp.incremental_path(bpy.data.filepath))
 
     def execute(self, _context):
+        if _refuse_draft(self):
+            return {'CANCELLED'}
         return save_here(self, 'EXEC_DEFAULT', dtp.incremental_path(bpy.data.filepath))
 
 

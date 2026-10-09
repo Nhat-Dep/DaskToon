@@ -6,8 +6,6 @@
 projects on the left, the selected project's models on the right, Recover Last Session and Continue as Draft below.
 WM_MT_splash (bl_operators/wm.py) draws it under the splash image; DaskToon › Splash Screen shows it again."""
 
-import os
-
 from bpy.app.translations import pgettext_iface as iface_
 from bpy.types import Operator
 
@@ -36,7 +34,7 @@ def draw_splash(layout, _context):
         left.label(text="No recent projects")
     for path in recent:
         chosen = selected is not None and dtp.same_path(path, selected.file)
-        left.operator("dasktoon.project_select", text=os.path.basename(os.path.dirname(path)),
+        left.operator("dasktoon.project_select", text=dtp.project_label(path),
                       icon='RADIOBUT_ON' if chosen else 'RADIOBUT_OFF', translate=False).filepath = path
 
     right = split.column()
