@@ -279,10 +279,11 @@ Bản đầu (R2) chạy bằng handler Python đổi khung; người dùng duy�
   của xương cha); collider là target xương nên depsgraph tính xong chúng trước. Kết quả: xoay xương từ hướng nghỉ sang
   đuôi mới, giữ đầu xương và scale.
 - **Trạng thái theo khung**: bộ nhớ đệm toàn cục (C++, có khóa vì depsgraph tính song song), khóa = session UID của object
-  + tên xương, mỗi khung lưu đuôi hiện tại, đuôi trước, và đầu xương, hướng nghỉ đã dùng. Khung đầu scene: đặt lại. Khung
-  đã tính và đầu vào không đổi: dùng lại, không bước. Khung đã tính mà đầu vào đổi (animation đã sửa): bỏ từ khung đó trở
-  đi, tính lại. Khung mới: bước tiếp từ khung đã tính gần nhất phía trước (tối đa 300 bước, quá thì đặt lại). Đổi thông
-  số hay collider: xóa bộ nhớ đệm của object.
+  gốc (bản đã tính có UID 0) + tên xương, mỗi khung lưu đuôi hiện tại, đuôi trước, và đầu xương, hướng nghỉ đã dùng. Khung
+  đầu scene: luôn đặt lại. Khung đã tính và đầu vào không đổi: dùng lại, không bước. Khung đã tính mà đầu vào đổi (sửa
+  key, dời rig): bỏ lịch sử và bắt đầu lại tại khung đó, nên không giật. Khung mới: bước tiếp từ khung đã tính gần nhất
+  phía trước (tối đa 300 bước, quá thì đặt lại). Thời điểm giữa hai khung (motion blur khi render): đi tiếp từ khung
+  nguyên trước đó theo vận tốc, không đụng bộ nhớ đệm. Đổi thông số hay collider: xóa bộ nhớ đệm của object.
 - **Live Sway** = bật/tắt (mute) các constraint Spring của rig.
 - **Bake Sway**: chạy từng khung, đọc tư thế đã có lắc của xương chuỗi, đặt keyframe xoay, **thay cả đường cong xoay** của
   các xương đó (người dùng duyệt), rồi tắt Live Sway.

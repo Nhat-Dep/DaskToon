@@ -182,6 +182,17 @@ class EvaluateTest(unittest.TestCase):
         again = self.play(12)
         np.testing.assert_allclose(np.array(again[12]), np.array(played[12]), atol=1e-6)
 
+    def test_subframes_leave_the_cache_alone(self):
+        played = self.play(4)
+        self.cons[0].clear_cache()
+        self.play(3)
+        bpy.context.scene.frame_set(3, subframe=0.5)  # motion blur samples between frames
+        between = tails(self.rig)
+        bpy.context.scene.frame_set(4)
+        np.testing.assert_allclose(np.array(tails(self.rig)), np.array(played[4]), atol=1e-6)
+        mid = (played[3][2] + played[4][2]) / 2.0
+        self.assertLess(np.linalg.norm(between[2] - mid), 0.25 * np.linalg.norm(played[4][2] - played[3][2]))
+
     def test_changed_input_starts_again(self):
         self.play(8)
         spine = self.rig.pose.bones["Spine"]

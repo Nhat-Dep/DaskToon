@@ -2813,7 +2813,8 @@ static void spring_id_looper(bConstraint *con, ConstraintIDFunc func, void *user
  * current and previous world position; a step adds the inertia, a pull towards the posed direction and gravity, keeps
  * the bone's length and pushes the tail out of the collider capsules. The state of every frame is cached, keyed by the
  * object's session UID and the bone, with the inputs it was solved from: the same frame again gives the same pose, the
- * scene's start frame and changed inputs start again, a new frame steps on from the closest earlier one. */
+ * scene's start frame and changed inputs start again, a new frame steps on from the closest earlier one. A time between
+ * two frames (motion blur) carries the last whole frame on by its velocity and leaves the cache alone. */
 
 struct SpringFrame {
   float3 current;
@@ -2955,7 +2956,9 @@ static void spring_evaluate(bConstraint *con,
   }
 
   const Scene *scene = cob->scene;
-  const int frame = int(std::lround(DEG_get_ctime(cob->depsgraph)));
+  const float ctime = DEG_get_ctime(cob->depsgraph);
+  const int frame = int(std::lround(ctime));
+  const bool subframe = std::fabs(ctime - float(frame)) > 1e-4f;
   const float dt = scene->r.frs_sec > 0 ? scene->r.frs_sec_base / float(scene->r.frs_sec) :
                                           1.0f / 24.0f;
   const std::string key = spring_prefix(cob->ob) + cob->pchan->name;
@@ -2964,7 +2967,19 @@ static void spring_evaluate(bConstraint *con,
     std::scoped_lock lock(spring_mutex());
     std::map<int, SpringFrame> &history = spring_cache()[key];
     const auto found = history.find(frame);
-    if (frame == scene->r.sfra) {
+    if (subframe) {
+      const int whole = int(std::floor(ctime));
+      const auto last = history.find(whole);
+      if (last != history.end()) {
+        const SpringFrame &state = last->second;
+        tail = state.current + (state.current - state.previous) * (ctime - float(whole));
+        tail = head + spring_unit(tail - head) * length;
+      }
+      else {
+        tail = head + rest * length;
+      }
+    }
+    else if (frame == scene->r.sfra) {
       /* The scene's start frame always starts again, so playing from it gives the same sway. */
       history.clear();
       SpringFrame state;
