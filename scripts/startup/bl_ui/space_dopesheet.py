@@ -36,6 +36,8 @@ def dopesheet_filter(layout, context):
     if is_action_editor:
         row.prop(dopesheet, "show_only_slot_of_active_object", text="")
     row.prop(dopesheet, "show_only_selected", text="")
+    if context.area.type == 'DOPESHEET_EDITOR' and context.space_data.mode == 'DOPESHEET':
+        row.prop(dopesheet, "show_whole_character", text="")  # DaskToon
     row.prop(dopesheet, "show_hidden", text="")
 
     if is_nla:
@@ -63,6 +65,8 @@ class DopesheetFilterPopoverBase:
 
         col = layout.column(align=True)
         col.prop(dopesheet, "show_only_selected", icon='NONE')
+        if context.area.type == 'DOPESHEET_EDITOR' and context.space_data.mode == 'DOPESHEET':
+            col.prop(dopesheet, "show_whole_character", icon='NONE')  # DaskToon
         col.prop(dopesheet, "show_hidden", icon='NONE')
 
         if is_nla:

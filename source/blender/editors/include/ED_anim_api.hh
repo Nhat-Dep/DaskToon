@@ -25,6 +25,7 @@ struct AnimData;
 struct Depsgraph;
 struct ID;
 
+struct AnimFilterWholeCharacter;
 struct ARegion;
 struct ARegionType;
 struct FModifier;
@@ -162,6 +163,12 @@ struct bAnimContext {
 
   /** pointer to current reports list */
   ReportList *reports;
+
+  /**
+   * DaskToon: while the Dope Sheet filter runs with "Whole Character" on, the armatures of the characters that have a
+   * selected part (anim_filter.cc); null otherwise.
+   */
+  const AnimFilterWholeCharacter *whole_character;
 };
 
 /** \} */

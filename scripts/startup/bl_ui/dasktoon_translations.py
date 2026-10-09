@@ -1219,6 +1219,11 @@ VI = {
         "ra ngoài (Edit Mode, Mesh › Normals)",
     # Save Copy, Save Incremental on a draft (project workflow)
     "This file is a draft: save it into a project first": "File này là bản nháp: hãy lưu nó vào một dự án trước",
+    # Dope Sheet: Whole Character (Animation tab spec 4)
+    "Show every channel of the characters that have a selected part: the armature with all its bones, the objects "
+    "parented to it and the meshes it deforms (DaskToon)":
+        "Hiện mọi kênh của các nhân vật có một phần đang được chọn: armature với mọi xương, các object là con của nó "
+        "và các mesh nó điều khiển (DaskToon)",
 }
 
 # Words that need their own translation context, because Blender's own translation of the same word in the default
