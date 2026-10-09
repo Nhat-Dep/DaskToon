@@ -27,6 +27,7 @@
 #  include "BKE_brush.hh"
 #  include "BKE_camera.h"
 #  include "BKE_collection.hh"
+#  include "BKE_context.hh"
 #  include "BKE_curve.hh"
 #  include "BKE_curves.h"
 #  include "BKE_gpencil_legacy.h"
@@ -87,11 +88,14 @@
 #  include "DNA_text_types.h"
 #  include "DNA_texture_types.h"
 #  include "DNA_vfont_types.h"
+#  include "DNA_windowmanager_types.h"
+#  include "DNA_workspace_types.h"
 #  include "DNA_volume_types.h"
 #  include "DNA_world_types.h"
 
 #  include "ED_node.hh"
 #  include "ED_scene.hh"
+#  include "ED_screen.hh"
 
 #  include "NOD_defaults.hh"
 
@@ -217,6 +221,45 @@ static Scene *rna_Main_scenes_new(Main *bmain, const char *name)
 
   return scene;
 }
+/* DaskToon (docs/superpowers/specs/2026-10-10-dasktoon-animation-tab-design.md, section 6): `new_ptr` takes the tab
+ * position of `old_ptr`, is shown in the windows that showed it, and takes its name once it is deleted. Workspace
+ * operators only act on the window's workspace and switch it later, so DaskToon's Animation tab is put in place here
+ * when a file opens; the file stays as saved as it was. */
+static void rna_Main_workspaces_replace(
+    Main *bmain, bContext *C, ReportList *reports, PointerRNA *old_ptr, PointerRNA *new_ptr)
+{
+  WorkSpace *old_workspace = static_cast<WorkSpace *>(old_ptr->data);
+  WorkSpace *new_workspace = static_cast<WorkSpace *>(new_ptr->data);
+  if (old_workspace == new_workspace) {
+    BKE_report(reports, RPT_ERROR, "A workspace cannot replace itself");
+    return;
+  }
+  wmWindowManager *wm = CTX_wm_manager(C);
+  const bool file_saved = wm ? wm->file_saved : true;
+  BKE_id_reorder(reinterpret_cast<const ListBaseT<ID> *>(&bmain->workspaces),
+                 &new_workspace->id,
+                 &old_workspace->id,
+                 false);
+  if (wm) {
+    wmWindow *window = CTX_wm_window(C);
+    for (wmWindow &win : wm->windows) {
+      if (WM_window_get_active_workspace(&win) == old_workspace) {
+        CTX_wm_window_set(C, &win);
+        ED_workspace_change(new_workspace, C, wm, &win);
+      }
+    }
+    CTX_wm_window_set(C, window);
+  }
+  const std::string name = BKE_id_name(old_workspace->id);
+  ED_workspace_delete(old_workspace, bmain, C, wm);
+  old_ptr->invalidate();
+  BKE_libblock_rename(*bmain, new_workspace->id, name);
+  if (wm) {
+    wm->file_saved = file_saved;
+  }
+  WM_main_add_notifier(NC_SCREEN | ND_LAYOUTBROWSE, nullptr);
+}
+
 static void rna_Main_scenes_remove(
     Main *bmain, bContext *C, ReportList *reports, PointerRNA *scene_ptr, bool do_unlink)
 {
@@ -2303,6 +2346,17 @@ void RNA_def_main_workspaces(BlenderRNA *brna, PropertyRNA *cprop)
   func = RNA_def_function(srna, "tag", "rna_Main_workspaces_tag");
   parm = RNA_def_boolean(func, "value", false, "Value", "");
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+
+  func = RNA_def_function(srna, "replace", "rna_Main_workspaces_replace");
+  RNA_def_function_flag(func, FUNC_USE_CONTEXT | FUNC_USE_REPORTS);
+  RNA_def_function_ui_description(func,
+                                  "Put a workspace in the place of another: its tab position, the windows "
+                                  "that showed the other, and its name; the other is deleted (DaskToon)");
+  parm = RNA_def_pointer(func, "old", "WorkSpace", "", "Workspace to replace and delete");
+  RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED | PARM_RNAPTR);
+  RNA_def_parameter_clear_flags(parm, PROP_THICK_WRAP, ParameterFlag(0));
+  parm = RNA_def_pointer(func, "new", "WorkSpace", "", "Workspace that takes its place");
+  RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED | PARM_RNAPTR);
 }
 
 void RNA_def_main_lightprobes(BlenderRNA *brna, PropertyRNA *cprop)
