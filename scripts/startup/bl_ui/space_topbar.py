@@ -49,6 +49,10 @@ class TOPBAR_HT_upper_bar(Header):
             layout.template_reports_banner()
             layout.template_running_jobs()
 
+        # DaskToon: the open project and model, or a warning for a draft (project workflow spec 7).
+        from bl_ui.dasktoon_project import draw_topbar_label
+        draw_topbar_label(layout)
+
         # Active workspace view-layer is retrieved through window, not through workspace.
         layout.template_ID(window, "scene", new="scene.new", unlink="scene.delete")
 
@@ -158,37 +162,36 @@ class TOPBAR_MT_file(Menu):
     bl_label = "File"
 
     def draw(self, context):
+        # DaskToon: every way to open or save a file goes through projects
+        # (docs/superpowers/specs/2026-10-05-dasktoon-project-workflow-design.md, section 7). New Model, Open and the
+        # Save items call Blender's operators, invoked, so their shortcuts show; the core hands them to DaskToon.
+        from bl_ui.dasktoon_project import is_draft
         layout = self.layout
 
         layout.operator_context = 'INVOKE_AREA'
-        layout.menu("TOPBAR_MT_file_new", text="New", text_ctxt=i18n_contexts.id_windowmanager, icon='FILE_NEW')
-        layout.operator("wm.open_mainfile", text="Open...", icon='FILE_FOLDER')
+        layout.operator("dasktoon.project_create", text="New Project…", icon='NEWFOLDER')
+        layout.operator("wm.read_homefile", text="New Model…", icon='FILE_NEW')
+        layout.operator("wm.open_mainfile", text="Open…", icon='FILE_FOLDER')
         layout.menu("TOPBAR_MT_file_open_recent")
+        layout.menu("TOPBAR_MT_dasktoon_project_models", icon='FILE_BLEND')
         layout.operator("wm.revert_mainfile")
         layout.menu("TOPBAR_MT_file_recover")
 
         layout.separator()
 
-        layout.operator_context = 'EXEC_AREA' if context.blend_data.is_saved else 'INVOKE_AREA'
         layout.operator("wm.save_mainfile", text="Save", icon='FILE_TICK').show_save_modified_images_dialog = True
-
-        layout.operator_context = 'INVOKE_AREA'
-        layout.operator("wm.save_as_mainfile", text="Save As...").show_save_modified_images_dialog = True
-        layout.operator_context = 'INVOKE_AREA'
-        save_copy = layout.operator("wm.save_as_mainfile", text="Save Copy...")
+        layout.operator("wm.save_as_mainfile", text="Save Model As…").show_save_modified_images_dialog = True
+        sub = layout.column()
+        sub.enabled = not is_draft()
+        save_copy = sub.operator("wm.save_as_mainfile", text="Save Copy…")
         save_copy.copy = True
         save_copy.show_save_modified_images_dialog = True
-
-        sub = layout.row()
-        sub.enabled = context.blend_data.is_saved
-        sub.operator_context = 'EXEC_AREA'
         save_incremental = sub.operator("wm.save_mainfile", text="Save Incremental")
         save_incremental.incremental = True
         save_incremental.show_save_modified_images_dialog = True
 
         layout.separator()
 
-        layout.operator_context = 'INVOKE_AREA'
         layout.operator("wm.link", text="Link...", icon='LINK_BLEND')
         layout.operator("wm.append", text="Append...", icon='APPEND_BLEND')
         layout.menu("TOPBAR_MT_file_previews")
@@ -208,6 +211,7 @@ class TOPBAR_MT_file(Menu):
 
         layout.separator()
 
+        layout.menu("TOPBAR_MT_dasktoon_project", icon='FILE_FOLDER')
         layout.menu("TOPBAR_MT_file_defaults")
 
         layout.separator()
@@ -216,75 +220,14 @@ class TOPBAR_MT_file(Menu):
 
 
 class TOPBAR_MT_file_new(Menu):
-    bl_label = "New File"
+    bl_label = "New"
 
-    @staticmethod
-    def app_template_paths():
-        import os
-
-        template_paths = bpy.utils.app_template_paths()
-
-        # Expand template paths.
-
-        # Use a set to avoid duplicate user/system templates.
-        # This is a corner case, but users managed to do it! #76849.
-        app_templates = set()
-        for path in template_paths:
-            for d in os.listdir(path):
-                if d.startswith(("__", ".")):
-                    continue
-                template = os.path.join(path, d)
-                if os.path.isdir(template):
-                    app_templates.add(d)
-
-        return sorted(app_templates)
-
-    @staticmethod
-    def draw_ex(layout, _context, *, use_splash=False, use_more=False):
+    def draw(self, _context):
+        # DaskToon: something new is a model in a project, or a project (project workflow spec 7). Ctrl+N opens this.
+        layout = self.layout
         layout.operator_context = 'INVOKE_DEFAULT'
-
-        # Limit number of templates in splash screen, spill over into more menu.
-        paths = TOPBAR_MT_file_new.app_template_paths()
-        splash_limit = 6
-
-        if use_splash:
-            show_more = len(paths) > (splash_limit - 1)
-            if show_more:
-                paths = paths[:splash_limit - 2]
-        elif use_more:
-            paths = paths[splash_limit - 2:]
-            show_more = False
-        else:
-            show_more = False
-
-        # Draw application templates.
-        if not use_more:
-            props = layout.operator("wm.read_homefile", text="General", icon='FILE_NEW')
-            props.app_template = ""
-
-        for d in paths:
-            icon = 'FILE_NEW'
-            # Set icon per template.
-            if d == "2D_Animation":
-                icon = 'GREASEPENCIL_LAYER_GROUP'
-            elif d == "Sculpting":
-                icon = 'SCULPTMODE_HLT'
-            elif d == "Storyboarding":
-                icon = 'GREASEPENCIL'
-            elif d == "VFX":
-                icon = 'TRACKER'
-            elif d == "Video_Editing":
-                icon = 'SEQUENCE'
-            props = layout.operator("wm.read_homefile", text=bpy.path.display_name(iface_(d)), icon=icon)
-            props.app_template = d
-
-        layout.operator_context = 'EXEC_DEFAULT'
-
-        if show_more:
-            layout.menu("TOPBAR_MT_templates_more", text="More...")
-
-    def draw(self, context):
-        TOPBAR_MT_file_new.draw_ex(self.layout, context)
+        layout.operator("dasktoon.model_new", text="New Model…", icon='FILE_NEW')
+        layout.operator("dasktoon.project_create", text="New Project…", icon='NEWFOLDER')
 
 
 class TOPBAR_MT_file_recover(Menu):
@@ -353,13 +296,6 @@ class TOPBAR_MT_blender_system(Menu):
 
         layout.operator("screen.spacedata_cleanup")
         layout.operator("wm.operator_presets_cleanup")
-
-
-class TOPBAR_MT_templates_more(Menu):
-    bl_label = "Templates"
-
-    def draw(self, context):
-        bpy.types.TOPBAR_MT_file_new.draw_ex(self.layout, context, use_more=True)
 
 
 class TOPBAR_MT_file_import(Menu):
@@ -873,7 +809,6 @@ classes = (
     TOPBAR_MT_file_new,
     TOPBAR_MT_file_recover,
     TOPBAR_MT_file_defaults,
-    TOPBAR_MT_templates_more,
     TOPBAR_MT_file_import,
     TOPBAR_MT_file_export,
     TOPBAR_MT_file_external_data,

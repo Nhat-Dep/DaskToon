@@ -12,6 +12,9 @@ DaskToon.exe --enable-event-simulate --factory-startup --python tools/dasktoon_u
 Event simulation drives the real UI (menus open through the header buttons and arrow keys); real mouse and keyboard
 input is ignored meanwhile. Everything is made in temporary folders: the project, its fake Unity folder and the
 DaskToon config folder (so the user's recent projects stay untouched).
+
+Part 2 (project workflow) adds the start screen, the File menu and the New Project, New Model and Save to Project
+dialogs (docs/superpowers/reports/2026-10-05-dasktoon-project-workflow-report.md).
 """
 import datetime
 import os
@@ -27,7 +30,7 @@ sys.path.insert(0, os.path.join(REPO, "tests", "python"))
 import easy_keys  # noqa: E402
 
 ARGS = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
-OUT = ARGS[0] if ARGS else os.path.join(tempfile.gettempdir(), "dt_shots")
+OUT = os.path.abspath(ARGS[0]) if ARGS else os.path.join(tempfile.gettempdir(), "dt_shots")
 LANGUAGE = ARGS[1] if len(ARGS) > 1 else 'en_US'
 os.makedirs(OUT, exist_ok=True)
 os.environ["DASKTOON_CONFIG_DIR"] = tempfile.mkdtemp(prefix="dt_shots_config_")
@@ -117,7 +120,6 @@ def union(a, b):
 
 def build_scene():
     import dasktoon_test_utils as tu
-    from dasktoon_project import project as dtp
 
     for obj in list(bpy.data.objects):
         bpy.data.objects.remove(obj)
@@ -133,13 +135,20 @@ def build_scene():
     bpy.ops.dasktoon.vrm_init_standard(standard_type='VRM_0')
     bpy.ops.dasktoon.shape_axis_auto_setup(preset_type='VRM_STANDARD')
     head.active_shape_key_index = 1
+    log("scene ready")
+    return head
 
+
+def make_project():
+    """The Hero project, linked to a fake Unity project in WORK, chosen as the selected project."""
+    from bl_ui import dasktoon_project as projects
+    from dasktoon_project import project as dtp
     unity = os.path.join(WORK, "MyGame")
     for sub in ("Assets", "ProjectSettings"):
         os.makedirs(os.path.join(unity, sub), exist_ok=True)
-    dtp.create_project("Hero", os.path.join(WORK, "Hero"), 'UNITY_URP', unity, save_current=True)
-    log("scene ready", bpy.data.filepath)
-    return head
+    project = dtp.create_project("Hero", os.path.join(WORK, "Hero"), unity)
+    projects.select_project(project)
+    return project
 
 
 def select(obj):
@@ -156,7 +165,31 @@ def steps():
     e.esc()
     yield datetime.timedelta(seconds=0.5)
 
+    view = area_of('VIEW_3D')
+    e.cursor_position_set(view.x + view.width // 2, view.y + view.height // 2, move=True)
+
+    def shot_popup(name, call):
+        """Open a popup (start screen, dialog) under the cursor, save what it covers as <name>.png, close it."""
+        yield datetime.timedelta(seconds=1.0)  # let the viewport finish redrawing, or the crop takes it in too
+        before = grab()
+        with bpy.context.temp_override(window=win, area=view, region=region_of(view)):
+            call()
+        yield datetime.timedelta(seconds=1.0)
+        after = grab()
+        # Leave out the status bar: its last report fades while the popup opens.
+        status_bar = int(30 * bpy.context.preferences.view.ui_scale)
+        save(after, changed_rect(before, after, (0, status_bar, win.width, win.height)), name)
+        e.esc()
+        yield datetime.timedelta(seconds=0.5)
+
+    # 11. The start screen before any project exists.
+    yield from shot_popup("11_start_screen_empty", lambda: bpy.ops.wm.splash('INVOKE_DEFAULT'))
     head = build_scene()
+    project = make_project()
+    # 16. Save to Project for the draft, then save it there for real.
+    yield from shot_popup("16_save_to_project", lambda: bpy.ops.dasktoon.save_to_project('INVOKE_DEFAULT'))
+    bpy.ops.dasktoon.save_to_project(project=project.file, name="Hero")
+    bpy.ops.wm.save_as_mainfile(filepath=os.path.join(project.models_folder, "Hero_Armor.blend"), copy=True)
     proxy = next(o for o in bpy.data.objects if o.type == 'EMPTY')
     yield datetime.timedelta(seconds=1.0)
 
@@ -269,22 +302,35 @@ def steps():
     e.esc()
     yield datetime.timedelta(seconds=0.5)
 
-    # 9. File › DaskToon Project (click File, last item, open it).
+    # 9. File › Project (Quit, Defaults, Project from the bottom).
     before = grab()
     e.cursor_position_set(40, win.height - 12, move=True)
     yield datetime.timedelta(seconds=0.3)
     e.leftmouse()
     yield datetime.timedelta(seconds=0.8)
-    e.up_arrow()
+    e.up_arrow(3)
     yield datetime.timedelta(seconds=0.5)
     e.right_arrow()
     yield datetime.timedelta(seconds=1.0)
     after = grab()
     menus = changed_rect(before, after, (0, view.y, props.x - 4, win.height))  # not the status bar hints
-    save(after, union(menus, (0, win.height - 26, 260, win.height)), "09_file_dasktoon_project")
+    save(after, union(menus, (0, win.height - 26, 260, win.height)), "09_file_project")
     e.esc()
     e.esc()
     yield datetime.timedelta(seconds=0.5)
+
+    # 13. The File menu itself.
+    before = grab()
+    e.cursor_position_set(40, win.height - 12, move=True)
+    yield datetime.timedelta(seconds=0.3)
+    e.leftmouse()
+    yield datetime.timedelta(seconds=1.0)
+    after = grab()
+    menus = changed_rect(before, after, (0, view.y, props.x - 4, win.height))
+    save(after, union(menus, (0, win.height - 26, 260, win.height)), "13_file_menu")
+    e.esc()
+    yield datetime.timedelta(seconds=0.5)
+    e.cursor_position_set(view.x + view.width // 2, view.y + view.height // 2, move=True)
 
     # 10. Properties › Material › slot menu: Combine Materials, Restore Original Slots (after a combine).
     select(head)
@@ -304,6 +350,12 @@ def steps():
     save(after, union(changed_rect(before, after, area_rect(props)), props_top(380)), "10_material_slot_menu")
     e.esc()
     yield datetime.timedelta(seconds=0.5)
+
+    # 12, 14, 15. The start screen with the project, New Project and New Model.
+    e.cursor_position_set(view.x + view.width // 2, view.y + view.height // 2, move=True)
+    yield from shot_popup("12_start_screen", lambda: bpy.ops.wm.splash('INVOKE_DEFAULT'))
+    yield from shot_popup("14_new_project", lambda: bpy.ops.dasktoon.project_create('INVOKE_DEFAULT'))
+    yield from shot_popup("15_new_model", lambda: bpy.ops.dasktoon.model_new('INVOKE_DEFAULT'))
 
     log("done")
     LOG.close()

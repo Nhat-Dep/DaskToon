@@ -250,6 +250,10 @@ foreach(dasktoon_test
     dasktoon_engine_export_ui_test
     dasktoon_project_test
     dasktoon_project_ui_test
+    dasktoon_project_textures_test
+    dasktoon_file_redirect_test
+    dasktoon_model_test
+    dasktoon_file_ui_test
     dasktoon_face_shading_nodes_test
     dasktoon_face_shading_test
     dasktoon_material_combiner_test

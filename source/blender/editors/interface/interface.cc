@@ -1405,21 +1405,26 @@ static std::optional<std::string> but_event_operator_string_from_operator(
       C, op_call_params->optype->idname, op_call_params->opcontext, prop, true);
 }
 
-static std::optional<std::string> but_event_operator_string_from_menu(const bContext *C,
-                                                                      Button *but)
+static std::optional<std::string> but_event_operator_string_from_menu_idname(
+    const bContext *C, const char *menu_idname, const size_t menu_idname_maxncpy)
 {
-  MenuType *mt = button_menutype_get(but);
-  BLI_assert(mt != nullptr);
-
   /* Dummy, name is unimportant. */
   IDProperty *prop_menu = bke::idprop::create_group(__func__).release();
-  IDP_AddToGroup(prop_menu, IDP_NewStringMaxSize(mt->idname, sizeof(mt->idname), "name"));
+  IDP_AddToGroup(prop_menu, IDP_NewStringMaxSize(menu_idname, menu_idname_maxncpy, "name"));
 
   const std::optional<std::string> result = WM_key_event_operator_string(
       C, "WM_OT_call_menu", wm::OpCallContext::InvokeRegionWin, prop_menu, true);
 
   IDP_FreeProperty(prop_menu);
   return result;
+}
+
+static std::optional<std::string> but_event_operator_string_from_menu(const bContext *C,
+                                                                      Button *but)
+{
+  MenuType *mt = button_menutype_get(but);
+  BLI_assert(mt != nullptr);
+  return but_event_operator_string_from_menu_idname(C, mt->idname, sizeof(mt->idname));
 }
 
 static std::optional<std::string> but_event_operator_string_from_panel(const bContext *C,
@@ -1456,7 +1461,15 @@ static std::optional<std::string> but_event_operator_string(const bContext *C, B
     params.optype = but->optype;
     params.opptr = but->opptr;
     params.opcontext = but->opcontext;
-    return but_event_operator_string_from_operator(C, &params);
+    std::optional<std::string> result = but_event_operator_string_from_operator(C, &params);
+    if (!result && STREQ(but->optype->idname, "WM_OT_read_homefile")) {
+      /* DaskToon: File › New Model… runs "wm.read_homefile", which the core hands to "dasktoon.model_new". Blender's
+       * keymap reaches New Model with Ctrl+N through the New menu, so show that menu's shortcut
+       * (docs/superpowers/specs/2026-10-05-dasktoon-project-workflow-design.md, section 7). */
+      static const char menu_idname[] = "TOPBAR_MT_file_new";
+      result = but_event_operator_string_from_menu_idname(C, menu_idname, sizeof(menu_idname));
+    }
+    return result;
   }
   if (button_menutype_get(but) != nullptr) {
     return but_event_operator_string_from_menu(C, but);

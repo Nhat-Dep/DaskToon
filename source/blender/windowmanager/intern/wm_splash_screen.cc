@@ -296,7 +296,7 @@ static ui::Block *wm_block_splash_create(bContext *C, ARegion *region, void * /*
   /* Note on #BLOCK_NO_WIN_CLIP, the window size is not always synchronized
    * with the OS when the splash shows, window clipping in this case gives
    * ugly results and clipping the splash isn't useful anyway, just disable it #32938. */
-  block_flag_enable(block, ui::BLOCK_LOOP | ui::BLOCK_KEEP_OPEN | ui::BLOCK_NO_WIN_CLIP);
+  block_flag_enable(block, ui::BLOCK_LOOP | ui::BLOCK_NO_WIN_CLIP);
   block_theme_style_set(block, ui::BLOCK_THEME_STYLE_POPUP);
 
   int splash_width = style->widget.points * 45 * UI_SCALE_FAC;
@@ -354,8 +354,11 @@ static ui::Block *wm_block_splash_create(bContext *C, ARegion *region, void * /*
     /* The #BLOCK_QUICK_SETUP flag prevents the button text from being left-aligned,
      * as it is for all menus due to the #BLOCK_LOOP flag, see in #ui_def_but. */
     block_flag_enable(block, ui::BLOCK_QUICK_SETUP);
+    /* Settings are changed here, so the Quick Setup stays open. */
+    block_flag_enable(block, ui::BLOCK_KEEP_OPEN);
   }
   else {
+    /* DaskToon start screen: using one of its items closes it, like a menu (project workflow spec, section 5). */
     mt = WM_menutype_find("WM_MT_splash", true);
   }
 

@@ -14,6 +14,8 @@
 #include <cstddef>
 #include <cstring>
 #include <fcntl.h> /* For open flags (#O_BINARY, #O_RDONLY). */
+#include <initializer_list>
+#include <string>
 
 #ifdef WIN32
 /* Need to include windows.h so _WIN32_IE is defined. */
@@ -2857,6 +2859,92 @@ void WM_OT_read_history(wmOperatorType *ot)
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name DaskToon: File Operators Go Through Projects
+ *
+ * docs/superpowers/specs/2026-10-05-dasktoon-project-workflow-design.md, section 8. When a person *invokes* New,
+ * Open, Save or Save As (a menu, a shortcut, F3 search, a dialog button), the DaskToon command of the same job runs
+ * instead. Exec is never redirected: scripts, add-ons, tests and DaskToon itself keep Blender's behavior, and DaskToon
+ * invokes these operators with `use_project_redirect=False` when it wants Blender's own dialogs.
+ * \{ */
+
+static void wm_project_redirect_def(wmOperatorType *ot)
+{
+  PropertyRNA *prop = RNA_def_boolean(
+      ot->srna,
+      "use_project_redirect",
+      true,
+      "Project Redirect",
+      "When invoked, hand over to the DaskToon project command that does the same job");
+  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+}
+
+/**
+ * Invoke the DaskToon operator `idname` in place of `op` when `op` allows it and `idname` is registered, copying the
+ * properties named in `forward` that are set on `op`. Returns true when `idname` took over: the caller then ends `op`.
+ */
+static bool wm_project_redirect(bContext *C,
+                                wmOperator *op,
+                                const char *idname,
+                                const std::initializer_list<const char *> forward = {})
+{
+  if (!RNA_boolean_get(op->ptr, "use_project_redirect")) {
+    return false;
+  }
+  wmOperatorType *ot = WM_operatortype_find(idname, true);
+  if (ot == nullptr) {
+    return false;
+  }
+  PointerRNA props = WM_operator_properties_create_ptr(ot);
+  for (const char *name : forward) {
+    PropertyRNA *prop_src = RNA_struct_find_property(op->ptr, name);
+    PropertyRNA *prop_dst = RNA_struct_find_property(&props, name);
+    if (prop_src == nullptr || prop_dst == nullptr || !RNA_property_is_set(op->ptr, prop_src)) {
+      continue;
+    }
+    if (RNA_property_type(prop_src) == PROP_BOOLEAN) {
+      RNA_property_boolean_set(&props, prop_dst, RNA_property_boolean_get(op->ptr, prop_src));
+    }
+    else if (RNA_property_type(prop_src) == PROP_STRING) {
+      RNA_property_string_set(&props, prop_dst, RNA_property_string_get(op->ptr, prop_src).c_str());
+    }
+  }
+  WM_operator_name_call_ptr(C, ot, wm::OpCallContext::InvokeDefault, &props, nullptr);
+  WM_operator_properties_free(&props);
+  return true;
+}
+
+static void wm_post_read_operator_def(wmOperatorType *ot)
+{
+  PropertyRNA *prop = RNA_def_string(ot->srna,
+                                     "post_read_operator",
+                                     nullptr,
+                                     OP_MAX_TYPENAME,
+                                     "Post-Read Operator",
+                                     "Operator to run once the file has been read (DaskToon's New Model finishes "
+                                     "in the new file this way, after Blender asked to save changes)");
+  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+}
+
+/** The "post_read_operator" of `op`, empty when it has none. Read it before the file read frees anything. */
+static std::string wm_post_read_operator_get(wmOperator *op)
+{
+  PropertyRNA *prop = RNA_struct_find_property(op->ptr, "post_read_operator");
+  return prop ? RNA_property_string_get(op->ptr, prop) : std::string();
+}
+
+static void wm_post_read_operator_call(bContext *C, const std::string &idname)
+{
+  if (idname.empty()) {
+    return;
+  }
+  if (wmOperatorType *ot = WM_operatortype_find(idname.c_str(), true)) {
+    WM_operator_name_call_ptr(C, ot, wm::OpCallContext::ExecDefault, nullptr, nullptr);
+  }
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Read Startup & Preferences Operator
  *
  * Both #WM_OT_read_homefile & #WM_OT_read_factory_settings.
@@ -2864,6 +2952,7 @@ void WM_OT_read_history(wmOperatorType *ot)
 
 static wmOperatorStatus wm_homefile_read_exec(bContext *C, wmOperator *op)
 {
+  const std::string post_read = wm_post_read_operator_get(op);
   const bool use_factory_startup_and_userdef = STREQ(op->type->idname,
                                                      "WM_OT_read_factory_settings");
   const bool use_factory_settings = use_factory_startup_and_userdef ||
@@ -2975,6 +3064,7 @@ static wmOperatorStatus wm_homefile_read_exec(bContext *C, wmOperator *op)
     ED_outliner_select_sync_from_all_tag(C);
   }
 
+  wm_post_read_operator_call(C, post_read);
   return OPERATOR_FINISHED;
 }
 
@@ -2991,6 +3081,9 @@ static wmOperatorStatus wm_homefile_read_invoke(bContext *C,
                                                 wmOperator *op,
                                                 const wmEvent * /*event*/)
 {
+  if (wm_project_redirect(C, op, "DASKTOON_OT_model_new")) {
+    return OPERATOR_CANCELLED;
+  }
   if (wm_operator_close_file_dialog_if_needed(C, op, wm_homefile_read_after_dialog_callback)) {
     return OPERATOR_INTERFACE;
   }
@@ -3055,6 +3148,8 @@ void WM_OT_read_homefile(wmOperatorType *ot)
   read_factory_reset_props(ot);
 
   read_homefile_props(ot);
+  wm_project_redirect_def(ot);
+  wm_post_read_operator_def(ot);
 
   /* Omit poll to run in background mode. */
 }
@@ -3243,6 +3338,7 @@ static wmOperatorStatus wm_open_mainfile__select_file_path_exec(bContext *C, wmO
 
 static wmOperatorStatus wm_open_mainfile__open(bContext *C, wmOperator *op)
 {
+  const std::string post_read = wm_post_read_operator_get(op);
   char filepath[FILE_MAX];
   bool success;
 
@@ -3268,6 +3364,7 @@ static wmOperatorStatus wm_open_mainfile__open(bContext *C, wmOperator *op)
 
     ED_file_read_bookmarks();
 
+    wm_post_read_operator_call(C, post_read);
     return OPERATOR_FINISHED;
   }
   return OPERATOR_CANCELLED;
@@ -3289,6 +3386,15 @@ static wmOperatorStatus wm_open_mainfile_invoke(bContext *C,
                                                 wmOperator *op,
                                                 const wmEvent * /*event*/)
 {
+  /* DaskToon: only a person's first call that would show the file browser; later calls come back from the
+   * save-changes dialog with the state moved on, and DaskToon opens the files people chose itself. */
+  if (get_operator_state(op) == OPEN_MAINFILE_STATE_DISCARD_CHANGES &&
+      (RNA_boolean_get(op->ptr, "display_file_selector") ||
+       !RNA_struct_property_is_set(op->ptr, "filepath")) &&
+      wm_project_redirect(C, op, "DASKTOON_OT_open", {"filepath"}))
+  {
+    return OPERATOR_CANCELLED;
+  }
   return wm_open_mainfile_dispatch(C, op);
 }
 
@@ -3430,6 +3536,9 @@ void WM_OT_open_mainfile(wmOperatorType *ot)
   PropertyRNA *prop = RNA_def_boolean(
       ot->srna, "display_file_selector", true, "Display File Selector", "");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+
+  wm_project_redirect_def(ot);
+  wm_post_read_operator_def(ot);
 
   create_operator_state(ot, OPEN_MAINFILE_STATE_DISCARD_CHANGES);
 }
@@ -3946,6 +4055,14 @@ static wmOperatorStatus wm_save_as_mainfile_invoke(bContext *C,
                                                    wmOperator *op,
                                                    const wmEvent * /*event*/)
 {
+  if (wm_project_redirect(C,
+                          op,
+                          RNA_boolean_get(op->ptr, "copy") ? "DASKTOON_OT_model_save_copy" :
+                                                             "DASKTOON_OT_model_save_as",
+                          {"show_save_modified_images_dialog"}))
+  {
+    return OPERATOR_CANCELLED;
+  }
   if (wm_show_save_modified_images_dialog(CTX_data_main(C), op)) {
     wm_operator_save_modified_images_dialog(C, op, [](bContext *C, void *user_data) {
       WM_operator_name_call_with_properties(C,
@@ -4192,12 +4309,23 @@ void WM_OT_save_as_mainfile(wmOperatorType *ot)
       "Show Save Modified Images Dialog",
       "Show a popup dialog to save modified images before saving the blend file");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+
+  wm_project_redirect_def(ot);
 }
 
 static wmOperatorStatus wm_save_mainfile_invoke(bContext *C,
                                                 wmOperator *op,
                                                 const wmEvent * /*event*/)
 {
+  if (wm_project_redirect(C,
+                          op,
+                          RNA_boolean_get(op->ptr, "incremental") ? "DASKTOON_OT_model_save_incremental" :
+                                                                    "DASKTOON_OT_project_save",
+                          {"show_save_modified_images_dialog"}))
+  {
+    return OPERATOR_CANCELLED;
+  }
+
   const Main *bmain = CTX_data_main(C);
   wmOperatorStatus ret;
 
@@ -4305,6 +4433,8 @@ void WM_OT_save_mainfile(wmOperatorType *ot)
       "Show Save Modified Images Dialog",
       "Show a popup dialog to save modified images before saving the blend file");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+
+  wm_project_redirect_def(ot);
 }
 
 /** \} */
@@ -4944,26 +5074,36 @@ static void wm_block_file_close_save(bContext *C, void *arg_block, void *arg_dat
   }
 
   bool file_has_been_saved_before = BKE_main_blendfile_path(bmain)[0] != '\0';
+  /* DaskToon: Save saves through the project (outside textures are copied in). For a draft it opens Save to Project
+   * and returns cancelled, which stops what was going on, as Blender does for a file never saved (project workflow
+   * spec, section 8). */
+  wmOperatorType *ot_project_save = WM_operatortype_find("DASKTOON_OT_project_save", true);
 
-  if (file_has_been_saved_before) {
-    if (bmain->has_forward_compatibility_issues || bmain->colorspace.is_missing_opencolorio_config)
-    {
-      /* Need to invoke to get the file-browser and choose where to save the new file.
-       * This also makes it impossible to keep on going with current operation, which is why
-       * callback cannot be executed anymore.
-       *
-       * This is the same situation as what happens when the file has never been saved before
-       * (outer `else` statement, below). */
-      WM_operator_name_call(
-          C, "WM_OT_save_as_mainfile", wm::OpCallContext::InvokeDefault, nullptr, nullptr);
+  if (file_has_been_saved_before &&
+      (bmain->has_forward_compatibility_issues || bmain->colorspace.is_missing_opencolorio_config))
+  {
+    /* Need to invoke to get the file-browser and choose where to save the new file.
+     * This also makes it impossible to keep on going with current operation, which is why
+     * callback cannot be executed anymore.
+     *
+     * This is the same situation as what happens when the file has never been saved before
+     * (outer `else` statement, below). */
+    WM_operator_name_call(
+        C, "WM_OT_save_as_mainfile", wm::OpCallContext::InvokeDefault, nullptr, nullptr);
+    execute_callback = false;
+  }
+  else if (ot_project_save) {
+    const wmOperatorStatus status = WM_operator_name_call_ptr(
+        C, ot_project_save, wm::OpCallContext::ExecDefault, nullptr, nullptr);
+    if (status & OPERATOR_CANCELLED) {
       execute_callback = false;
     }
-    else {
-      const wmOperatorStatus status = WM_operator_name_call(
-          C, "WM_OT_save_mainfile", wm::OpCallContext::ExecDefault, nullptr, nullptr);
-      if (status & OPERATOR_CANCELLED) {
-        execute_callback = false;
-      }
+  }
+  else if (file_has_been_saved_before) {
+    const wmOperatorStatus status = WM_operator_name_call(
+        C, "WM_OT_save_mainfile", wm::OpCallContext::ExecDefault, nullptr, nullptr);
+    if (status & OPERATOR_CANCELLED) {
+      execute_callback = false;
     }
   }
   else {

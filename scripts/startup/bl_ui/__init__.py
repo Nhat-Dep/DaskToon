@@ -68,6 +68,8 @@ _modules = [
     "dasktoon_upgrade",
     "dasktoon_engine_export",
     "dasktoon_project",
+    "dasktoon_model",
+    "dasktoon_splash",
     "dasktoon_anime_fx",
     "dasktoon_face_shading",
     "dasktoon_material_combiner",
