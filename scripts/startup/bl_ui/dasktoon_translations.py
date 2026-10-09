@@ -1236,6 +1236,24 @@ VI = {
         "khiển",
     "Select a part of a character to key its pose": "Hãy chọn một phần của nhân vật để chèn khung khóa cho dáng của nó",
     "Keyed the pose of %s": "Đã chèn khung khóa cho dáng của %s",
+    # Animation tab: clips of a character (clips spec 4)
+    "Armature of the character this action is a clip of (DaskToon)":
+        "Armature của nhân vật mà action này là một clip (DaskToon)",
+    "Character": "Nhân vật",
+    "Clips": "Clip",
+    "Delete Clip": "Xóa clip",
+    "Delete the clip the character plays; it plays the first clip left":
+        "Xóa clip nhân vật đang dùng; nhân vật chuyển sang clip đầu tiên còn lại",
+    "Deleted clip %s": "Đã xóa clip %s",
+    "Make a new, empty clip of the character and play it; its animation so far becomes a clip first":
+        "Tạo một clip mới, rỗng cho nhân vật và dùng nó; animation đang có được gom thành một clip trước",
+    "New Clip": "Clip mới",
+    "New clip %s": "Đã tạo clip %s",
+    "No Clip": "Chưa có clip",
+    "No clip %s": "Không có clip %s",
+    "Play this clip on the whole character: body and face": "Dùng clip này cho cả nhân vật: thân và mặt",
+    "Select a part of a character": "Hãy chọn một phần của nhân vật",
+    "Use Clip": "Dùng clip",
 }
 
 # Words that need their own translation context, because Blender's own translation of the same word in the default

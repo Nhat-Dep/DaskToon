@@ -66,6 +66,7 @@ TRANSLATED = [
     "scripts/modules/dasktoon_animation/character.py",
     "scripts/startup/bl_ui/dasktoon_animation.py",
     "scripts/modules/dasktoon_animation/tab.py",
+    "scripts/modules/dasktoon_animation/clips.py",
 ]
 # Blender files DaskToon rewrote parts of (project workflow spec 13): only these classes are DaskToon's.
 TRANSLATED_CLASSES = {

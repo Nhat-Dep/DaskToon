@@ -4,15 +4,17 @@
 
 """DaskToon's Animation tab (docs/superpowers/specs/2026-10-10-dasktoon-animation-tab-design.md, sections 5 to 7): the
 "DaskToon Character" keying set, Key Pose, the part of the Dope Sheet header that shows when Whole Character is on, and
-the file-load handler that puts DaskToon's tab in place of Blender's."""
+the file-load handler that puts DaskToon's tab in place of Blender's. The header also holds the character's clips
+(docs/superpowers/specs/2026-10-10-dasktoon-clips-design.md, section 4)."""
 
 import types
 
 import bpy
 import _keyingsets_utils as keyingsets_utils
 from bpy.app.handlers import persistent
-from bpy.app.translations import pgettext_rpt as rpt_
-from bpy.types import KeyingSetInfo, Operator
+from bpy.app.translations import pgettext_iface as iface_, pgettext_rpt as rpt_
+from bpy.props import PointerProperty, StringProperty
+from bpy.types import KeyingSetInfo, Menu, Operator
 from keyingsets_builtins import WholeCharacterMixin
 
 
@@ -95,9 +97,122 @@ class DASKTOON_OT_key_pose(Operator):
         return {'FINISHED'}
 
 
-def draw_character_header(layout, _context):
-    """DaskToon's part of the Dope Sheet header while Whole Character is on (spec 7: clips and timing come here)."""
+def header_armature(context):
+    """The armature whose clips the header shows: the active object's character, else the first character with a
+    selected part; None without one."""
+    from dasktoon_animation import character
+    obj = context.active_object
+    found = character.armatures_of(obj) if obj is not None else []
+    if not found:
+        found = character.selected_characters(context)
+    return found[0] if found else None
+
+
+class DASKTOON_MT_character_clips(Menu):
+    bl_label = "Clips"
+
+    def draw(self, context):
+        from dasktoon_animation import clips
+        layout = self.layout
+        armature = header_armature(context)
+        if armature is None:
+            layout.label(text="Select a part of a character")
+            return
+        for clip in clips.clips_of(armature):
+            props = layout.operator(DASKTOON_OT_clip_use.bl_idname, text=clip.name, icon='ACTION', translate=False)
+            props.clip = clip.name
+        layout.separator()
+        layout.operator(DASKTOON_OT_clip_new.bl_idname, icon='ADD')
+        layout.operator(DASKTOON_OT_clip_delete.bl_idname, icon='X')
+
+
+def _clip_context(op, context):
+    """(armature, objects) of the header's character, or None after reporting why."""
+    armature = header_armature(context)
+    if armature is None:
+        op.report({'ERROR'}, rpt_("Select a part of a character"))
+        return None
+    return armature, list(context.view_layer.objects)
+
+
+class DASKTOON_OT_clip_new(Operator):
+    """Make a new, empty clip of the character and play it; its animation so far becomes a clip first"""
+    bl_idname = "dasktoon.clip_new"
+    bl_label = "New Clip"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        from dasktoon_animation import clips
+        found = _clip_context(self, context)
+        if found is None:
+            return {'CANCELLED'}
+        clip = clips.new(*found, scene=context.scene)
+        self.report({'INFO'}, rpt_("New clip %s") % clip.name)
+        return {'FINISHED'}
+
+
+class DASKTOON_OT_clip_use(Operator):
+    """Play this clip on the whole character: body and face"""
+    bl_idname = "dasktoon.clip_use"
+    bl_label = "Use Clip"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    clip: StringProperty(name="Clip")
+
+    def execute(self, context):
+        from dasktoon_animation import clips
+        found = _clip_context(self, context)
+        if found is None:
+            return {'CANCELLED'}
+        clip = next((c for c in clips.clips_of(found[0]) if c.name == self.clip), None)
+        if clip is None:
+            self.report({'ERROR'}, rpt_("No clip %s") % self.clip)
+            return {'CANCELLED'}
+        clips.use(*found, clip, context.scene)
+        return {'FINISHED'}
+
+
+class DASKTOON_OT_clip_delete(Operator):
+    """Delete the clip the character plays; it plays the first clip left"""
+    bl_idname = "dasktoon.clip_delete"
+    bl_label = "Delete Clip"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        from dasktoon_animation import clips
+        armature = header_armature(context)
+        return armature is not None and clips.current(armature) is not None
+
+    def invoke(self, context, event):
+        return context.window_manager.invoke_confirm(self, event)
+
+    def execute(self, context):
+        from dasktoon_animation import clips
+        armature, objects = header_armature(context), list(context.view_layer.objects)
+        clip = clips.current(armature)
+        name = clip.name
+        clips.delete(armature, objects, clip, context.scene)
+        self.report({'INFO'}, rpt_("Deleted clip %s") % name)
+        return {'FINISHED'}
+
+
+def draw_character_header(layout, context):
+    """DaskToon's part of the Dope Sheet header while Whole Character is on: Key Pose and the character's clips (clips
+    spec 4); timing comes here too (spec 7)."""
+    from dasktoon_animation import clips
     layout.operator(DASKTOON_OT_key_pose.bl_idname, icon='KEY_HLT')
+    armature = header_armature(context)
+    if armature is None:
+        return
+    clip = clips.current(armature)
+    row = layout.row(align=True)
+    label = clip.name if clip is not None else iface_("No Clip")
+    row.menu(DASKTOON_MT_character_clips.__name__, text=label, icon='ACTION', translate=False)
+    if clip is not None:
+        row.prop(clip, "name", text="")
+        row.prop(clip, "use_cyclic", text="Loop", toggle=True)
+    row.operator(DASKTOON_OT_clip_new.bl_idname, text="", icon='ADD')
 
 
 def use_character_keying_set(scene):
@@ -127,11 +242,22 @@ def load_post(_filepath):
 classes = (
     DASKTOON_KS_character,
     DASKTOON_OT_key_pose,
+    DASKTOON_MT_character_clips,
+    DASKTOON_OT_clip_new,
+    DASKTOON_OT_clip_use,
+    DASKTOON_OT_clip_delete,
 )
 
 
-# bl_ui registers `classes`; register() adds the file-load handler.
+def _is_armature(_action, obj):
+    return obj.type == 'ARMATURE'
+
+
+# bl_ui registers `classes`; register() adds the file-load handler and the clip's character.
 def register():
+    bpy.types.Action.dasktoon_character = PointerProperty(
+        name="Character", description="Armature of the character this action is a clip of (DaskToon)",
+        type=bpy.types.Object, poll=_is_armature)
     if load_post not in bpy.app.handlers.load_post:
         bpy.app.handlers.load_post.append(load_post)
 
@@ -139,3 +265,4 @@ def register():
 def unregister():
     if load_post in bpy.app.handlers.load_post:
         bpy.app.handlers.load_post.remove(load_post)
+    del bpy.types.Action.dasktoon_character
