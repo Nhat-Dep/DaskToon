@@ -2,8 +2,10 @@
 
 - Ngày: 2026-10-06
 - Trạng thái: hướng làm và thiết kế do Claude tự chốt khi người dùng giao "tự động trong 3 tiếng" (2026-10-06 16:44).
-  Các câu hỏi trước đó người dùng đã trả lời trong chat (§16). Người dùng duyệt lại spec này khi quay lại.
-- Nhánh: `dasktoon-anime-rig`, tách từ `dasktoon-project-workflow` (`5857d6a4619`, Phần 2 chưa merge)
+  Người dùng duyệt ngày 2026-10-10 (§16, mục "Người dùng duyệt"); đổi theo đó: lắc trong DaskToon thành constraint C++
+  (§9.4), bỏ vẽ collider (§9.2) và `.asmdef` (§9.5), Bake thay cả đường cong xoay (§9.4).
+- Nhánh: R1, R2, R2b trên `dasktoon-anime-rig` (đã merge vào `dasktoon-master` 2026-10-10); constraint C++ trên
+  `dasktoon-spring-constraint`.
 - Lộ trình hoạt hình: **R (rig) → A (tab Animation gọn) → B (clip cho Unity) → C (nhịp anime + bộ lọc hành động nhanh)**.
   Spec này chỉ là R. Ba kế hoạch nối tiếp: R1 → R2 → R3.
 
@@ -239,15 +241,16 @@ scene; vẫn không rõ thì lệnh hỏi chọn rig.
 ### 9.1 Thông số
 
 Thêm vào `DaskRigPart` (chỉ Hair và Skirt có): **Stiffness** (0–4, mặc định 1), **Gravity** (0–2, 0,2), **Drag** (0–1,
-0,4), **Radius** (bán kính va chạm của mỗi khớp, mặc định 2% chiều cao khung), **Sway in Unity**: `RUNTIME` (script Unity
+0,4), **Radius** (bán kính va chạm của mỗi khớp, mặc định 0,03 m, đã duyệt), **Sway in Unity**: `RUNTIME` (script Unity
 tính lại, mặc định) hoặc `BAKED` (dùng keyframe đã bake).
 
 ### 9.2 Collider
 
-Build sinh collider trên khung: cầu ở `Head`; capsule dọc `Chest`, `UpperChest`, `Hips`, `LeftUpperLeg`,
-`LeftLowerLeg`, `LeftUpperArm`, `LeftLowerArm` và bên phải. Bán kính = trung bình khoảng cách từ các đỉnh Body có weight
-lớn nhất ở xương đó tới đoạn xương, × 0,9. Lưu trên `DaskRig.colliders` (xương, bán kính), chỉnh được trong panel con
-**Sway** của Anime Rig; vẽ nét mảnh trong viewport khi panel Sway mở.
+Build sinh collider là capsule dọc 14 xương thân (`Head`, `Neck`, `UpperChest`, `Chest`, `Spine`, `Hips`, tay trên/dưới,
+chân trên/dưới hai bên). Bán kính = trung bình khoảng cách từ các đỉnh Body có weight lớn nhất ở xương đó tới đoạn
+xương, × 0,9. Lưu trên `DaskRig.colliders` (xương, bán kính), chỉnh được trong panel con **Colliders** (dưới Sway) của
+Anime Rig, và chép sang target của mọi constraint Spring (§9.4). Không vẽ collider trong viewport (người dùng duyệt
+2026-10-10).
 
 ### 9.3 Thuật toán (giống hệt hai nơi)
 
@@ -262,26 +265,41 @@ xoay xương từ hướng nghỉ sang (next − head)
 
 `hướng_nghỉ` là hướng của xương theo tư thế đã animate (keyframe của người dùng), nên lắc cộng thêm vào động tác.
 
-### 9.4 Trong DaskToon
+### 9.4 Trong DaskToon: constraint Spring (C++)
 
-- Handler `frame_change_post` (handler của DaskToon, không phải driver): khung tăng 1 thì tính một bước; về khung đầu
-  scene thì đặt lại; nhảy khung thì lấy từ **bộ nhớ đệm** theo khung, thiếu thì tính tiếp từ khung đã có gần nhất.
-- Bộ nhớ đệm bỏ khi thông số, collider, khung xương hay animation của rig đổi.
-- **Live Sway** (bật/tắt trên rig, mặc định bật).
-- **Bake Sway**: ghi keyframe quay cho xương chuỗi trên khoảng khung của scene vào action đang dùng, thay key cũ của các
-  xương đó trong khoảng; phần `RUNTIME` vẫn bake được để render trong DaskToon.
+Bản đầu (R2) chạy bằng handler Python đổi khung; người dùng duyệt (2026-10-10) chuyển sang C++ dạng **constraint mới**
+để lắc được tính ngay lúc Blender tính khung hình: kéo timeline, render và xuất đều ra đúng mà không cần Bake.
+
+- **Loại constraint mới** `SPRING` ("Spring", nhóm Relationship), DNA `bSpringConstraint`: `stiffness`, `gravity`,
+  `drag`, `radius` và danh sách **collider** (`targets`, mỗi phần tử: armature, xương, bán kính lưu ở `weight`). Chỉ có
+  tác dụng trên xương; trên object thì không làm gì.
+- **Build Rig** gắn một constraint Spring vào mỗi xương chuỗi (tên `DaskToon Spring`), thông số lấy từ phần, collider lấy
+  từ `DaskRig.colliders`. Đổi thông số phần hay bán kính collider trong panel thì constraint được cập nhật theo.
+- **Tính trong depsgraph**: đầu xương và hướng nghỉ lấy từ ma trận của xương ngay trước constraint (đã có animation và lắc
+  của xương cha); collider là target xương nên depsgraph tính xong chúng trước. Kết quả: xoay xương từ hướng nghỉ sang
+  đuôi mới, giữ đầu xương và scale.
+- **Trạng thái theo khung**: bộ nhớ đệm toàn cục (C++, có khóa vì depsgraph tính song song), khóa = session UID của object
+  + tên xương, mỗi khung lưu đuôi hiện tại, đuôi trước, và đầu xương, hướng nghỉ đã dùng. Khung đầu scene: đặt lại. Khung
+  đã tính và đầu vào không đổi: dùng lại, không bước. Khung đã tính mà đầu vào đổi (animation đã sửa): bỏ từ khung đó trở
+  đi, tính lại. Khung mới: bước tiếp từ khung đã tính gần nhất phía trước (tối đa 300 bước, quá thì đặt lại). Đổi thông
+  số hay collider: xóa bộ nhớ đệm của object.
+- **Live Sway** = bật/tắt (mute) các constraint Spring của rig.
+- **Bake Sway**: chạy từng khung, đọc tư thế đã có lắc của xương chuỗi, đặt keyframe xoay, **thay cả đường cong xoay** của
+  các xương đó (người dùng duyệt), rồi tắt Live Sway.
+- `dasktoon_rig/spring.py` giữ làm bản tham chiếu của thuật toán: test so constraint C++ với nó, script Unity dịch từ nó.
 
 ### 9.5 Trong Unity
 
-- Engine Export cài vào `Assets/DaskToon/Scripts/` (GUID cố định, file phiên bản như shader):
-  `Runtime/DaskToonSpringBone.cs`, `Runtime/DaskToonSpringCollider.cs`, `Editor/DaskToonRigImporter.cs`
-  (`AssetPostprocessor`), kèm `.asmdef` cho Runtime và Editor.
-- Mỗi model có rig ghi thêm `<Model>.rig.json` cạnh FBX: phiên bản, các chuỗi (tên xương theo thứ tự, thông số, chế độ
-  Unity), các collider; tọa độ đổi sang hệ Unity.
+- Engine Export cài vào `Assets/DaskToon/Scripts/` (GUID cố định, file phiên bản như shader): `DaskToonSpringBone.cs`,
+  `DaskToonSpringCollider.cs`, `Editor/DaskToonRigImporter.cs` (`AssetPostprocessor`). Không có `.asmdef`: script vào
+  assembly mặc định của Unity, thư mục `Editor` cho phần chỉ chạy trong Editor (người dùng duyệt 2026-10-10).
+- Mỗi model có rig ghi thêm `<Model>.rig.json` cạnh FBX: phiên bản, các chuỗi (tên xương theo thứ tự, độ dài, thông số,
+  chế độ Unity), các collider (xương, bán kính, độ dài). Không cần tọa độ: sau khi Unity import, trục +Y của xương vẫn
+  chỉ dọc xương như Blender.
 - Lúc import, `DaskToonRigImporter.OnPostprocessModel` đọc file json cạnh FBX và gắn component vào prefab của model, nên
   kéo model vào scene là lắc.
-- Khi xuất, chuỗi `RUNTIME` được tắt lắc trong lúc bake animation của FBX (để Unity không lắc hai lần); chuỗi `BAKED` giữ
-  keyframe và Unity không gắn script cho chuỗi đó.
+- Khi xuất, constraint Spring của chuỗi `RUNTIME` được tắt trong lúc ghi FBX (để Unity không lắc hai lần); chuỗi `BAKED`
+  giữ lắc (keyframe đã bake hoặc constraint) và Unity không gắn script cho chuỗi đó.
 
 ## 10. Mắt và miệng (R3)
 
@@ -331,6 +349,7 @@ xoay xương từ hướng nghỉ sang (next − head)
 | `scripts/modules/dasktoon_rig/build.py` | Kiểm tra, sinh chuỗi, gắn modifier, vẽ weight, báo cáo |
 | `scripts/startup/bl_ui/dasktoon_rig.py` | PropertyGroup, operator, panel, mục menu Add |
 | R2: `dasktoon_rig/spring.py`, `dasktoon_export/unity_scripts/*.cs`, `dasktoon_export/rig_json.py` | Mô phỏng, script Unity, file mô tả rig |
+| Constraint Spring (C++): `DNA_constraint_types.h` (`bSpringConstraint`), `blenkernel/intern/constraint.cc` (`CTI_SPRING`, bộ nhớ đệm), `makesrna/intern/rna_constraint.cc` (`SpringConstraint`), `bl_ui/properties_constraint.py` (panel) | Lắc trong DaskToon (§9.4) |
 | R3: `dasktoon_rig/look.py`, `dasktoon_rig/lipsync.py`, `dasktoon_rig/mouth.py` | Điểm nhìn, lip sync, miệng 2D |
 
 Module thư viện không import `bl_ui`; giao diện gọi thư viện. Toán chuỗi nhận mảng numpy để test không cần mesh thật.
@@ -401,6 +420,20 @@ Claude tự chốt khi người dùng giao "tự động trong 3 tiếng":
 8. File mô tả rig `<Model>.rig.json` thay vì custom property trong FBX. Lý do: FBX của Blender không xuất custom property
    có animation, và json dễ đọc, dễ đổi phiên bản.
 
+Người dùng duyệt (2026-10-10, trả lời các câu hỏi duyệt):
+
+1. Hướng làm: đồng ý công cụ Python, không driver, **nhưng spring bone chuyển sang C++ ngay**, dạng **constraint mới tính
+   trong depsgraph** (§9.4), không phải handler Python với phần toán C++.
+2. Panel Anime Rig giữ ở **cuối** tab Object Data của armature.
+3. Xuất Humanoid tự động khi armature là khung chuẩn: giữ.
+4. Lệch spec: **thêm cảnh báo** mesh scale âm/không đều (§12); sửa spec theo code cho phần còn lại: không vẽ collider
+   (§9.2), Bake thay cả đường cong xoay (§9.4), không `.asmdef` (§9.5).
+5. Tóc liền một khối thành cứng, người dùng tự tách lọn: giữ.
+6. Sửa hết 10 lỗi nhỏ đã biết (rig, Unity, Phần 2).
+7. Các quyết định kỹ thuật còn lại (ưu tiên vai trò, 8 dải váy theo góc, `.rig.json`, Radius 0,03 m, Sway in Unity mặc định
+   Runtime): duyệt chung.
+8. Thứ tự: constraint C++ và các bản sửa, rồi tab Animation (A), sau đó R3.
+
 ## 17. Rủi ro
 
 | Rủi ro | Giảm |
@@ -408,5 +441,6 @@ Claude tự chốt khi người dùng giao "tự động trong 3 tiếng":
 | Bone heat lỗi với mesh hở, mesh nhiều mảnh | Rơi về xương gần nhất cho đỉnh thiếu weight, báo số đỉnh |
 | Khung đặt theo hộp bao lệch với nhân vật tư thế A | Người dùng kéo khớp (X-Axis Mirror); Unity tự ép T-pose khi dựng Avatar |
 | Unity không tự ghép Humanoid nếu người dùng đổi tên xương | `is_humanoid` kiểm tra đúng tên; không đủ thì xuất Generic như cũ |
-| Mô phỏng Python chậm với rig lớn | Bộ nhớ đệm theo khung; tách riêng `spring.py` để chuyển sang C++ |
+| Mô phỏng Python chậm với rig lớn | Đã chuyển sang constraint C++ (§9.4) |
+| Bộ nhớ đệm toàn cục của constraint lớn dần (mỗi xương mỗi khung vài chục byte) | Xóa theo object khi đổi thông số, đặt lại ở khung đầu |
 | Hai bản thuật toán (Python, C#) lệch nhau | Test so kết quả vài bước với số liệu cố định ghi trong test cả hai phía |
