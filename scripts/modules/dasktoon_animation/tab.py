@@ -41,5 +41,7 @@ def show_render_in_camera_view():
     for screen in workspace.screens:
         for area in screen.areas:
             space = area.spaces.active
-            if area.type == 'VIEW_3D' and space.region_3d.view_perspective == 'CAMERA' and space.shading.type == 'SOLID':
+            if area.type != 'VIEW_3D' or space.region_3d.view_perspective != 'CAMERA':
+                continue
+            if space.shading.type == 'SOLID':
                 space.shading.type = 'RENDERED'
