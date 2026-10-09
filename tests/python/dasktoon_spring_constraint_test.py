@@ -109,5 +109,129 @@ class TypeTest(unittest.TestCase):
             self.assertEqual(iu.untranslated(strings, dt.KEEP), [])
 
 
+def tails(rig, count=3):
+    world = rig.matrix_world
+    return [np.array(world @ rig.pose.bones["Tail_%d" % k].tail) for k in range(1, count + 1)]
+
+
+def python_tails(rig, frames, params, colliders, count=3):
+    """Tails from dasktoon_rig/spring.py for the same chain, frame by frame, with the springs muted for the poses."""
+    from dasktoon_rig import spring, sway
+    cons = [rig.pose.bones["Tail_%d" % k].constraints[0] for k in range(1, count + 1)]
+    for con in cons:
+        con.mute = True
+    names = ["Tail_%d" % k for k in range(1, count + 1)]
+    out, state = {}, None
+    for frame in frames:
+        bpy.context.scene.frame_set(frame)
+        pose = sway.chain_pose(rig, names)
+        caps = [(np.array(rig.matrix_world @ rig.pose.bones[b].head), np.array(rig.matrix_world @ rig.pose.bones[b].tail), r)
+                for b, r in colliders]
+        if state is None or frame == bpy.context.scene.frame_start:
+            state = spring.reset(pose)
+        else:
+            spring.step(state, pose, params, caps, 1.0 / bpy.context.scene.render.fps)
+        out[frame] = [t.copy() for t in state.current]
+    for con in cons:
+        con.mute = False
+    return out
+
+
+def animate_spine(rig):
+    spine = rig.pose.bones["Spine"]
+    for frame, x in ((1, 0.0), (5, 0.4), (10, 0.4)):
+        spine.location = (x, 0.0, 0.0)
+        spine.keyframe_insert("location", frame=frame)
+    bpy.context.scene.frame_start, bpy.context.scene.frame_end = 1, 20
+
+
+class EvaluateTest(unittest.TestCase):
+    def setUp(self):
+        self.rig = chain_rig()
+        animate_spine(self.rig)
+        self.cons = add_springs(self.rig, 3, [("Spine", 0.05)])
+
+    def play(self, last):
+        out = {}
+        for frame in range(1, last + 1):
+            bpy.context.scene.frame_set(frame)
+            out[frame] = tails(self.rig)
+        return out
+
+    def test_matches_python(self):
+        from dasktoon_rig import spring
+        expected = python_tails(self.rig, range(1, 13), spring.Params(), [("Spine", 0.05)])
+        self.cons[0].clear_cache()
+        played = self.play(12)
+        for frame in (1, 4, 8, 12):
+            np.testing.assert_allclose(np.array(played[frame]), np.array(expected[frame]), atol=1e-4, err_msg=str(frame))
+        self.assertGreater(np.linalg.norm(played[8][2] - played[1][2] - np.array((0.4, 0.0, 0.0))), 0.01)
+
+    def test_start_frame_has_no_sway(self):
+        self.play(8)
+        bpy.context.scene.frame_set(1)
+        np.testing.assert_allclose(np.array(tails(self.rig)),
+                                   [(0.0, 0.1, 1.0), (0.0, 0.2, 1.0), (0.0, 0.3, 1.0)], atol=1e-5)
+
+    def test_same_frame_twice_and_scrubbing(self):
+        played = self.play(12)
+        bpy.context.scene.frame_set(7)
+        np.testing.assert_allclose(np.array(tails(self.rig)), np.array(played[7]), atol=1e-6)
+        bpy.context.view_layer.update()
+        np.testing.assert_allclose(np.array(tails(self.rig)), np.array(played[7]), atol=1e-6)
+        again = self.play(12)
+        np.testing.assert_allclose(np.array(again[12]), np.array(played[12]), atol=1e-6)
+
+    def test_changed_input_starts_again(self):
+        self.play(8)
+        spine = self.rig.pose.bones["Spine"]
+        spine.location = (0.4, 0.0, 0.3)
+        spine.keyframe_insert("location", frame=8)
+        bpy.context.scene.frame_set(8)
+        head = np.array(self.rig.matrix_world @ self.rig.pose.bones["Tail_1"].head)
+        np.testing.assert_allclose(tails(self.rig)[0], head + (0.0, 0.1, 0.0), atol=1e-5)  # at rest again
+
+    def test_mute_and_settings(self):
+        self.play(8)
+        for con in self.cons:
+            con.mute = True
+        bpy.context.scene.frame_set(8)
+        rest = tails(self.rig)
+        for con in self.cons:
+            con.mute = False
+        bpy.context.scene.frame_set(8)
+        swayed = tails(self.rig)
+        self.assertGreater(np.linalg.norm(swayed[2] - rest[2]), 1e-3)
+        self.cons[2].drag = 1.0   # clears the cache: frame 8 starts again
+        bpy.context.scene.frame_set(8)
+        np.testing.assert_allclose(tails(self.rig)[2], rest[2], atol=1e-5)
+
+    def test_collider_pushes_out_and_follows_scale(self):
+        for con in self.cons:
+            con.stiffness, con.gravity = 0.0, 2.0
+        self.play(15)
+        tip = tails(self.rig)[2]
+        head = np.array(self.rig.matrix_world @ self.rig.pose.bones["Spine"].head)
+        tail = np.array(self.rig.matrix_world @ self.rig.pose.bones["Spine"].tail)
+        t = np.clip((tip - head) @ (tail - head) / ((tail - head) @ (tail - head)), 0.0, 1.0)
+        self.assertGreaterEqual(np.linalg.norm(tip - (head + t * (tail - head))), 0.05 + 0.03 - 1e-4)
+
+    def test_radius_grows_with_the_rig_scale(self):
+        self.rig.scale = (2.0, 2.0, 2.0)
+        for con in self.cons:
+            con.stiffness, con.gravity = 0.0, 2.0
+        self.play(15)
+        tip = tails(self.rig)[2]
+        head = np.array(self.rig.matrix_world @ self.rig.pose.bones["Spine"].head)
+        tail = np.array(self.rig.matrix_world @ self.rig.pose.bones["Spine"].tail)
+        t = np.clip((tip - head) @ (tail - head) / ((tail - head) @ (tail - head)), 0.0, 1.0)
+        self.assertGreaterEqual(np.linalg.norm(tip - (head + t * (tail - head))), 2.0 * (0.05 + 0.03) - 1e-4)
+
+    def test_python_handlers_are_gone(self):
+        names = [h.__name__ for h in bpy.app.handlers.frame_change_post + bpy.app.handlers.frame_change_pre]
+        self.assertNotIn("frame_post", names)
+        self.assertNotIn("frame_pre", names)
+
+
 if __name__ == "__main__":
     tu.run_tests()

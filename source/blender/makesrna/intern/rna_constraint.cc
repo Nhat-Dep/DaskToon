@@ -632,6 +632,23 @@ static const EnumPropertyItem *rna_Constraint_target_space_itemf(bContext * /*C*
   return target_space_object_items;
 }
 
+static void rna_SpringConstraint_update(Main *bmain, Scene *scene, PointerRNA *ptr)
+{
+  BKE_constraint_spring_cache_clear(id_cast<Object *>(ptr->owner_id));
+  rna_Constraint_update(bmain, scene, ptr);
+}
+
+static void rna_SpringConstraintCollider_update(Main *bmain, Scene *scene, PointerRNA *ptr)
+{
+  BKE_constraint_spring_cache_clear(id_cast<Object *>(ptr->owner_id));
+  rna_ConstraintTarget_update(bmain, scene, ptr);
+}
+
+static void rna_SpringConstraint_clear_cache(ID *id, bConstraint * /*con*/)
+{
+  BKE_constraint_spring_cache_clear(id_cast<Object *>(id));
+}
+
 static std::optional<std::string> rna_SpringConstraintCollider_path(const PointerRNA *ptr)
 {
   Object *ob = id_cast<Object *>(ptr->owner_id);
@@ -1268,7 +1285,7 @@ static void rna_def_constraint_spring_collider(BlenderRNA *brna)
   RNA_def_property_range(prop, 0.0f, FLT_MAX);
   RNA_def_property_ui_range(prop, 0.0f, 1.0f, 1, 3);
   RNA_def_property_ui_text(prop, "Radius", "Radius of the capsule, in armature units");
-  RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_ConstraintTarget_update");
+  RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_SpringConstraintCollider_update");
 
   RNA_define_lib_overridable(false);
 }
@@ -1316,20 +1333,20 @@ static void rna_def_constraint_spring(BlenderRNA *brna)
   RNA_def_property_float_sdna(prop, nullptr, "stiffness");
   RNA_def_property_range(prop, 0.0f, 4.0f);
   RNA_def_property_ui_text(prop, "Stiffness", "How strongly the bone springs back to its pose");
-  RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_Constraint_update");
+  RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_SpringConstraint_update");
 
   prop = RNA_def_property(srna, "gravity", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_sdna(prop, nullptr, "gravity");
   RNA_def_property_range(prop, 0.0f, 2.0f);
   RNA_def_property_ui_text(prop, "Gravity", "How strongly the bone is pulled down");
-  RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_Constraint_update");
+  RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_SpringConstraint_update");
 
   prop = RNA_def_property(srna, "drag", PROP_FLOAT, PROP_FACTOR);
   RNA_def_property_float_sdna(prop, nullptr, "drag");
   RNA_def_property_range(prop, 0.0f, 1.0f);
   RNA_def_property_ui_text(
       prop, "Drag", "How quickly the swing dies down: 0 keeps swinging, 1 stops at once");
-  RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_Constraint_update");
+  RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_SpringConstraint_update");
 
   prop = RNA_def_property(srna, "radius", PROP_FLOAT, PROP_DISTANCE);
   RNA_def_property_float_sdna(prop, nullptr, "radius");
@@ -1337,9 +1354,14 @@ static void rna_def_constraint_spring(BlenderRNA *brna)
   RNA_def_property_ui_range(prop, 0.0f, 1.0f, 1, 3);
   RNA_def_property_ui_text(
       prop, "Radius", "How far the bone's tail keeps from the colliders, in armature units");
-  RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_Constraint_update");
+  RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_SpringConstraint_update");
 
   RNA_define_lib_overridable(false);
+
+  FunctionRNA *func = RNA_def_function(srna, "clear_cache", "rna_SpringConstraint_clear_cache");
+  RNA_def_function_flag(func, FUNC_USE_SELF_ID);
+  RNA_def_function_ui_description(
+      func, "Forget the cached sway of every Spring constraint of the object, so it starts again");
 }
 
 static void rna_def_constraint_armature_deform(BlenderRNA *brna)

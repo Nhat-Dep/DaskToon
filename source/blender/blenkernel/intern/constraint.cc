@@ -15,6 +15,10 @@
 #include <cstddef>
 #include <cstdio>
 #include <cstring>
+#include <map>
+#include <mutex>
+#include <string>
+#include <unordered_map>
 
 #include "MEM_guardedalloc.h"
 
@@ -2804,12 +2808,213 @@ static void spring_id_looper(bConstraint *con, ConstraintIDFunc func, void *user
   }
 }
 
-void BKE_constraint_spring_cache_clear(const Object * /*ob*/) {}
+/* Sways a bone like the anime rig's spring bones (docs/superpowers/specs/2026-10-06-dasktoon-anime-rig-design.md 9.3,
+ * 9.4), the same maths as scripts/modules/dasktoon_rig/spring.py and Unity's DaskToonSpringBone: the tail keeps its
+ * current and previous world position; a step adds the inertia, a pull towards the posed direction and gravity, keeps
+ * the bone's length and pushes the tail out of the collider capsules. The state of every frame is cached, keyed by the
+ * object's session UID and the bone, with the inputs it was solved from: the same frame again gives the same pose, the
+ * scene's start frame and changed inputs start again, a new frame steps on from the closest earlier one. */
 
-static void spring_evaluate(bConstraint * /*con*/,
-                            bConstraintOb * /*cob*/,
-                            ListBaseT<bConstraintTarget> * /*targets*/)
+struct SpringFrame {
+  float3 current;
+  float3 previous;
+  float3 head;
+  float3 rest;
+};
+
+struct SpringCapsule {
+  float3 a;
+  float3 b;
+  float radius;
+};
+
+constexpr int SPRING_MAX_CATCH_UP = 300;
+
+static std::mutex &spring_mutex()
 {
+  static std::mutex mutex;
+  return mutex;
+}
+
+/* Plain std containers: the cache lives until exit, outside guarded memory. */
+static std::unordered_map<std::string, std::map<int, SpringFrame>> &spring_cache()
+{
+  static std::unordered_map<std::string, std::map<int, SpringFrame>> cache;
+  return cache;
+}
+
+/* Evaluated copies all carry session UID 0: key the cache by the original object. */
+static std::string spring_prefix(const Object *ob)
+{
+  return std::to_string(DEG_get_original(ob)->id.session_uid) + ":";
+}
+
+void BKE_constraint_spring_cache_clear(const Object *ob)
+{
+  if (ob == nullptr) {
+    return;
+  }
+  const std::string prefix = spring_prefix(ob);
+  std::scoped_lock lock(spring_mutex());
+  auto &cache = spring_cache();
+  for (auto it = cache.begin(); it != cache.end();) {
+    if (it->first.compare(0, prefix.size(), prefix) == 0) {
+      it = cache.erase(it);
+    }
+    else {
+      ++it;
+    }
+  }
+}
+
+static float3 spring_unit(const float3 &v)
+{
+  const float length = math::length(v);
+  return length > 1e-12f ? v / length : v;
+}
+
+static float3 spring_push_out(const float3 &point,
+                              const float3 &a,
+                              const float3 &b,
+                              const float distance)
+{
+  const float3 axis = b - a;
+  const float length2 = math::dot(axis, axis);
+  const float t = length2 < 1e-18f ?
+                      0.0f :
+                      std::clamp(math::dot(point - a, axis) / length2, 0.0f, 1.0f);
+  const float3 closest = a + axis * t;
+  const float3 away = point - closest;
+  const float gap = math::length(away);
+  if (gap >= distance || gap < 1e-12f) {
+    return point;
+  }
+  return closest + away / gap * distance;
+}
+
+static void spring_step(SpringFrame &state,
+                        const float3 &head,
+                        const float3 &rest,
+                        const float length,
+                        const bSpringConstraint &data,
+                        const Span<SpringCapsule> capsules,
+                        const float joint_radius,
+                        const float dt)
+{
+  const float3 current = state.current;
+  float3 tail = current + (current - state.previous) * (1.0f - data.drag) +
+                rest * (data.stiffness * dt) + float3(0.0f, 0.0f, -1.0f) * (data.gravity * dt);
+  tail = head + spring_unit(tail - head) * length;
+  for (const SpringCapsule &capsule : capsules) {
+    tail = spring_push_out(tail, capsule.a, capsule.b, capsule.radius + joint_radius);
+    tail = head + spring_unit(tail - head) * length;
+  }
+  state.previous = current;
+  state.current = tail;
+}
+
+static bool spring_same(const float3 &a, const float3 &b)
+{
+  return math::length(a - b) < 1e-6f;
+}
+
+static void spring_evaluate(bConstraint *con,
+                            bConstraintOb *cob,
+                            ListBaseT<bConstraintTarget> *targets)
+{
+  const bSpringConstraint *data = static_cast<const bSpringConstraint *>(con->data);
+  if (cob->type != CONSTRAINT_OBTYPE_BONE || cob->pchan == nullptr ||
+      cob->pchan_armbone == nullptr || cob->scene == nullptr || cob->depsgraph == nullptr)
+  {
+    return;
+  }
+  const float3 head(cob->matrix[3]);
+  const float3 axis(cob->matrix[1]);
+  const float scale = math::length(axis);
+  const float length = cob->pchan_armbone->length * scale;
+  if (scale < 1e-8f || length < 1e-8f) {
+    return;
+  }
+  const float3 rest = axis / scale;
+  const float object_scale = mat4_to_scale(cob->ob->object_to_world().ptr());
+
+  Vector<SpringCapsule> capsules;
+  for (const bConstraintTarget &ct : *targets) {
+    if (!VALID_CONS_TARGET(&ct) || ct.tar->type != OB_ARMATURE || ct.tar->pose == nullptr) {
+      continue;
+    }
+    const bPoseChannel *pchan = BKE_pose_channel_find_name(ct.tar->pose, ct.subtarget);
+    if (pchan == nullptr) {
+      continue;
+    }
+    const float(*world)[4] = ct.tar->object_to_world().ptr();
+    float3 a, b;
+    mul_v3_m4v3(a, world, pchan->pose_head);
+    mul_v3_m4v3(b, world, pchan->pose_tail);
+    capsules.append({a, b, ct.weight * mat4_to_scale(world)});
+  }
+
+  const Scene *scene = cob->scene;
+  const int frame = int(std::lround(DEG_get_ctime(cob->depsgraph)));
+  const float dt = scene->r.frs_sec > 0 ? scene->r.frs_sec_base / float(scene->r.frs_sec) :
+                                          1.0f / 24.0f;
+  const std::string key = spring_prefix(cob->ob) + cob->pchan->name;
+  float3 tail;
+  {
+    std::scoped_lock lock(spring_mutex());
+    std::map<int, SpringFrame> &history = spring_cache()[key];
+    const auto found = history.find(frame);
+    if (frame == scene->r.sfra) {
+      /* The scene's start frame always starts again, so playing from it gives the same sway. */
+      history.clear();
+      SpringFrame state;
+      state.current = state.previous = head + rest * length;
+      state.head = head;
+      state.rest = rest;
+      history.insert_or_assign(frame, state);
+      tail = state.current;
+    }
+    else if (found != history.end() && spring_same(found->second.head, head) &&
+             spring_same(found->second.rest, rest))
+    {
+      tail = found->second.current;
+    }
+    else {
+      if (found != history.end()) {
+        /* The animation or the rig changed since this frame was solved: start again here. */
+        history.clear();
+      }
+      SpringFrame state;
+      const auto after = history.lower_bound(frame);
+      if (after != history.begin() && frame - std::prev(after)->first <= SPRING_MAX_CATCH_UP)
+      {
+        const auto earlier = std::prev(after);
+        state = earlier->second;
+        for (int step = earlier->first; step < frame; step++) {
+          spring_step(
+              state, head, rest, length, *data, capsules, data->radius * object_scale, dt);
+        }
+      }
+      else {
+        history.clear();
+        state.current = state.previous = head + rest * length;
+      }
+      state.head = head;
+      state.rest = rest;
+      history.insert_or_assign(frame, state);
+      tail = state.current;
+    }
+  }
+
+  /* Turn the bone from its posed direction to its tail, keeping the head and the scale. */
+  float rotation[3][3], basis[3][3], result[3][3];
+  const float3 direction = spring_unit(tail - head);
+  rotation_between_vecs_to_mat3(rotation, rest, direction);
+  copy_m3_m4(basis, cob->matrix);
+  mul_m3_m3m3(result, rotation, basis);
+  copy_m4_m3(cob->matrix, result);
+  copy_v3_v3(cob->matrix[3], head);
+  cob->matrix[3][3] = 1.0f;
 }
 
 static bConstraintTypeInfo CTI_SPRING = {
