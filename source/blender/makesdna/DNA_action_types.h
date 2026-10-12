@@ -466,6 +466,10 @@ enum eDopeSheet_FilterFlag2 : int {
   ADS_FILTER_DRIVER_FALLBACK_AS_ERROR = (1 << 6),
 
   ADS_FILTER_NOLIGHTPROBE = (1 << 7),
+
+  /** DaskToon: selecting a part of a character shows all of it (the armature with every bone, the objects parented to
+   * it, the objects it deforms). Implies "Only Show Selected" for everything else. */
+  ADS_FILTER_WHOLE_CHARACTER = (1 << 8),
 };
 ENUM_OPERATORS(eDopeSheet_FilterFlag2);
 

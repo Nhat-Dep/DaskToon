@@ -1321,6 +1321,16 @@ static void rna_def_dopesheet(BlenderRNA *brna)
   RNA_def_property_ui_icon(prop, ICON_RESTRICT_SELECT_OFF, 0);
   RNA_def_property_update(prop, NC_ANIMATION | ND_ANIMCHAN | NA_EDITED, nullptr);
 
+  prop = RNA_def_property(srna, "show_whole_character", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "filterflag2", ADS_FILTER_WHOLE_CHARACTER);
+  RNA_def_property_ui_text(prop,
+                           "Whole Character",
+                           "Show every channel of the characters that have a selected part: the armature "
+                           "with all its bones, the objects parented to it and the meshes it deforms "
+                           "(DaskToon)");
+  RNA_def_property_ui_icon(prop, ICON_ARMATURE_DATA, 0);
+  RNA_def_property_update(prop, NC_ANIMATION | ND_ANIMCHAN | NA_EDITED, nullptr);
+
   prop = RNA_def_property(srna, "show_only_slot_of_active_object", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "filterflag", ADS_FILTER_ONLY_SLOTS_OF_ACTIVE);
   RNA_def_property_ui_text(

@@ -36,6 +36,8 @@ def dopesheet_filter(layout, context):
     if is_action_editor:
         row.prop(dopesheet, "show_only_slot_of_active_object", text="")
     row.prop(dopesheet, "show_only_selected", text="")
+    if context.area.type == 'DOPESHEET_EDITOR' and context.space_data.mode == 'DOPESHEET':
+        row.prop(dopesheet, "show_whole_character", text="")  # DaskToon
     row.prop(dopesheet, "show_hidden", text="")
 
     if is_nla:
@@ -63,6 +65,8 @@ class DopesheetFilterPopoverBase:
 
         col = layout.column(align=True)
         col.prop(dopesheet, "show_only_selected", icon='NONE')
+        if context.area.type == 'DOPESHEET_EDITOR' and context.space_data.mode == 'DOPESHEET':
+            col.prop(dopesheet, "show_whole_character", icon='NONE')  # DaskToon
         col.prop(dopesheet, "show_hidden", icon='NONE')
 
         if is_nla:
@@ -232,6 +236,11 @@ class DOPESHEET_HT_editor_buttons:
         if st.mode in {'ACTION', 'SHAPEKEY'} and context.object:
             layout.separator_spacer()
             cls._draw_action_selector(context, layout)
+
+        # DaskToon: the character timeline (Animation tab spec 5).
+        if st.mode == 'DOPESHEET' and st.dopesheet.show_whole_character:
+            from bl_ui.dasktoon_animation import draw_character_header
+            draw_character_header(layout, context)
 
         # Layer management
         if st.mode == 'GPENCIL':

@@ -44,6 +44,7 @@
 #include "DNA_material_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meta_types.h"
+#include "DNA_modifier_types.h"
 #include "DNA_movieclip_types.h"
 #include "DNA_node_types.h"
 #include "DNA_object_force_types.h"
@@ -63,6 +64,7 @@
 
 #include "BLI_alloca.h"
 #include "BLI_listbase.h"
+#include "BLI_set.hh"
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
@@ -174,6 +176,15 @@ static Key *actedit_get_shapekeys(bAnimContext *ac)
   return BKE_key_from_object(ob);
 }
 
+/* DaskToon: "Whole Character" shows only selected data too, except that a selected part shows its whole
+ * character. */
+static void whole_character_implies_only_selected(bAnimContext *ac)
+{
+  if (ac->filters.flag2 & ADS_FILTER_WHOLE_CHARACTER) {
+    ac->filters.flag |= ADS_FILTER_ONLYSEL;
+  }
+}
+
 /* Get data being edited in Action Editor (depending on current 'mode') */
 static bool actedit_get_context(bAnimContext *ac, SpaceAction *saction)
 {
@@ -184,6 +195,7 @@ static bool actedit_get_context(bAnimContext *ac, SpaceAction *saction)
   /* Set the default filters. These can be overridden later. */
   ac->filters.flag = eDopeSheet_FilterFlag(ac->ads->filterflag);
   ac->filters.flag2 = eDopeSheet_FilterFlag2(ac->ads->filterflag2);
+  whole_character_implies_only_selected(ac);
 
   ac->active_action = ANIM_active_action_from_area(
       *ac->bmain, ac->scene, ac->view_layer, ac->area, &ac->active_action_user);
@@ -329,6 +341,7 @@ static bool graphedit_get_context(bAnimContext *ac, SpaceGraph *sipo)
 
   ac->filters.flag = eDopeSheet_FilterFlag(sipo->ads->filterflag);
   ac->filters.flag2 = eDopeSheet_FilterFlag2(sipo->ads->filterflag2);
+  whole_character_implies_only_selected(ac);
 
   return ok;
 }
@@ -349,6 +362,7 @@ static bool nlaedit_get_context(bAnimContext *ac, SpaceNla *snla)
   snla->ads->source = reinterpret_cast<ID *>(ac->scene);
   ac->filters.flag = eDopeSheet_FilterFlag(snla->ads->filterflag | ADS_FILTER_ONLYNLA);
   ac->filters.flag2 = eDopeSheet_FilterFlag2(snla->ads->filterflag2);
+  whole_character_implies_only_selected(ac);
 
   ac->datatype = ANIMCONT_NLA;
   ac->data = snla->ads;
@@ -1044,8 +1058,10 @@ static bool skip_fcurve_selected_data(bAnimContext *ac,
           }
         }
 
-        /* can only add this F-Curve if it is selected */
-        if (ac->filters.flag & ADS_FILTER_ONLYSEL) {
+        /* can only add this F-Curve if it is selected (DaskToon: "Whole Character" shows every bone) */
+        if ((ac->filters.flag & ADS_FILTER_ONLYSEL) &&
+            !(ac->filters.flag2 & ADS_FILTER_WHOLE_CHARACTER))
+        {
           if ((pchan->flag & POSE_SELECTED) == 0) {
             return true;
           }
@@ -3561,6 +3577,54 @@ static size_t animdata_filter_dopesheet_movieclips(bAnimContext *ac,
   return items;
 }
 
+/* DaskToon: "Whole Character" (docs/superpowers/specs/2026-10-10-dasktoon-animation-tab-design.md, section 4). A
+ * character is an armature, the objects that have it among their parents and the objects whose Armature modifiers
+ * use it. With the filter on, an object is shown when it is selected or belongs to a character with a selected part
+ * (an object in Pose Mode counts as selected, as for "Only Show Selected"). */
+struct AnimFilterWholeCharacter {
+  Set<const Object *> armatures;
+};
+
+static void whole_character_armatures(const Object *ob, Vector<const Object *> &r_armatures)
+{
+  if (ob->type == OB_ARMATURE) {
+    r_armatures.append(ob);
+  }
+  for (const Object *parent = ob->parent; parent != nullptr; parent = parent->parent) {
+    if (parent->type == OB_ARMATURE) {
+      r_armatures.append(parent);
+    }
+  }
+  for (const ModifierData &md : ob->modifiers) {
+    if (md.type == eModifierType_Armature) {
+      const Object *armature = reinterpret_cast<const ArmatureModifierData &>(md).object;
+      if (armature != nullptr) {
+        r_armatures.append(armature);
+      }
+    }
+  }
+}
+
+static bool whole_character_part_selected(const Base &base)
+{
+  return (base.flag & BASE_SELECTED) || (base.object->mode & OB_MODE_POSE);
+}
+
+static bool whole_character_shows(const AnimFilterWholeCharacter &filter, const Base &base)
+{
+  if (whole_character_part_selected(base)) {
+    return true;
+  }
+  Vector<const Object *> armatures;
+  whole_character_armatures(base.object, armatures);
+  for (const Object *armature : armatures) {
+    if (filter.armatures.contains(armature)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 /* Helper for animdata_filter_dopesheet() - For checking if an object should be included or not */
 static bool animdata_filter_base_is_ok(bAnimContext *ac,
                                        Base *base,
@@ -3625,7 +3689,12 @@ static bool animdata_filter_base_is_ok(bAnimContext *ac,
 
   /* check selection and object type filters */
   if (ac->filters.flag & ADS_FILTER_ONLYSEL) {
-    if (object_mode & OB_MODE_POSE) {
+    if (ac->whole_character != nullptr) {
+      if (!whole_character_shows(*ac->whole_character, *base)) {
+        return false;
+      }
+    }
+    else if (object_mode & OB_MODE_POSE) {
       /* When in pose-mode handle all pose-mode objects.
        * This avoids problems with pose-mode where objects may be unselected,
        * where a selected bone of an unselected object would be hidden. see: #81922. */
@@ -3758,6 +3827,21 @@ static size_t animdata_filter_dopesheet(bAnimContext *ac,
    */
   BKE_view_layer_synced_ensure(*ac->bmain, scene, view_layer);
   ListBaseT<Base> *object_bases = BKE_view_layer_object_bases_get(view_layer);
+
+  /* DaskToon: the characters that have a selected part, for "Whole Character". */
+  AnimFilterWholeCharacter whole_character;
+  ac->whole_character = nullptr;
+  if (ac->filters.flag2 & ADS_FILTER_WHOLE_CHARACTER) {
+    for (const Base &base : *object_bases) {
+      if (whole_character_part_selected(base)) {
+        Vector<const Object *> armatures;
+        whole_character_armatures(base.object, armatures);
+        whole_character.armatures.add_multiple(armatures);
+      }
+    }
+    ac->whole_character = &whole_character;
+  }
+
   if ((filter_mode & ANIMFILTER_LIST_CHANNELS) && !(ads->flag & ADS_FLAG_NO_DB_SORT) &&
       (object_bases->first != object_bases->last))
   {
@@ -3792,6 +3876,7 @@ static size_t animdata_filter_dopesheet(bAnimContext *ac,
       }
     }
   }
+  ac->whole_character = nullptr;
 
   /* return the number of items in the list */
   return items;

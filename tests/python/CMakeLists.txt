@@ -276,6 +276,9 @@ foreach(dasktoon_test
     dasktoon_rig_sway_test
     dasktoon_export_rig_test
     dasktoon_spring_constraint_test
+    dasktoon_animation_filter_test
+    dasktoon_animation_keying_test
+    dasktoon_animation_tab_test
 )
   add_blender_test(
     ${dasktoon_test}
