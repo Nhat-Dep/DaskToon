@@ -167,7 +167,7 @@ bỏ sót hơn người duyệt mới, nên bạn quyết định có cần duy�
 
 - Không có lỗi nghiêm trọng hay quan trọng. Năm điểm "Review Focus" của kế hoạch đều có test.
 - Đã thử thêm: DaskToon vừa mở là bản nháp sạch, nên New Model chọn sẵn DaskToon Scene như spec.
-- Ba điểm nhỏ để lại, chưa sửa:
+- Ba điểm nhỏ để lại (đã sửa ngày 2026-10-10: `docs/superpowers/reports/2026-10-10-dasktoon-minor-fixes-report.md`):
   - màn hình đầu và Open Recent gọi dự án gần đây bằng tên thư mục, nên dự án đổi tên trong Project Settings vẫn hiện tên
     thư mục cũ ở đó;
   - nhãn thanh trên cùng đọc `dasktoon_project.json` mỗi lần thanh này vẽ lại (nhẹ, nhưng vẽ lại nhiều khi render);

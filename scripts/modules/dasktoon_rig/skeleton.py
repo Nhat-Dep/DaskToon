@@ -124,11 +124,12 @@ def placement(objects, fallback_location):
 
 @contextmanager
 def editing(context, rig):
-    """`rig` in Edit Mode meanwhile (yields its edit bones); afterwards Object Mode and the previous active object.
-    An active object in another mode is put in Object Mode first."""
+    """`rig` in Edit Mode meanwhile (yields its edit bones); afterwards the previous active object, in its mode. An
+    active object in another mode is put in Object Mode first."""
     view_layer = context.view_layer
     previous = view_layer.objects.active
-    if previous is not None and previous.mode != 'OBJECT':
+    previous_mode = previous.mode if previous is not None else 'OBJECT'
+    if previous_mode != 'OBJECT':
         bpy.ops.object.mode_set(mode='OBJECT')
     view_layer.objects.active = rig
     bpy.ops.object.mode_set(mode='EDIT')
@@ -137,6 +138,8 @@ def editing(context, rig):
     finally:
         bpy.ops.object.mode_set(mode='OBJECT')
         view_layer.objects.active = previous
+        if previous_mode != 'OBJECT':
+            bpy.ops.object.mode_set(mode=previous_mode)
 
 
 def set_joints(rig, matrix, create):

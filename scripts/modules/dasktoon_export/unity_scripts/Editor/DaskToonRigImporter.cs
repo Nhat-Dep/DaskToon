@@ -45,6 +45,20 @@ namespace DaskToon.Editor
 
         public static string RigPath(string modelPath) => Path.ChangeExtension(modelPath, ".rig.json");
 
+        /// <summary>A rig file that arrives after its model (exported later, copied in) imports the model again, so the
+        /// model gets its spring bones; a model imported in the same pass reads the file itself.</summary>
+        static void OnPostprocessAllAssets(string[] importedAssets, string[] deletedAssets, string[] movedAssets,
+                                           string[] movedFromAssetPaths)
+        {
+            var imported = new HashSet<string>(importedAssets);
+            foreach (var path in importedAssets)
+            {
+                if (!path.EndsWith(".rig.json", StringComparison.OrdinalIgnoreCase)) continue;
+                var model = path.Substring(0, path.Length - ".rig.json".Length) + ".fbx";
+                if (File.Exists(model) && !imported.Contains(model)) AssetDatabase.ImportAsset(model);
+            }
+        }
+
         void OnPostprocessModel(GameObject root)
         {
             var path = RigPath(assetPath).Replace('\\', '/');

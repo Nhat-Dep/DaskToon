@@ -1209,6 +1209,16 @@ VI = {
         "Thêm một collider; armature của nó là chủ của constraint",
     "Remove all colliders": "Xóa mọi collider",
     "No colliders: Build Rig adds the body bones": "Chưa có collider: Dựng rig sẽ thêm các xương thân",
+    # Build Rig: mesh warnings (anime rig spec 12)
+    "%s has a negative or non-uniform scale: apply its scale (Object › Apply › Scale) before building and exporting "
+    "to Unity":
+        "%s có scale âm hoặc không đều: hãy Apply Scale (Object › Apply › Scale) trước khi dựng rig và xuất sang Unity",
+    "%s: the faces of the body point inward, so automatic weights may pick the wrong bones. Recalculate the normals "
+    "outside (Edit Mode, Mesh › Normals)":
+        "%s: mặt của phần thân quay vào trong nên weight tự động có thể chọn sai xương. Hãy tính lại pháp tuyến hướng "
+        "ra ngoài (Edit Mode, Mesh › Normals)",
+    # Save Copy, Save Incremental on a draft (project workflow)
+    "This file is a draft: save it into a project first": "File này là bản nháp: hãy lưu nó vào một dự án trước",
 }
 
 # Words that need their own translation context, because Blender's own translation of the same word in the default

@@ -150,6 +150,42 @@ class ProjectTest(unittest.TestCase):
         self.assertTrue(dtp.is_inside(os.path.join(self.folder, "Models", "a.blend"), self.folder))
         self.assertFalse(dtp.is_inside(self.folder + "2", self.folder))
 
+    def test_load_reads_the_file_again_only_when_it_changed(self):
+        project = dtp.create_project("Cached", self.folder)
+        reads = []
+        real = json.load
+
+        def counting(f):
+            reads.append(f.name)
+            return real(f)
+
+        json.load = counting
+        try:
+            dtp.load(project.file)
+            dtp.load(self.folder)
+            self.assertEqual(len(reads), 1)
+            renamed = dtp.load(project.file)
+            renamed.name = "Renamed"
+            dtp.save(renamed)
+            self.assertEqual(dtp.load(project.file).name, "Renamed")
+            with open(project.file, "w", encoding="utf-8") as f:  # changed outside DaskToon
+                json.dump({"version": dtp.PROJECT_VERSION, "name": "Changed outside", "engines": []}, f)
+            self.assertEqual(dtp.load(project.file).name, "Changed outside")
+        finally:
+            json.load = real
+
+    def test_loaded_projects_are_copies(self):
+        project = dtp.create_project("Copies", self.folder)
+        dtp.load(project.file).engines.append({"engine": "UNITY_URP", "path": "elsewhere"})
+        self.assertEqual(dtp.load(project.file).engines, [])
+
+    def test_project_label_is_the_name_or_the_folder(self):
+        project = dtp.create_project("Shown Name", self.folder)
+        self.assertEqual(dtp.project_label(project.file), "Shown Name")
+        with open(project.file, "w", encoding="utf-8") as f:
+            f.write("{")
+        self.assertEqual(dtp.project_label(project.file), "MyProject")
+
     def test_recent_projects_keep_the_eight_newest(self):
         files = []
         for i in range(10):

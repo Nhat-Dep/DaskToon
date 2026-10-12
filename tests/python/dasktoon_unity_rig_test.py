@@ -2,8 +2,9 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-"""The anime rig in Unity 6000.5 (spec 9.5): the importer adds the spring bones and colliders from <model>.rig.json, and
-20 steps of the C# spring bone match dasktoon_rig/spring.py. Runs Unity in batchmode on the harness's throwaway project."""
+"""The anime rig in Unity 6000.5 (spec 9.5): the importer adds the spring bones and colliders from <model>.rig.json,
+20 steps of the C# spring bone match dasktoon_rig/spring.py, a paused step moves nothing, and a rig file added after its
+model imports the model again. Runs Unity in batchmode on the harness's throwaway project."""
 
 import os
 import sys
@@ -63,6 +64,10 @@ class UnityRigTest(unittest.TestCase):
         self.assertTrue(result["chainFound"])
         self.assertLess(result["offAxis"], 1e-3)
         self.assertLess(result["maxError"], 2e-3)
+        self.assertLess(result["pausedDrift"], 1e-9)
+        late = harness.run_method("DaskToonRigTests.CheckLateRig", {"model": "Assets/DaskToon/DTRig/Model/DTRig.fbx"})
+        self.assertTrue(late["ok"], late.get("error"))
+        self.assertEqual((late["withoutRig"], late["withRig"]), (0, 9))
 
 
 if __name__ == "__main__":

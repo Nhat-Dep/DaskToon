@@ -82,6 +82,23 @@ class PanelTest(unittest.TestCase):
         log = tu.draw(ui.DATA_PT_dasktoon_rig_joints, panel_context(self.rig))
         self.assertIn("Missing bones: Spine", tu.labels(log))
 
+    def test_fit_in_edit_mode_stays_in_edit_mode(self):
+        ui.add_part(self.rig, self.objs["Body"], 'BODY')
+        bpy.ops.object.mode_set(mode='EDIT')
+        self.assertEqual(bpy.ops.dasktoon.rig_fit(), {'FINISHED'})
+        self.assertEqual(self.rig.mode, 'EDIT')
+        self.assertEqual(bpy.context.view_layer.objects.active, self.rig)
+
+    def test_parts_list_names_the_object_only_when_it_differs(self):
+        ui.add_part(self.rig, self.objs["Body"], 'BODY')
+        ui.add_part(self.rig, self.objs["Body"], 'CLOTHING', name="Skin")
+        found = []
+        for part in self.rig.data.dasktoon_rig.parts:
+            log = tu.RecordingLayout()
+            ui.DASKTOON_UL_rig_parts.draw_item(None, bpy.context, log, None, part, 0, None, "", 0)
+            found.append(tu.labels(log.log))
+        self.assertEqual(found, [[], ["Body"]])
+
     def test_parts_panel_and_commands(self):
         log = tu.draw(ui.DATA_PT_dasktoon_rig_parts, panel_context(self.rig))
         self.assertIn("Select meshes and press + to add them as parts", tu.labels(log))

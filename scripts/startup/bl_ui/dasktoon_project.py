@@ -361,8 +361,8 @@ class TOPBAR_MT_file_open_recent(Menu):
                 layout.separator()
             layout.label(text="Projects")
             for path in recent_projects:
-                layout.operator(DASKTOON_OT_project_open.bl_idname, text=os.path.basename(os.path.dirname(path)),
-                                icon='FILE_FOLDER', translate=False).filepath = path
+                layout.operator(DASKTOON_OT_project_open.bl_idname, text=dtp.project_label(path), icon='FILE_FOLDER',
+                                translate=False).filepath = path
 
 
 class TOPBAR_MT_dasktoon_project_models(Menu):

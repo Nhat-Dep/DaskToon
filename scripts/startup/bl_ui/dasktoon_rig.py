@@ -412,7 +412,8 @@ class DASKTOON_UL_rig_parts(UIList):
     def draw_item(self, _context, layout, _data, item, _icon, _active_data, _active_propname, _index):
         row = layout.row(align=True)
         row.prop(item, "name", text="", emboss=False, icon=ROLE_ICONS[item.role])
-        row.label(text=item.object.name if item.object is not None else "", translate=False)
+        if item.object is not None and item.object.name != item.name:
+            row.label(text=item.object.name, translate=False)
 
 
 class DaskRigPanel:

@@ -8,6 +8,7 @@ import os
 import sys
 import unittest
 
+import bmesh
 import bpy
 import numpy as np
 from mathutils import Vector
@@ -118,19 +119,23 @@ class SeparateTest(CheckedWeightsMixin, unittest.TestCase):
         self.assertNotIn("Skirt8_1", self.rig.data.bones)
 
 
+def merged_parts(obj):
+    return [
+        parts.Part("Body", obj, 'BODY'),
+        parts.Part("Shirt", obj, 'CLOTHING', scope='MATERIAL', material="Shirt"),
+        parts.Part("Hair", obj, 'HAIR', scope='MATERIAL', material="Hair"),
+        parts.Part("Skirt", obj, 'SKIRT', scope='MATERIAL', material="Skirt"),
+        parts.Part("Ribbon", obj, 'ACCESSORY', scope='MATERIAL', material="Ribbon"),
+        parts.Part("Eye", obj, 'ACCESSORY', scope='MATERIAL', material="Eye"),
+    ]
+
+
 class MergedTest(CheckedWeightsMixin, unittest.TestCase):
     def test_merged_mesh_by_material(self):
         bpy.ops.wm.read_factory_settings(use_empty=True)
         obj = fx.character(merged=True)["Character"]
         rig = fx.rig_for()
-        result = build.build(bpy.context, rig, [
-            parts.Part("Body", obj, 'BODY'),
-            parts.Part("Shirt", obj, 'CLOTHING', scope='MATERIAL', material="Shirt"),
-            parts.Part("Hair", obj, 'HAIR', scope='MATERIAL', material="Hair"),
-            parts.Part("Skirt", obj, 'SKIRT', scope='MATERIAL', material="Skirt"),
-            parts.Part("Ribbon", obj, 'ACCESSORY', scope='MATERIAL', material="Ribbon"),
-            parts.Part("Eye", obj, 'ACCESSORY', scope='MATERIAL', material="Eye"),
-        ])
+        result = build.build(bpy.context, rig, merged_parts(obj))
         self.assertEqual(sorted(result.bones), sorted(HAIR + SKIRT))
         self.assert_unity_weights(obj, rig)
         hair = parts.part_vertices(parts.Part("Hair", obj, scope='MATERIAL', material="Hair"))
@@ -267,6 +272,46 @@ class ColliderTest(unittest.TestCase):
     def test_part_sway_defaults(self):
         part = parts.Part("Hair", None, 'HAIR')
         self.assertEqual((part.stiffness, part.gravity, part.drag, part.radius), (1.0, 0.2, 0.4, 0.03))
+
+
+def flip(obj):
+    bm = bmesh.new()
+    bm.from_mesh(obj.data)
+    bmesh.ops.reverse_faces(bm, faces=bm.faces)
+    bm.to_mesh(obj.data)
+    bm.free()
+
+
+def mesh_warnings(result):
+    return [w for w in result.warnings if "inward" in w or "scale" in w]
+
+
+class MeshWarningTest(unittest.TestCase):
+    def test_the_test_character_has_none(self):
+        for merged in (False, True):
+            bpy.ops.wm.read_factory_settings(use_empty=True)
+            objs = fx.character(merged=merged)
+            found = build.build(bpy.context, fx.rig_for(),
+                                merged_parts(objs["Character"]) if merged else separate_parts(objs))
+            self.assertEqual(mesh_warnings(found), [], merged)
+
+    def test_inward_body_faces(self):
+        bpy.ops.wm.read_factory_settings(use_empty=True)
+        objs = fx.character()
+        flip(objs["Body"])
+        found = mesh_warnings(build.build(bpy.context, fx.rig_for(), separate_parts(objs)))
+        self.assertEqual(len(found), 1)
+        self.assertTrue(found[0].startswith("Body: "), found)
+        self.assertIn("inward", found[0])
+
+    def test_negative_or_uneven_scale(self):
+        bpy.ops.wm.read_factory_settings(use_empty=True)
+        objs = fx.character()
+        objs["Skirt"].scale = (1.0, 1.0, 1.2)
+        objs["Ribbon"].scale = (-1.0, 1.0, 1.0)
+        bpy.context.view_layer.update()
+        found = mesh_warnings(build.build(bpy.context, fx.rig_for(), separate_parts(objs)))
+        self.assertEqual(sorted(w.split(" ")[0] for w in found), ["Ribbon", "Skirt"])
 
 
 class HumanoidTest(unittest.TestCase):

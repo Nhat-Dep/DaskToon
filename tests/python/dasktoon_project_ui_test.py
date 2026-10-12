@@ -17,6 +17,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import dasktoon_test_utils as tu  # noqa: E402
 from bl_ui import dasktoon_engine_export as export_ui  # noqa: E402
 from bl_ui import dasktoon_project as project_ui  # noqa: E402
+from bl_ui import dasktoon_splash as splash  # noqa: E402
 from dasktoon_project import project as dtp  # noqa: E402
 
 SHADER = os.path.join("Assets", "DaskToon", "Shaders", "AnimeBSDF.shader")
@@ -107,6 +108,14 @@ class ProjectUITest(unittest.TestCase):
             bpy.ops.dasktoon.project_settings(name="Renamed", engine='UNITY_URP',
                                               engine_path=tempfile.mkdtemp(prefix="dt_not_unity_"))
         self.assertEqual(project_ui.selected_project().engine_path, self.unity.replace("\\", "/"))
+
+    def test_recent_lists_show_the_project_name(self):
+        self.create(unity=False)
+        bpy.ops.dasktoon.project_settings(name="Renamed", engine='UNITY_URP', engine_path="")
+        self.assertIn(("dasktoon.project_open", "Renamed"), tu.operators(tu.draw(bpy.types.TOPBAR_MT_file_open_recent)))
+        layout = tu.RecordingLayout()
+        splash.draw_splash(layout, bpy.context)
+        self.assertIn(("dasktoon.project_select", "Renamed"), tu.operators(layout.log))
 
     def test_export_and_reinstall_wait_until_unity_is_linked_then_go_on(self):
         self.create(unity=False)

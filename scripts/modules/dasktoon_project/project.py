@@ -27,6 +27,7 @@ MAX_SCAN_DEPTH = 6
 MAX_SCAN_DIRS = 2000
 SKIP_DIRS = {"library", "temp", "logs", "obj", "usersettings", "node_modules", "__pycache__"}
 FORBIDDEN = '<>:"/\\|?*'
+_loaded = {}  # normcase(abspath(project file)) -> (mtime_ns, size, Project) of the last read
 
 
 @dataclass
@@ -77,15 +78,36 @@ def is_inside(path, folder):
         return False
 
 
+def _copy(project):
+    return Project(project.folder, project.name, [dict(engine) for engine in project.engines])
+
+
 def load(path):
-    """The project of a dasktoon_project.json file (or of the folder holding it)."""
+    """The project of a dasktoon_project.json file (or of the folder holding it). The file is read again only when it
+    changed: the top bar and the menus ask on every redraw."""
     if os.path.isdir(path):
         path = os.path.join(path, PROJECT_FILE)
-    with open(path, encoding="utf-8") as f:
-        data = json.load(f)
-    if data.get("version") != PROJECT_VERSION:
-        raise ValueError(rpt_("%s: project version %r is not supported") % (path, data.get("version")))
-    return Project(os.path.dirname(os.path.abspath(path)), data.get("name", ""), list(data.get("engines", [])))
+    key = os.path.normcase(os.path.abspath(path))
+    stat = os.stat(path)
+    cached = _loaded.get(key)
+    if cached is None or cached[:2] != (stat.st_mtime_ns, stat.st_size):
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+        if data.get("version") != PROJECT_VERSION:
+            raise ValueError(rpt_("%s: project version %r is not supported") % (path, data.get("version")))
+        cached = (stat.st_mtime_ns, stat.st_size,
+                  Project(os.path.dirname(os.path.abspath(path)), data.get("name", ""), list(data.get("engines", []))))
+        _loaded[key] = cached
+    return _copy(cached[2])
+
+
+def project_label(path):
+    """What the recent lists show for the project file `path`: its name, or its folder's name when it cannot be read."""
+    folder = os.path.basename(os.path.dirname(path))
+    try:
+        return load(path).name or folder
+    except (OSError, ValueError):
+        return folder
 
 
 def save(project):
@@ -94,6 +116,7 @@ def save(project):
     with open(project.file, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
         f.write("\n")
+    _loaded.pop(os.path.normcase(os.path.abspath(project.file)), None)
 
 
 def find_project(blend_path):

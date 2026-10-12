@@ -203,10 +203,12 @@ class SaveTest(ModelTestCase):
         self.assertOpen(self.model("Hero_002"))
         self.assertTrue(os.path.isfile(os.path.join(self.project.textures_folder, "skin.png")))
 
-    def test_copy_and_incremental_need_a_model_of_a_project(self):
+    def test_copy_and_incremental_on_a_draft_say_why(self):
         bpy.ops.wm.read_homefile(use_empty=True)
-        self.assertFalse(bpy.ops.dasktoon.model_save_copy.poll())
-        self.assertFalse(bpy.ops.dasktoon.model_save_incremental.poll())
+        for op in (bpy.ops.dasktoon.model_save_copy, bpy.ops.dasktoon.model_save_incremental):
+            self.assertTrue(op.poll())  # a shortcut runs it, and it says why it cannot
+            with self.assertRaisesRegex(RuntimeError, "draft"):
+                op()
 
 
 class OpenTest(ModelTestCase):
