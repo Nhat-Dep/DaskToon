@@ -98,5 +98,43 @@ class TimingTest(unittest.TestCase):
         self.assertFalse(timing.has_steps(self.walk))
 
 
+class TimingUITest(unittest.TestCase):
+    def setUp(self):
+        self.rig, self.key, self.walk = character()
+        for obj in bpy.context.view_layer.objects:
+            obj.select_set(obj == self.rig)
+        bpy.context.view_layer.objects.active = self.rig
+
+    def test_operators_and_label(self):
+        from bl_ui import dasktoon_animation as ui
+        bpy.context.scene.frame_set(1)
+        self.assertEqual(bpy.ops.dasktoon.timing_set(step=2), {'FINISHED'})
+        bpy.context.scene.frame_set(7)
+        bpy.ops.dasktoon.timing_set(step=0)
+        self.assertEqual([(row.frame, row.step) for row in self.walk.dasktoon_timing], [(1, 2), (7, 0)])
+        self.assertEqual(ui.timing_label(bpy.context), "Hold")
+        bpy.context.scene.frame_set(4)
+        self.assertEqual(ui.timing_label(bpy.context), "2s")
+        bpy.ops.dasktoon.timing_remove(frame=7)
+        self.assertEqual([(row.frame, row.step) for row in self.walk.dasktoon_timing], [(1, 2)])
+
+    def test_popover(self):
+        from bl_ui import dasktoon_animation as ui
+        timing.set_step(self.walk, 1, 2)
+        log = tu.draw(ui.DASKTOON_PT_character_timing)
+        self.assertEqual([text for idname, text in tu.operators(log) if idname == "dasktoon.timing_set"],
+                         ["1s", "2s", "3s", "4s", "Hold"])
+        self.assertIn("From frame 1: 2s", tu.labels(log))
+
+    def test_key_pose_keys_the_drawn_frame(self):
+        timing.set_step(self.walk, 1, 2)
+        bpy.context.scene.frame_set(16)
+        self.assertEqual(bpy.ops.dasktoon.key_pose(), {'FINISHED'})
+        frames = {int(key.co.x) for fc in ft.fcurves(self.rig) if fc.data_path == 'pose.bones["Root"].location'
+                  for key in fc.keyframe_points}
+        self.assertIn(15, frames)
+        self.assertNotIn(16, frames)
+
+
 if __name__ == "__main__":
     tu.run_tests()

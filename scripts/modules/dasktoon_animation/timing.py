@@ -3,9 +3,9 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 """Anime timing of a clip (docs/superpowers/specs/2026-10-13-dasktoon-anime-timing-design.md, sections 3 and 4): its
-timing table Action.dasktoon_timing lists (frame, step), sorted by frame; from a row's frame to the next row the clip runs
-on that step: 1 is every frame, 2 to 4 are twos to fours, 0 holds the row's frame. Blender evaluates the table itself
-(anim_sys.cc), so the keys are never changed."""
+timing table Action.dasktoon_timing lists (frame, step), sorted by frame; from a row's frame to the next row the clip
+runs on that step: 1 is every frame, 2 to 4 are twos to fours, 0 holds the row's frame. Blender evaluates the table
+itself (anim_sys.cc), so the keys are never changed."""
 
 HOLD = 0
 LABELS = {1: "1s", 2: "2s", 3: "3s", 4: "4s", HOLD: "Hold"}

@@ -1235,7 +1235,6 @@ VI = {
         "Chèn khung khóa cho cả dáng của các nhân vật đang chọn tại khung hiện tại: mọi xương, hình mẫu và bộ điều "
         "khiển",
     "Select a part of a character to key its pose": "Hãy chọn một phần của nhân vật để chèn khung khóa cho dáng của nó",
-    "Keyed the pose of %s": "Đã chèn khung khóa cho dáng của %s",
     # Animation tab: clips of a character (clips spec 4)
     "Armature of the character this action is a clip of (DaskToon)":
         "Armature của nhân vật mà action này là một clip (DaskToon)",
@@ -1265,6 +1264,21 @@ VI = {
         "Số khung giữ mỗi hình: 1 đến 4, hoặc 0 để giữ nguyên khung này",
     "From this frame the clip runs on this step, until the next row":
         "Từ khung này clip chạy theo nhịp này, cho tới dòng sau",
+    # Animation tab: Timing popover (anime timing spec 4)
+    "1 to 4 frames per drawing, or 0 to hold": "1 đến 4 khung cho mỗi hình, hoặc 0 để giữ",
+    "From frame %d: %s": "Từ khung %d: %s",
+    "From the current frame the clip runs on this step, until the next timing row":
+        "Từ khung hiện tại clip chạy theo nhịp này, cho tới dòng nhịp sau",
+    "Key a pose first": "Hãy key một dáng trước",
+    "Key on the drawn frames: a key between them shows from the next one":
+        "Key vào các khung vẽ: key nằm giữa hai khung vẽ chỉ hiện từ khung vẽ sau",
+    "Keyed the pose of %s at frame %d": "Đã chèn khung khóa cho dáng của %s tại khung %d",
+    "Remove Timing": "Bỏ nhịp",
+    "Remove this timing row: the timing before it goes on": "Bỏ dòng nhịp này: nhịp trước nó chạy tiếp",
+    "Set Timing Here": "Đặt nhịp tại đây",
+    "Set timing from this frame:": "Đặt nhịp từ khung này:",
+    "The clip runs on 1s": "Clip đang chạy on 1s",
+    "Hold": "Giữ",
 }
 
 # Words that need their own translation context, because Blender's own translation of the same word in the default

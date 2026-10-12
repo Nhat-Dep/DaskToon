@@ -14,7 +14,7 @@ import _keyingsets_utils as keyingsets_utils
 from bpy.app.handlers import persistent
 from bpy.app.translations import pgettext_iface as iface_, pgettext_rpt as rpt_
 from bpy.props import CollectionProperty, IntProperty, PointerProperty, StringProperty
-from bpy.types import KeyingSetInfo, Menu, Operator, PropertyGroup
+from bpy.types import KeyingSetInfo, Menu, Operator, Panel, PropertyGroup
 from keyingsets_builtins import WholeCharacterMixin
 
 
@@ -69,11 +69,12 @@ class _Paths(list):
         self.append((id_block, path, index, group_name if group_method == 'NAMED' else ""))
 
 
-def key_pose(context):
-    """Key what the "DaskToon Character" keying set keys, on the current frame. Returns the number of paths keyed."""
+def key_pose(context, frame=None):
+    """Key what the "DaskToon Character" keying set keys, on `frame` (the current frame by default). Returns the number
+    of paths keyed."""
     ks = types.SimpleNamespace(paths=_Paths())
     CharacterKeying().iterator(context, ks)
-    frame = context.scene.frame_current
+    frame = context.scene.frame_current if frame is None else frame
     for id_block, path, index, group in ks.paths:
         id_block.keyframe_insert(data_path=path, index=index, frame=frame, group=group)
     return len(ks.paths)
@@ -86,14 +87,17 @@ class DASKTOON_OT_key_pose(Operator):
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
-        from dasktoon_animation import character
+        from dasktoon_animation import character, timing
         characters = character.selected_characters(context)
         if not characters and not context.selected_objects:
             self.report({'ERROR'}, rpt_("Select a part of a character to key its pose"))
             return {'CANCELLED'}
-        key_pose(context)
+        # With anime timing the pose seen is the one of the step's drawn frame: that is where it is keyed.
+        armature = header_armature(context)
+        frame = timing.drawn_frame(_action(armature), context.scene.frame_current)
+        key_pose(context, frame)
         names = [armature.name for armature in characters] or [obj.name for obj in context.selected_objects]
-        self.report({'INFO'}, rpt_("Keyed the pose of %s") % ", ".join(names))
+        self.report({'INFO'}, rpt_("Keyed the pose of %s at frame %d") % (", ".join(names), frame))
         return {'FINISHED'}
 
 
@@ -197,6 +201,80 @@ class DASKTOON_OT_clip_delete(Operator):
         return {'FINISHED'}
 
 
+def _action(armature):
+    """The action the character plays (its clip), or None."""
+    anim = armature.animation_data if armature is not None else None
+    return anim.action if anim is not None else None
+
+
+def timing_label(context):
+    """The header's Timing button text: the step at the current frame ("2s", "Hold")."""
+    from dasktoon_animation import timing
+    action = _action(header_armature(context))
+    return iface_(timing.LABELS[timing.step_at(action, context.scene.frame_current)])
+
+
+class DASKTOON_OT_timing_set(Operator):
+    """From the current frame the clip runs on this step, until the next timing row"""
+    bl_idname = "dasktoon.timing_set"
+    bl_label = "Set Timing Here"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    step: IntProperty(name="Step", description="1 to 4 frames per drawing, or 0 to hold", default=2, min=0, max=4)
+
+    def execute(self, context):
+        from dasktoon_animation import timing
+        action = _action(header_armature(context))
+        if action is None:
+            self.report({'ERROR'}, rpt_("Key a pose first"))
+            return {'CANCELLED'}
+        timing.set_step(action, context.scene.frame_current, self.step)
+        return {'FINISHED'}
+
+
+class DASKTOON_OT_timing_remove(Operator):
+    """Remove this timing row: the timing before it goes on"""
+    bl_idname = "dasktoon.timing_remove"
+    bl_label = "Remove Timing"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    frame: IntProperty(name="Frame")
+
+    def execute(self, context):
+        from dasktoon_animation import timing
+        action = _action(header_armature(context))
+        if action is not None:
+            timing.remove(action, self.frame)
+        return {'FINISHED'}
+
+
+class DASKTOON_PT_character_timing(Panel):
+    bl_space_type = 'DOPESHEET_EDITOR'
+    bl_region_type = 'HEADER'
+    bl_label = "Timing"
+
+    def draw(self, context):
+        from dasktoon_animation import timing
+        layout = self.layout
+        action = _action(header_armature(context))
+        if action is None:
+            layout.label(text="Key a pose first")
+            return
+        layout.label(text="Set timing from this frame:")
+        row = layout.row(align=True)
+        for step in (1, 2, 3, 4, timing.HOLD):
+            row.operator(DASKTOON_OT_timing_set.bl_idname, text=iface_(timing.LABELS[step]),
+                         translate=False).step = step
+        if not len(action.dasktoon_timing):
+            layout.label(text="The clip runs on 1s")
+        for item in action.dasktoon_timing:
+            row = layout.row(align=True)
+            row.label(text=iface_("From frame %d: %s") % (item.frame, iface_(timing.LABELS.get(item.step, "?"))),
+                      translate=False)
+            row.operator(DASKTOON_OT_timing_remove.bl_idname, text="", icon='X').frame = item.frame
+        layout.label(text="Key on the drawn frames: a key between them shows from the next one", icon='INFO')
+
+
 def draw_character_header(layout, context):
     """DaskToon's part of the Dope Sheet header while Whole Character is on: Key Pose and the character's clips (clips
     spec 4); timing comes here too (spec 7)."""
@@ -213,6 +291,7 @@ def draw_character_header(layout, context):
         row.prop(clip, "name", text="")
         row.prop(clip, "use_cyclic", text="Loop", toggle=True)
     row.operator(DASKTOON_OT_clip_new.bl_idname, text="", icon='ADD')
+    layout.popover(DASKTOON_PT_character_timing.__name__, text=timing_label(context), translate=False)
 
 
 def use_character_keying_set(scene):
@@ -254,6 +333,9 @@ classes = (
     DASKTOON_OT_clip_new,
     DASKTOON_OT_clip_use,
     DASKTOON_OT_clip_delete,
+    DASKTOON_OT_timing_set,
+    DASKTOON_OT_timing_remove,
+    DASKTOON_PT_character_timing,
 )
 
 
@@ -267,8 +349,8 @@ def register():
         name="Character", description="Armature of the character this action is a clip of (DaskToon)",
         type=bpy.types.Object, poll=_is_armature)
     bpy.types.Action.dasktoon_timing = CollectionProperty(
-        name="Timing", description="Anime timing of the clip: from each row's frame it runs on that row's step (DaskToon)",
-        type=DaskTimingStep)
+        name="Timing", type=DaskTimingStep,
+        description="Anime timing of the clip: from each row's frame it runs on that row's step (DaskToon)")
     if load_post not in bpy.app.handlers.load_post:
         bpy.app.handlers.load_post.append(load_post)
 
