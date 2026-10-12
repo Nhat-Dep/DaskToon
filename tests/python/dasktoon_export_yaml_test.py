@@ -165,6 +165,11 @@ class YamlTest(unittest.TestCase):
         self.assertIn("  userData: DaskToonHumanoid\n", humanoid)
         clip = uy.clip_meta(TEX, TEX, "Walk", "Scene", 1, 12, True, humanoid=True)
         self.assertIn("  userData: DaskToonHumanoidClip\n", clip)
+        # Anime timing (spec 5): a stepped clip is marked for DaskToon's clip importer and left uncompressed.
+        stepped = uy.clip_meta(TEX, TEX, "Walk", "Scene", 1, 12, True, stepped=True)
+        self.assertIn("  userData: DaskToonStepped\n", stepped)
+        self.assertIn("    animationCompression: 0\n", stepped)
+        self.assertIn("    animationCompression: 1\n", clip)
 
 
 if __name__ == "__main__":

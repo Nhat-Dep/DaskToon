@@ -20,10 +20,15 @@ namespace DaskToon.Editor
         public const string ClipMark = "DaskToonHumanoidClip";
         static readonly Dictionary<string, HumanDescription> pending = new Dictionary<string, HumanDescription>();
 
+        /// <summary>True when `userData` (marks separated by spaces) holds `mark`.</summary>
+        public static bool HasMark(string userData, string mark) =>
+            !string.IsNullOrEmpty(userData) && System.Array.IndexOf(userData.Split(' '), mark) >= 0;
+
         void OnPostprocessModel(GameObject root)
         {
             var importer = (ModelImporter)assetImporter;
-            if (importer.userData != ModelMark || importer.animationType == ModelImporterAnimationType.Human) return;
+            if (!HasMark(importer.userData, ModelMark) || importer.animationType == ModelImporterAnimationType.Human)
+                return;
             pending[assetPath] = Describe(root, importer.humanDescription);
         }
 
@@ -87,7 +92,7 @@ namespace DaskToon.Editor
             foreach (var file in Directory.GetFiles(folder, prefix + "*.fbx"))
             {
                 var path = file.Replace('\\', '/');
-                if (!(AssetImporter.GetAtPath(path) is ModelImporter clip) || clip.userData != ClipMark) continue;
+                if (!(AssetImporter.GetAtPath(path) is ModelImporter clip) || !HasMark(clip.userData, ClipMark)) continue;
                 clip.animationType = ModelImporterAnimationType.Human;
                 clip.avatarSetup = ModelImporterAvatarSetup.CopyFromOther;
                 clip.sourceAvatar = avatar;

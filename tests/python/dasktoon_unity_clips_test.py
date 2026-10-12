@@ -43,6 +43,10 @@ class UnityClipsTest(unittest.TestCase):
             self.assertAlmostEqual(result[key + ".length"], frames / fps, places=2)
             self.assertTrue(result[key + ".human"], name)
         self.assertTrue(result["DTClips@Walk.blendShape"])
+        # Walk runs on twos (anime timing spec 5): constant keys, held between drawn frames; Wave is left smooth.
+        self.assertTrue(result["DTClips@Walk.constant"])
+        self.assertLess(result["DTClips@Walk.hold"], 1e-4)
+        self.assertFalse(result["DTClips@Wave.constant"])
 
 
 if __name__ == "__main__":

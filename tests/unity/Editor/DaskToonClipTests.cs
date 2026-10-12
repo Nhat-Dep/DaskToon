@@ -48,11 +48,25 @@ public static class DaskToonClipTests
             result[key + ".length"] = first.length;
             result[key + ".human"] = first.humanMotion;
             var blendShape = false;
+            var constant = true;
+            var hold = -1f;
             foreach (var binding in AnimationUtility.GetCurveBindings(first))
             {
-                if (binding.propertyName.StartsWith("blendShape.")) blendShape = true;
+                var curve = AnimationUtility.GetEditorCurve(first, binding);
+                for (var i = 0; i < curve.length; i++)
+                {
+                    constant &= AnimationUtility.GetKeyLeftTangentMode(curve, i) == AnimationUtility.TangentMode.Constant
+                                && AnimationUtility.GetKeyRightTangentMode(curve, i) == AnimationUtility.TangentMode.Constant;
+                }
+                if (!binding.propertyName.StartsWith("blendShape.")) continue;
+                blendShape = true;
+                // Anime timing (spec 5): halfway between the 2nd and 3rd frame the value is still the 2nd frame's.
+                var frame = 1f / first.frameRate;
+                hold = Mathf.Abs(curve.Evaluate(1.5f * frame) - curve.Evaluate(frame));
             }
             result[key + ".blendShape"] = blendShape;
+            result[key + ".constant"] = constant;
+            result[key + ".hold"] = hold;
         }
         return result;
     });
