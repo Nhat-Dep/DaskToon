@@ -9,6 +9,7 @@ finish's node group and the scene's compositor; the viewports that show it; colo
 import math
 
 import bpy
+from bpy.app.handlers import persistent
 from bpy.app.translations import pgettext_rpt as rpt_
 from bpy.props import BoolProperty, EnumProperty, FloatProperty, FloatVectorProperty, PointerProperty
 from bpy.types import Operator, Panel, PropertyGroup
@@ -19,12 +20,60 @@ ENGINES = {'BLENDER_EEVEE', 'DASKTOON_ANIME'}
 _suspended = [0]  # while a style sets many settings, they are synced once at the end
 
 
-def computed(scene):
-    """The group's computed inputs: the focus, the light direction from the gradient angle; the sun is not seen."""
+def computed(scene, depsgraph=None):
+    """The group's computed inputs (nodes.COMPUTED): where the scene's Sun is on the picture and whether it is in
+    front of the camera, the light direction (from the Sun, or the gradient angle), the focus (automatic, or the
+    focus distance). Animated objects are read as `depsgraph` evaluated them."""
+    from dasktoon_finish import sun
+
+    def evaluated(obj):
+        return obj.evaluated_get(depsgraph) if depsgraph is not None and obj is not None else obj
+
     finish = scene.dasktoon_finish
     angle = finish.gradient_angle
-    return {"focus": finish.focus_distance, "light_direction": (math.cos(angle), math.sin(angle), 0.0),
-            "sun_visible": 0.0}
+    out = {"focus": finish.focus_distance, "light_direction": (math.cos(angle), math.sin(angle), 0.0),
+           "sun_visible": 0.0}
+    camera = evaluated(scene.camera)
+    if camera is None:
+        return out
+    light = evaluated(sun.find_sun(scene))
+    if light is not None:
+        (x, y), front = sun.sun_on_picture(scene, camera, light)
+        out["sun_position"] = (x, y, 0.0)
+        out["sun_visible"] = 1.0 if front else 0.0
+        if finish.gradient_auto:
+            direction = sun.light_direction(camera, light)
+            out["light_direction"] = (direction.x, direction.y, 0.0)
+    if finish.focus_auto:
+        view_layer = bpy.context.view_layer if bpy.context.scene == scene else scene.view_layers[0]
+        focus = sun.focus_distance(camera, evaluated(view_layer.objects.active))
+        if focus is not None:
+            out["focus"] = focus
+    return out
+
+
+def update_computed(scene, depsgraph=None):
+    """Write the computed inputs into the finish's nodes; True when one changed."""
+    finish = scene.dasktoon_finish
+    if not finish.enabled or finish.group is None:
+        return False
+    values = computed(scene, depsgraph)
+    changed = False
+    for node in finish_scene.group_nodes(scene, finish.group):
+        changed |= nodes.set_inputs(node, values)
+    return changed
+
+
+@persistent
+def finish_depsgraph_post(scene, depsgraph):
+    """The Sun, the camera or the selection moved."""
+    update_computed(scene, depsgraph)
+
+
+@persistent
+def finish_frame_change_post(scene, depsgraph):
+    """An animated Sun or camera moves on frame changes, which do not run depsgraph_update_post."""
+    update_computed(scene, depsgraph)
 
 
 def values_of(finish):
@@ -255,12 +304,22 @@ classes = (
 )
 
 
-# bl_ui registers `classes`; register() adds the scene's settings.
+_HANDLERS = ((bpy.app.handlers.depsgraph_update_post, finish_depsgraph_post),
+             (bpy.app.handlers.frame_change_post, finish_frame_change_post))
+
+
+# bl_ui registers `classes`; register() adds the scene's settings and the handlers that follow the Sun.
 def register():
     bpy.types.Scene.dasktoon_finish = PointerProperty(
         name="Illustration Finish", type=DaskFinishSettings,
         description="The scene's illustration finish (DaskToon)")
+    for handlers, handler in _HANDLERS:
+        if handler not in handlers:
+            handlers.append(handler)
 
 
 def unregister():
+    for handlers, handler in _HANDLERS:
+        if handler in handlers:
+            handlers.remove(handler)
     del bpy.types.Scene.dasktoon_finish

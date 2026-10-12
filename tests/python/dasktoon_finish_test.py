@@ -215,5 +215,76 @@ class FinishSettingsTest(unittest.TestCase):
         self.assertIn("wrap", props)
 
 
+class SunTest(unittest.TestCase):
+    """A camera at y = -10 looking along +y, and a Sun."""
+
+    def setUp(self):
+        import math
+        self.scene = empty_scene()
+        self.camera = bpy.data.objects.new("Camera", bpy.data.cameras.new("Camera"))
+        self.scene.collection.objects.link(self.camera)
+        self.camera.location = (0.0, -10.0, 0.0)
+        self.camera.rotation_euler = (math.radians(90.0), 0.0, 0.0)
+        self.scene.camera = self.camera
+        self.sun = bpy.data.objects.new("Sun", bpy.data.lights.new("Sun", 'SUN'))
+        self.scene.collection.objects.link(self.sun)
+        bpy.context.view_layer.update()
+
+    def aim(self, toward):
+        """The Sun shines from `toward` (a direction toward the Sun)."""
+        from mathutils import Vector
+        self.sun.rotation_euler = Vector((0.0, 0.0, 1.0)).rotation_difference(Vector(toward)).to_euler()
+        bpy.context.view_layer.update()
+
+    def test_sun_in_front_of_the_camera(self):
+        from dasktoon_finish import sun
+        self.aim((0.3, 1.0, 0.4))  # ahead, to the right, up
+        (x, y), front = sun.sun_on_picture(self.scene, self.camera, self.sun)
+        self.assertTrue(front)
+        self.assertGreater(x, 0.5)
+        self.assertGreater(y, 0.5)
+        direction = sun.light_direction(self.camera, self.sun)
+        self.assertGreater(direction.x, 0.0)
+        self.assertGreater(direction.y, 0.0)
+        self.assertAlmostEqual(direction.length, 1.0, places=5)
+
+    def test_sun_behind_the_camera(self):
+        from dasktoon_finish import sun
+        self.aim((0.0, -1.0, 0.5))  # behind, up
+        _position, front = sun.sun_on_picture(self.scene, self.camera, self.sun)
+        self.assertFalse(front)
+        direction = sun.light_direction(self.camera, self.sun)
+        self.assertAlmostEqual(direction.x, 0.0, places=5)
+        self.assertGreater(direction.y, 0.9)  # the light comes from the top of the picture
+
+    def test_focus(self):
+        from dasktoon_finish import sun
+        subject = bpy.data.objects.new("Subject", None)
+        self.scene.collection.objects.link(subject)
+        subject.location = (1.0, 5.0, 0.0)
+        bpy.context.view_layer.update()
+        self.assertIsNone(sun.focus_distance(self.camera, None))
+        self.assertAlmostEqual(sun.focus_distance(self.camera, subject), 15.0, places=4)  # depth along the view
+        dof = self.camera.data.dof
+        dof.use_dof, dof.focus_distance = True, 7.0
+        self.assertAlmostEqual(sun.focus_distance(self.camera, subject), 7.0, places=4)
+        dof.focus_object = subject
+        self.assertAlmostEqual(sun.focus_distance(self.camera, None), 15.0, places=4)
+
+    def test_the_handler_writes_the_computed_inputs(self):
+        from bl_ui import dasktoon_finish as ui
+        finish = self.scene.dasktoon_finish
+        finish.enabled = True
+        self.aim((0.3, 1.0, 0.4))  # the depsgraph handler writes the new Sun at once
+        ui.update_computed(self.scene)
+        node, = finish_scene.group_nodes(self.scene, finish.group)
+        self.assertEqual(node.inputs["sun_visible"].default_value, 1.0)
+        self.assertGreater(node.inputs["sun_position"].default_value[0], 0.5)
+        self.assertFalse(ui.update_computed(self.scene))  # nothing changed, nothing written
+        finish.gradient_auto = False
+        finish.gradient_angle = 0.0  # from the right
+        self.assertAlmostEqual(node.inputs["light_direction"].default_value[0], 1.0, places=5)
+
+
 if __name__ == "__main__":
     tu.run_tests()
