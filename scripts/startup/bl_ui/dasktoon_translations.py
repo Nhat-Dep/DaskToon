@@ -1235,7 +1235,6 @@ VI = {
         "Chèn khung khóa cho cả dáng của các nhân vật đang chọn tại khung hiện tại: mọi xương, hình mẫu và bộ điều "
         "khiển",
     "Select a part of a character to key its pose": "Hãy chọn một phần của nhân vật để chèn khung khóa cho dáng của nó",
-    "Keyed the pose of %s": "Đã chèn khung khóa cho dáng của %s",
     # Animation tab: clips of a character (clips spec 4)
     "Armature of the character this action is a clip of (DaskToon)":
         "Armature của nhân vật mà action này là một clip (DaskToon)",
@@ -1257,6 +1256,72 @@ VI = {
     # Engine Export: clips (clips spec 6)
     "Clips: %s": "Clip: %s",
     "%s (loop)": "%s (lặp)",
+    # Animation tab: anime timing of a clip (anime timing spec 3)
+    "Anime timing of the clip: from each row's frame it runs on that row's step (DaskToon)":
+        "Nhịp anime của clip: từ khung của mỗi dòng, clip chạy theo nhịp của dòng đó (DaskToon)",
+    "Frame the step starts at": "Khung bắt đầu nhịp",
+    "Frames each drawing is held: 1 to 4, or 0 to hold this frame":
+        "Số khung giữ mỗi hình: 1 đến 4, hoặc 0 để giữ nguyên khung này",
+    "From this frame the clip runs on this step, until the next row":
+        "Từ khung này clip chạy theo nhịp này, cho tới dòng sau",
+    # Animation tab: Timing popover (anime timing spec 4)
+    "1 to 4 frames per drawing, or 0 to hold": "1 đến 4 khung cho mỗi hình, hoặc 0 để giữ",
+    "From frame %d: %s": "Từ khung %d: %s",
+    "From the current frame the clip runs on this step, until the next timing row":
+        "Từ khung hiện tại clip chạy theo nhịp này, cho tới dòng nhịp sau",
+    "Key a pose first": "Hãy key một dáng trước",
+    "Key on the drawn frames: a key between them shows from the next one":
+        "Key vào khung vẽ; key giữa hai khung vẽ hiện từ khung vẽ sau",
+    "Keyed the pose of %s at frame %d": "Đã chèn khung khóa cho dáng của %s tại khung %d",
+    "Remove Timing": "Bỏ nhịp",
+    "Remove this timing row: the timing before it goes on": "Bỏ dòng nhịp này: nhịp trước nó chạy tiếp",
+    "Set Timing Here": "Đặt nhịp tại đây",
+    "Set timing from this frame:": "Đặt nhịp từ khung này:",
+    "The clip runs on 1s": "Clip đang chạy on 1s",
+    "Hold": "Giữ",
+    # Onion skin (anime timing spec 6)
+    "Onion Skin": "Bóc Vỏ Hành",
+    "Before": "Trước",
+    "After": "Sau",
+    "Opacity": "Độ đậm",
+    "Show faintly, in the 3D Viewports, the character's poses at the keys before and after this frame":
+        "Hiện mờ trong các khung nhìn 3D dáng của nhân vật ở các key trước và sau khung này",
+    "How many keyed poses before this frame to show": "Số dáng có key trước khung này được hiện",
+    "How many keyed poses after this frame to show": "Số dáng có key sau khung này được hiện",
+    "How visible the nearest ghost is; farther ones fade": "Độ đậm của bóng gần nhất; bóng càng xa càng mờ",
+    "Ghosts are the keyed poses; they update when you stop for a moment":
+        "Bóng là các dáng có key; chúng cập nhật khi bạn dừng tay một chút",
+    "Onion skin of the character being animated (DaskToon)": "Bóc vỏ hành của nhân vật đang làm hoạt hình (DaskToon)",
+    "Onion skin of the character being animated (anime timing spec 6)": "Bóc vỏ hành của nhân vật đang làm hoạt hình",
+    # Fast action filter (anime timing spec 7)
+    "Fast Action": "Hành động nhanh",
+    "Where the character moves fast, smear it and show afterimages of the frames before and speed lines":
+        "Chỗ nhân vật chuyển động nhanh thì kéo nhòe, hiện bóng lưu của các khung trước và vệt tốc độ",
+    "Threshold": "Ngưỡng",
+    "Speed above which a part of the character gets the effects":
+        "Phần nào của nhân vật nhanh hơn tốc độ này thì có hiệu ứng",
+    "Smear": "Kéo nhòe",
+    "How far the trailing side of a fast part is pulled back toward the frame before":
+        "Mặt sau của phần chuyển động nhanh bị kéo lùi về phía khung trước bao xa",
+    "Afterimages": "Bóng lưu",
+    "How many of the frames before show as afterimages of the fast parts":
+        "Số khung trước hiện thành bóng lưu của các phần nhanh",
+    "Afterimage Opacity": "Độ đậm bóng lưu",
+    "How visible the newest afterimage is; older ones fade": "Độ đậm của bóng lưu mới nhất; bóng cũ hơn mờ dần",
+    "Afterimage Color": "Màu bóng lưu",
+    "Afterimage Material": "Material bóng lưu",
+    "Line Density": "Mật độ vệt",
+    "Share of the fast vertices that trail a speed line": "Tỉ lệ đỉnh nhanh có vệt tốc độ kéo theo",
+    "Line Length": "Độ dài vệt",
+    "A speed line is as long as the distance moved in this time":
+        "Vệt tốc độ dài bằng quãng đường đi được trong khoảng thời gian này",
+    "Line Color": "Màu vệt",
+    "Line Width": "Độ dày vệt",
+    "Line Material": "Material vệt",
+    "Shows in DaskToon's viewport and render; it does not go into the FBX":
+        "Hiện trong khung nhìn và bản render của DaskToon; không vào FBX",
+    "Fast action filter of the character (DaskToon)": "Bộ lọc hành động nhanh của nhân vật (DaskToon)",
+    "Fast action filter of a character (anime timing spec 7)": "Bộ lọc hành động nhanh của nhân vật",
 }
 
 # Words that need their own translation context, because Blender's own translation of the same word in the default

@@ -4001,6 +4001,47 @@ static void animsys_evaluate_overrides(PointerRNA *ptr, AnimData *adt)
  *   However, the code for this is relatively harmless, so is left in the code for now.
  */
 
+/* DaskToon (docs/superpowers/specs/2026-10-13-dasktoon-anime-timing-design.md, section 3): the time a clip with an
+ * anime timing table is evaluated at. The table (Action.dasktoon_timing, a Python collection in the action's system
+ * properties) lists rows (frame, step); from a row's frame to the next row, a step n > 1 shows the pose of the first
+ * frame of every n, and a step 0 holds the row's frame. Before the first row, on a step 1, or without a table, the time
+ * is kept (sub-frames too). */
+static float dasktoon_timing_eval_time(const ID &action_id, const float eval_time)
+{
+  const IDProperty *table = action_id.system_properties ?
+                                IDP_GetPropertyTypeFromGroup(
+                                    action_id.system_properties, "dasktoon_timing", IDP_IDPARRAY) :
+                                nullptr;
+  if (table == nullptr || table->len == 0) {
+    return eval_time;
+  }
+  constexpr float epsilon = 1e-4f;
+  const IDProperty *rows = IDP_property_array_get(table);
+  bool found = false;
+  int frame = 0;
+  int step = 1;
+  for (int i = 0; i < table->len; i++) {
+    const IDProperty *row_frame = IDP_GetPropertyTypeFromGroup(&rows[i], "frame", IDP_INT);
+    const IDProperty *row_step = IDP_GetPropertyTypeFromGroup(&rows[i], "step", IDP_INT);
+    if (row_frame == nullptr) {
+      continue;
+    }
+    const int row_start = IDP_int_get(row_frame);
+    if (float(row_start) <= eval_time + epsilon && (!found || row_start >= frame)) {
+      found = true;
+      frame = row_start;
+      step = row_step ? IDP_int_get(row_step) : 2;
+    }
+  }
+  if (!found || step == 1) {
+    return eval_time;
+  }
+  if (step <= 0) {
+    return float(frame);
+  }
+  return float(frame) + std::floor((eval_time - float(frame) + epsilon) / float(step)) * float(step);
+}
+
 void BKE_animsys_evaluate_animdata(ID *id,
                                    AnimData *adt,
                                    const AnimationEvalContext *anim_eval_context,
@@ -4034,8 +4075,12 @@ void BKE_animsys_evaluate_animdata(ID *id,
 
     if (!did_nla_evaluate_anything && adt->action) {
       animrig::Action &action = adt->action->wrap();
+      /* DaskToon: a clip with an anime timing table runs on its steps. */
+      AnimationEvalContext timed_context = *anim_eval_context;
+      timed_context.eval_time = dasktoon_timing_eval_time(adt->action->id,
+                                                          anim_eval_context->eval_time);
       animrig::evaluate_and_apply_action(
-          id_ptr, action, adt->slot_handle, *anim_eval_context, flush_to_original);
+          id_ptr, action, adt->slot_handle, timed_context, flush_to_original);
     }
   }
 

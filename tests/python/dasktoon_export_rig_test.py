@@ -97,7 +97,7 @@ class ScriptsInstallTest(unittest.TestCase):
         self.assertIn("if (dt <= 0f) return;", code)
         with open(os.path.join(root, si.SCRIPT_DIR, "Editor", "DaskToonRigImporter.cs"), encoding="utf-8") as f:
             self.assertIn("static void OnPostprocessAllAssets(", f.read())
-        self.assertEqual(si.SCRIPTS_VERSION, 3)
+        self.assertEqual(si.SCRIPTS_VERSION, 4)
 
     def test_older_scripts_are_replaced(self):
         from dasktoon_export import scripts_install as si

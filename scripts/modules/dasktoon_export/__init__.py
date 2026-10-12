@@ -242,7 +242,7 @@ def _write_clips(context, target, writer, model_dir, objects, armature, model_gu
     """Each clip of the character as <Model>@<Clip>.fbx: the clip played by every part over its own frame range, baked
     as one take; its meta cuts that take into the clip with the model's avatar (clips spec 6). The clip in use, the
     scene's frame range and its frame come back afterwards."""
-    from dasktoon_animation import clips
+    from dasktoon_animation import clips, timing
     from . import assets, model_fbx, unity_yaml
     scene = context.scene
     everything = list(context.view_layer.objects)
@@ -256,7 +256,7 @@ def _write_clips(context, target, writer, model_dir, objects, armature, model_gu
             rel = "%s/%s@%s.fbx" % (model_dir, safe_name(target.name), safe_name(clip.name))
             guid = writer.guid(rel)
             meta = unity_yaml.clip_meta(guid, model_guid, clip.name, scene.name, first, last, clip.use_cyclic,
-                                        humanoid)
+                                        humanoid, stepped=timing.has_steps(clip))
             clips.use(armature, everything, clip)
             _set_frame_range(scene, first, last)
 

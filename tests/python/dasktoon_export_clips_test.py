@@ -17,7 +17,7 @@ import bpy
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import dasktoon_export_rig_test as rt  # noqa: E402
 import dasktoon_test_utils as tu  # noqa: E402
-from dasktoon_animation import clips  # noqa: E402
+from dasktoon_animation import clips, timing  # noqa: E402
 
 
 def character_with_clips():
@@ -38,6 +38,7 @@ def character_with_clips():
         smile.value = value
         smile.keyframe_insert("value", frame=frame)
     walk.use_cyclic = True
+    timing.set_step(walk, 1, 2)  # Walk runs on twos
     wave = clips.new(rig, everything, "Wave")
     for frame, z in ((5, 0.0), (20, 0.1)):
         hips.location = (0.0, 0.0, z)
@@ -83,6 +84,11 @@ class ExportClipsTest(unittest.TestCase):
                 self.assertIn(line, text, (clip.name, line))
         self.assertEqual(rep.clips, [("Walk", True), ("Wave", False)])
         self.assertIn("Clips: Walk (loop), Wave", rep.lines())
+        walk_meta, wave_meta = (meta(target, "Hero/Model/Hero@%s.fbx" % n) for n in ("Walk", "Wave"))
+        self.assertIn("  userData: DaskToonHumanoidClip DaskToonStepped\n", walk_meta)  # anime timing (spec 5)
+        self.assertIn("    animationCompression: 0\n", walk_meta)
+        self.assertIn("  userData: DaskToonHumanoidClip\n", wave_meta)
+        self.assertIn("    animationCompression: 1\n", wave_meta)
         self.assertEqual((clips.current(rig), scene.frame_start, scene.frame_end, scene.frame_current), before)
 
     def test_without_clips_nothing_changes(self):

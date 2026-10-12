@@ -16,6 +16,7 @@ _RESERVED = {"true", "false", "yes", "no", "on", "off", "null", "~"}
 _TAIL = ["  assetBundleName: ", "  assetBundleVariant: "]
 HUMANOID_MARK = "DaskToonHumanoid"  # DaskToonAvatarImporter makes these models Humanoid (anime rig spec 8)
 HUMANOID_CLIP_MARK = "DaskToonHumanoidClip"  # ...and these clip files copy their avatar (clips spec 6)
+STEPPED_MARK = "DaskToonStepped"  # DaskToonClipImporter makes the keys of these clips constant (anime timing spec 5)
 
 # kind: (sRGBTexture, textureType, wrap, mipmaps, platform textureCompression) - spec 4, texture table.
 TEXTURE_KINDS = {
@@ -263,15 +264,16 @@ def _clip_lines(clip):
     ]
 
 
-def clip_meta(guid, model_guid, name, take, first, last, loop, humanoid=False):
+def clip_meta(guid, model_guid, name, take, first, last, loop, humanoid=False, stepped=False):
     """ModelImporter of <Model>@<Clip>.fbx (clips spec 6): the one clip `name` cut from take `take` (frames first to
-    last, looping or not), with the avatar of the model `model_guid`; no materials."""
+    last, looping or not), with the avatar of the model `model_guid`; no materials. A `stepped` clip (anime timing,
+    spec 5) is marked so that its keys become constant, and is not compressed."""
     return model_meta(guid, {}, True, humanoid=humanoid, clip=(name, take, first, last, loop),
-                      avatar_source=model_guid)
+                      avatar_source=model_guid, stepped=stepped)
 
 
 def model_meta(guid, materials, import_animation, blend_shape_normals=True, humanoid=False, clip=None,
-               avatar_source=None):
+               avatar_source=None, stepped=False):
     """ModelImporter of an exported FBX. `materials` maps an FBX material name to the GUID of its .mat, so Unity
     uses the exported materials without Search and Remap (spec 4). `blend_shape_normals` False sets the blend shape
     normals to None (face shading, face spec 6). `humanoid`: Unity's own bone mapping leaves out bones of the DaskToon
@@ -306,7 +308,7 @@ def model_meta(guid, materials, import_animation, blend_shape_normals=True, huma
         "    animationDoRetargetingWarnings: 0",
         "    importAnimatedCustomProperties: 0",
         "    importConstraints: 0",
-        "    animationCompression: 1",
+        "    animationCompression: %d" % (0 if stepped else 1),
         "    animationRotationError: 0.5",
         "    animationPositionError: 0.5",
         "    animationScaleError: 0.5",
@@ -387,5 +389,6 @@ def model_meta(guid, materials, import_animation, blend_shape_normals=True, huma
         "  remapMaterialsIfMaterialImportModeIsNone: 0",
         "  additionalBone: 0",
     ]
-    mark = (HUMANOID_CLIP_MARK if avatar_source else HUMANOID_MARK) if humanoid else ""
-    return _meta(guid, lines, mark)
+    marks = [HUMANOID_CLIP_MARK if avatar_source else HUMANOID_MARK] if humanoid else []
+    marks += [STEPPED_MARK] if stepped else []
+    return _meta(guid, lines, " ".join(marks))  # DaskToon's importers read the marks one by one
