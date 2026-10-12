@@ -38,20 +38,20 @@ LAYER_KEYS = tuple(key for key, _label, _group in LAYERS)
 # (key, label): the panel's groups.
 GROUPS = (
     ('COLOR', n_("Painting Colors")),
-    ('DEPTH', n_("Depth")),
+    ('DEPTH', n_("Painting Depth")),
     ('LIGHT', n_("Painting Light")),
     ('TEXTURE', n_("Strokes and Texture")),
 )
 
 S = Setting
 SETTINGS = (
-    S("amount", n_("Amount"), 'FACTOR', 1.0, 0.0, 1.0, None,
+    S("amount", n_("Overall Strength"), 'FACTOR', 1.0, 0.0, 1.0, None,
       n_("How much of the finish shows: 0 is the picture as rendered")),
     S("grade", n_("Shadow and Light Tint"), 'LAYER', True, None, None, "grade",
       n_("Dark areas lean to a shadow color, light areas to a light color")),
-    S("shadow_tint", n_("Shadow Tint"), 'COLOR', (0.60, 0.55, 0.90), 0.0, 1.0, "grade",
+    S("shadow_tint", n_("Dark Area Color"), 'COLOR', (0.60, 0.55, 0.90), 0.0, 1.0, "grade",
       n_("Color the dark areas lean to")),
-    S("light_tint", n_("Light Tint"), 'COLOR', (1.0, 0.86, 0.66), 0.0, 1.0, "grade",
+    S("light_tint", n_("Light Area Color"), 'COLOR', (1.0, 0.86, 0.66), 0.0, 1.0, "grade",
       n_("Color the light areas lean to")),
     S("grade_strength", n_("Tint Strength"), 'FACTOR', 0.45, 0.0, 1.0, "grade", n_("How strongly the areas lean")),
     S("color", n_("Saturation and Contrast"), 'LAYER', True, None, None, "color",

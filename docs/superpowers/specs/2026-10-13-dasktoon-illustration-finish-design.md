@@ -27,7 +27,7 @@
 | Có | Không (để sau hoặc không làm) |
 |---|---|
 | Nhóm node compositor "DaskToon Illustration Finish" với 12 lớp (§4) | Hiệu ứng tương tự trong Unity |
-| Thiết lập lưu trong scene, panel trong Render Properties | Vẽ tay, tô thêm lên ảnh |
+| Thiết lập lưu trong scene, panel trong Properties › Scene | Vẽ tay, tô thêm lên ảnh |
 | Style có sẵn và style của người dùng (file JSON) | Nạp LUT `.cube` |
 | Xem trực tiếp trong camera view | Hiệu ứng riêng cho từng object (trừ chiều sâu theo pass Depth) |
 | Nút đặt nét màu Harmonic cho mọi material có outline | Nhiều view layer, tách lớp nhân vật và cảnh nền |
@@ -91,7 +91,8 @@ theo phần trăm chiều cao ảnh, nên camera view nhỏ và bản render l�
 
 ## 6. Giao diện
 
-- Panel **Illustration Finish** trong Render Properties, cho engine DaskToon Anime và EEVEE:
+- Panel **Illustration Finish** trong Properties › **Scene** (đổi khi làm: luật giao diện giữ tab Render không có panel
+  DaskToon), cho engine DaskToon Anime và EEVEE:
   - **header**: công tắc bật bộ lọc;
   - **thân panel**:
     - **Tổng**;
@@ -183,7 +184,7 @@ mới (bài học từ bộ lọc hành động nhanh).
 | Kết hợp: Rim, Shadow Color, nét Harmonic để trong material (dùng lại); 12 lớp phủ trong compositor; không C++ | Claude (chờ duyệt) |
 | Thứ tự và danh sách 12 lớp (§4), kích thước theo tỉ lệ chiều cao ảnh, thanh Tổng | Claude (chờ duyệt) |
 | Năm style có sẵn: Mặc định, Nắng sớm, Hoàng hôn, Đêm, Màu nước; style người dùng là file JSON như Shading Styles | Claude (chờ duyệt) |
-| Panel trong Render Properties; mặc định chỉ hiện trong camera view | Claude (chờ duyệt) |
+| Panel trong Properties › Scene (ban đầu ghi Render Properties); mặc định chỉ hiện trong camera view | Claude (chờ duyệt) |
 | Không động vào compositor của người dùng, chỉ chèn khi bấm nút; tắt thì mute | Claude (chờ duyệt) |
 | Mặt trời lấy từ Sun của scene, chiếu lên ảnh qua camera | Claude (chờ duyệt) |
 | Nét màu là một nút đổi material (có Undo), không tự động | Claude (chờ duyệt) |

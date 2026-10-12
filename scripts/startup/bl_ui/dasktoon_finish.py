@@ -2,8 +2,9 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-"""The Illustration Finish panel in Render Properties (docs/superpowers/specs/2026-10-13-dasktoon-illustration-finish-
-design.md, sections 4 to 7): the scene's finish settings, made from dasktoon_finish.settings, kept in sync with the
+"""The Illustration Finish panel in Properties › Scene, with the scene's other settings (docs/superpowers/specs/
+2026-10-13-dasktoon-illustration-finish-design.md, sections 4 to 7; DaskToon keeps no panel in the Render tab, UI spec
+section 3): the scene's finish settings, made from dasktoon_finish.settings, kept in sync with the
 finish's node group and the scene's compositor; the viewports that show it; colored lines for every material."""
 
 import math
@@ -334,9 +335,11 @@ def draw_main(layout, context):
     finish = scene.dasktoon_finish
     layout.use_property_split = True
     layout.active = finish.enabled
+    from dasktoon_finish import styles
     row = layout.row(align=True)
-    row.menu(DASKTOON_MT_finish_styles.__name__, text=finish.style or iface_("Style"), icon='PRESET',
-             translate=False)
+    # Built-in style names are translated, the user's own are not.
+    label = iface_(finish.style) if finish.style in styles.BUILT_IN else finish.style or iface_("Style")
+    row.menu(DASKTOON_MT_finish_styles.__name__, text=label, icon='PRESET', translate=False)
     row.operator(DASKTOON_OT_finish_style_save.bl_idname, text="", icon='ADD')
     layout.prop(finish, "amount", slider=True)
     layout.prop(finish, "viewport")
@@ -374,7 +377,7 @@ def draw_group(layout, context, group):
 class DASKTOON_PT_finish(Panel):
     bl_space_type = 'PROPERTIES'
     bl_region_type = 'WINDOW'
-    bl_context = "render"
+    bl_context = "scene"
     bl_label = "Illustration Finish"
     COMPAT_ENGINES = ENGINES
 
@@ -390,13 +393,15 @@ class DASKTOON_PT_finish(Panel):
 
 
 def _group_panel(group, label):
+    """The sub panel of one group of layers; the first group starts open."""
     def draw(self, context):
         draw_group(self.layout, context, group)
 
     return type("DASKTOON_PT_finish_" + group, (Panel,), {
-        "bl_space_type": 'PROPERTIES', "bl_region_type": 'WINDOW', "bl_context": "render", "bl_label": label,
-        "bl_parent_id": DASKTOON_PT_finish.__name__, "bl_options": {'DEFAULT_CLOSED'}, "COMPAT_ENGINES": ENGINES,
-        "poll": classmethod(lambda cls, context: context.engine in cls.COMPAT_ENGINES), "draw": draw})
+        "bl_space_type": 'PROPERTIES', "bl_region_type": 'WINDOW', "bl_context": "scene", "bl_label": label,
+        "bl_parent_id": DASKTOON_PT_finish.__name__, "bl_options": set() if group == 'COLOR' else {'DEFAULT_CLOSED'},
+        "COMPAT_ENGINES": ENGINES, "poll": classmethod(lambda cls, context: context.engine in cls.COMPAT_ENGINES),
+        "draw": draw})
 
 
 _LABELS = dict(settings.GROUPS)

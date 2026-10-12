@@ -1452,6 +1452,11 @@ VI = {
     "%s is a built-in style: choose another name": "%s là style có sẵn: hãy chọn tên khác",
     "No style %s": "Không có style %s",
     "The style last used or saved": "Style dùng hoặc lưu gần nhất",
+    # Illustration finish: labels of its own (illustration finish spec 6)
+    "Overall Strength": "Độ mạnh chung",
+    "Dark Area Color": "Màu vùng tối",
+    "Light Area Color": "Màu vùng sáng",
+    "Painting Depth": "Chiều sâu tranh",
 }
 
 # Words that need their own translation context, because Blender's own translation of the same word in the default
