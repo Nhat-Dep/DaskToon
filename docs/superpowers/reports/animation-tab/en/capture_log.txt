@@ -5,4 +5,12 @@ saved 30_animation_tab (0, 0, 1920, 1009)
 saved 31_character_timeline (2, 23, 1576, 426)
 clip new {'FINISHED'}
 saved 32_clips (2, 96, 1002, 426)
+timing 2s {'FINISHED'}
+timing 3s {'FINISHED'}
+saved 33_timing (2, 126, 1102, 426)
+swing 1 {'FINISHED'}
+swing 5 {'FINISHED'}
+ghosts [('BEFORE', 1), ('AFTER', 5)]
+saved 34_onion_skin (564, 429, 1576, 983)
+saved 35_fast_action (2, 429, 561, 983)
 done

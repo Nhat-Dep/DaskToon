@@ -1271,7 +1271,7 @@ VI = {
         "Từ khung hiện tại clip chạy theo nhịp này, cho tới dòng nhịp sau",
     "Key a pose first": "Hãy key một dáng trước",
     "Key on the drawn frames: a key between them shows from the next one":
-        "Key vào các khung vẽ: key nằm giữa hai khung vẽ chỉ hiện từ khung vẽ sau",
+        "Key vào khung vẽ; key giữa hai khung vẽ hiện từ khung vẽ sau",
     "Keyed the pose of %s at frame %d": "Đã chèn khung khóa cho dáng của %s tại khung %d",
     "Remove Timing": "Bỏ nhịp",
     "Remove this timing row: the timing before it goes on": "Bỏ dòng nhịp này: nhịp trước nó chạy tiếp",

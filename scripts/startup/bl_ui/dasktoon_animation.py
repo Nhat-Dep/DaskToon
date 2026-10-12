@@ -255,6 +255,7 @@ class DASKTOON_PT_character_timing(Panel):
     bl_space_type = 'DOPESHEET_EDITOR'
     bl_region_type = 'HEADER'
     bl_label = "Timing"
+    bl_ui_units_x = 22
 
     def draw(self, context):
         from dasktoon_animation import timing
