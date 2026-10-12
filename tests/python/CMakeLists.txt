@@ -285,6 +285,7 @@ foreach(dasktoon_test
     dasktoon_onion_test
     dasktoon_fast_action_test
     dasktoon_finish_test
+    dasktoon_finish_render_test
 )
   add_blender_test(
     ${dasktoon_test}

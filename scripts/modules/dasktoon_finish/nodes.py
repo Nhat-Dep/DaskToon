@@ -15,7 +15,7 @@ from . import settings
 GROUP_NAME = "DaskToon Illustration Finish"
 VERSION = 1
 SKY_DEPTH = 1.0e5  # the world behind everything has a depth far beyond this
-SUN_THRESHOLD = 0.6  # brightness from which the sun's rays start
+SUN_THRESHOLD = 0.85  # brightness from which the sun's rays start: only the brightest parts send rays
 LINEAR, SRGB = 'Linear Rec.709', 'sRGB'
 # Computed by Python (sun.py): where the sun is on the picture (0 to 1 across), 1 when it is in front of the camera,
 # the direction on the picture the light comes from, the distance kept sharp.
@@ -118,6 +118,15 @@ class _Tree:
         return self.node("CompositorNodeConvertColorSpace", {"Image": image}, from_color_space=source,
                          to_color_space=target).outputs[0]
 
+    def gray(self, value):
+        """A gray color of `value`."""
+        return self.node("ShaderNodeCombineXYZ", {"X": value, "Y": value, "Z": value}).outputs[0]
+
+    def hue_only(self, color):
+        """`color` moved to mid brightness: Soft Light with it changes hue, not lightness."""
+        lum = self.luminance(color)
+        return self.vector('ADD', self.vector('SUBTRACT', color, self.gray(lum)), (0.5, 0.5, 0.5))
+
     def luminance(self, image):
         return self.node("CompositorNodeRGBToBW", {"Image": image}).outputs[0]
 
@@ -126,12 +135,13 @@ class _Tree:
 
 
 def _grade(t, img, gi):
-    """Multiply the dark areas by the shadow tint, soft-light the light areas with the light tint."""
+    """Multiply the dark areas by the shadow tint (they deepen); soft-light the light areas with the light tint moved
+    to mid brightness, so they change hue without getting lighter."""
     lum = t.luminance(img)
     dark = t.map_range(lum, 0.05, 0.55, 1.0, 0.0)
     light = t.map_range(lum, 0.45, 0.95)
     img = t.mix('MULTIPLY', t.math('MULTIPLY', dark, gi["grade_strength"]), img, gi["shadow_tint"])
-    return t.mix('SOFT_LIGHT', t.math('MULTIPLY', light, gi["grade_strength"]), img, gi["light_tint"])
+    return t.mix('SOFT_LIGHT', t.math('MULTIPLY', light, gi["grade_strength"]), img, t.hue_only(gi["light_tint"]))
 
 
 def _color(t, img, gi):
@@ -166,11 +176,14 @@ def _soft(t, img, gi):
 
 
 def _glow(t, img, gi):
-    """The parts brighter than the threshold, blurred, screened over the picture."""
-    lum = t.luminance(img)
+    """Bloom: what lies above the threshold (scaled back to 0 to 1), blurred, screened over the picture. Parts
+    below it do not glow, so a bright scene does not turn milky."""
     threshold = gi["glow_threshold"]
-    mask = t.map_range(lum, t.math('SUBTRACT', threshold, 0.2), t.math('ADD', threshold, 0.2))
-    bright = t.mix('MIX', mask, _BLACK, img)
+    above = t.node("ShaderNodeMix", {0: 1.0, 6: img, 7: t.gray(threshold)}, data_type='RGBA',
+                   blend_type='SUBTRACT', clamp_result=True).outputs[2]
+    scale = t.math('DIVIDE', 1.0, t.math('MAXIMUM', t.math('SUBTRACT', 1.0, threshold), 0.05))
+    bright = t.node("ShaderNodeMix", {0: 1.0, 6: above, 7: t.gray(scale)}, data_type='RGBA',
+                    blend_type='MULTIPLY', clamp_result=True).outputs[2]
     spread = t.blur(bright, t.pixels(gi["glow_size"], img))
     return t.mix('SCREEN', gi["glow_strength"], img, spread)
 
@@ -243,7 +256,9 @@ def build(tree, layers):
             t.layer = key
             img = _BUILDERS[key](t, img, gi)
     t.layer = "amount"
-    img = t.mix('MIX', gi["amount"], gi["Image"], t.color_space(img, SRGB, LINEAR))
+    # Not kept within 0 to 1: at Amount 0 the picture comes out exactly as rendered.
+    img = t.node("ShaderNodeMix", {0: gi["amount"], 6: gi["Image"], 7: t.color_space(img, SRGB, LINEAR)},
+                 data_type='RGBA', blend_type='MIX').outputs[2]
     t.layer = None
     tree.links.new(img, t.node("NodeGroupOutput").inputs[0])
     tree["dasktoon_layers"] = ",".join(sorted(layers))
