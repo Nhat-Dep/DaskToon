@@ -111,6 +111,17 @@ class FastActionTest(unittest.TestCase):
         self.settings.enabled = True
         self.assertTrue(modifier.show_viewport)
 
+    def test_in_vietnamese(self):
+        """The interface translates new data names; the group's sockets keep their English names."""
+        view = bpy.context.preferences.view
+        language, translate = view.language, view.use_translate_new_dataname
+        view.language, view.use_translate_new_dataname = 'vi_VN', True
+        try:
+            self.settings.enabled = True
+            self.assertAlmostEqual(fast_action.input_value(self.modifier(), "Smear"), self.settings.smear, places=5)
+        finally:
+            view.language, view.use_translate_new_dataname = language, translate
+
     def test_only_meshes_of_the_character(self):
         other = bpy.data.objects.new("Other", bpy.data.meshes.new("Other"))
         bpy.context.scene.collection.objects.link(other)

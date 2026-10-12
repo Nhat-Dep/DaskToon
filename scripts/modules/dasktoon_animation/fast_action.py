@@ -76,13 +76,19 @@ class _Tree:
                          data_type='FLOAT_VECTOR', domain='POINT').outputs["Value"]
 
 
+def _new_socket(tree, name, in_out, socket_type):
+    socket = tree.interface.new_socket(name, in_out=in_out, socket_type=socket_type)
+    socket.name = name  # a new socket's name is translated when the interface translates new data; keep it English
+    return socket
+
+
 def _interface(tree):
-    tree.interface.new_socket("Geometry", in_out='INPUT', socket_type='NodeSocketGeometry')
+    _new_socket(tree, "Geometry", 'INPUT', 'NodeSocketGeometry')
     for name, socket_type, default, low, high in INPUTS:
-        socket = tree.interface.new_socket(name, in_out='INPUT', socket_type=socket_type)
+        socket = _new_socket(tree, name, 'INPUT', socket_type)
         if default is not None:
             socket.default_value, socket.min_value, socket.max_value = default, low, high
-    tree.interface.new_socket("Geometry", in_out='OUTPUT', socket_type='NodeSocketGeometry')
+    _new_socket(tree, "Geometry", 'OUTPUT', 'NodeSocketGeometry')
 
 
 def _build(tree):
@@ -107,7 +113,8 @@ def _build(tree):
     sim_in = t.node("GeometryNodeSimulationInput")
     sim_out = t.node("GeometryNodeSimulationOutput")
     sim_in.pair_with_output(sim_out)
-    sim_out.state_items.new('FLOAT', "Step")
+    sim_out.state_items[0].name = "Geometry"  # made with a translated name when the interface translates new data
+    sim_out.state_items.new('FLOAT', "Step").name = "Step"
     tree.links.new(start, sim_in.inputs["Geometry"])
     before = sim_in.outputs["Geometry"]
     state = points()
@@ -213,7 +220,8 @@ def _material(armature, kind):
     if material is not None:
         return material
     material = bpy.data.materials.new(name)
-    material.use_nodes = True
+    if material.node_tree is None:
+        material.use_nodes = True
     nodes, links = material.node_tree.nodes, material.node_tree.links
     nodes.clear()
     output = nodes.new("ShaderNodeOutputMaterial")
