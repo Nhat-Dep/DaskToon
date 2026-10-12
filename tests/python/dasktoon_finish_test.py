@@ -127,5 +127,93 @@ class SceneCompositorTest(unittest.TestCase):
         self.assertTrue(self.scene.render.use_compositing)
 
 
+def outline_material(name, idname):
+    """A material whose node `idname` (Anime Character or Dask Cel) has its outline on, in Custom color."""
+    mat = bpy.data.materials.new(name)
+    if mat.node_tree is None:
+        mat.use_nodes = True
+    node = mat.node_tree.nodes.new(idname)
+    if idname == 'ShaderNodeAnimeCharacter':
+        node.use_outline = True
+    else:
+        node.inputs["Use Outline"].default_value = True
+    node.outline_tint_mode = 'CUSTOM'
+    return mat, node
+
+
+class FinishSettingsTest(unittest.TestCase):
+    def setUp(self):
+        self.scene = empty_scene()
+        self.finish = self.scene.dasktoon_finish
+
+    def node(self):
+        node, = finish_scene.group_nodes(self.scene, self.finish.group)
+        return node
+
+    def test_on_makes_the_compositor_and_writes_the_inputs(self):
+        self.assertFalse(self.finish.enabled)
+        self.finish.enabled = True
+        self.assertIsNotNone(self.finish.group)
+        self.assertEqual(self.scene.compositing_node_group.name, finish_scene.TREE_NAME)
+        self.finish.glow_strength = 0.8
+        self.assertAlmostEqual(self.node().inputs["glow_strength"].default_value, 0.8, places=5)
+        self.finish.shadow_tint = (1.0, 0.0, 0.0)
+        self.assertEqual(tuple(self.node().inputs["shadow_tint"].default_value)[:3], (1.0, 0.0, 0.0))
+        self.finish.enabled = False
+        self.assertTrue(self.node().mute)
+
+    def test_a_layer_switch_rebuilds_the_group(self):
+        self.finish.enabled = True
+        self.assertNotIn("strokes", nodes.layers_of(self.finish.group))
+        self.finish.strokes = True
+        self.assertIn("strokes", nodes.layers_of(self.finish.group))
+        self.finish.haze = False
+        self.assertNotIn("haze", nodes.layers_of(self.finish.group))
+        self.assertAlmostEqual(self.node().inputs["glow_strength"].default_value, self.finish.glow_strength, places=5)
+
+    def test_viewport(self):
+        self.finish.enabled = True
+        self.finish.viewport = 'ALWAYS'
+        spaces = [area.spaces.active for screen in bpy.data.screens for area in screen.areas
+                  if area.type == 'VIEW_3D']
+        self.assertTrue(spaces)
+        self.assertEqual({space.shading.use_compositor for space in spaces}, {'ALWAYS'})
+
+    def test_add_to_the_users_compositor(self):
+        tree = bpy.data.node_groups.new("Mine", 'CompositorNodeTree')
+        tree.interface.new_socket("Image", in_out='OUTPUT', socket_type='NodeSocketColor')
+        layers, output = tree.nodes.new("CompositorNodeRLayers"), tree.nodes.new("NodeGroupOutput")
+        tree.links.new(layers.outputs["Image"], output.inputs[0])
+        self.scene.compositing_node_group = tree
+        from bl_ui import dasktoon_finish as ui
+        self.finish.enabled = True
+        self.assertEqual(ui.compositor_state(self.scene), 'USER')
+        self.assertEqual(bpy.ops.dasktoon.finish_add_to_compositor(), {'FINISHED'})
+        self.assertEqual(ui.compositor_state(self.scene), 'IN')
+        self.assertIs(self.scene.compositing_node_group, tree)
+
+    def test_colored_lines(self):
+        anime_mat, anime = outline_material("Skin", 'ShaderNodeAnimeCharacter')
+        cel_mat, cel = outline_material("Cloth", 'ShaderNodeDaskCel')
+        plain = bpy.data.materials.new("Plain")
+        self.assertEqual(bpy.ops.dasktoon.finish_colored_lines(), {'FINISHED'})
+        self.assertEqual((anime.outline_tint_mode, cel.outline_tint_mode), ('HARMONIC_KYOTO', 'HARMONIC_KYOTO'))
+        self.assertIsNone(plain.get("dasktoon_outline"))
+
+    def test_panels(self):
+        from bl_ui import dasktoon_finish as ui
+        self.finish.enabled = True
+        log = tu.draw(ui.DASKTOON_PT_finish)
+        props = [entry[1] for entry in log if entry[0] == "prop"]
+        self.assertIn("amount", props)
+        self.assertIn("viewport", props)
+        self.assertIn("dasktoon.finish_colored_lines", [idname for idname, _text in tu.operators(log)])
+        log = tu.draw(ui.DASKTOON_PT_finish_LIGHT)
+        props = [entry[1] for entry in log if entry[0] == "prop"]
+        self.assertEqual(props[:4], ["glow", "glow_threshold", "glow_size", "glow_strength"])
+        self.assertIn("rays", props)
+        self.assertIn("wrap", props)
+
+
 if __name__ == "__main__":
     tu.run_tests()

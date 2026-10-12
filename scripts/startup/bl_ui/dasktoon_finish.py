@@ -1,0 +1,266 @@
+# SPDX-FileCopyrightText: 2026 DaskToon Authors
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
+"""The Illustration Finish panel in Render Properties (docs/superpowers/specs/2026-10-13-dasktoon-illustration-finish-
+design.md, sections 4 to 7): the scene's finish settings, made from dasktoon_finish.settings, kept in sync with the
+finish's node group and the scene's compositor; the viewports that show it; colored lines for every material."""
+
+import math
+
+import bpy
+from bpy.app.translations import pgettext_rpt as rpt_
+from bpy.props import BoolProperty, EnumProperty, FloatProperty, FloatVectorProperty, PointerProperty
+from bpy.types import Operator, Panel, PropertyGroup
+
+from dasktoon_finish import nodes, scene as finish_scene, settings
+
+ENGINES = {'BLENDER_EEVEE', 'DASKTOON_ANIME'}
+_suspended = [0]  # while a style sets many settings, they are synced once at the end
+
+
+def computed(scene):
+    """The group's computed inputs: the focus, the light direction from the gradient angle; the sun is not seen."""
+    finish = scene.dasktoon_finish
+    angle = finish.gradient_angle
+    return {"focus": finish.focus_distance, "light_direction": (math.cos(angle), math.sin(angle), 0.0),
+            "sun_visible": 0.0}
+
+
+def values_of(finish):
+    """{key: value} of every setting of the scene's finish."""
+    out = {}
+    for setting in settings.SETTINGS:
+        value = getattr(finish, setting.key)
+        out[setting.key] = tuple(value) if setting.kind == 'COLOR' else value
+    return out
+
+
+def apply_viewport(mode):
+    """Every 3D Viewport shows the compositor in `mode` (Disabled, Camera, Always)."""
+    for screen in bpy.data.screens:
+        for area in screen.areas:
+            if area.type == 'VIEW_3D':
+                shading = area.spaces.active.shading
+                if shading.use_compositor != mode:
+                    shading.use_compositor = mode
+
+
+def sync(scene):
+    """The finish's node group, the scene's compositor and the viewports follow the scene's settings."""
+    if _suspended[0]:
+        return
+    finish = scene.dasktoon_finish
+    if not finish.enabled:
+        if finish.group is not None:
+            finish_scene.set_enabled(scene, finish.group, False)
+        return
+    layers = {key for key in settings.LAYER_KEYS if getattr(finish, key)}
+    group = nodes.ensure(finish.group, layers)
+    if finish.group != group:
+        finish.group = group
+    finish_scene.ensure_compositor(scene, group)
+    finish_scene.set_enabled(scene, group, True)
+    values = nodes.input_values(values_of(finish), computed(scene))
+    for node in finish_scene.group_nodes(scene, group):
+        nodes.set_inputs(node, values)
+    apply_viewport(finish.viewport)
+
+
+def _changed(self, _context):
+    sync(self.id_data)
+
+
+def compositor_state(scene):
+    """'OFF', 'IN' (the finish is in the scene's compositor), 'USER' (the user's own compositor, without it)."""
+    finish = scene.dasktoon_finish
+    if not finish.enabled or finish.group is None:
+        return 'OFF'
+    if finish_scene.group_nodes(scene, finish.group):
+        return 'IN'
+    return 'USER'
+
+
+def _setting_property(setting):
+    common = {"name": setting.label, "description": setting.description, "update": _changed}
+    if setting.kind in {'LAYER', 'OPTION', 'SWITCH'}:
+        return BoolProperty(default=setting.default, **common)
+    if setting.kind == 'COLOR':
+        # Colors as seen: the finish works on the colors on screen.
+        return FloatVectorProperty(subtype='COLOR_GAMMA', size=3, default=setting.default, min=0.0, max=1.0,
+                                   **common)
+    if setting.kind == 'FACTOR':
+        return FloatProperty(subtype='FACTOR', default=setting.default, min=setting.low, max=setting.high, **common)
+    if setting.kind == 'DISTANCE':
+        return FloatProperty(unit='LENGTH', default=setting.default, min=setting.low, soft_max=setting.high, **common)
+    if setting.kind == 'ANGLE':
+        return FloatProperty(subtype='ANGLE', default=setting.default, min=setting.low, max=setting.high, **common)
+    return FloatProperty(default=setting.default, min=setting.low, max=setting.high, precision=3, **common)
+
+
+def _is_compositor(_self, tree):
+    return tree.bl_idname == 'CompositorNodeTree'
+
+
+_annotations = {setting.key: _setting_property(setting) for setting in settings.SETTINGS}
+_annotations.update(
+    enabled=BoolProperty(
+        name="Illustration Finish", update=_changed,
+        description="Give the picture the finish a painter gives an illustration: light, colors, depth and texture"),
+    viewport=EnumProperty(
+        name="Show in Viewport", update=_changed, default='CAMERA',
+        description="Which 3D Viewports in Rendered shading show the finish",
+        items=(('DISABLED', "Off", "Only renders show the finish"),
+               ('CAMERA', "Camera View", "Viewports looking through the camera show the finish"),
+               ('ALWAYS', "Always", "Every viewport in Rendered shading shows the finish"))),
+    group=PointerProperty(
+        name="Node Group", type=bpy.types.NodeTree, poll=_is_compositor,
+        description="The finish's compositor node group (DaskToon builds it again when a layer is switched)"),
+)
+DaskFinishSettings = type("DaskFinishSettings", (PropertyGroup,), {
+    "__annotations__": _annotations, "__doc__": "The scene's illustration finish (DaskToon)"})
+
+
+class DASKTOON_OT_finish_add_to_compositor(Operator):
+    """Put the Illustration Finish right before the output of the scene's compositor"""
+    bl_idname = "dasktoon.finish_add_to_compositor"
+    bl_label = "Add to Compositor"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        return compositor_state(context.scene) == 'USER'
+
+    def execute(self, context):
+        finish_scene.insert(context.scene, context.scene.dasktoon_finish.group)
+        sync(context.scene)
+        return {'FINISHED'}
+
+
+def colored_lines():
+    """Every material with an outline takes the outline color from its own colors (Auto Harmonic). Returns how many."""
+    from bl_ui import dasktoon_outline as outline
+    count = 0
+    for mat in bpy.data.materials:
+        found = outline.find_source(mat)
+        if found is None:
+            continue
+        _kind, node = found
+        if node is None:
+            dask = outline.outline_node(outline.outline_material_for(mat, create=False))
+            if dask is None:
+                continue
+            node, prop = dask, "tint_mode"
+        else:
+            prop = "outline_tint_mode"
+        harmonic = next(item.identifier for item in node.bl_rna.properties[prop].enum_items if item.value == 1)
+        if getattr(node, prop) != harmonic:
+            setattr(node, prop, harmonic)
+        count += 1
+    return count
+
+
+class DASKTOON_OT_finish_colored_lines(Operator):
+    """Give every outlined material lines in a deep shade of its own colors (Auto Harmonic), not one fixed color"""
+    bl_idname = "dasktoon.finish_colored_lines"
+    bl_label = "Colored Lines for All Materials"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, _context):
+        self.report({'INFO'}, rpt_("Colored lines on %d materials") % colored_lines())
+        return {'FINISHED'}
+
+
+def draw_main(layout, context):
+    scene = context.scene
+    finish = scene.dasktoon_finish
+    layout.use_property_split = True
+    layout.active = finish.enabled
+    layout.prop(finish, "amount", slider=True)
+    layout.prop(finish, "viewport")
+    if compositor_state(scene) == 'USER':
+        box = layout.box()
+        box.label(text="The scene has its own compositor", icon='NODE_COMPOSITING')
+        box.operator(DASKTOON_OT_finish_add_to_compositor.bl_idname, icon='ADD')
+    layout.operator(DASKTOON_OT_finish_colored_lines.bl_idname, icon='BRUSH_DATA')
+
+
+def draw_group(layout, context, group):
+    """The layers of `group`: each one's switch, then its settings."""
+    finish = context.scene.dasktoon_finish
+    layout.use_property_split = True
+    layout.active = finish.enabled
+    for key, _label, layer_group in settings.LAYERS:
+        if layer_group != group:
+            continue
+        col = layout.column()
+        col.prop(finish, key)
+        sub = col.column()
+        sub.active = getattr(finish, key)
+        for setting in settings.SETTINGS:
+            if setting.layer != key or setting.kind == 'LAYER':
+                continue
+            row = sub.row()
+            if setting.key == "focus_distance":
+                row.active = not finish.focus_auto
+            elif setting.key == "gradient_angle":
+                row.active = not finish.gradient_auto
+            row.prop(finish, setting.key)
+        layout.separator()
+
+
+class DASKTOON_PT_finish(Panel):
+    bl_space_type = 'PROPERTIES'
+    bl_region_type = 'WINDOW'
+    bl_context = "render"
+    bl_label = "Illustration Finish"
+    COMPAT_ENGINES = ENGINES
+
+    @classmethod
+    def poll(cls, context):
+        return context.engine in cls.COMPAT_ENGINES
+
+    def draw_header(self, context):
+        self.layout.prop(context.scene.dasktoon_finish, "enabled", text="")
+
+    def draw(self, context):
+        draw_main(self.layout, context)
+
+
+def _group_panel(group, label):
+    def draw(self, context):
+        draw_group(self.layout, context, group)
+
+    return type("DASKTOON_PT_finish_" + group, (Panel,), {
+        "bl_space_type": 'PROPERTIES', "bl_region_type": 'WINDOW', "bl_context": "render", "bl_label": label,
+        "bl_parent_id": DASKTOON_PT_finish.__name__, "bl_options": {'DEFAULT_CLOSED'}, "COMPAT_ENGINES": ENGINES,
+        "poll": classmethod(lambda cls, context: context.engine in cls.COMPAT_ENGINES), "draw": draw})
+
+
+_LABELS = dict(settings.GROUPS)
+DASKTOON_PT_finish_COLOR = _group_panel('COLOR', _LABELS['COLOR'])
+DASKTOON_PT_finish_DEPTH = _group_panel('DEPTH', _LABELS['DEPTH'])
+DASKTOON_PT_finish_LIGHT = _group_panel('LIGHT', _LABELS['LIGHT'])
+DASKTOON_PT_finish_TEXTURE = _group_panel('TEXTURE', _LABELS['TEXTURE'])
+
+classes = (
+    DaskFinishSettings,
+    DASKTOON_OT_finish_add_to_compositor,
+    DASKTOON_OT_finish_colored_lines,
+    DASKTOON_PT_finish,
+    DASKTOON_PT_finish_COLOR,
+    DASKTOON_PT_finish_DEPTH,
+    DASKTOON_PT_finish_LIGHT,
+    DASKTOON_PT_finish_TEXTURE,
+)
+
+
+# bl_ui registers `classes`; register() adds the scene's settings.
+def register():
+    bpy.types.Scene.dasktoon_finish = PointerProperty(
+        name="Illustration Finish", type=DaskFinishSettings,
+        description="The scene's illustration finish (DaskToon)")
+
+
+def unregister():
+    del bpy.types.Scene.dasktoon_finish
