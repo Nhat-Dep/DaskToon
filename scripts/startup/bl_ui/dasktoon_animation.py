@@ -13,8 +13,8 @@ import bpy
 import _keyingsets_utils as keyingsets_utils
 from bpy.app.handlers import persistent
 from bpy.app.translations import pgettext_iface as iface_, pgettext_rpt as rpt_
-from bpy.props import PointerProperty, StringProperty
-from bpy.types import KeyingSetInfo, Menu, Operator
+from bpy.props import CollectionProperty, IntProperty, PointerProperty, StringProperty
+from bpy.types import KeyingSetInfo, Menu, Operator, PropertyGroup
 from keyingsets_builtins import WholeCharacterMixin
 
 
@@ -239,7 +239,15 @@ def load_post(_filepath):
         use_character_keying_set(scene)
 
 
+class DaskTimingStep(PropertyGroup):
+    """From this frame the clip runs on this step, until the next row"""
+    frame: IntProperty(name="Frame", description="Frame the step starts at")
+    step: IntProperty(name="Step", description="Frames each drawing is held: 1 to 4, or 0 to hold this frame",
+                      default=2, min=0, max=4)
+
+
 classes = (
+    DaskTimingStep,
     DASKTOON_KS_character,
     DASKTOON_OT_key_pose,
     DASKTOON_MT_character_clips,
@@ -258,6 +266,9 @@ def register():
     bpy.types.Action.dasktoon_character = PointerProperty(
         name="Character", description="Armature of the character this action is a clip of (DaskToon)",
         type=bpy.types.Object, poll=_is_armature)
+    bpy.types.Action.dasktoon_timing = CollectionProperty(
+        name="Timing", description="Anime timing of the clip: from each row's frame it runs on that row's step (DaskToon)",
+        type=DaskTimingStep)
     if load_post not in bpy.app.handlers.load_post:
         bpy.app.handlers.load_post.append(load_post)
 
@@ -266,3 +277,4 @@ def unregister():
     if load_post in bpy.app.handlers.load_post:
         bpy.app.handlers.load_post.remove(load_post)
     del bpy.types.Action.dasktoon_character
+    del bpy.types.Action.dasktoon_timing

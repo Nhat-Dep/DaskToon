@@ -1257,6 +1257,14 @@ VI = {
     # Engine Export: clips (clips spec 6)
     "Clips: %s": "Clip: %s",
     "%s (loop)": "%s (lặp)",
+    # Animation tab: anime timing of a clip (anime timing spec 3)
+    "Anime timing of the clip: from each row's frame it runs on that row's step (DaskToon)":
+        "Nhịp anime của clip: từ khung của mỗi dòng, clip chạy theo nhịp của dòng đó (DaskToon)",
+    "Frame the step starts at": "Khung bắt đầu nhịp",
+    "Frames each drawing is held: 1 to 4, or 0 to hold this frame":
+        "Số khung giữ mỗi hình: 1 đến 4, hoặc 0 để giữ nguyên khung này",
+    "From this frame the clip runs on this step, until the next row":
+        "Từ khung này clip chạy theo nhịp này, cho tới dòng sau",
 }
 
 # Words that need their own translation context, because Blender's own translation of the same word in the default
