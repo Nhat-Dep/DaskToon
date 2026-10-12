@@ -232,8 +232,11 @@ scene; vẫn không rõ thì lệnh hỏi chọn rig.
 ## 8. Unity cho R1
 
 - Engine Export xuất FBX như hiện nay; xương sinh là xương Deform nên có trong FBX.
-- **Humanoid**: khi armature xuất đi là khung chuẩn, `.meta` của model ghi `animationType: 3` (Humanoid) thay vì 2;
-  `autoGenerateAvatarMappingIfUnspecified: 1` đã có, nên Unity tự ghép xương theo tên. Armature không chuẩn giữ Generic.
+- **Humanoid**: khi armature xuất đi là khung chuẩn, model là Humanoid trong Unity. Sửa 2026-10-10 (spec clip §6): Unity
+  tự ghép xương thì bỏ sót hai tay của khung DaskToon (13/55 xương), avatar không phải Humanoid. Nay `.meta` ghi Generic
+  kèm `userData: DaskToonHumanoid`; script `Editor/DaskToonAvatarImporter.cs` (cài cùng các script rig) dựng mô tả
+  Humanoid từ cây xương Unity đã import (tên xương là tên `HumanBodyBones`), chuyển model sang Humanoid và import lại.
+  Armature không chuẩn giữ Generic.
 - Weight đã ≤ 4 xương mỗi đỉnh, khớp `maxBonesPerVertex: 4` trong `.meta`.
 
 ## 9. Lắc (R2)

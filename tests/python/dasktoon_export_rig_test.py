@@ -97,7 +97,7 @@ class ScriptsInstallTest(unittest.TestCase):
         self.assertIn("if (dt <= 0f) return;", code)
         with open(os.path.join(root, si.SCRIPT_DIR, "Editor", "DaskToonRigImporter.cs"), encoding="utf-8") as f:
             self.assertIn("static void OnPostprocessAllAssets(", f.read())
-        self.assertEqual(si.SCRIPTS_VERSION, 2)
+        self.assertEqual(si.SCRIPTS_VERSION, 3)
 
     def test_older_scripts_are_replaced(self):
         from dasktoon_export import scripts_install as si
@@ -156,9 +156,9 @@ class ExportRigTest(unittest.TestCase):
         rig, objs = built(roles=(("Body", 'BODY'),))
         target, rep = export(rig, {"Body": objs["Body"]})
         self.assertEqual(rep.rig, "")
-        self.assertEqual(rep.scripts, 'SKIPPED')
         self.assertFalse(os.path.exists(os.path.join(target.root, "Hero", "Model", "Hero.rig.json")))
-        self.assertFalse(os.path.exists(os.path.join(target.root, "Scripts")))
+        # A Humanoid model still gets the scripts: DaskToon's importer makes its avatar (clips spec 6).
+        self.assertEqual(rep.scripts, 'INSTALLED')
 
     def test_runtime_chains_rest_while_the_fbx_is_written(self):
         import dasktoon_export

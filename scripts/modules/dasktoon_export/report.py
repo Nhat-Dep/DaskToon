@@ -35,6 +35,7 @@ class Report:
     model: str = ""
     rig: str = ""
     scripts: str = 'SKIPPED'
+    clips: list = field(default_factory=list)  # [(name, loop)] written as <Model>@<Clip>.fbx
     materials: list = field(default_factory=list)
     skipped: list = field(default_factory=list)
     baked: list = field(default_factory=list)
@@ -57,7 +58,11 @@ class Report:
             out.append(rpt_("Model: %s") % self.model)
         if self.rig:
             out.append(rpt_("Rig: %s (DaskToon spring bones sway the hair and skirts in Unity)") % self.rig)
+        if self.scripts != 'SKIPPED':
             out.append(rpt_(SCRIPT_STATE[self.scripts]))
+        if self.clips:
+            out.append(rpt_("Clips: %s") % ", ".join(rpt_("%s (loop)") % name if loop else name
+                                                      for name, loop in self.clips))
         out.append(rpt_("Exported materials (%d): %s") % (len(self.materials), ", ".join(self.materials) or rpt_("none")))
         out += [rpt_("Skipped material %s: %s (Unity keeps the default material of the FBX)") % item
                 for item in self.skipped]
