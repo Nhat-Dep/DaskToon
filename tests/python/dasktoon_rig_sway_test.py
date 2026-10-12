@@ -2,8 +2,10 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-"""Live sway and Bake Sway on the test character (anime rig spec 9.4)."""
+"""Sway of the test character with DaskToon's Spring constraint (anime rig spec 9.4): Build Rig sets the constraints up,
+the hips dashing sideways sway the skirt, scrubbing and the start frame behave, Live Sway mutes, Bake Sway keys."""
 
+import math
 import os
 import sys
 import unittest
@@ -15,7 +17,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import dasktoon_rig_fixtures as fx  # noqa: E402
 import dasktoon_test_utils as tu  # noqa: E402
 from bl_ui import dasktoon_rig as ui  # noqa: E402
-from dasktoon_rig import build, parts, sway  # noqa: E402
+from dasktoon_rig import build, sway  # noqa: E402
 
 BONE = "Skirt1_3"
 
@@ -37,16 +39,26 @@ def character():
     return rig
 
 
-def quat(rig, name):
-    return np.array(rig.pose.bones[name].rotation_quaternion)
+def angle(a, b):
+    return math.degrees(math.acos(max(-1.0, min(1.0, float(np.dot(a, b))))))
 
 
-def play(rig, last):
+def play(rig, last, name=BONE):
     out = {}
     for frame in range(1, last + 1):
         bpy.context.scene.frame_set(frame)
-        out[frame] = quat(rig, BONE)
+        out[frame] = sway.direction(rig, name)
     return out
+
+
+def unswayed(rig, frame, name=BONE):
+    """The bone's direction on `frame` with every Spring constraint muted (the cache stays)."""
+    sway.set_live(rig, False)
+    bpy.context.scene.frame_set(frame)
+    found = sway.direction(rig, name)
+    sway.set_live(rig, True)
+    bpy.context.scene.frame_set(frame)
+    return found
 
 
 class SwayTest(unittest.TestCase):
@@ -59,98 +71,102 @@ class SwayTest(unittest.TestCase):
         self.assertEqual(found["Skirt1_1"], ("Skirt", ["Skirt1_1", "Skirt1_2", "Skirt1_3"]))
         self.assertEqual(len(found), 9)
 
+    def test_build_adds_spring_constraints(self):
+        skirt = self.rig.data.dasktoon_rig.parts["Skirt"]
+        for _part, names in sway.chains(self.rig):
+            for name in names:
+                cons = [c for c in self.rig.pose.bones[name].constraints if c.type == 'SPRING']
+                self.assertEqual(len(cons), 1, name)
+                self.assertEqual(cons[0].name, sway.CONSTRAINT_NAME)
+                self.assertEqual(len(cons[0].colliders), len(build.COLLIDER_BONES))
+                self.assertFalse(cons[0].mute)
+        con = sway.spring_constraint(self.rig.pose.bones[BONE])
+        self.assertEqual((con.stiffness, con.gravity, con.drag), (skirt.stiffness, skirt.gravity, skirt.drag))
+        self.assertEqual({c.subtarget for c in con.colliders}, set(build.COLLIDER_BONES))
+        self.assertEqual({c.target for c in con.colliders}, {self.rig})
+
+    def test_python_frame_handlers_are_gone(self):
+        names = {h.__name__ for h in bpy.app.handlers.frame_change_post + bpy.app.handlers.frame_change_pre}
+        self.assertFalse(names & {"frame_post", "frame_pre"})
+
     def test_moving_hips_sway_the_skirt(self):
         played = play(self.rig, 12)
-        self.assertAlmostEqual(abs(played[1][0]), 1.0, places=6)  # no sway on the first frame
-        self.assertLess(abs(played[8][0]), 0.999)
+        self.assertLess(angle(played[1], unswayed(self.rig, 1)), 0.01)
+        self.assertGreater(angle(played[8], unswayed(self.rig, 8)), 2.0)
 
     def test_back_to_start_resets(self):
         play(self.rig, 8)
         bpy.context.scene.frame_set(1)
-        self.assertAlmostEqual(abs(quat(self.rig, BONE)[0]), 1.0, places=6)
+        self.assertLess(angle(sway.direction(self.rig, BONE), unswayed(self.rig, 1)), 0.01)
 
     def test_revisiting_a_frame_gives_the_same_pose(self):
         played = play(self.rig, 12)
         bpy.context.scene.frame_set(7)
-        np.testing.assert_allclose(quat(self.rig, BONE), played[7], atol=1e-6)  # float32 storage
+        np.testing.assert_allclose(sway.direction(self.rig, BONE), played[7], atol=1e-6)
         again = play(self.rig, 12)
         np.testing.assert_allclose(again[12], played[12], atol=1e-6)
 
-    def test_tails_follow_the_simulation(self):
-        play(self.rig, 9)
-        bpy.context.view_layer.update()
-        state = sway._cache[self.rig.session_uid][9]
-        names = dict(sway.chains(self.rig))["Skirt"]
-        index = [n for _p, n in sway.chains(self.rig)].index(names)
-        world = self.rig.matrix_world
-        for i, name in enumerate(names):
-            tail = np.array(world @ self.rig.pose.bones[name].tail)
-            np.testing.assert_allclose(tail, state[index].current[i], atol=1e-4)
-
-    def test_live_sway_off_leaves_bones(self):
+    def test_live_sway_off_mutes(self):
         self.rig.data.dasktoon_rig.live_sway = False
-        pb = self.rig.pose.bones[BONE]
-        pb.rotation_quaternion = (0.9, 0.1, 0.0, 0.0)
-        play(self.rig, 6)
-        np.testing.assert_allclose(quat(self.rig, BONE), (0.9, 0.1, 0.0, 0.0), atol=1e-6)
+        self.assertTrue(all(sway.spring_constraint(self.rig.pose.bones[n]).mute
+                            for _p, names in sway.chains(self.rig) for n in names))
+        played = play(self.rig, 8)
+        self.assertLess(angle(played[8], unswayed(self.rig, 8)), 0.01)
+
+    def test_settings_reach_the_constraints(self):
+        data = self.rig.data.dasktoon_rig
+        data.parts["Skirt"].stiffness = 2.5
+        con = sway.spring_constraint(self.rig.pose.bones["Skirt1_1"])
+        self.assertAlmostEqual(con.stiffness, 2.5, places=6)
+        hips = next(c for c in data.colliders if c.bone == "Hips")
+        hips.radius = 0.123
+        con_hips = next(c for c in con.colliders if c.subtarget == "Hips")
+        self.assertAlmostEqual(con_hips.radius, 0.123, places=6)
 
     def test_keyed_chain_bone_is_the_rest_direction(self):
         pb = self.rig.pose.bones["Hair_1"]
-        pb.rotation_quaternion = (0.96592583, 0.25881905, 0.0, 0.0)  # 30 degrees, keyed on every frame
+        pb.rotation_quaternion = (0.96592583, 0.25881905, 0.0, 0.0)  # 30 degrees, keyed
         pb.keyframe_insert("rotation_quaternion", frame=1)
-        still = dict(sway.chains(self.rig))
-        self.rig.data.dasktoon_rig.parts["Hair"].stiffness = 4.0
-        self.rig.data.dasktoon_rig.parts["Hair"].gravity = 0.0
-        played = {}
-        for frame in range(1, 30):
-            bpy.context.scene.frame_set(frame)
-            played[frame] = quat(self.rig, "Hair_1")
-        # With strong stiffness and no gravity the lock settles on its keyed pose instead of drifting each frame.
-        np.testing.assert_allclose(played[29], (0.96592583, 0.25881905, 0.0, 0.0), atol=0.05)
-        self.assertIn("Hair", still)
-
-    def test_parameter_change_clears_the_cache(self):
-        play(self.rig, 4)
-        self.assertTrue(sway._cache.get(self.rig.session_uid))
-        self.rig.data.dasktoon_rig.parts["Skirt"].drag = 0.9
-        self.assertFalse(sway._cache.get(self.rig.session_uid))
+        part = self.rig.data.dasktoon_rig.parts["Hair"]
+        part.stiffness = 4.0
+        part.gravity = 0.0
+        played = play(self.rig, 30, "Hair_1")
+        self.assertLess(angle(played[30], unswayed(self.rig, 30, "Hair_1")), 3.0)
 
     def test_bake_matches_live(self):
         live = play(self.rig, 12)
-        frames, bones = sway.bake(bpy.context, self.rig, 1, 12)
-        self.assertEqual((frames, bones), (12, 4 + 8 * 3))
+        self.assertEqual(sway.bake(bpy.context, self.rig, 1, 12), (12, 4 + 8 * 3))
         self.assertFalse(self.rig.data.dasktoon_rig.live_sway)
+        self.assertTrue(sway.spring_constraint(self.rig.pose.bones[BONE]).mute)
         for frame in (5, 9, 12):
             bpy.context.scene.frame_set(frame)
-            np.testing.assert_allclose(quat(self.rig, BONE), live[frame], atol=1e-5)
+            np.testing.assert_allclose(sway.direction(self.rig, BONE), live[frame], atol=1e-4)
 
     def test_bake_twice_does_not_stack(self):
         sway.bake(bpy.context, self.rig, 1, 12)
         first = {}
         for frame in (6, 12):
             bpy.context.scene.frame_set(frame)
-            first[frame] = quat(self.rig, BONE)
+            first[frame] = sway.direction(self.rig, BONE)
         sway.bake(bpy.context, self.rig, 1, 12)
         for frame in (6, 12):
             bpy.context.scene.frame_set(frame)
-            np.testing.assert_allclose(quat(self.rig, BONE), first[frame], atol=1e-5)
+            np.testing.assert_allclose(sway.direction(self.rig, BONE), first[frame], atol=1e-4)
 
 
 class SuppressTest(unittest.TestCase):
     def test_suppressed_chains_rest_and_come_back(self):
         rig = character()
         play(rig, 8)
-        swayed = quat(rig, BONE)
-        hair = quat(rig, "Hair_2")
-        self.assertLess(abs(swayed[0]), 0.999)
+        hair = sway.direction(rig, "Hair_4")
+        skirt_rest = unswayed(rig, 8)
         with sway.suppressed(rig, {"Skirt"}):
-            np.testing.assert_allclose(quat(rig, BONE), (1.0, 0.0, 0.0, 0.0), atol=1e-6)
-            np.testing.assert_allclose(quat(rig, "Hair_2"), hair, atol=1e-6)
-            bpy.context.scene.frame_set(9)
-            np.testing.assert_allclose(quat(rig, BONE), (1.0, 0.0, 0.0, 0.0), atol=1e-6)
-            self.assertNotEqual(tuple(quat(rig, "Hair_2")), tuple(hair))
-        np.testing.assert_allclose(quat(rig, BONE), swayed, atol=1e-6)
-        self.assertFalse(sway._cache.get(rig.session_uid))
+            self.assertTrue(sway.spring_constraint(rig.pose.bones[BONE]).mute)
+            self.assertFalse(sway.spring_constraint(rig.pose.bones["Hair_4"]).mute)
+            bpy.context.view_layer.update()
+            self.assertLess(angle(sway.direction(rig, BONE), skirt_rest), 0.01)
+            np.testing.assert_allclose(sway.direction(rig, "Hair_4"), hair, atol=1e-6)
+        self.assertFalse(sway.spring_constraint(rig.pose.bones[BONE]).mute)
 
     def test_world_colliders(self):
         rig = character()

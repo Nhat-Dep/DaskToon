@@ -248,6 +248,22 @@ class ColliderTest(unittest.TestCase):
         build.build(bpy.context, rig, separate_parts(objs))
         self.assertEqual(len(rig.data.dasktoon_rig.colliders), len(build.COLLIDER_BONES))
 
+    def test_colliders_are_in_armature_units(self):
+        found = {}
+        for scale in (1.0, 2.0):
+            bpy.ops.wm.read_factory_settings(use_empty=True)
+            objs = fx.character()
+            rig = fx.rig_for()
+            for obj in (rig, *objs.values()):
+                obj.scale = (scale, scale, scale)
+            bpy.context.view_layer.update()
+            result = build.build(bpy.context, rig, separate_parts(objs))
+            found[scale] = ({c.bone: c.radius for c in rig.data.dasktoon_rig.colliders}, dict(result.colliders))
+        (local, world), (local2, world2) = found[1.0], found[2.0]
+        for name in build.COLLIDER_BONES:
+            self.assertAlmostEqual(local2[name], local[name], delta=1e-3 * local[name], msg=name)
+            self.assertAlmostEqual(world2[name], 2.0 * world[name], delta=2e-3 * world[name], msg=name)
+
     def test_part_sway_defaults(self):
         part = parts.Part("Hair", None, 'HAIR')
         self.assertEqual((part.stiffness, part.gravity, part.drag, part.radius), (1.0, 0.2, 0.4, 0.03))

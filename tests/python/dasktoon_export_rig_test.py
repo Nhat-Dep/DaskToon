@@ -56,8 +56,13 @@ class RigJsonTest(unittest.TestCase):
         rig, _objs = built()
         rig.scale = (2.0, 2.0, 2.0)
         bpy.context.view_layer.update()
-        hair = next(c for c in rig_json.rig_data(rig)["chains"] if c["part"] == "Hair")
+        data = rig_json.rig_data(rig)
+        hair = next(c for c in data["chains"] if c["part"] == "Hair")
         self.assertAlmostEqual(hair["lengths"][0], 2.0 * rig.data.bones["Hair_1"].length, places=5)
+        self.assertAlmostEqual(hair["radius"], 2.0 * rig.data.dasktoon_rig.parts["Hair"].radius, places=5)
+        head = next(c for c in data["colliders"] if c["bone"] == "Head")
+        local = next(c for c in rig.data.dasktoon_rig.colliders if c.bone == "Head")
+        self.assertAlmostEqual(head["radius"], 2.0 * local.radius, places=5)
 
     def test_no_chains(self):
         rig, objs = built(roles=(("Body", 'BODY'),))
@@ -157,9 +162,11 @@ class ExportRigTest(unittest.TestCase):
         seen = {}
         original = model_fbx.write_fbx
 
+        from dasktoon_rig import sway
+
         def spy(context, objects, filepath, include_animation):
-            seen["skirt"] = tuple(rig.pose.bones["Skirt1_3"].rotation_quaternion)
-            seen["hair"] = tuple(rig.pose.bones["Hair_4"].rotation_quaternion)
+            seen["skirt"] = sway.spring_constraint(rig.pose.bones["Skirt1_3"]).mute
+            seen["hair"] = sway.spring_constraint(rig.pose.bones["Hair_4"]).mute
             return original(context, objects, filepath, include_animation)
 
         model_fbx.write_fbx = spy
@@ -167,9 +174,9 @@ class ExportRigTest(unittest.TestCase):
             export(rig, objs)
         finally:
             model_fbx.write_fbx = original
-        self.assertAlmostEqual(abs(seen["skirt"][0]), 1.0, places=6)   # Runtime: at rest in the FBX
-        self.assertLess(abs(seen["hair"][0]), 0.9999)                  # Baked: keeps its sway
-        self.assertLess(abs(rig.pose.bones["Skirt1_3"].rotation_quaternion[0]), 0.9999)  # back afterwards
+        self.assertTrue(seen["skirt"])    # Runtime: Unity sways it, so the FBX has it still
+        self.assertFalse(seen["hair"])    # Baked: keeps its sway
+        self.assertFalse(sway.spring_constraint(rig.pose.bones["Skirt1_3"]).mute)  # back afterwards
 
     def test_runtime_chain_with_keys_warns(self):
         from dasktoon_rig import sway

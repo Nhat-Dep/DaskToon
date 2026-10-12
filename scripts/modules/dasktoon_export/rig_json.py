@@ -3,7 +3,8 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 """<Model>.rig.json beside the FBX (anime rig spec 9.5): the chains and colliders DaskToon's Unity spring bone needs,
-by bone name. Unity keeps a bone's tail along its local +Y, as Blender does, so only lengths (world, meters) travel."""
+by bone name. Unity keeps a bone's tail along its local +Y, as Blender does, so only lengths and radii travel, in world
+units (meters): the rig keeps its radii in armature units."""
 
 import json
 
@@ -23,6 +24,7 @@ def rig_data(rig):
         return None
     data = rig.data.dasktoon_rig
     bones = rig.data.bones
+    scale = sway.rig_scale(rig)
     chains = []
     for part_name, names in found:
         part = data.parts.get(part_name)
@@ -34,10 +36,10 @@ def rig_data(rig):
             "stiffness": round(part.stiffness if part else defaults.stiffness, 6),
             "gravity": round(part.gravity if part else defaults.gravity, 6),
             "drag": round(part.drag if part else defaults.drag, 6),
-            "radius": round(part.radius if part else defaults.radius, 6),
+            "radius": round((part.radius if part else defaults.radius) * scale, 6),
             "unity": "baked" if part is not None and part.sway_in_unity == 'BAKED' else "runtime",
         })
-    colliders = [{"bone": c.bone, "radius": round(c.radius, 6), "length": round(_length(rig, bones[c.bone]), 6)}
+    colliders = [{"bone": c.bone, "radius": round(c.radius * scale, 6), "length": round(_length(rig, bones[c.bone]), 6)}
                  for c in data.colliders if bones.get(c.bone) is not None]
     return {"version": VERSION, "chains": chains, "colliders": colliders}
 

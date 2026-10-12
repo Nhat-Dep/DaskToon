@@ -15,7 +15,9 @@ presses Build Rig, poses the spine, head, hair and skirt, and saves:
 - 22_rest, 23_posed: the character from the side before and after posing (the hair and skirt chains bend);
 - 25_sway: R2, the hips dash sideways from frame 1 to 6; on frame 8 the skirt and hair lag behind (Live Sway);
 - 24_rig_panel: the Anime Rig panel in Properties › Object Data of the armature, the skirt part active (Sway shows its
-  settings and the colliders).
+  settings and the colliders);
+- 26_spring_constraint: Properties › Bone Constraints of the bone Hair_2, with the Spring constraint Build Rig gave it
+  (its settings and colliders).
 """
 import datetime
 import math
@@ -182,7 +184,8 @@ def steps():
         bpy.ops.view3d.view_all(center=False)
     for frame in range(1, 9):
         scene.frame_set(frame)
-    log("sway frame", scene.frame_current, tuple(round(v, 3) for v in rig.pose.bones["Skirt1_3"].rotation_quaternion))
+    from dasktoon_rig import sway
+    log("sway frame", scene.frame_current, tuple(round(float(v), 3) for v in sway.direction(rig, "Skirt1_3")))
     yield datetime.timedelta(seconds=1.5)
     save(grab(), area_rect(view), "25_sway")
     data = rig.data.dasktoon_rig
@@ -204,6 +207,27 @@ def steps():
     e.cursor_position_set(view.x + 12, view.y + 20, move=True)  # park on the tab column, away from tooltips
     yield datetime.timedelta(seconds=1.5)
     save(grab(), area_rect(view), "24_rig_panel")
+
+    # 26. The Spring constraint of a hair bone in the Bone Constraints tab (Pose Mode has it).
+    rig.data.bones.active = rig.data.bones["Hair_2"]
+    with bpy.context.temp_override(window=win, area=view, region=region_of(view)):
+        bpy.ops.object.mode_set(mode='POSE')
+    yield datetime.timedelta(seconds=0.5)
+    props.context = 'BONE_CONSTRAINT'
+    yield datetime.timedelta(seconds=0.5)
+    e.cursor_position_set(view.x + view.width // 2, view.y + view.height // 2, move=True)
+    for _ in range(40):
+        e.wheelupmouse()
+    yield datetime.timedelta(seconds=0.5)
+    # Open the Colliders sub-panel (closed, as every constraint's sub-panels start): click its header, under Influence
+    # at the top of the editor.
+    scale = bpy.context.preferences.view.ui_scale
+    e.cursor_position_set(view.x + int(96 * scale), view.y + view.height - int(275 * scale), move=True)
+    e.leftmouse.tap()
+    e.cursor_position_set(view.x + 12, view.y + 20, move=True)
+    yield datetime.timedelta(seconds=1.5)
+    log("constraints", [(c.name, c.type, len(c.colliders)) for c in rig.pose.bones["Hair_2"].constraints])
+    save(grab(), area_rect(view), "26_spring_constraint")
     view.type = 'VIEW_3D'
 
     log("done")

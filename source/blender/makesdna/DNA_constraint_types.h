@@ -133,6 +133,8 @@ enum eBConstraint_Types : short {
   CONSTRAINT_TYPE_TRANSFORM_CACHE = 29,
   CONSTRAINT_TYPE_ARMATURE = 30,
   CONSTRAINT_TYPE_GEOMETRY_ATTRIBUTE = 31,
+  /** DaskToon: spring bone sway of the anime rig. */
+  CONSTRAINT_TYPE_SPRING = 32,
 
   /* This should be the last entry in this list. */
   NUM_CONSTRAINT_TYPES,
@@ -819,6 +821,22 @@ struct bArmatureConstraint {
 
   /** A list of targets that this constraint has (bConstraintTarget-s). */
   ListBaseT<bConstraintTarget> targets = {nullptr, nullptr};
+};
+
+/** DaskToon anime rig: sways a bone like a spring bone (docs/superpowers/specs/2026-10-06-dasktoon-anime-rig-design.md
+ * section 9). The colliders are capsules along bones: the targets, with the capsule radius in `weight` (armature units,
+ * like `radius`). */
+struct bSpringConstraint {
+  /** Collider bones (bConstraintTarget-s); `weight` is the capsule radius. */
+  ListBaseT<bConstraintTarget> targets = {nullptr, nullptr};
+  /** Pull back towards the posed direction. */
+  float stiffness = 1.0f;
+  /** Pull down (world -Z). */
+  float gravity = 0.2f;
+  /** 0 keeps all the swing, 1 none. */
+  float drag = 0.4f;
+  /** Radius of the bone's tail against the colliders, in armature units. */
+  float radius = 0.03f;
 };
 
 /* Single-target sub-object constraints --------------------- */

@@ -1704,6 +1704,52 @@ class BONE_PT_bGeometryAttributeConstraint(BoneConstraintPanel, ConstraintButton
         self.draw_geometry_attribute(context)
 
 
+# Spring Constraint (DaskToon anime rig)
+
+class SpringConstraintPanel(ConstraintButtonsPanel):
+    def draw(self, context):
+        layout = self.layout
+        con = self.get_constraint(context)
+        layout.use_property_split = True
+        layout.use_property_decorate = True
+        col = layout.column()
+        col.prop(con, "stiffness")
+        col.prop(con, "gravity")
+        col.prop(con, "drag")
+        col.prop(con, "radius")
+        self.draw_influence(layout, con)
+
+
+class SpringConstraintCollidersPanel(ConstraintButtonsSubPanel):
+    bl_label = "Colliders"
+
+    def draw(self, context):
+        layout = self.layout
+        con = self.get_constraint(context)
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+        if not con.colliders:
+            layout.label(text="No colliders: Build Rig adds the body bones", icon='INFO')
+        for collider in con.colliders:
+            layout.prop(collider, "radius", text=collider.subtarget, translate=False)
+
+
+class OBJECT_PT_bSpringConstraint(ObjectConstraintPanel, SpringConstraintPanel, Panel):
+    pass
+
+
+class BONE_PT_bSpringConstraint(BoneConstraintPanel, SpringConstraintPanel, Panel):
+    pass
+
+
+class OBJECT_PT_bSpringConstraint_colliders(ObjectConstraintPanel, SpringConstraintCollidersPanel, Panel):
+    bl_parent_id = "OBJECT_PT_bSpringConstraint"
+
+
+class BONE_PT_bSpringConstraint_colliders(BoneConstraintPanel, SpringConstraintCollidersPanel, Panel):
+    bl_parent_id = "BONE_PT_bSpringConstraint"
+
+
 classes = (
     # Object Panels
     OBJECT_PT_constraints,
@@ -1744,6 +1790,8 @@ classes = (
     OBJECT_PT_bArmatureConstraint,
     OBJECT_PT_bArmatureConstraint_bones,
     OBJECT_PT_bGeometryAttributeConstraint,
+    OBJECT_PT_bSpringConstraint,
+    OBJECT_PT_bSpringConstraint_colliders,
 
     # Bone panels
     BONE_PT_bChildOfConstraint,
@@ -1785,6 +1833,8 @@ classes = (
     BONE_PT_bArmatureConstraint,
     BONE_PT_bArmatureConstraint_bones,
     BONE_PT_bGeometryAttributeConstraint,
+    BONE_PT_bSpringConstraint,
+    BONE_PT_bSpringConstraint_colliders,
 )
 
 if __name__ == "__main__":  # only for live edit.
