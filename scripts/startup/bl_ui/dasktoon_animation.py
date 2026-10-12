@@ -5,7 +5,8 @@
 """DaskToon's Animation tab (docs/superpowers/specs/2026-10-10-dasktoon-animation-tab-design.md, sections 5 to 7): the
 "DaskToon Character" keying set, Key Pose, the part of the Dope Sheet header that shows when Whole Character is on, and
 the file-load handler that puts DaskToon's tab in place of Blender's. The header also holds the character's clips
-(docs/superpowers/specs/2026-10-10-dasktoon-clips-design.md, section 4)."""
+(docs/superpowers/specs/2026-10-10-dasktoon-clips-design.md, section 4), their anime timing and the onion skin
+(docs/superpowers/specs/2026-10-13-dasktoon-anime-timing-design.md, sections 4 and 6)."""
 
 import types
 
@@ -13,7 +14,7 @@ import bpy
 import _keyingsets_utils as keyingsets_utils
 from bpy.app.handlers import persistent
 from bpy.app.translations import pgettext_iface as iface_, pgettext_rpt as rpt_
-from bpy.props import CollectionProperty, IntProperty, PointerProperty, StringProperty
+from bpy.props import BoolProperty, CollectionProperty, FloatProperty, IntProperty, PointerProperty, StringProperty
 from bpy.types import KeyingSetInfo, Menu, Operator, Panel, PropertyGroup
 from keyingsets_builtins import WholeCharacterMixin
 
@@ -275,6 +276,205 @@ class DASKTOON_PT_character_timing(Panel):
         layout.label(text="Key on the drawn frames: a key between them shows from the next one", icon='INFO')
 
 
+# Onion skin (anime timing spec 6). A timer copies the ghosts once the frame, the clip and the settings have stayed the
+# same for a tick and nothing plays; a draw handler shows them in every 3D Viewport.
+ONION_TICK = 0.2
+ONION_CACHE = 16  # ghost frames kept while the animation does not change
+ONION_COLORS = {'BEFORE': (1.0, 0.25, 0.2), 'AFTER': (0.2, 0.55, 1.0)}
+_onion = {"ghosts": [], "frame": None, "batches": None, "seen": None, "drawn": None, "edits": 0, "cache": {},
+          "cache_key": None, "capturing": False, "handle": None}
+
+
+def onion_ghosts():
+    """[(side 'BEFORE' or 'AFTER', rank (0 nearest), frame, [(object name, triangles)])] the onion skin shows."""
+    return _onion["ghosts"]
+
+
+def _onion_redraw():
+    for window in bpy.context.window_manager.windows:
+        for area in window.screen.areas:
+            if area.type == 'VIEW_3D':
+                area.tag_redraw()
+
+
+def _set_ghosts(ghosts, frame):
+    _onion["ghosts"], _onion["frame"], _onion["batches"] = ghosts, frame, None
+    _onion_redraw()
+
+
+def onion_refresh(context):
+    """Copy the ghosts of the header's character at the scene's frame. While a pose in the scene has changes that are
+    not keyed, jumping to other frames would lose them: then nothing is copied, the old ghosts stay, and it returns
+    False."""
+    from dasktoon_animation import character, onion
+    scene = context.scene
+    settings = scene.dasktoon_onion
+    armature = header_armature(context)
+    action = _action(armature)
+    if not settings.show or action is None:
+        _set_ghosts([], None)
+        return True
+    objects = list(context.view_layer.objects)
+    if onion.unkeyed_changes(onion.animated_ids(objects), scene.frame_current):
+        return False
+    before, after = onion.ghost_frames(action, scene.frame_current, settings.before, settings.after)
+    meshes = [obj for obj in character.members(armature, objects) if obj.type == 'MESH' and obj.visible_get()]
+    cache_key = (scene.name, action.name, _onion["edits"], tuple(obj.name for obj in meshes))
+    if _onion["cache_key"] != cache_key:
+        _onion["cache"], _onion["cache_key"] = {}, cache_key
+    cache = _onion["cache"]
+    missing = [frame for frame in before + after if frame not in cache]
+    if missing:
+        _onion["capturing"] = True
+        try:
+            cache.update(onion.capture(context, meshes, missing))
+        finally:
+            _onion["capturing"] = False
+    ghosts = ([('BEFORE', rank, frame, cache[frame]) for rank, frame in enumerate(before)] +
+              [('AFTER', rank, frame, cache[frame]) for rank, frame in enumerate(after)])
+    for frame in list(cache)[:max(0, len(cache) - ONION_CACHE)]:
+        del cache[frame]
+    _set_ghosts(ghosts, (scene.name, scene.frame_current))
+    return True
+
+
+def _onion_signature(context):
+    scene = context.scene
+    settings = scene.dasktoon_onion
+    armature = header_armature(context)
+    action = _action(armature)
+    return (scene.name, scene.frame_current, settings.show, settings.before, settings.after,
+            armature.name if armature is not None else "", action.name if action is not None else "", _onion["edits"])
+
+
+def _onion_tick():
+    windows = list(bpy.context.window_manager.windows)
+    if not windows or not any(scene.dasktoon_onion.show for scene in bpy.data.scenes):
+        _onion["seen"] = _onion["drawn"] = None
+        _set_ghosts([], None)
+        return None
+    if any(window.screen.is_animation_playing or len(getattr(window, "modal_operators", ())) for window in windows):
+        _onion["seen"] = None
+        return ONION_TICK
+    with bpy.context.temp_override(window=windows[0]):
+        signature = _onion_signature(bpy.context)
+        if signature == _onion["drawn"]:
+            return ONION_TICK
+        if signature != _onion["seen"]:
+            _onion["seen"] = signature  # still changing: copy once it stays for a tick
+            return ONION_TICK
+        if onion_refresh(bpy.context):
+            _onion["drawn"] = signature
+    return ONION_TICK
+
+
+def _onion_start():
+    if not bpy.app.timers.is_registered(_onion_tick):
+        bpy.app.timers.register(_onion_tick, first_interval=ONION_TICK, persistent=True)
+
+
+@persistent
+def _onion_depsgraph(_scene, depsgraph):
+    """Keys or meshes changed: the copied ghosts are old."""
+    if not _onion["capturing"] and any(isinstance(update.id, (bpy.types.Action, bpy.types.Mesh))
+                                       for update in depsgraph.updates):
+        _onion["edits"] += 1
+
+
+ONION_PUSH = 1.001  # ghosts are drawn as if 0.1% farther away: where one lies on the mesh, the mesh shows
+ONION_VERTEX = """
+void main()
+{
+  vec4 clip = perspective * vec4(pos, 1.0);
+  /* depth.x, depth.y: the window matrix's z row; depth.z: the push; depth.w: 1 for a perspective view. */
+  float z = depth.w > 0.5 ? -clip.w : (clip.z - depth.y) / depth.x;
+  float pushed = z * depth.z;
+  float ndc = depth.w > 0.5 ? (depth.x * pushed + depth.y) / -pushed : depth.x * pushed + depth.y;
+  gl_Position = vec4(clip.xy, ndc * clip.w, clip.w);
+}
+"""
+
+
+def _onion_shader():
+    import gpu
+    if _onion.get("shader") is None:
+        info = gpu.types.GPUShaderCreateInfo()
+        info.push_constant('MAT4', "perspective")
+        info.push_constant('VEC4', "depth")
+        info.push_constant('VEC4', "color")
+        info.vertex_in(0, 'VEC3', "pos")
+        info.fragment_out(0, 'VEC4', "fragColor")
+        info.vertex_source(ONION_VERTEX)
+        info.fragment_source("void main()\n{\n  fragColor = color;\n}\n")
+        _onion["shader"] = gpu.shader.create_from_info(info)
+    return _onion["shader"]
+
+
+def _onion_draw():
+    context = bpy.context
+    scene = context.scene
+    settings = scene.dasktoon_onion
+    if (not settings.show or not _onion["ghosts"] or _onion["frame"] != (scene.name, scene.frame_current)
+            or context.screen.is_animation_playing or context.region_data is None):
+        return
+    import gpu
+    from gpu_extras.batch import batch_for_shader
+    shader = _onion_shader()
+    view = context.region_data
+    shader.bind()
+    shader.uniform_float("perspective", view.perspective_matrix)
+    shader.uniform_float("depth", (view.window_matrix[2][2], view.window_matrix[2][3], ONION_PUSH,
+                                   1.0 if view.is_perspective else 0.0))
+    if _onion["batches"] is None:
+        _onion["batches"] = [(side, rank, batch_for_shader(shader, 'TRIS', {"pos": triangles}))
+                             for side, rank, _frame, shapes in _onion["ghosts"]
+                             for _name, triangles in shapes if len(triangles)]
+    counts = {'BEFORE': max(settings.before, 1), 'AFTER': max(settings.after, 1)}
+    state = gpu.state.blend_get(), gpu.state.depth_test_get(), gpu.state.depth_mask_get()
+    gpu.state.blend_set('ALPHA')
+    gpu.state.depth_test_set('LESS_EQUAL')
+    gpu.state.depth_mask_set(False)
+    for side, rank, batch in _onion["batches"]:
+        # The nearest ghost has the set opacity; farther ones fade.
+        shader.uniform_float("color", (*ONION_COLORS[side], settings.opacity * (counts[side] - rank) / counts[side]))
+        batch.draw(shader)
+    gpu.state.blend_set(state[0])
+    gpu.state.depth_test_set(state[1])
+    gpu.state.depth_mask_set(state[2])
+
+
+def _onion_show_changed(self, _context):
+    if self.show:
+        _onion_start()
+
+
+class DaskOnionSkin(PropertyGroup):
+    """Onion skin of the character being animated (anime timing spec 6)"""
+    show: BoolProperty(
+        name="Onion Skin", update=_onion_show_changed,
+        description="Show faintly, in the 3D Viewports, the character's poses at the keys before and after this frame")
+    before: IntProperty(name="Before", description="How many keyed poses before this frame to show", default=1,
+                        min=0, max=8)
+    after: IntProperty(name="After", description="How many keyed poses after this frame to show", default=1, min=0,
+                       max=8)
+    opacity: FloatProperty(name="Opacity", description="How visible the nearest ghost is; farther ones fade",
+                           default=0.3, min=0.0, max=1.0, subtype='FACTOR')
+
+
+class DASKTOON_PT_onion_skin(Panel):
+    bl_space_type = 'DOPESHEET_EDITOR'
+    bl_region_type = 'HEADER'
+    bl_label = "Onion Skin"
+
+    def draw(self, context):
+        layout = self.layout
+        settings = context.scene.dasktoon_onion
+        layout.prop(settings, "before")
+        layout.prop(settings, "after")
+        layout.prop(settings, "opacity", slider=True)
+        layout.label(text="Ghosts are the keyed poses; they update when you stop for a moment", icon='INFO')
+
+
 def draw_character_header(layout, context):
     """DaskToon's part of the Dope Sheet header while Whole Character is on: Key Pose and the character's clips (clips
     spec 4); timing comes here too (spec 7)."""
@@ -292,6 +492,10 @@ def draw_character_header(layout, context):
         row.prop(clip, "use_cyclic", text="Loop", toggle=True)
     row.operator(DASKTOON_OT_clip_new.bl_idname, text="", icon='ADD')
     layout.popover(DASKTOON_PT_character_timing.__name__, text=timing_label(context), translate=False)
+    onion_skin = context.scene.dasktoon_onion
+    row = layout.row(align=True)
+    row.prop(onion_skin, "show", toggle=True, icon='ONIONSKIN_ON' if onion_skin.show else 'ONIONSKIN_OFF')
+    row.popover(DASKTOON_PT_onion_skin.__name__, text="")
 
 
 def use_character_keying_set(scene):
@@ -316,6 +520,9 @@ def load_post(_filepath):
     tab.show_render_in_camera_view()
     for scene in bpy.data.scenes:
         use_character_keying_set(scene)
+    _onion.update(ghosts=[], frame=None, batches=None, seen=None, drawn=None, cache={}, cache_key=None)
+    if any(scene.dasktoon_onion.show for scene in bpy.data.scenes):
+        _onion_start()
 
 
 class DaskTimingStep(PropertyGroup):
@@ -327,6 +534,8 @@ class DaskTimingStep(PropertyGroup):
 
 classes = (
     DaskTimingStep,
+    DaskOnionSkin,
+    DASKTOON_PT_onion_skin,
     DASKTOON_KS_character,
     DASKTOON_OT_key_pose,
     DASKTOON_MT_character_clips,
@@ -351,12 +560,26 @@ def register():
     bpy.types.Action.dasktoon_timing = CollectionProperty(
         name="Timing", type=DaskTimingStep,
         description="Anime timing of the clip: from each row's frame it runs on that row's step (DaskToon)")
+    bpy.types.Scene.dasktoon_onion = PointerProperty(
+        name="Onion Skin", type=DaskOnionSkin, description="Onion skin of the character being animated (DaskToon)")
     if load_post not in bpy.app.handlers.load_post:
         bpy.app.handlers.load_post.append(load_post)
+    if _onion_depsgraph not in bpy.app.handlers.depsgraph_update_post:
+        bpy.app.handlers.depsgraph_update_post.append(_onion_depsgraph)
+    if _onion["handle"] is None:
+        _onion["handle"] = bpy.types.SpaceView3D.draw_handler_add(_onion_draw, (), 'WINDOW', 'POST_VIEW')
 
 
 def unregister():
     if load_post in bpy.app.handlers.load_post:
         bpy.app.handlers.load_post.remove(load_post)
+    if _onion_depsgraph in bpy.app.handlers.depsgraph_update_post:
+        bpy.app.handlers.depsgraph_update_post.remove(_onion_depsgraph)
+    if _onion["handle"] is not None:
+        bpy.types.SpaceView3D.draw_handler_remove(_onion["handle"], 'WINDOW')
+        _onion["handle"] = None
+    if bpy.app.timers.is_registered(_onion_tick):
+        bpy.app.timers.unregister(_onion_tick)
     del bpy.types.Action.dasktoon_character
     del bpy.types.Action.dasktoon_timing
+    del bpy.types.Scene.dasktoon_onion

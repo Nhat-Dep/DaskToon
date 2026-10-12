@@ -1279,6 +1279,20 @@ VI = {
     "Set timing from this frame:": "Đặt nhịp từ khung này:",
     "The clip runs on 1s": "Clip đang chạy on 1s",
     "Hold": "Giữ",
+    # Onion skin (anime timing spec 6)
+    "Onion Skin": "Bóc Vỏ Hành",
+    "Before": "Trước",
+    "After": "Sau",
+    "Opacity": "Độ đậm",
+    "Show faintly, in the 3D Viewports, the character's poses at the keys before and after this frame":
+        "Hiện mờ trong các khung nhìn 3D dáng của nhân vật ở các key trước và sau khung này",
+    "How many keyed poses before this frame to show": "Số dáng có key trước khung này được hiện",
+    "How many keyed poses after this frame to show": "Số dáng có key sau khung này được hiện",
+    "How visible the nearest ghost is; farther ones fade": "Độ đậm của bóng gần nhất; bóng càng xa càng mờ",
+    "Ghosts are the keyed poses; they update when you stop for a moment":
+        "Bóng là các dáng có key; chúng cập nhật khi bạn dừng tay một chút",
+    "Onion skin of the character being animated (DaskToon)": "Bóc vỏ hành của nhân vật đang làm hoạt hình (DaskToon)",
+    "Onion skin of the character being animated (anime timing spec 6)": "Bóc vỏ hành của nhân vật đang làm hoạt hình",
 }
 
 # Words that need their own translation context, because Blender's own translation of the same word in the default

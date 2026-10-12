@@ -101,7 +101,8 @@ class ClipTest(unittest.TestCase):
         layout = tu.RecordingLayout()
         ui.draw_character_header(layout, bpy.context)
         self.assertIn(("menu", "DASKTOON_MT_character_clips", "Clip"), [entry[:3] for entry in layout.log])
-        self.assertEqual([entry[1] for entry in layout.log if entry[0] == "prop"], ["name", "use_cyclic"])
+        # The clip's name and Loop; then the Onion Skin switch (anime timing spec 6).
+        self.assertEqual([entry[1] for entry in layout.log if entry[0] == "prop"], ["name", "use_cyclic", "show"])
         self.assertIn("dasktoon.clip_new", [idname for idname, _text in tu.operators(layout.log)])
         menu = tu.draw(bpy.types.DASKTOON_MT_character_clips)
         self.assertEqual([text for idname, text in tu.operators(menu) if idname == "dasktoon.clip_use"],
