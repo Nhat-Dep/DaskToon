@@ -286,5 +286,67 @@ class SunTest(unittest.TestCase):
         self.assertAlmostEqual(node.inputs["light_direction"].default_value[0], 1.0, places=5)
 
 
+class StylesTest(unittest.TestCase):
+    def setUp(self):
+        import tempfile
+        self.scene = empty_scene()
+        self.folder = tempfile.mkdtemp(prefix="dt_finish_styles_")
+        os.environ["DASKTOON_FINISH_STYLES_DIR"] = self.folder
+        self.finish = self.scene.dasktoon_finish
+
+    def tearDown(self):
+        del os.environ["DASKTOON_FINISH_STYLES_DIR"]
+
+    def test_built_in_styles(self):
+        from dasktoon_finish import styles
+        self.assertEqual(list(styles.BUILT_IN), ["Default", "Early Morning", "Sunset", "Night", "Watercolor"])
+        self.assertEqual(styles.style_values("Default"), settings.defaults())
+        for name, changes in styles.BUILT_IN.items():
+            self.assertEqual(set(changes) - set(settings.BY_KEY), set(), name)
+        sunset = styles.style_values("Sunset")
+        self.assertEqual(set(sunset), set(settings.defaults()))
+        self.assertNotEqual(sunset["light_tint"], settings.defaults()["light_tint"])
+
+    def test_apply(self):
+        self.finish.enabled = True
+        self.assertEqual(bpy.ops.dasktoon.finish_style_apply(name="Watercolor"), {'FINISHED'})
+        self.assertTrue(self.finish.strokes)
+        self.assertEqual(self.finish.style, "Watercolor")
+        self.assertIn("strokes", nodes.layers_of(self.finish.group))
+        node, = finish_scene.group_nodes(self.scene, self.finish.group)
+        self.assertAlmostEqual(node.inputs["paper_strength"].default_value, self.finish.paper_strength, places=5)
+
+    def test_save_apply_overwrite_delete(self):
+        from dasktoon_finish import styles
+        self.finish.glow_strength = 0.77
+        self.finish.shadow_tint = (0.1, 0.2, 0.3)
+        self.assertEqual(bpy.ops.dasktoon.finish_style_save(name="Mine"), {'FINISHED'})
+        self.assertEqual(styles.user_style_names(), ["Mine"])
+        self.finish.glow_strength = 0.1
+        self.assertEqual(bpy.ops.dasktoon.finish_style_apply(name="Mine"), {'FINISHED'})
+        self.assertAlmostEqual(self.finish.glow_strength, 0.77, places=5)
+        self.assertEqual([round(c, 4) for c in self.finish.shadow_tint], [0.1, 0.2, 0.3])
+        with self.assertRaisesRegex(RuntimeError, "already exists"):
+            bpy.ops.dasktoon.finish_style_save(name="Mine")
+        self.assertEqual(bpy.ops.dasktoon.finish_style_save(name="Mine", overwrite=True), {'FINISHED'})
+        with self.assertRaisesRegex(RuntimeError, "built-in"):
+            bpy.ops.dasktoon.finish_style_save(name="Sunset")
+        self.assertEqual(bpy.ops.dasktoon.finish_style_delete(name="Mine"), {'FINISHED'})
+        self.assertEqual(styles.user_style_names(), [])
+
+    def test_older_files_and_odd_names(self):
+        import json
+        from dasktoon_finish import styles
+        with open(os.path.join(self.folder, "Old.json"), "w", encoding="utf-8") as f:
+            json.dump({"name": "Old", "version": 0, "settings": {"glow_strength": 0.5, "gone": 3}}, f)
+        values = styles.style_values("Old")
+        self.assertAlmostEqual(values["glow_strength"], 0.5)
+        self.assertEqual(values["haze_color"], settings.defaults()["haze_color"])
+        self.assertNotIn("gone", values)
+        path = styles.save("A/B:C", settings.defaults())
+        self.assertEqual(os.path.basename(path), "A_B_C.json")
+        self.assertIn("A/B:C", styles.user_style_names())
+
+
 if __name__ == "__main__":
     tu.run_tests()

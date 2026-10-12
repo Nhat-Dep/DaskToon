@@ -1436,6 +1436,22 @@ VI = {
     "Changes Each Frame": "Đổi mỗi khung",
     "The grain changes every frame, like film; off, it stays like paper":
         "Hạt vân đổi mỗi khung như phim; tắt thì đứng yên như giấy",
+    # Illustration finish styles (illustration finish spec 5)
+    "Early Morning": "Nắng sớm",
+    "Sunset": "Hoàng hôn",
+    "Night": "Đêm",
+    "Watercolor": "Màu nước",
+    "Use Style": "Dùng style",
+    "Set every layer of the finish from this style": "Đặt mọi lớp hoàn thiện theo style này",
+    "Save Style": "Lưu style",
+    "Save every setting of the finish as a style of your own, for every file":
+        "Lưu mọi thiết lập hoàn thiện thành style của bạn, dùng được ở mọi file",
+    "Delete this style of your own": "Xóa style này của bạn",
+    "Deleted style %s": "Đã xóa style %s",
+    "Give the style a name": "Hãy đặt tên cho style",
+    "%s is a built-in style: choose another name": "%s là style có sẵn: hãy chọn tên khác",
+    "No style %s": "Không có style %s",
+    "The style last used or saved": "Style dùng hoặc lưu gần nhất",
 }
 
 # Words that need their own translation context, because Blender's own translation of the same word in the default
