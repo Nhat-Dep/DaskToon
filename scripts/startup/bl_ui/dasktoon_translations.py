@@ -1293,6 +1293,35 @@ VI = {
         "Bóng là các dáng có key; chúng cập nhật khi bạn dừng tay một chút",
     "Onion skin of the character being animated (DaskToon)": "Bóc vỏ hành của nhân vật đang làm hoạt hình (DaskToon)",
     "Onion skin of the character being animated (anime timing spec 6)": "Bóc vỏ hành của nhân vật đang làm hoạt hình",
+    # Fast action filter (anime timing spec 7)
+    "Fast Action": "Hành động nhanh",
+    "Where the character moves fast, smear it and show afterimages of the frames before and speed lines":
+        "Chỗ nhân vật chuyển động nhanh thì kéo nhòe, hiện bóng lưu của các khung trước và vệt tốc độ",
+    "Threshold": "Ngưỡng",
+    "Speed above which a part of the character gets the effects":
+        "Phần nào của nhân vật nhanh hơn tốc độ này thì có hiệu ứng",
+    "Smear": "Kéo nhòe",
+    "How far the trailing side of a fast part is pulled back toward the frame before":
+        "Mặt sau của phần chuyển động nhanh bị kéo lùi về phía khung trước bao xa",
+    "Afterimages": "Bóng lưu",
+    "How many of the frames before show as afterimages of the fast parts":
+        "Số khung trước hiện thành bóng lưu của các phần nhanh",
+    "Afterimage Opacity": "Độ đậm bóng lưu",
+    "How visible the newest afterimage is; older ones fade": "Độ đậm của bóng lưu mới nhất; bóng cũ hơn mờ dần",
+    "Afterimage Color": "Màu bóng lưu",
+    "Afterimage Material": "Material bóng lưu",
+    "Line Density": "Mật độ vệt",
+    "Share of the fast vertices that trail a speed line": "Tỉ lệ đỉnh nhanh có vệt tốc độ kéo theo",
+    "Line Length": "Độ dài vệt",
+    "A speed line is as long as the distance moved in this time":
+        "Vệt tốc độ dài bằng quãng đường đi được trong khoảng thời gian này",
+    "Line Color": "Màu vệt",
+    "Line Width": "Độ dày vệt",
+    "Line Material": "Material vệt",
+    "Shows in DaskToon's viewport and render; it does not go into the FBX":
+        "Hiện trong khung nhìn và bản render của DaskToon; không vào FBX",
+    "Fast action filter of the character (DaskToon)": "Bộ lọc hành động nhanh của nhân vật (DaskToon)",
+    "Fast action filter of a character (anime timing spec 7)": "Bộ lọc hành động nhanh của nhân vật",
 }
 
 # Words that need their own translation context, because Blender's own translation of the same word in the default

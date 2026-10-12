@@ -14,7 +14,9 @@ import bpy
 import _keyingsets_utils as keyingsets_utils
 from bpy.app.handlers import persistent
 from bpy.app.translations import pgettext_iface as iface_, pgettext_rpt as rpt_
-from bpy.props import BoolProperty, CollectionProperty, FloatProperty, IntProperty, PointerProperty, StringProperty
+from bpy.props import (
+    BoolProperty, CollectionProperty, FloatProperty, FloatVectorProperty, IntProperty, PointerProperty, StringProperty,
+)
 from bpy.types import KeyingSetInfo, Menu, Operator, Panel, PropertyGroup
 from keyingsets_builtins import WholeCharacterMixin
 
@@ -475,6 +477,66 @@ class DASKTOON_PT_onion_skin(Panel):
         layout.label(text="Ghosts are the keyed poses; they update when you stop for a moment", icon='INFO')
 
 
+def _fast_action_changed(self, _context):
+    """A character's fast action settings changed: the modifiers of its meshes follow (anime timing spec 7)."""
+    from dasktoon_animation import fast_action
+    objects = list(bpy.context.view_layer.objects)
+    for obj in objects:
+        if obj.type == 'ARMATURE' and obj.data == self.id_data:
+            fast_action.sync(obj, objects)
+
+
+class DaskFastAction(PropertyGroup):
+    """Fast action filter of a character (anime timing spec 7)"""
+    enabled: BoolProperty(
+        name="Fast Action", update=_fast_action_changed,
+        description="Where the character moves fast, smear it and show afterimages of the frames before and speed "
+        "lines")
+    threshold: FloatProperty(
+        name="Threshold", description="Speed above which a part of the character gets the effects", default=3.0,
+        min=0.0, soft_max=20.0, unit='VELOCITY', update=_fast_action_changed)
+    smear: FloatProperty(
+        name="Smear", description="How far the trailing side of a fast part is pulled back toward the frame before",
+        default=0.6, min=0.0, max=1.0, subtype='FACTOR', update=_fast_action_changed)
+    afterimages: IntProperty(
+        name="Afterimages", description="How many of the frames before show as afterimages of the fast parts",
+        default=2, min=0, max=3, update=_fast_action_changed)
+    afterimage_opacity: FloatProperty(
+        name="Afterimage Opacity", description="How visible the newest afterimage is; older ones fade", default=0.35,
+        min=0.0, max=1.0, subtype='FACTOR', update=_fast_action_changed)
+    afterimage_color: FloatVectorProperty(
+        name="Afterimage Color", subtype='COLOR', size=3, default=(0.55, 0.8, 1.0), min=0.0, max=1.0,
+        update=_fast_action_changed)
+    line_density: FloatProperty(
+        name="Line Density", description="Share of the fast vertices that trail a speed line", default=0.15,
+        min=0.0, max=1.0, subtype='FACTOR', update=_fast_action_changed)
+    line_length: FloatProperty(
+        name="Line Length", description="A speed line is as long as the distance moved in this time", default=0.04,
+        min=0.0, soft_max=0.5, unit='TIME_ABSOLUTE', update=_fast_action_changed)
+    line_color: FloatVectorProperty(
+        name="Line Color", subtype='COLOR', size=3, default=(1.0, 1.0, 1.0), min=0.0, max=1.0,
+        update=_fast_action_changed)
+
+
+class DASKTOON_PT_fast_action(Panel):
+    bl_space_type = 'DOPESHEET_EDITOR'
+    bl_region_type = 'HEADER'
+    bl_label = "Fast Action"
+
+    def draw(self, context):
+        layout = self.layout
+        armature = header_armature(context)
+        if armature is None:
+            layout.label(text="Select a part of a character")
+            return
+        settings = armature.data.dasktoon_fast_action
+        layout.use_property_split = True
+        for name in ("threshold", "smear", "afterimages", "afterimage_opacity", "afterimage_color", "line_density",
+                     "line_length", "line_color"):
+            layout.prop(settings, name)
+        layout.label(text="Shows in DaskToon's viewport and render; it does not go into the FBX", icon='INFO')
+
+
 def draw_character_header(layout, context):
     """DaskToon's part of the Dope Sheet header while Whole Character is on: Key Pose and the character's clips (clips
     spec 4); timing comes here too (spec 7)."""
@@ -496,6 +558,10 @@ def draw_character_header(layout, context):
     row = layout.row(align=True)
     row.prop(onion_skin, "show", toggle=True, icon='ONIONSKIN_ON' if onion_skin.show else 'ONIONSKIN_OFF')
     row.popover(DASKTOON_PT_onion_skin.__name__, text="")
+    fast = armature.data.dasktoon_fast_action
+    row = layout.row(align=True)
+    row.prop(fast, "enabled", toggle=True, icon='FORCE_WIND')
+    row.popover(DASKTOON_PT_fast_action.__name__, text="")
 
 
 def use_character_keying_set(scene):
@@ -536,6 +602,8 @@ classes = (
     DaskTimingStep,
     DaskOnionSkin,
     DASKTOON_PT_onion_skin,
+    DaskFastAction,
+    DASKTOON_PT_fast_action,
     DASKTOON_KS_character,
     DASKTOON_OT_key_pose,
     DASKTOON_MT_character_clips,
@@ -562,6 +630,8 @@ def register():
         description="Anime timing of the clip: from each row's frame it runs on that row's step (DaskToon)")
     bpy.types.Scene.dasktoon_onion = PointerProperty(
         name="Onion Skin", type=DaskOnionSkin, description="Onion skin of the character being animated (DaskToon)")
+    bpy.types.Armature.dasktoon_fast_action = PointerProperty(
+        name="Fast Action", type=DaskFastAction, description="Fast action filter of the character (DaskToon)")
     if load_post not in bpy.app.handlers.load_post:
         bpy.app.handlers.load_post.append(load_post)
     if _onion_depsgraph not in bpy.app.handlers.depsgraph_update_post:
@@ -583,3 +653,4 @@ def unregister():
     del bpy.types.Action.dasktoon_character
     del bpy.types.Action.dasktoon_timing
     del bpy.types.Scene.dasktoon_onion
+    del bpy.types.Armature.dasktoon_fast_action

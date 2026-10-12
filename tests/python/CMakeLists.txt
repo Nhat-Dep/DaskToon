@@ -283,6 +283,7 @@ foreach(dasktoon_test
     dasktoon_export_clips_test
     dasktoon_timing_test
     dasktoon_onion_test
+    dasktoon_fast_action_test
 )
   add_blender_test(
     ${dasktoon_test}
