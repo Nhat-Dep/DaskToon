@@ -1988,6 +1988,61 @@ class DATA_PT_dasktoon_expression_sets(DaskExpressionPanel, Panel):
             grid.label(text="%s: %d/%d" % (iface_(label), count, end - start), translate=False)
 
 
+def _first_sound_strip(scene):
+    editor = scene.sequence_editor
+    strips = [s for s in editor.strips_all if s.type == 'SOUND'] if editor is not None else []
+    return min(strips, key=lambda s: s.frame_start) if strips else None
+
+
+class DASKTOON_OT_lip_sync_from_audio(Operator):
+    """Key the mouth from a voice file: the vowel shape keys, the jaw and the 2D mouth, in the clip being played"""
+    bl_idname = "dasktoon.lip_sync_from_audio"
+    bl_label = "Lip Sync from Audio"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    filepath: StringProperty(name="Voice File", subtype='FILE_PATH',
+                             description="Sound file of the voice; empty takes the first sound strip of the Sequencer")
+    start_frame: IntProperty(name="Start Frame", default=1,
+                             description="Frame the voice starts at, for a file (a sound strip starts where it is)")
+    strength: FloatProperty(name="Strength", default=1.0, min=0.0, max=2.0,
+                            description="How wide the mouth opens: 1 is the full vowel shapes")
+
+    @classmethod
+    def poll(cls, context):
+        obj = context.object
+        return obj is not None and obj.type == 'MESH'
+
+    def invoke(self, context, _event):
+        return context.window_manager.invoke_props_dialog(self)
+
+    def execute(self, context):
+        from dasktoon_animation import character
+        from dasktoon_rig import lipsync
+        scene = context.scene
+        path, start = bpy.path.abspath(self.filepath), self.start_frame
+        if not self.filepath:
+            strip = _first_sound_strip(scene)
+            if strip is None:
+                self.report({'ERROR'}, rpt_("Choose a voice file, or add a sound strip to the Sequencer"))
+                return {'CANCELLED'}
+            path, start = bpy.path.abspath(strip.sound.filepath), int(strip.frame_start)
+        obj = context.object
+        rigs = [rig for rig in character.armatures_of(obj) if hasattr(rig.data, "dasktoon_rig")]
+        try:
+            samples, rate = lipsync.read(path)
+        except Exception:
+            self.report({'ERROR'}, rpt_("Cannot read the sound file %s") % path)
+            return {'CANCELLED'}
+        frames = lipsync.analyse(samples, rate, scene.render.fps / scene.render.fps_base)
+        try:
+            lipsync.apply(obj, rigs[0] if rigs else None, frames, start, self.strength)
+        except lipsync.LipSyncError as ex:
+            self.report({'ERROR'}, str(ex))
+            return {'CANCELLED'}
+        self.report({'INFO'}, rpt_("Lip sync: %d frames from frame %d") % (len(frames), start))
+        return {'FINISHED'}
+
+
 class DATA_PT_dasktoon_expression_tools(DaskExpressionPanel, Panel):
     bl_label = "Expression Tools"
 
@@ -1996,6 +2051,7 @@ class DATA_PT_dasktoon_expression_tools(DaskExpressionPanel, Panel):
         col.operator("dasktoon.vrm_split_shape_key", icon='ARROW_LEFTRIGHT')
         col.operator("dasktoon.vrm_bake_expression", icon='EXPERIMENTAL')
         col.operator("dasktoon.vrm_remove_empty_shapes", icon='TRASH')
+        self.layout.operator(DASKTOON_OT_lip_sync_from_audio.bl_idname, icon='SPEAKER')
 
 
 class DATA_PT_dasktoon_expression_preview(DaskExpressionPanel, Panel):
@@ -2124,6 +2180,7 @@ class DATA_PT_dasktoon_expression_controllers(DaskExpressionPanel, Panel):
 # =============================================================================
 
 classes = (
+    DASKTOON_OT_lip_sync_from_audio,
     DaskShapeMappingItem,
     DaskShapeGroupItem,
     DaskShapeControllerRoot,

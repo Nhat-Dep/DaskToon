@@ -288,6 +288,7 @@ foreach(dasktoon_test
     dasktoon_finish_render_test
     dasktoon_rig_face_test
     dasktoon_rig_mouth_render_test
+    dasktoon_lipsync_test
 )
   add_blender_test(
     ${dasktoon_test}

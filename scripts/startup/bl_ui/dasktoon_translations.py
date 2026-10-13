@@ -1484,6 +1484,22 @@ VI = {
     "%s: its material has no image texture to show mouth cells from":
         "%s: material của phần không có image texture để hiện các ô miệng",
     "Cell of the mouth atlas to show": "Ô trong atlas miệng được hiện",
+    # Anime rig R3: lip sync (anime rig spec 10.3)
+    "Lip Sync from Audio": "Khẩu hình từ âm thanh",
+    "Key the mouth from a voice file: the vowel shape keys, the jaw and the 2D mouth, in the clip being played":
+        "Key miệng theo file giọng nói: shape key nguyên âm, hàm và miệng 2D, vào clip đang dùng",
+    "Voice File": "File giọng nói",
+    "Sound file of the voice; empty takes the first sound strip of the Sequencer":
+        "File âm thanh của giọng nói; để trống thì lấy strip âm thanh đầu tiên trong Sequencer",
+    "Frame the voice starts at, for a file (a sound strip starts where it is)":
+        "Khung giọng nói bắt đầu, khi dùng file (strip âm thanh thì bắt đầu ở chỗ của nó)",
+    "How wide the mouth opens: 1 is the full vowel shapes": "Miệng mở rộng đến đâu: 1 là đủ hình nguyên âm",
+    "Choose a voice file, or add a sound strip to the Sequencer":
+        "Hãy chọn file giọng nói, hoặc thêm một strip âm thanh vào Sequencer",
+    "Cannot read the sound file %s": "Không đọc được file âm thanh %s",
+    "Lip sync: %d frames from frame %d": "Khẩu hình: %d khung từ khung %d",
+    "%s has no vowel shape keys (A I U E O, aa ih ou ee oh…), Jaw part or 2D mouth to key":
+        "%s không có shape key nguyên âm (A I U E O, aa ih ou ee oh…), phần Jaw hay miệng 2D để key",
 }
 
 # Words that need their own translation context, because Blender's own translation of the same word in the default
