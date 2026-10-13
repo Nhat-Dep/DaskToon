@@ -451,8 +451,7 @@ class DASKTOON_OT_rig_part_from_selection(Operator):
 
 
 class DASKTOON_OT_rig_lock_from_selection(Operator):
-    """Make the pieces under the selected vertices one lock, a part rigid on the head; give it the role Hair to make it
-    sway. Splits a lock or joins several"""
+    """Make the pieces under the selected vertices one lock, rigid on the head (with the role Hair it sways)"""
     bl_idname = "dasktoon.rig_lock_from_selection"
     bl_label = "Lock from Selection"
     bl_options = {'REGISTER', 'UNDO'}

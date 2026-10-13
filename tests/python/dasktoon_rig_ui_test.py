@@ -218,7 +218,7 @@ class TextTest(unittest.TestCase):
         strings = {ui.DaskRigPart.bl_rna.description, ui.DaskRig.bl_rna.description,
                    ui.DaskRigCollider.bl_rna.description}
         operators = [cls for cls in ui.classes if issubclass(cls, bpy.types.Operator)]
-        self.assertEqual(len(operators), 9)
+        self.assertEqual(len(operators), 10)
         for struct in operators:
             strings.update((struct.bl_label, struct.__doc__))
         for struct in [ui.DaskRigPart, ui.DaskRigCollider, ui.DaskRig] + operators:
