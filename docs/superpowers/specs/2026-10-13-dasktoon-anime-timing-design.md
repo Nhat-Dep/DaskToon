@@ -75,6 +75,8 @@ Header timeline nhân vật, sau phần clip: nút **Timing** (popover), chữ t
 - Thiết lập theo nhân vật: `Armature.dasktoon_fast_action` (bật/tắt, ngưỡng, smear, số afterimage, độ mờ, màu, mật độ và độ
   dài vệt, màu vệt). Popover **Fast Action** trong header timeline nhân vật; bật thì gắn modifier cho mọi mesh của nhân vật,
   tắt thì tắt modifier; đổi thiết lập thì cập nhật mọi modifier.
+  *Bổ sung 2026-10-13 (thử trên mô hình thật):* ngưỡng và độ dày vệt tính cho nhân vật cao 1,6 m, nhân theo chiều cao nhân
+  vật (mesh ở tư thế nghỉ) / 1,6; độ dài vệt là thời gian nên tự theo tốc độ; mật độ vệt mặc định 0,08 (trước 0,15).
 - Hiệu ứng nằm trong modifier, không vào FBX (Engine Export không áp modifier), nên Unity không bị ảnh hưởng.
 - Với nhịp anime: lúc giữ dáng vận tốc bằng 0, nên hiệu ứng chỉ hiện ở khung đổi dáng, đúng kiểu smear frame của anime.
 

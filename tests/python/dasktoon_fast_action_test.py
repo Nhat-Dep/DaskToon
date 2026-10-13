@@ -111,6 +111,18 @@ class FastActionTest(unittest.TestCase):
         self.settings.enabled = True
         self.assertTrue(modifier.show_viewport)
 
+    def test_sized_to_the_character(self):
+        """The threshold and the line width are for a character 1.6 m tall and scale with the character's height (real
+        model test: a character 2.95 m tall was covered in lines); fewer lines by default."""
+        self.body.scale.z = 3.2 / (2 * HALF)  # 3.2 m tall: twice the reference
+        bpy.context.view_layer.update()
+        self.settings.enabled = True
+        modifier = self.modifier()
+        self.assertAlmostEqual(fast_action.input_value(modifier, "Threshold"), 2.0 * self.settings.threshold, places=4)
+        self.assertAlmostEqual(fast_action.input_value(modifier, "Line Width"), 2.0 * fast_action.LINE_WIDTH, places=6)
+        self.assertAlmostEqual(fast_action.input_value(modifier, "Line Length"), self.settings.line_length, places=6)
+        self.assertAlmostEqual(self.settings.line_density, 0.08, places=6)
+
     def test_in_vietnamese(self):
         """The interface translates new data names; the group's sockets keep their English names."""
         view = bpy.context.preferences.view

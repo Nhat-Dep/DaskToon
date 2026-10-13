@@ -1297,8 +1297,10 @@ VI = {
     "Where the character moves fast, smear it and show afterimages of the frames before and speed lines":
         "Chỗ nhân vật chuyển động nhanh thì kéo nhòe, hiện bóng lưu của các khung trước và vệt tốc độ",
     "Threshold": "Ngưỡng",
-    "Speed above which a part of the character gets the effects":
-        "Phần nào của nhân vật nhanh hơn tốc độ này thì có hiệu ứng",
+    "Speed above which a part of the character gets the effects, for a character 1.6 m tall: it scales with the "
+    "character's height":
+        "Phần nào của nhân vật nhanh hơn tốc độ này thì có hiệu ứng; tính cho nhân vật cao 1,6 m, tự nhân theo chiều cao "
+        "nhân vật",
     "Smear": "Kéo nhòe",
     "How far the trailing side of a fast part is pulled back toward the frame before":
         "Mặt sau của phần chuyển động nhanh bị kéo lùi về phía khung trước bao xa",

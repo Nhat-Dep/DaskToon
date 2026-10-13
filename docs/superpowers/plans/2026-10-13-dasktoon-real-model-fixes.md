@@ -76,6 +76,9 @@ tệ hơn, nên bỏ. Thay bằng: đỉnh áo xa Body hơn 2% chiều cao Body 
 
 Thiết kế duyệt: ngưỡng, độ dài vệt và độ dày vệt nhân theo chiều cao nhân vật / 1.6 m; mật độ vệt mặc định 0.15 → 0.08.
 
+*Đổi khi làm (ruling):* độ dài vệt là thời gian ("dài bằng quãng đi trong khoảng thời gian này"), đã tự theo tốc độ nên
+không nhân; chỉ ngưỡng và độ dày vệt nhân theo chiều cao.
+
 - Modify: `scripts/modules/dasktoon_animation/fast_action.py`, `scripts/startup/bl_ui/dasktoon_animation.py`
 - Test: `tests/python/dasktoon_fast_action_test.py`
 
