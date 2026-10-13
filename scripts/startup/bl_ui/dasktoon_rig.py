@@ -618,14 +618,15 @@ def show_regions(show):
     from dasktoon_rig import regions
     spaces = [space for screen in bpy.data.screens for area in screen.areas for space in area.spaces
               if space.type == 'VIEW_3D']
-    if show:
+    if show:  # what is saved is overwritten: after another file opens, a new view can get an old one's address
         for space in spaces:
-            _shown.setdefault(("space", space.as_pointer()), (space.shading.type, space.shading.color_type))
-            space.shading.type, space.shading.color_type = 'SOLID', 'VERTEX'
+            if (space.shading.type, space.shading.color_type) != ('SOLID', 'VERTEX'):
+                _shown[("space", space.as_pointer())] = (space.shading.type, space.shading.color_type)
+                space.shading.type, space.shading.color_type = 'SOLID', 'VERTEX'
         for mesh in bpy.data.meshes:
             layers = mesh.color_attributes
             if layers.get(regions.LAYER) is not None and layers.active_color_name != regions.LAYER:
-                _shown.setdefault(("mesh", mesh.name), layers.active_color_name)
+                _shown[("mesh", mesh.name)] = layers.active_color_name
                 layers.active_color_name = regions.LAYER
         return
     for space in spaces:
@@ -687,7 +688,8 @@ def _highlight_shader():
 def _highlight_draw():
     context = bpy.context
     rig = context.object
-    if rig is None or rig.type != 'ARMATURE' or context.region_data is None:
+    if (rig is None or rig.type != 'ARMATURE' or context.region_data is None
+            or context.screen.is_animation_playing):  # drawn at rest: not while the character moves
         return
     data = rig.data.dasktoon_rig
     part = _active_part(rig)
@@ -722,7 +724,8 @@ def _highlight_draw():
 
 
 def _highlight_depsgraph(_scene, depsgraph):
-    if any(update.is_updated_geometry for update in depsgraph.updates):
+    """A mesh's data changed (an edit, not the armature deforming it on a frame): make the highlight again."""
+    if any(isinstance(update.id, bpy.types.Mesh) for update in depsgraph.updates):
         _highlight["generation"] += 1
 
 

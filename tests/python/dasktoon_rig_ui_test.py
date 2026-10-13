@@ -268,6 +268,16 @@ class RegionsPanelTest(unittest.TestCase):
         self.assertEqual(len(triangles), 3 * len(body.data.loop_triangles))
         self.assertIsNotNone(ui._highlight["handle"])
 
+    def test_highlight_is_made_again_only_when_a_mesh_changes(self):
+        """Not on every frame the armature deforms the meshes: only when mesh data changes."""
+        generation = ui._highlight["generation"]
+        moved = types.SimpleNamespace(id=self.objs["Body"], is_updated_geometry=True)
+        ui._highlight_depsgraph(None, types.SimpleNamespace(updates=[moved]))
+        self.assertEqual(ui._highlight["generation"], generation)
+        edited = types.SimpleNamespace(id=self.objs["Body"].data, is_updated_geometry=True)
+        ui._highlight_depsgraph(None, types.SimpleNamespace(updates=[edited]))
+        self.assertEqual(ui._highlight["generation"], generation + 1)
+
 
 class SwayPanelTest(unittest.TestCase):
     def test_sway_panel_and_bake(self):
