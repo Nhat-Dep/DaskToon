@@ -322,5 +322,38 @@ class MouthTest(unittest.TestCase):
         self.assertTrue(any("image texture" in w for w in result.warnings), result.warnings)
 
 
+class PanelTest(unittest.TestCase):
+    def setUp(self):
+        bpy.ops.wm.read_factory_settings(use_empty=True)
+        self.objs = fx.character()
+        self.rig = fx.rig_for()
+
+    def draw(self, panel):
+        import types
+        return tu.draw(panel, types.SimpleNamespace(object=self.rig, scene=bpy.context.scene, mode='OBJECT'))
+
+    def props(self, log):
+        return [entry[1] for entry in log if entry[0] == "prop"]
+
+    def test_flat_eye_settings(self):
+        ui.add_part(self.rig, self.objs["Eye"], 'FLAT_EYE')
+        props = self.props(self.draw(ui.DATA_PT_dasktoon_rig_parts))
+        self.assertIn("eye_side", props)
+        self.assertIn("eye_range", props)
+        self.assertNotIn("mouth_rows", props)
+
+    def test_mouth_settings(self):
+        ui.add_part(self.rig, self.objs["Ribbon"], 'MOUTH_2D')
+        log = self.draw(ui.DATA_PT_dasktoon_rig_parts)
+        props = self.props(log)
+        self.assertIn("mouth_rows", props)
+        self.assertIn("mouth_columns", props)
+        self.assertTrue(any("dt_mouth" in text for text in tu.labels(log)))
+
+    def test_look_panel(self):
+        props = self.props(self.draw(ui.DATA_PT_dasktoon_rig_look))
+        self.assertEqual(props, ["look_yaw_limit", "look_pitch_limit"])
+
+
 if __name__ == "__main__":
     tu.run_tests()

@@ -515,6 +515,31 @@ class DATA_PT_dasktoon_rig_parts(DaskRigPanel, Panel):
             layout.prop(part, "bone_count")
         if part.role == 'SKIRT':
             layout.prop(part, "chain_count")
+        if part.role == 'FLAT_EYE':
+            layout.prop(part, "eye_side")
+            layout.prop(part, "eye_range")
+        if part.role == 'MOUTH_2D':
+            layout.prop(part, "mouth_rows")
+            layout.prop(part, "mouth_columns")
+            col = layout.column(align=True)
+            col.label(text="Cells from the top left: closed, A, I, U, E, O", icon='INFO')
+            col.label(text="The object's dt_mouth picks the cell; lip sync keys it")
+
+
+class DATA_PT_dasktoon_rig_look(DaskRigPanel, Panel):
+    # Not "Look": Blender's Vietnamese for that word is the Color Management look.
+    bl_label = "Gaze"
+    bl_parent_id = "DATA_PT_dasktoon_rig"
+    bl_options = {'DEFAULT_CLOSED'}
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+        data = rig_of(context).data.dasktoon_rig
+        col = layout.column(align=True)
+        col.prop(data, "look_yaw_limit")
+        col.prop(data, "look_pitch_limit")
 
 
 class DATA_PT_dasktoon_rig_sway(DaskRigPanel, Panel):
@@ -622,6 +647,7 @@ classes = (
     DATA_PT_dasktoon_rig,
     DATA_PT_dasktoon_rig_joints,
     DATA_PT_dasktoon_rig_parts,
+    DATA_PT_dasktoon_rig_look,
     DATA_PT_dasktoon_rig_sway,
     DATA_PT_dasktoon_rig_colliders,
     DATA_PT_dasktoon_rig_build,

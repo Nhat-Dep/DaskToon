@@ -1500,6 +1500,10 @@ VI = {
     "Lip sync: %d frames from frame %d": "Khẩu hình: %d khung từ khung %d",
     "%s has no vowel shape keys (A I U E O, aa ih ou ee oh…), Jaw part or 2D mouth to key":
         "%s không có shape key nguyên âm (A I U E O, aa ih ou ee oh…), phần Jaw hay miệng 2D để key",
+    # Anime rig R3: the rig panel (anime rig spec 10)
+    "Cells from the top left: closed, A, I, U, E, O": "Các ô từ góc trên trái: ngậm, A, I, U, E, O",
+    "The object's dt_mouth picks the cell; lip sync keys it": "Thuộc tính dt_mouth của object chọn ô; lip sync key nó",
+    "Gaze": "Ánh mắt",
 }
 
 # Words that need their own translation context, because Blender's own translation of the same word in the default
