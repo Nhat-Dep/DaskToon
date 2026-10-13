@@ -91,6 +91,34 @@ class ExportClipsTest(unittest.TestCase):
         self.assertIn("    animationCompression: 1\n", wave_meta)
         self.assertEqual((clips.current(rig), scene.frame_start, scene.frame_end, scene.frame_current), before)
 
+    def test_each_clip_file_starts_from_rest(self):
+        """A bone only Wave keys is at rest while the Walk file is written (real model test)."""
+        from dasktoon_export import model_fbx
+        rig, objs, walk, wave = character_with_clips()
+        arm = rig.pose.bones["LeftUpperArm"]
+        clips.use(rig, list(bpy.context.view_layer.objects), wave)
+        arm.rotation_mode = 'XYZ'
+        arm.rotation_euler = (0.0, 0.0, 1.0)
+        arm.keyframe_insert("rotation_euler", frame=5)
+        bpy.context.scene.frame_set(5)
+        seen = {}
+        original = model_fbx.write_fbx
+
+        def spy(context, objects, filepath, include_animation, **kwargs):
+            if include_animation and kwargs.get("single_take"):
+                scene = bpy.context.scene
+                scene.frame_set(scene.frame_start)  # as the FBX bake does
+                seen[clips.current(rig).name] = arm.rotation_euler.z
+            return original(context, objects, filepath, include_animation, **kwargs)
+
+        model_fbx.write_fbx = spy
+        try:
+            export(rig, objs)
+        finally:
+            model_fbx.write_fbx = original
+        self.assertEqual(seen["Walk"], 0.0)
+        self.assertAlmostEqual(seen["Wave"], 1.0, places=5)
+
     def test_without_clips_nothing_changes(self):
         rig, objs = rt.built()
         target, rep = export(rig, objs)

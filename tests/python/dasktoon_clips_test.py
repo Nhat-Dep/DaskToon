@@ -52,6 +52,32 @@ class ClipTest(unittest.TestCase):
         self.assertNotEqual(bpy.data.objects["Rig2"].animation_data.action, walk)
         self.assertEqual(clips.clips_of(bpy.data.objects["Rig2"]), [])
 
+    def test_switching_clips_rests_what_the_new_clip_does_not_key(self):
+        """A clip shows only its own animation: what another clip keys and it does not goes back to rest (real model
+        test: the clip Talk kept the arm Wave raised, in DaskToon and in the exported FBX)."""
+        scene = bpy.context.scene
+        wave = clips.new(self.rig, self.objects, "Wave")
+        arm = self.rig.pose.bones["Arm"]
+        arm.rotation_mode = 'XYZ'
+        arm.rotation_euler = (0.5, 0.0, 0.0)
+        arm.keyframe_insert("rotation_euler", frame=1)
+        smile = self.key.key_blocks["Smile"]
+        smile.value = 0.8
+        smile.keyframe_insert("value", frame=1)
+        talk = clips.new(self.rig, self.objects, "Talk")
+        clips.use(self.rig, self.objects, wave)
+        scene.frame_set(1)
+        self.assertAlmostEqual(arm.rotation_euler.x, 0.5, places=5)
+        arm.scale = (1.2, 1.2, 1.2)  # no clip keys it: it stays
+        clips.use(self.rig, self.objects, talk)
+        scene.frame_set(1)
+        self.assertEqual(tuple(arm.rotation_euler), (0.0, 0.0, 0.0))
+        self.assertEqual(smile.value, 0.0)
+        self.assertAlmostEqual(arm.scale.x, 1.2, places=5)
+        clips.use(self.rig, self.objects, wave)
+        scene.frame_set(1)
+        self.assertAlmostEqual(arm.rotation_euler.x, 0.5, places=5)
+
     def test_keys_go_into_the_clip(self):
         walk = clips.new(self.rig, self.objects, "Walk")
         self.rig.pose.bones["Root"].keyframe_insert("rotation_quaternion", frame=4)
