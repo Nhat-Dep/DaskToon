@@ -1170,6 +1170,13 @@ VI = {
     "How the chain sways in Unity": "Cách chuỗi lắc trong Unity",
     "Made by Recognize": "Do Nhận diện tạo",
     "Recognized the regions and %d locks first": "Đã nhận diện vùng và %d lọn trước",
+    "Select a vertex of each piece first": "Hãy chọn một đỉnh của mỗi mảnh trước",
+    "Lock from Selection": "Lọn từ chỗ chọn",
+    "Make the pieces under the selected vertices one lock, a part rigid on the head; give it the role Hair to make it "
+    "sway. Splits a lock or joins several":
+        "Gom các mảnh có đỉnh đang chọn thành một lọn, một phần cứng theo đầu; đổi vai trò sang Tóc để lọn lắc. Dùng để "
+        "tách một lọn hay gộp nhiều lọn",
+    "Made lock %s": "Đã tạo lọn %s",
     "A lock Recognize made from pieces hanging from the head; Recognize makes it again (keeping its role and "
     "settings)": "Lọn do Nhận diện tạo từ các mảnh gắn đầu; Nhận diện lại thì tạo lại (giữ vai trò và thiết lập)",
     "Runtime": "Khi chạy",

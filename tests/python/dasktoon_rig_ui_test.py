@@ -168,6 +168,25 @@ class PanelTest(unittest.TestCase):
         self.assertIn("dasktoon.rig_part_from_selection", [name for name, _text in tu.operators(log)])
         self.assertIn("role", [entry[1] for entry in log if entry[0] == "prop"])
 
+    def test_lock_from_selection(self):
+        hair = self.objs["Hair"]
+        select_only([hair], hair)
+        bpy.ops.object.mode_set(mode='EDIT')
+        bpy.ops.mesh.select_all(action='DESELECT')
+        bpy.ops.object.mode_set(mode='OBJECT')
+        hair.data.vertices[0].select = True
+        bpy.ops.object.mode_set(mode='EDIT')
+        self.assertEqual(bpy.ops.dasktoon.rig_lock_from_selection(), {'FINISHED'})
+        self.assertEqual(hair.mode, 'EDIT')
+        part = self.rig.data.dasktoon_rig.parts[-1]
+        self.assertEqual((part.name, part.object, part.vertex_group, part.role, part.bone, part.made_by_recognize),
+                         ("Lock M1", hair, "DT_Lock M1", 'ACCESSORY', "Head", False))
+        bpy.ops.object.mode_set(mode='OBJECT')
+        from dasktoon_rig import parts as rig_parts
+        self.assertEqual(len(rig_parts.part_vertices(part)), len(hair.data.vertices))  # the whole piece
+        log = tu.draw(ui.DATA_PT_dasktoon_rig_mesh, panel_context(hair))
+        self.assertIn("dasktoon.rig_lock_from_selection", [name for name, _text in tu.operators(log)])
+
 
 class SwayPanelTest(unittest.TestCase):
     def test_sway_panel_and_bake(self):

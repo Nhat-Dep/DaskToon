@@ -14,6 +14,7 @@ model test: Bone Heat weighs by distance to the bones, and the Head bone of a ch
 from contextlib import contextmanager
 
 import numpy as np
+from bpy.app.translations import pgettext_rpt as rpt_
 
 from . import body_shape, chains, parts as rig_parts, skeleton
 
@@ -450,3 +451,45 @@ def restrict(context, rig, parts, owners, found=None, roles=BODY_ROLES):
         matrix[sums > 0.0] /= sums[sums > 0.0, None]
         weights.clear(obj, mine, deform)
         weights.write(obj, mine, deform, matrix)
+
+
+def _free_name(rig, side):
+    names = {part.name for part in rig.data.dasktoon_rig.parts}
+    number = 1
+    while "Lock %s%d" % (side, number) in names:
+        number += 1
+    return "Lock %s%d" % (side, number)
+
+
+def _is_lock_of(part, obj):
+    return part.object == obj and part.scope == 'VERTEX_GROUP' and part.vertex_group.startswith("DT_Lock")
+
+
+def lock_from_selection(rig, obj, selected):
+    """Make the pieces of obj's mesh with a vertex in `selected` one lock of the user's (spec 4.4; Recognize leaves it
+    alone): their vertices leave the other locks, a lock left empty is removed, and they are painted as the head. Call
+    it in Object Mode. Returns the new part; PartError when nothing is selected."""
+    if len(selected) == 0:
+        raise rig_parts.PartError(rpt_("Select a vertex of each piece first"))
+    world, edges = rig_parts.mesh_arrays(obj)
+    chosen = set(int(v) for v in selected)
+    vertices = np.unique(np.concatenate([piece for piece in rig_parts.pieces(edges, np.arange(len(world)))
+                                         if chosen.intersection(piece.tolist())]))
+    data = rig.data.dasktoon_rig
+    for index in reversed(range(len(data.parts))):
+        part = data.parts[index]
+        group = obj.vertex_groups.get(part.vertex_group) if _is_lock_of(part, obj) else None
+        if group is None:
+            continue
+        group.remove([int(v) for v in vertices])
+        try:
+            rig_parts.part_vertices(part)
+        except rig_parts.PartError:  # emptied
+            obj.vertex_groups.remove(group)
+            data.parts.remove(index)
+    middle = float(rig_parts.bone_segment(rig, "Hips")[0][0])
+    side = _side_of(world, vertices, middle, float(np.ptp(world[:, 2])) or 1.0)
+    part = make_lock(rig, obj, _free_name(rig, side), vertices, made_by_recognize=False)
+    write(obj, vertices, np.full(len(vertices), REGIONS.index('HEAD')))
+    data.active_part_index = len(data.parts) - 1
+    return part

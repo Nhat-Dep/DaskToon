@@ -450,6 +450,39 @@ class DASKTOON_OT_rig_part_from_selection(Operator):
         return {'FINISHED'}
 
 
+class DASKTOON_OT_rig_lock_from_selection(Operator):
+    """Make the pieces under the selected vertices one lock, a part rigid on the head; give it the role Hair to make it
+    sway. Splits a lock or joins several"""
+    bl_idname = "dasktoon.rig_lock_from_selection"
+    bl_label = "Lock from Selection"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        obj = context.object
+        return obj is not None and obj.type == 'MESH' and obj.mode == 'EDIT' and bool(humanoid_rigs(context.scene))
+
+    def execute(self, context):
+        from dasktoon_rig import parts as rig_parts, regions
+        obj = context.object
+        rig = find_rig(context, obj)
+        if rig is None:
+            self.report({'ERROR'}, rpt_("No standard skeleton to add the part to"))
+            return {'CANCELLED'}
+        obj.update_from_editmode()
+        selected = [v.index for v in obj.data.vertices if v.select]
+        bpy.ops.object.mode_set(mode='OBJECT')
+        try:
+            part = regions.lock_from_selection(rig, obj, selected)
+        except rig_parts.PartError as ex:
+            self.report({'ERROR'}, str(ex))
+            return {'CANCELLED'}
+        finally:
+            bpy.ops.object.mode_set(mode='EDIT')
+        self.report({'INFO'}, rpt_("Made lock %s") % part.name)
+        return {'FINISHED'}
+
+
 class DASKTOON_UL_rig_parts(UIList):
     """Parts of the anime rig"""
 
@@ -636,6 +669,7 @@ class DATA_PT_dasktoon_rig_mesh(Panel):
                     row.label(text=part.name, translate=False)
                     row.prop(part, "role", text="")
         layout.operator("dasktoon.rig_part_from_selection", icon='ADD')
+        layout.operator("dasktoon.rig_lock_from_selection", icon='GROUP_VERTEX')
         if obj.mode != 'EDIT':
             layout.label(text="Select the vertices of a part in Edit Mode", icon='INFO')
 
@@ -657,6 +691,7 @@ classes = (
     DASKTOON_OT_rig_build,
     DASKTOON_OT_rig_bake_sway,
     DASKTOON_OT_rig_part_from_selection,
+    DASKTOON_OT_rig_lock_from_selection,
     DASKTOON_UL_rig_parts,
     DATA_PT_dasktoon_rig,
     DATA_PT_dasktoon_rig_joints,

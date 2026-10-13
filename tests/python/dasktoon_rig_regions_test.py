@@ -221,6 +221,43 @@ def limb_weight(rig, obj, vertices, region):
     return weights.read(obj, names)[vertices].sum(axis=1)
 
 
+class LockFromSelectionTest(unittest.TestCase):
+    def setUp(self):
+        self.rig, self.objs = rigged()
+        regions.recognize(bpy.context, self.rig)
+        self.body = self.objs["Body"]
+        self.ear = piece_at(self.body, (-0.38, 0.1, 1.6))
+        self.hair = piece_at(self.body, (-0.21, -0.25, 1.4))
+
+    def locks(self):
+        """{name: (made by Recognize, vertex set)} of the locks."""
+        return {part.name: (part.made_by_recognize, set(rig_parts.part_vertices(part).tolist()))
+                for part in self.rig.data.dasktoon_rig.parts if part.vertex_group.startswith("DT_Lock")}
+
+    def test_merge_then_split(self):
+        # One vertex of the right ear and one of the hair lock: both whole pieces become one lock of yours.
+        part = regions.lock_from_selection(self.rig, self.body, [int(self.ear[0]), int(self.hair[3])])
+        self.assertEqual(part.name, "Lock R1")
+        locks = self.locks()
+        self.assertEqual(sorted(locks), ["Lock L1", "Lock R1"])  # the two locks it emptied are gone
+        self.assertEqual(locks["Lock R1"], (False, set(self.ear.tolist()) | set(self.hair.tolist())))
+        self.assertEqual(sorted(g.name for g in self.body.vertex_groups if g.name.startswith("DT_Lock")),
+                         ["DT_Lock L1", "DT_Lock R1"])
+        # Then the hair lock alone: split off.
+        regions.lock_from_selection(self.rig, self.body, [int(self.hair[0])])
+        locks = self.locks()
+        self.assertEqual(locks["Lock R1"][1], set(self.ear.tolist()))
+        self.assertEqual(locks["Lock R2"], (False, set(self.hair.tolist())))
+        # Recognize again leaves your locks alone and makes no lock of their pieces.
+        regions.recognize(bpy.context, self.rig)
+        self.assertEqual(sorted(self.locks()), ["Lock L1", "Lock R1", "Lock R2"])
+        self.assertEqual(regions.REGIONS[regions.read(self.body)[self.hair[0]]], 'HEAD')
+
+    def test_nothing_selected(self):
+        with self.assertRaises(rig_parts.PartError):
+            regions.lock_from_selection(self.rig, self.body, [])
+
+
 class BuildTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
