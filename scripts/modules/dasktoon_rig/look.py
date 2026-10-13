@@ -57,8 +57,9 @@ def resting(rig):
     """Meanwhile the eyes' look constraints are muted, so the eyes are at rest (Engine Export writes the model FBX
     this way: Unity measures a flat eye's turn from the pose it imports); afterwards each is as it was."""
     saved = []
+    pose = rig.pose  # None for an armature outside the view layer
     for eye in EYES:
-        pose_bone = rig.pose.bones.get(eye)
+        pose_bone = pose.bones.get(eye) if pose is not None else None
         for name in (TRACK, LIMIT):
             con = pose_bone.constraints.get(name) if pose_bone is not None else None
             if con is not None:

@@ -236,6 +236,16 @@ class FlatEyeTest(unittest.TestCase):
         self.assertAlmostEqual(moved.x, 0.0, delta=2e-3)
         self.assertAlmostEqual(moved.y, -0.1 * math.sin(math.radians(10.0)), delta=2e-3)
 
+    def test_negative_range_needs_no_python(self):
+        self.part.eye_range = -0.1
+        build.build(bpy.context, self.rig, list(self.rig.data.dasktoon_rig.parts))
+        found = [d for d in self.iris.animation_data.drivers if d.data_path.endswith(".offset")]
+        self.assertTrue(all(d.driver.is_simple_expression for d in found), [d.driver.expression for d in found])
+        aim(self.rig, 0.0, 0.0)
+        rest = mean_uv(self.iris)
+        aim(self.rig, 20.0, 0.0)
+        self.assertAlmostEqual((mean_uv(self.iris) - rest).x, 0.1 * math.sin(math.radians(20.0)), delta=2e-3)
+
     def test_build_again_and_change_role(self):
         build.build(bpy.context, self.rig, list(self.rig.data.dasktoon_rig.parts))
         self.assertEqual(len([m for m in self.iris.modifiers if m.name.startswith(eyes.MODIFIER_PREFIX)]), 1)
@@ -312,6 +322,16 @@ class MouthTest(unittest.TestCase):
         self.assertEqual(len(atlas_nodes(self.mat)), 1)
         self.assertEqual(len([d for d in self.rig.animation_data.drivers if mouth.CELL_BONE in d.data_path]), 1)
         self.assertEqual([b.name for b in self.rig.data.bones].count(mouth.CELL_BONE), 1)
+
+    def test_change_role_takes_the_atlas_out(self):
+        texture = next(n for n in self.mat.node_tree.nodes if n.bl_idname == "ShaderNodeTexImage")
+        part = next(p for p in self.rig.data.dasktoon_rig.parts if p.role == 'MOUTH_2D')
+        part.role = 'ACCESSORY'
+        build.build(bpy.context, self.rig, list(self.rig.data.dasktoon_rig.parts))
+        self.assertEqual(atlas_nodes(self.mat), [])
+        self.assertFalse([n for n in self.mat.node_tree.nodes if n.get(mouth.NODE_MARK)])
+        self.assertFalse(texture.inputs["Vector"].is_linked)  # back to its own UVs
+        self.assertIsNone(self.rig.data.bones.get(mouth.CELL_BONE))
 
     def test_no_texture_warns(self):
         card, mat = mouth_card(self.rig, with_texture=False)

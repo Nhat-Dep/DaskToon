@@ -172,6 +172,12 @@ def _drive(rig, obj):
 def apply(context, rig, parts, result):
     """The atlas in the materials of every 2D Mouth part, its dt_mouth, MouthCell and its driver (from the first)."""
     mouths = [part for part in parts if part.role == 'MOUTH_2D' and part.object is not None]
+    wanted = {mat for part in mouths for _slot, mat in rig_parts.part_materials(part, rig_parts.part_vertices(part))}
+    for part in parts:  # a part that is no longer a 2D mouth: its materials show the texture as drawn again
+        for slot in part.object.material_slots if part.object is not None else ():
+            mat = slot.material
+            if mat is not None and mat not in wanted and mat.node_tree is not None:
+                _remove_atlas(mat)
     _cell_bone(context, rig, bool(mouths))
     if rig.animation_data is not None or mouths:
         _drive(rig, mouths[0].object if mouths else None)
