@@ -337,7 +337,8 @@ def _remove_locks(rig):
 def make_lock(rig, obj, name, vertices, settings=None, made_by_recognize=True):
     """A part for a lock: the vertices in a new vertex group "DT_<name>", rigid on the Head unless `settings` (from an
     old lock) say otherwise."""
-    group = obj.vertex_groups.new(name="DT_" + name)
+    group_name = "DT_%s" % name
+    group = obj.vertex_groups.new(name=group_name)
     group.add([int(v) for v in vertices], 1.0, 'REPLACE')
     data = rig.data.dasktoon_rig
     part = data.parts.add()
