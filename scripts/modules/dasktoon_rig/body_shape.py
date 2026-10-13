@@ -203,6 +203,11 @@ def _mirrored(found, middle):
     return {side: limb or (mirror(found[-side]) if found[-side] is not None else None) for side, limb in found.items()}
 
 
+def _flip(point, middle):
+    """`point` mirrored across the plane x = middle."""
+    return Vector((2.0 * middle - point.x, point.y, point.z))
+
+
 def _similar(a_from, b_from, a_to, b_to):
     """(point map, rotation) turning and scaling segment a_from-b_from onto a_to-b_to."""
     rotation = (b_from - a_from).rotation_difference(b_to - a_to).to_matrix()
@@ -242,23 +247,29 @@ def joints(context, objects, feet, height):
 
     template = {name: (Vector(head), Vector(tail), Vector(axis), parent)
                 for name, parent, head, tail, axis in skeleton.bones()}
-    maps = {}
-    for side, prefix in ((1, "Left"), (-1, "Right")):
+    ends = {}  # (limb, side): (start, end) in world space
+    for side in (1, -1):
         arm, leg = arms[side], legs[side]
         if arm is not None:
-            shoulder = Vector((shoulders[side][0], middle_y, shoulders[side][1]))
             radius = max(arm.width / 2.0, 2.0 * shape.step)
-            tip = Vector((arm.end[0], shape.depth(arm.end, radius, middle_y), arm.end[1]))
-            maps[prefix + "Arm"] = _similar(template[prefix + "UpperArm"][0], template[prefix + "MiddleDistal"][1],
-                                            shoulder, tip)
+            ends["Arm", side] = (Vector((shoulders[side][0], middle_y, shoulders[side][1])),
+                                 Vector((arm.end[0], shape.depth(arm.end, radius, middle_y), arm.end[1])))
         if leg is not None:
             radius = max(leg.width / 2.0, 2.0 * shape.step)
-            hip_point = leg.base + leg.axis * (hip_z - leg.base[1]) / leg.axis[1]
-            ankle_z = feet.z + (hip_z - feet.z) * template[prefix + "Foot"][0].z / HIP_Z
-            ankle_point = leg.base + leg.axis * (ankle_z - leg.base[1]) / leg.axis[1]
-            hip = Vector((hip_point[0], shape.depth(hip_point, radius, middle_y), hip_point[1]))
-            ankle = Vector((ankle_point[0], shape.depth(ankle_point, radius, middle_y), ankle_point[1]))
-            maps[prefix + "Leg"] = _similar(template[prefix + "UpperLeg"][0], template[prefix + "Foot"][0], hip, ankle)
+            ankle_z = feet.z + (hip_z - feet.z) * template["LeftFoot"][0].z / HIP_Z
+            points = [leg.base + leg.axis * (z - leg.base[1]) / leg.axis[1] for z in (hip_z, ankle_z)]
+            ends["Leg", side] = tuple(Vector((point[0], shape.depth(point, radius, middle_y), point[1]))
+                                      for point in points)
+    for limb in ("Arm", "Leg"):  # both sides found: the average of each and the other mirrored, so the rig mirrors
+        if (limb, 1) in ends and (limb, -1) in ends:
+            left = tuple((a + _flip(b, middle)) / 2.0 for a, b in zip(ends[limb, 1], ends[limb, -1]))
+            ends[limb, 1], ends[limb, -1] = left, tuple(_flip(point, middle) for point in left)
+    maps = {}
+    for (limb, side), (start, end) in ends.items():
+        prefix = "Left" if side == 1 else "Right"
+        first, last = (((prefix + "UpperArm", 0), (prefix + "MiddleDistal", 1)) if limb == "Arm"
+                       else ((prefix + "UpperLeg", 0), (prefix + "Foot", 0)))
+        maps[prefix + limb] = _similar(template[first[0]][first[1]], template[last[0]][last[1]], start, end)
     still = (spine, Matrix.Identity(3))
 
     def region(name):

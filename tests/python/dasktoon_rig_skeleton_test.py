@@ -215,6 +215,19 @@ class CreateTest(unittest.TestCase):
                         < 1.7)
         self.assertLess(abs(world_head(rig, "Head").y - 0.5), 0.05)
 
+    def test_fit_keeps_the_sides_mirrored(self):
+        """A bag behind the left hip (part of the Body) pulls that side's depth back: both sides still get the same
+        depth, so the skeleton stays mirrored (real model test: the hips were 9 cm apart in depth)."""
+        body, ears, _marks = chibi()
+        bag = box("Bag", (3.05, 0.6, 0.7), (3.25, 0.9, 1.0))
+        rig = skeleton.create_humanoid(bpy.context, 1.0, (0.0, 0.0, 0.0))
+        skeleton.fit(bpy.context, rig, [body, ears, bag], body=[body, bag])
+        middle = world_head(rig, "Hips").x
+        for bone in ("UpperLeg", "LowerLeg", "Foot", "UpperArm", "Hand"):
+            left, right = world_head(rig, "Left" + bone), world_head(rig, "Right" + bone)
+            self.assertAlmostEqual(left.y, right.y, places=4, msg=bone)
+            self.assertAlmostEqual(left.x - middle, middle - right.x, places=4, msg=bone)
+
 
 if __name__ == "__main__":
     tu.run_tests()
