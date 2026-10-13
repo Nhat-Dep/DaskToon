@@ -299,6 +299,17 @@ class BuildTest(unittest.TestCase):
         boot = piece_at(boots, (-0.175, 0.0, 0.1))
         self.assertGreater(limb_weight(self.rig, boots, boot, 'LEG_R').mean(), 0.9)
 
+    def test_what_an_arm_gives_up_goes_to_the_torso(self):
+        """Bone Heat gives the slim waist of the chibi to the forearm hanging beside it (nearer than the spine): keeping
+        the arm to its region takes that weight away, and the torso gets it; making what is left add up to 1 would give
+        it back to the arm (the Check of the auto rig found the waist torn when the arms go up)."""
+        body = self.objs["Body"]
+        torso = piece_at(body, (0, -0.18, 1.15))
+        world, _edges = rig_parts.mesh_arrays(body)
+        waist = torso[world[torso, 2] < 1.2]  # well below the shoulders
+        for region in ('ARM_L', 'ARM_R'):
+            self.assertLess(limb_weight(self.rig, body, waist, region).max(), 0.1, region)
+
     def test_painted_regions_win(self):
         from dasktoon_rig import build
         body = self.objs["Body"]
