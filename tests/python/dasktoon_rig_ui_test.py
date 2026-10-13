@@ -123,7 +123,7 @@ class PanelTest(unittest.TestCase):
         self.assertEqual([(p.name, p.role, p.bone_count) for p in parts], [("Body", 'BODY', 4), ("Skirt", 'SKIRT', 3)])
         log = tu.draw(ui.DATA_PT_dasktoon_rig_parts, panel_context(self.rig))
         props = [entry[1] for entry in log if entry[0] == "prop"]
-        self.assertEqual(props, ["object", "scope", "role", "bone_count", "chain_count"])
+        self.assertEqual(props, ["highlight_part", "object", "scope", "role", "bone_count", "chain_count"])
         self.assertIn(("call", "prop_search"), [entry[:2] for entry in log])
         self.objs["Body"].data.materials.append(bpy.data.materials.new("Skin"))
         self.rig.data.dasktoon_rig.active_part_index = 0
@@ -188,6 +188,87 @@ class PanelTest(unittest.TestCase):
         self.assertIn("dasktoon.rig_lock_from_selection", [name for name, _text in tu.operators(log)])
 
 
+
+class RegionsPanelTest(unittest.TestCase):
+    """The Regions panel (rig regions spec 6): Recognize, Show Regions, painting each region, highlighting a part."""
+
+    def setUp(self):
+        bpy.ops.wm.read_factory_settings(use_empty=True)
+        self.objs = fx.character()
+        self.rig = fx.rig_for()
+        for name, role in (("Body", 'BODY'), ("Shirt", 'CLOTHING'), ("Hair", 'HAIR')):
+            ui.add_part(self.rig, self.objs[name], role)
+        select_only([self.rig], self.rig)
+
+    def test_panel(self):
+        log = tu.draw(ui.DATA_PT_dasktoon_rig_regions, panel_context(self.rig))
+        ops = tu.operators(log)
+        self.assertEqual(ops[0][0], "dasktoon.rig_recognize")
+        self.assertIn("dasktoon_show_regions", [entry[1] for entry in log if entry[0] == "prop"])
+        painted = [entry for entry in log if entry[0] == "operator" and entry[1] == "dasktoon.rig_paint_regions"]
+        self.assertEqual([(entry[5].region, entry[3]) for entry in painted],
+                         [('HEAD', 'SEQUENCE_COLOR_03'), ('TORSO', 'SEQUENCE_COLOR_05'),
+                          ('ARM_L', 'SEQUENCE_COLOR_01'), ('ARM_R', 'SEQUENCE_COLOR_02'),
+                          ('LEG_L', 'SEQUENCE_COLOR_04'), ('LEG_R', 'SEQUENCE_COLOR_06')])
+
+    def test_recognize(self):
+        from dasktoon_rig import regions
+        self.assertEqual(bpy.ops.dasktoon.rig_recognize(), {'FINISHED'})
+        for name in ("Body", "Shirt"):
+            self.assertIsNotNone(self.objs[name].data.color_attributes.get(regions.LAYER), name)
+        self.assertIsNone(self.objs["Hair"].data.color_attributes.get(regions.LAYER))  # Hair parts have no regions
+
+    def test_paint_regions_then_done(self):
+        from dasktoon_rig import regions
+        body = self.objs["Body"]
+        self.rig.data.dasktoon_rig.active_part_index = 0
+        self.assertEqual(bpy.ops.dasktoon.rig_paint_regions(region='ARM_L'), {'FINISHED'})
+        self.assertEqual((bpy.context.object, body.mode), (body, 'VERTEX_PAINT'))
+        self.assertEqual(body.data.color_attributes.active_color_name, regions.LAYER)
+        paint = bpy.context.scene.tool_settings.vertex_paint
+        self.assertEqual(paint.palette.name, "DaskToon Regions")
+        self.assertEqual(len(paint.palette.colors), 6)
+        settings = paint.unified_paint_settings
+        self.assertTrue(settings.use_unified_color)
+        for got, want in zip(settings.color, regions.COLORS['ARM_L']):
+            self.assertAlmostEqual(got, want, places=3)
+        self.assertTrue(bpy.context.window_manager.dasktoon_show_regions)
+        log = tu.draw(ui.DATA_PT_dasktoon_rig_mesh, types.SimpleNamespace(object=body, scene=bpy.context.scene,
+                                                                          mode='PAINT_VERTEX'))
+        names = [name for name, _text in tu.operators(log)]
+        self.assertEqual(names.count("dasktoon.rig_paint_regions"), 6)
+        self.assertIn("dasktoon.rig_paint_done", names)
+        self.assertEqual(bpy.ops.dasktoon.rig_paint_regions(region='LEG_R'), {'FINISHED'})  # another color
+        self.assertAlmostEqual(settings.color[2], regions.COLORS['LEG_R'][2], places=3)
+        self.assertEqual(bpy.ops.dasktoon.rig_paint_done(), {'FINISHED'})
+        self.assertEqual((body.mode, bpy.context.object), ('OBJECT', self.rig))
+
+    def test_show_regions_and_back(self):
+        from dasktoon_rig import regions
+        bpy.ops.dasktoon.rig_recognize()
+        body = self.objs["Body"]
+        spaces = [space for screen in bpy.data.screens for area in screen.areas for space in area.spaces
+                  if space.type == 'VIEW_3D']
+        self.assertTrue(spaces)
+        before = [(space.shading.type, space.shading.color_type) for space in spaces]
+        wm = bpy.context.window_manager
+        wm.dasktoon_show_regions = True
+        self.assertEqual({(space.shading.type, space.shading.color_type) for space in spaces}, {('SOLID', 'VERTEX')})
+        self.assertEqual(body.data.color_attributes.active_color_name, regions.LAYER)
+        wm.dasktoon_show_regions = False
+        self.assertEqual([(space.shading.type, space.shading.color_type) for space in spaces], before)
+        self.assertEqual(body.data.color_attributes.active_color_name, "")
+
+    def test_highlight_part(self):
+        data = self.rig.data.dasktoon_rig
+        self.assertTrue(data.highlight_part)
+        body = self.objs["Body"]
+        triangles = ui.part_triangles(data.parts[0])
+        body.data.calc_loop_triangles()
+        self.assertEqual(len(triangles), 3 * len(body.data.loop_triangles))
+        self.assertIsNotNone(ui._highlight["handle"])
+
+
 class SwayPanelTest(unittest.TestCase):
     def test_sway_panel_and_bake(self):
         bpy.ops.wm.read_factory_settings(use_empty=True)
@@ -218,7 +299,7 @@ class TextTest(unittest.TestCase):
         strings = {ui.DaskRigPart.bl_rna.description, ui.DaskRig.bl_rna.description,
                    ui.DaskRigCollider.bl_rna.description}
         operators = [cls for cls in ui.classes if issubclass(cls, bpy.types.Operator)]
-        self.assertEqual(len(operators), 10)
+        self.assertEqual(len(operators), 13)
         for struct in operators:
             strings.update((struct.bl_label, struct.__doc__))
         for struct in [ui.DaskRigPart, ui.DaskRigCollider, ui.DaskRig] + operators:

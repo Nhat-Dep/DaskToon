@@ -3,8 +3,10 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 """Anime rig, R1 (docs/superpowers/specs/2026-10-06-dasktoon-anime-rig-design.md, section 7): Add › Armature › Anime
-Humanoid; the Anime Rig panel in Properties › Object Data of an armature (Joints, Parts, Build) and of a mesh (its
-parts, Add Part from Selection). The work is done by the dasktoon_rig module."""
+Humanoid; the Anime Rig panel in Properties › Object Data of an armature (Joints, Parts, Regions, Build) and of a mesh
+(its parts, Add Part from Selection, Lock from Selection, the region colors while painting). The regions and locks:
+docs/superpowers/specs/2026-10-13-dasktoon-rig-regions-design.md, section 6. The work is done by the dasktoon_rig
+module."""
 
 import bpy
 from bpy.app.translations import pgettext_rpt as rpt_
@@ -31,6 +33,16 @@ ROLE_ITEMS = (
      'IMAGE_DATA', 7),
 )
 ROLE_ICONS = {item[0]: item[3] for item in ROLE_ITEMS}
+# The body regions (rig regions spec 3.1), each with the strip color icon nearest its paint color.
+REGION_ITEMS = (
+    ('HEAD', "Head", "The head, and the locks hanging from it", 'SEQUENCE_COLOR_03', 0),
+    ('TORSO', "Torso", "The body from the hips to the neck", 'SEQUENCE_COLOR_05', 1),
+    ('ARM_L', "Left Arm", "The character's left arm and hand", 'SEQUENCE_COLOR_01', 2),
+    ('ARM_R', "Right Arm", "The character's right arm and hand", 'SEQUENCE_COLOR_02', 3),
+    ('LEG_L', "Left Leg", "The character's left leg and foot", 'SEQUENCE_COLOR_04', 4),
+    ('LEG_R', "Right Leg", "The character's right leg and foot", 'SEQUENCE_COLOR_06', 5),
+)
+PALETTE = "DaskToon Regions"
 
 
 def _is_mesh(_self, obj):
@@ -135,6 +147,8 @@ class DaskRig(PropertyGroup):
     look_pitch_limit: FloatProperty(name="Up and Down Limit", description="How far the eyes turn up and down to "
                                     "follow LookTarget", subtype='ANGLE', default=0.3490659, min=0.0, max=1.5707963,
                                     update=_look_changed)
+    highlight_part: BoolProperty(name="Highlight Part", default=True,
+                                 description="Draw the faces of the part chosen in the list in the 3D view, at rest")
 
 
 def rig_of(context):
@@ -482,6 +496,242 @@ class DASKTOON_OT_rig_lock_from_selection(Operator):
         return {'FINISHED'}
 
 
+def _region_parts(rig):
+    return [part for part in rig.data.dasktoon_rig.parts
+            if part.object is not None and part.object.type == 'MESH' and part.role in ('BODY', 'CLOTHING')]
+
+
+class DASKTOON_OT_rig_recognize(Operator):
+    """Paint the head, torso, arms and legs on the Body and Clothing meshes and make locks of the pieces on the head"""
+    bl_idname = "dasktoon.rig_recognize"
+    bl_label = "Recognize"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        rig = rig_of(context)
+        return rig is not None and bool(_region_parts(rig))
+
+    def invoke(self, context, event):
+        from dasktoon_rig import regions
+        if regions.has_layers(rig_of(context)):
+            return context.window_manager.invoke_confirm(
+                self, event, message=rpt_("Paint the regions again and remake the locks? What you painted is replaced"))
+        return self.execute(context)
+
+    def execute(self, context):
+        from dasktoon_rig import parts as rig_parts, regions
+        try:
+            found = regions.recognize(context, rig_of(context))
+        except rig_parts.PartError as ex:
+            self.report({'ERROR'}, str(ex))
+            return {'CANCELLED'}
+        self.report({'INFO'}, rpt_("Recognized the regions and %d locks") % len(found.locks))
+        return {'FINISHED'}
+
+
+def regions_palette():
+    """The palette of the six region colors, made when missing."""
+    from dasktoon_rig import regions
+    palette = bpy.data.palettes.get(PALETTE) or bpy.data.palettes.new(PALETTE)
+    if len(palette.colors) != len(regions.REGIONS):
+        palette.colors.clear()
+        for region in regions.REGIONS:
+            palette.colors.new().color = regions.COLORS[region]
+    return palette
+
+
+class DASKTOON_OT_rig_paint_regions(Operator):
+    """Paint the body regions in Vertex Paint with this region's color"""
+    bl_idname = "dasktoon.rig_paint_regions"
+    bl_label = "Paint Regions"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    region: EnumProperty(name="Region", description="Region to paint", items=REGION_ITEMS, default='TORSO')
+
+    @classmethod
+    def poll(cls, context):
+        obj = context.object
+        if obj is None:
+            return False
+        if obj.type == 'ARMATURE':
+            return bool(_region_parts(obj))
+        return obj.type == 'MESH'
+
+    def execute(self, context):
+        from dasktoon_rig import regions
+        obj = context.object
+        if obj.type == 'ARMATURE':
+            rig = obj
+            if not regions.has_layers(rig):
+                regions.recognize(context, rig)
+            part = _active_part(rig)
+            target = part.object if part is not None and part in _region_parts(rig) else _region_parts(rig)[0].object
+            if obj.mode != 'OBJECT':
+                bpy.ops.object.mode_set(mode='OBJECT')
+            for other in context.view_layer.objects:
+                other.select_set(other == target)
+            context.view_layer.objects.active = target
+            obj = target
+        regions.ensure_layer(obj)
+        obj.data.color_attributes.active_color_name = regions.LAYER
+        if obj.mode != 'VERTEX_PAINT':
+            bpy.ops.object.mode_set(mode='VERTEX_PAINT')
+        paint = context.tool_settings.vertex_paint
+        paint.palette = regions_palette()
+        settings = paint.unified_paint_settings
+        settings.use_unified_color = True
+        settings.color = regions.COLORS[self.region]
+        context.window_manager.dasktoon_show_regions = True
+        return {'FINISHED'}
+
+
+class DASKTOON_OT_rig_paint_done(Operator):
+    """Leave Vertex Paint and select the rig again"""
+    bl_idname = "dasktoon.rig_paint_done"
+    bl_label = "Done Painting"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        obj = context.object
+        return obj is not None and obj.type == 'MESH' and obj.mode == 'VERTEX_PAINT'
+
+    def execute(self, context):
+        obj = context.object
+        rig = find_rig(context, obj)
+        bpy.ops.object.mode_set(mode='OBJECT')
+        if rig is not None:
+            for other in context.view_layer.objects:
+                other.select_set(other == rig)
+            context.view_layer.objects.active = rig
+        return {'FINISHED'}
+
+
+# Show Regions: the 3D views and meshes as they were before, to put back.
+_shown = {}
+
+
+def show_regions(show):
+    """Every 3D view in Solid shading colored by the active color layer, the region layer active on every mesh that
+    has one; or, `show` off, everything as it was."""
+    from dasktoon_rig import regions
+    spaces = [space for screen in bpy.data.screens for area in screen.areas for space in area.spaces
+              if space.type == 'VIEW_3D']
+    if show:
+        for space in spaces:
+            _shown.setdefault(("space", space.as_pointer()), (space.shading.type, space.shading.color_type))
+            space.shading.type, space.shading.color_type = 'SOLID', 'VERTEX'
+        for mesh in bpy.data.meshes:
+            layers = mesh.color_attributes
+            if layers.get(regions.LAYER) is not None and layers.active_color_name != regions.LAYER:
+                _shown.setdefault(("mesh", mesh.name), layers.active_color_name)
+                layers.active_color_name = regions.LAYER
+        return
+    for space in spaces:
+        saved = _shown.pop(("space", space.as_pointer()), None)
+        if saved is not None:
+            space.shading.type, space.shading.color_type = saved
+    for key in [key for key in _shown if key[0] == "mesh"]:
+        mesh = bpy.data.meshes.get(key[1])
+        name = _shown.pop(key)
+        if mesh is not None:
+            mesh.color_attributes.active_color_name = name
+
+
+def _show_regions_changed(self, _context):
+    show_regions(self.dasktoon_show_regions)
+
+
+# Highlight Part: the triangles of the part chosen in the list, drawn in the 3D view while the rig is active.
+_highlight = {"handle": None, "key": None, "batch": None, "shader": None, "generation": 0}
+HIGHLIGHT_COLOR = (0.2, 0.9, 1.0, 0.35)
+
+
+def part_triangles(part):
+    """World corners (3 rows a triangle) of the faces of `part` (every corner in the part), at rest."""
+    import numpy as np
+    from dasktoon_rig import parts as rig_parts
+    obj = part.object
+    try:
+        vertices = rig_parts.part_vertices(part)
+    except rig_parts.PartError:
+        return np.zeros((0, 3), np.float32)
+    world, _edges = rig_parts.mesh_arrays(obj)
+    mesh = obj.data
+    mesh.calc_loop_triangles()
+    corners = np.empty(len(mesh.loop_triangles) * 3, np.int32)
+    mesh.loop_triangles.foreach_get("vertices", corners)
+    corners = corners.reshape(-1, 3)
+    inside = np.zeros(len(world), bool)
+    inside[vertices] = True
+    return world[corners[inside[corners].all(axis=1)].ravel()].astype(np.float32)
+
+
+def _highlight_shader():
+    import gpu
+    from bl_ui import dasktoon_animation
+    if _highlight["shader"] is None:
+        info = gpu.types.GPUShaderCreateInfo()
+        info.push_constant('MAT4', "perspective")
+        info.push_constant('VEC4', "depth")
+        info.push_constant('VEC4', "color")
+        info.vertex_in(0, 'VEC3', "pos")
+        info.fragment_out(0, 'VEC4', "fragColor")
+        info.vertex_source(dasktoon_animation.ONION_VERTEX)
+        info.fragment_source("void main()\n{\n  fragColor = color;\n}\n")
+        _highlight["shader"] = gpu.shader.create_from_info(info)
+    return _highlight["shader"]
+
+
+def _highlight_draw():
+    context = bpy.context
+    rig = context.object
+    if rig is None or rig.type != 'ARMATURE' or context.region_data is None:
+        return
+    data = rig.data.dasktoon_rig
+    part = _active_part(rig)
+    if not data.highlight_part or part is None or part.object is None or part.object.type != 'MESH':
+        return
+    import gpu
+    from bl_ui import dasktoon_animation
+    from gpu_extras.batch import batch_for_shader
+    shader = _highlight_shader()
+    key = (rig.name, data.active_part_index, part.object.name, part.scope, part.material, part.vertex_group,
+           len(part.object.data.vertices), _highlight["generation"])
+    if key != _highlight["key"]:
+        triangles = part_triangles(part)
+        _highlight["batch"] = batch_for_shader(shader, 'TRIS', {"pos": triangles}) if len(triangles) else None
+        _highlight["key"] = key
+    if _highlight["batch"] is None:
+        return
+    view = context.region_data
+    shader.bind()
+    shader.uniform_float("perspective", view.perspective_matrix)
+    shader.uniform_float("depth", (view.window_matrix[2][2], view.window_matrix[2][3], dasktoon_animation.ONION_PUSH,
+                                   1.0 if view.is_perspective else 0.0))
+    shader.uniform_float("color", HIGHLIGHT_COLOR)
+    state = gpu.state.blend_get(), gpu.state.depth_test_get(), gpu.state.depth_mask_get()
+    gpu.state.blend_set('ALPHA')
+    gpu.state.depth_test_set('LESS_EQUAL')
+    gpu.state.depth_mask_set(False)
+    _highlight["batch"].draw(shader)
+    gpu.state.blend_set(state[0])
+    gpu.state.depth_test_set(state[1])
+    gpu.state.depth_mask_set(state[2])
+
+
+def _highlight_depsgraph(_scene, depsgraph):
+    if any(update.is_updated_geometry for update in depsgraph.updates):
+        _highlight["generation"] += 1
+
+
+def draw_region_buttons(layout):
+    grid = layout.grid_flow(columns=2, even_columns=True, align=True)
+    for identifier, name, _description, icon, _number in REGION_ITEMS:
+        grid.operator("dasktoon.rig_paint_regions", text=name, icon=icon).region = identifier
+
+
 class DASKTOON_UL_rig_parts(UIList):
     """Parts of the anime rig"""
 
@@ -537,6 +787,7 @@ class DATA_PT_dasktoon_rig_parts(DaskRigPanel, Panel):
         data = rig.data.dasktoon_rig
         row = layout.row()
         row.template_list("DASKTOON_UL_rig_parts", "", data, "parts", data, "active_part_index", rows=4)
+        layout.prop(data, "highlight_part")
         col = row.column(align=True)
         col.operator("dasktoon.rig_add_selected", text="", icon='ADD')
         col.operator("dasktoon.rig_add_material_part", text="", icon='MATERIAL')
@@ -570,6 +821,20 @@ class DATA_PT_dasktoon_rig_parts(DaskRigPanel, Panel):
             col = layout.column(align=True)
             col.label(text="Cells from the top left: closed, A, I, U, E, O", icon='INFO')
             col.label(text="The object's dt_mouth picks the cell; lip sync keys it")
+
+
+class DATA_PT_dasktoon_rig_regions(DaskRigPanel, Panel):
+    bl_label = "Regions"
+    bl_parent_id = "DATA_PT_dasktoon_rig"
+
+    def draw(self, _context):
+        layout = self.layout
+        row = layout.row(align=True)
+        row.operator("dasktoon.rig_recognize", icon='VIEWZOOM')
+        row.prop(bpy.context.window_manager, "dasktoon_show_regions", toggle=True, icon='COLOR')
+        layout.label(text="Paint regions:")
+        draw_region_buttons(layout)
+        layout.label(text="In Vertex Paint, select faces and press Shift+K to fill them", icon='INFO')
 
 
 class DATA_PT_dasktoon_rig_look(DaskRigPanel, Panel):
@@ -667,6 +932,11 @@ class DATA_PT_dasktoon_rig_mesh(Panel):
                     row = layout.row()
                     row.label(text=part.name, translate=False)
                     row.prop(part, "role", text="")
+        from dasktoon_rig import regions
+        if obj.mode == 'VERTEX_PAINT' and obj.data.color_attributes.get(regions.LAYER) is not None:
+            layout.label(text="Paint regions:")
+            draw_region_buttons(layout)
+            layout.operator("dasktoon.rig_paint_done", icon='CHECKMARK')
         layout.operator("dasktoon.rig_part_from_selection", icon='ADD')
         layout.operator("dasktoon.rig_lock_from_selection", icon='GROUP_VERTEX')
         if obj.mode != 'EDIT':
@@ -691,10 +961,14 @@ classes = (
     DASKTOON_OT_rig_bake_sway,
     DASKTOON_OT_rig_part_from_selection,
     DASKTOON_OT_rig_lock_from_selection,
+    DASKTOON_OT_rig_recognize,
+    DASKTOON_OT_rig_paint_regions,
+    DASKTOON_OT_rig_paint_done,
     DASKTOON_UL_rig_parts,
     DATA_PT_dasktoon_rig,
     DATA_PT_dasktoon_rig_joints,
     DATA_PT_dasktoon_rig_parts,
+    DATA_PT_dasktoon_rig_regions,
     DATA_PT_dasktoon_rig_look,
     DATA_PT_dasktoon_rig_sway,
     DATA_PT_dasktoon_rig_colliders,
@@ -708,10 +982,23 @@ classes = (
 def register():
     from .space_view3d import VIEW3D_MT_armature_add
     bpy.types.Armature.dasktoon_rig = PointerProperty(type=DaskRig)
+    bpy.types.WindowManager.dasktoon_show_regions = BoolProperty(
+        name="Show Regions", update=_show_regions_changed,
+        description="Show the body regions in the 3D views: Solid shading colored by the region layer")
     VIEW3D_MT_armature_add.append(menu_func)
+    if _highlight["handle"] is None:
+        _highlight["handle"] = bpy.types.SpaceView3D.draw_handler_add(_highlight_draw, (), 'WINDOW', 'POST_VIEW')
+    if _highlight_depsgraph not in bpy.app.handlers.depsgraph_update_post:
+        bpy.app.handlers.depsgraph_update_post.append(_highlight_depsgraph)
 
 
 def unregister():
     from .space_view3d import VIEW3D_MT_armature_add
     VIEW3D_MT_armature_add.remove(menu_func)
+    if _highlight["handle"] is not None:
+        bpy.types.SpaceView3D.draw_handler_remove(_highlight["handle"], 'WINDOW')
+        _highlight["handle"] = None
+    if _highlight_depsgraph in bpy.app.handlers.depsgraph_update_post:
+        bpy.app.handlers.depsgraph_update_post.remove(_highlight_depsgraph)
+    del bpy.types.WindowManager.dasktoon_show_regions
     del bpy.types.Armature.dasktoon_rig
