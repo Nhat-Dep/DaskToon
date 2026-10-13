@@ -18,7 +18,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import dasktoon_rig_fixtures as fx  # noqa: E402
 import dasktoon_test_utils as tu  # noqa: E402
 from bl_ui import dasktoon_rig as ui  # noqa: E402
-from dasktoon_rig import build, eyes, look, parts, skeleton  # noqa: E402
+from dasktoon_rig import build, eyes, look, mouth, parts, skeleton  # noqa: E402
 
 
 def built(roles=(("Body", 'BODY'),)):
@@ -244,6 +244,82 @@ class FlatEyeTest(unittest.TestCase):
         build.build(bpy.context, self.rig, list(self.rig.data.dasktoon_rig.parts))
         self.assertIsNone(self.modifier())
         self.assertEqual(len([d for d in self.iris.animation_data.drivers if d.data_path.endswith(".offset")]), 0)
+
+
+def mouth_card(rig, with_texture=True):
+    """A small plane with UVs in front of the mouth, its material "Mouth" an image texture (when `with_texture`)."""
+    jaw = rig.matrix_world @ rig.data.bones["Jaw"].tail_local
+    bpy.ops.mesh.primitive_plane_add(size=0.03, location=jaw + Vector((0.0, -0.02, 0.0)),
+                                     rotation=(math.radians(90.0), 0.0, 0.0))
+    obj = bpy.context.object
+    obj.name = "MouthCard"
+    mat = bpy.data.materials.new("Mouth")
+    if mat.node_tree is None:
+        mat.use_nodes = True
+    if with_texture:
+        mat.node_tree.nodes.new("ShaderNodeTexImage").image = bpy.data.images.new("Atlas", 8, 8)
+    obj.data.materials.append(mat)
+    return obj, mat
+
+
+def atlas_nodes(mat):
+    return [n for n in mat.node_tree.nodes if n.get(mouth.NODE_MARK) == "group"]
+
+
+class MouthTest(unittest.TestCase):
+    def setUp(self):
+        bpy.ops.wm.read_factory_settings(use_empty=True)
+        self.objs = fx.character()
+        self.rig = fx.rig_for()
+        self.card, self.mat = mouth_card(self.rig)
+        ui.add_part(self.rig, self.objs["Body"], 'BODY')
+        part = ui.add_part(self.rig, self.card, 'MOUTH_2D')
+        part.mouth_rows, part.mouth_columns = 2, 4
+        self.result = build.build(bpy.context, self.rig, list(self.rig.data.dasktoon_rig.parts))
+
+    def test_cell_uv(self):
+        self.assertEqual(mouth.cell_uv((0.5, 0.5), 5, 2, 4), (0.375, 0.25))
+        self.assertEqual(mouth.cell_uv((0.5, 0.5), 0, 2, 4), (0.125, 0.75))
+        self.assertEqual(mouth.cell_uv((0.5, 0.5), 99, 2, 4), mouth.cell_uv((0.5, 0.5), 7, 2, 4))  # the last cell
+
+    def test_atlas_in_the_material(self):
+        texture = next(n for n in self.mat.node_tree.nodes if n.bl_idname == "ShaderNodeTexImage")
+        group, = atlas_nodes(self.mat)
+        self.assertEqual(group.node_tree.name, mouth.GROUP)
+        self.assertTrue(any(link.from_node == group and link.to_socket == texture.inputs["Vector"]
+                            for link in self.mat.node_tree.links))
+        self.assertEqual((group.inputs["Rows"].default_value, group.inputs["Columns"].default_value), (2.0, 4.0))
+        self.assertEqual(self.card[mouth.PROP], 0)
+
+    def test_cell_bone_follows_dt_mouth(self):
+        bone = self.rig.data.bones[mouth.CELL_BONE]
+        self.assertTrue(bone.use_deform)  # so the FBX carries it to Unity
+        self.assertEqual(bone.parent.name, "Head")
+        for obj in list(self.objs.values()) + [self.card]:
+            group = obj.vertex_groups.get(mouth.CELL_BONE)
+            self.assertTrue(group is None or not any(g.group == group.index for v in obj.data.vertices
+                                                     for g in v.groups), obj.name)
+        self.card[mouth.PROP] = 3
+        bpy.context.view_layer.update()
+        pose = self.rig.evaluated_get(bpy.context.evaluated_depsgraph_get()).pose.bones[mouth.CELL_BONE]
+        self.assertAlmostEqual(pose.scale[1], 4.0, places=5)
+        drivers = [d for d in self.rig.animation_data.drivers if mouth.CELL_BONE in d.data_path]
+        self.assertEqual(len(drivers), 1)
+        self.assertTrue(drivers[0].driver.is_simple_expression)
+
+    def test_build_twice(self):
+        build.build(bpy.context, self.rig, list(self.rig.data.dasktoon_rig.parts))
+        self.assertEqual(len(atlas_nodes(self.mat)), 1)
+        self.assertEqual(len([d for d in self.rig.animation_data.drivers if mouth.CELL_BONE in d.data_path]), 1)
+        self.assertEqual([b.name for b in self.rig.data.bones].count(mouth.CELL_BONE), 1)
+
+    def test_no_texture_warns(self):
+        card, mat = mouth_card(self.rig, with_texture=False)
+        card.name = "Bare"
+        ui.add_part(self.rig, card, 'MOUTH_2D')
+        result = build.build(bpy.context, self.rig, list(self.rig.data.dasktoon_rig.parts))
+        self.assertEqual(atlas_nodes(mat), [])
+        self.assertTrue(any("image texture" in w for w in result.warnings), result.warnings)
 
 
 if __name__ == "__main__":

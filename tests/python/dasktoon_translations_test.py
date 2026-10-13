@@ -61,6 +61,7 @@ TRANSLATED = [
     "scripts/modules/dasktoon_rig/sway.py",
     "scripts/modules/dasktoon_rig/look.py",
     "scripts/modules/dasktoon_rig/eyes.py",
+    "scripts/modules/dasktoon_rig/mouth.py",
     "scripts/modules/dasktoon_export/rig_json.py",
     "scripts/modules/dasktoon_export/scripts_install.py",
     "scripts/startup/bl_ui/dasktoon_rig.py",

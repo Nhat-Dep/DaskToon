@@ -1480,6 +1480,10 @@ VI = {
     "How far the eyes turn to the side to follow LookTarget": "Mắt xoay sang bên tối đa bao nhiêu để theo LookTarget",
     "Up and Down Limit": "Giới hạn dọc",
     "How far the eyes turn up and down to follow LookTarget": "Mắt xoay lên xuống tối đa bao nhiêu để theo LookTarget",
+    # Anime rig R3: the 2D mouth (anime rig spec 10.3)
+    "%s: its material has no image texture to show mouth cells from":
+        "%s: material của phần không có image texture để hiện các ô miệng",
+    "Cell of the mouth atlas to show": "Ô trong atlas miệng được hiện",
 }
 
 # Words that need their own translation context, because Blender's own translation of the same word in the default

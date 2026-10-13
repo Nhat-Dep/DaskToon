@@ -216,10 +216,12 @@ def _make_bones(context, rig, plan):
 
 
 def _paint(context, rig, parts, owners, plan, actual, result):
+    from .look import FACE_MARK
     deform = [b.name for b in rig.data.bones if b.use_deform]
     generated = set(actual.values())
-    body_bones = [n for n in deform if n not in generated and n not in skeleton.FACE_BONES]
-    fixed_bones = [n for n in deform if n not in generated]
+    helpers = {b.name for b in rig.data.bones if FACE_MARK in b}  # MouthCell: deform, but never weighted
+    body_bones = [n for n in deform if n not in generated and n not in skeleton.FACE_BONES and n not in helpers]
+    fixed_bones = [n for n in deform if n not in generated and n not in helpers]
     body_ids = [i for i, part in enumerate(parts) if part.role == 'BODY']
     for obj in owners:
         weights.bind(rig, obj)
@@ -364,8 +366,9 @@ def build(context, rig, parts):
             elif part.role == 'SKIRT':
                 _plan_skirt(rig, i, part, vertices, plan)
         actual, removed = _make_bones(context, rig, plan)
-        from . import eyes, look
+        from . import eyes, look, mouth
         look.ensure(context, rig)
+        mouth.apply(context, rig, parts, result)
         _paint(context, rig, parts, owners, plan, actual, result)
         _drop_stale_groups(owners, removed, set(actual.values()))
         _tidy(rig, owners)
