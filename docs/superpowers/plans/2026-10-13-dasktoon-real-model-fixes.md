@@ -86,3 +86,6 @@ không nhân; chỉ ngưỡng và độ dày vệt nhân theo chiều cao.
 
 - Bản sao `tdt.blend`: Fit, Build, clip Wave và Talk, xuất sang project tạm của harness Unity, ảnh so sánh trước/sau.
 - Create: `docs/superpowers/reports/2026-10-13-dasktoon-real-model-report.md`
+- *Kết quả:* xem báo cáo. Ảnh so sánh chỉ để trên máy (`docs/superpowers/reports/real-model/`, bỏ qua bằng
+  `.git/info/exclude`) vì có nhân vật của người dùng. Khi thử lại tìm thêm một lỗi: hai bên khung lệch nhau theo chiều
+  sâu; đã sửa (khung đối xứng).
