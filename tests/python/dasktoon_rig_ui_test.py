@@ -263,9 +263,10 @@ class RegionsPanelTest(unittest.TestCase):
         """Not a standard skeleton: Build and Recognize say so, as Build always did, before recognizing anything."""
         with skeleton.editing(bpy.context, self.rig) as edit:
             edit.remove(edit["Hips"])  # the bone recognizing measures from
-        for op in (bpy.ops.dasktoon.rig_build, bpy.ops.dasktoon.rig_recognize):
+        for op, args in ((bpy.ops.dasktoon.rig_build, {}), (bpy.ops.dasktoon.rig_recognize, {}),
+                         (bpy.ops.dasktoon.rig_paint_regions, {"region": 'HEAD'})):
             with self.assertRaises(RuntimeError) as caught:
-                op()
+                op(**args)
             self.assertIn("is not a standard skeleton", str(caught.exception))
 
     def test_highlight_part(self):

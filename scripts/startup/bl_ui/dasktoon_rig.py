@@ -563,12 +563,17 @@ class DASKTOON_OT_rig_paint_regions(Operator):
         return obj.type == 'MESH'
 
     def execute(self, context):
-        from dasktoon_rig import regions
+        from dasktoon_rig import build, parts as rig_parts, regions
         obj = context.object
         if obj.type == 'ARMATURE':
             rig = obj
-            if not regions.has_layers(rig):
-                regions.recognize(context, rig)
+            if not regions.has_layers(rig):  # start from what Recognize finds
+                try:
+                    build.check(rig, list(rig.data.dasktoon_rig.parts))
+                    regions.recognize(context, rig)
+                except (build.BuildError, rig_parts.PartError) as ex:
+                    self.report({'ERROR'}, str(ex))
+                    return {'CANCELLED'}
             part = _active_part(rig)
             target = part.object if part is not None and part in _region_parts(rig) else _region_parts(rig)[0].object
             if obj.mode != 'OBJECT':
