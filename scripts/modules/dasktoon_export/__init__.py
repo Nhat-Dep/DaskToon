@@ -319,8 +319,15 @@ def _write_model(context, target, objects, meshes, options, rep):
         else:
             quiet = contextlib.nullcontext()
         with quiet:
-            if assets.write_asset(target.root, rel, guid, meta, rep.warnings, writer=write_fbx):
-                rep.model = rel
+            with contextlib.ExitStack() as rest:
+                if not animation:
+                    # The model holds the eyes at rest (Unity measures flat eyes from it); clips keep their gaze.
+                    from dasktoon_rig import look
+                    for obj in objects:
+                        if obj.type == 'ARMATURE':
+                            rest.enter_context(look.resting(obj))
+                if assets.write_asset(target.root, rel, guid, meta, rep.warnings, writer=write_fbx):
+                    rep.model = rel
             if clip_rig is not None:
                 _write_clips(context, target, writer, model_dir, objects, clip_rig, guid, rep)
         if left_out:

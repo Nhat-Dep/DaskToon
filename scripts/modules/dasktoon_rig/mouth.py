@@ -136,17 +136,6 @@ def ensure_property(obj, count):
     obj.id_properties_ui(PROP).update(min=0, max=max(count - 1, 0), description="Cell of the mouth atlas to show")
 
 
-def _materials(part, vertices):
-    """The materials the part's faces use."""
-    obj = part.object
-    if part.scope == 'MATERIAL':
-        found = obj.data.materials.get(part.material)
-        return [found] if found is not None else []
-    inside = set(int(v) for v in vertices)
-    slots = {p.material_index for p in obj.data.polygons if all(v in inside for v in p.vertices)}
-    return [obj.material_slots[i].material for i in sorted(slots) if i < len(obj.material_slots)]
-
-
 def _cell_bone(context, rig, wanted):
     """MouthCell under the Head, near the mouth, when a 2D Mouth part needs it; gone otherwise."""
     bones = rig.data.bones
@@ -189,7 +178,7 @@ def apply(context, rig, parts, result):
     for part in mouths:
         vertices = rig_parts.part_vertices(part)
         count = 0
-        for mat in _materials(part, vertices):
+        for _slot, mat in rig_parts.part_materials(part, vertices):
             count += atlas_material(mat, part.mouth_rows, part.mouth_columns)
         if count == 0:
             result.warnings.append(rpt_("%s: its material has no image texture to show mouth cells from") % part.name)

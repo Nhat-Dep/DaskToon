@@ -170,6 +170,18 @@ def rings(edges, vertices, count):
     return out
 
 
+def part_materials(part, vertices):
+    """[(slot index, material)] of the materials the part's faces use."""
+    obj = part.object
+    if part.scope == 'MATERIAL':
+        return [(i, slot.material) for i, slot in enumerate(obj.material_slots)
+                if slot.material is not None and slot.material.name == part.material][:1]
+    inside = set(int(v) for v in vertices)
+    slots = {p.material_index for p in obj.data.polygons if all(v in inside for v in p.vertices)}
+    return [(i, obj.material_slots[i].material) for i in sorted(slots)
+            if i < len(obj.material_slots) and obj.material_slots[i].material is not None]
+
+
 def local_edges(edges, vertices):
     """The edges with both ends in `vertices`, renumbered as positions in `vertices`."""
     if len(edges) == 0 or len(vertices) == 0:

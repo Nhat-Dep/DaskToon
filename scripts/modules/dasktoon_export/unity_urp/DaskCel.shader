@@ -7,6 +7,7 @@ Shader "DaskToon/DaskCel"
     Properties
     {
         [MainColor] _BaseColor ("Base Color", Color) = (0.978, 0.931, 0.906, 1)
+        [HideInInspector] _DT_UVTransform ("UV Transform", Vector) = (1, 1, 0, 0)
         [MainTexture] _BaseMap ("Base Color Map", 2D) = "white" {}
         [HideInInspector] _DT_BaseMapOn ("Base Color Map On", Float) = 0
         _DT_ShadowColor ("Shadow Color", Color) = (0.827, 0.735, 0.767, 1)
@@ -61,6 +62,7 @@ Shader "DaskToon/DaskCel"
 
         CBUFFER_START(UnityPerMaterial)
             float4 _BaseColor;
+            float4 _DT_UVTransform;  // xy scale, zw offset of every UV (flat eye, 2D mouth)
             float4 _DT_ShadowColor;
             float _DT_BaseMapOn;
             float _DT_ShadowColorMapOn;
@@ -116,7 +118,7 @@ Shader "DaskToon/DaskCel"
             {
                 UNITY_SETUP_INSTANCE_ID(input);
                 UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
-                float2 uv = input.uv0;
+                float2 uv = input.uv0 * _DT_UVTransform.xy + _DT_UVTransform.zw;
                 float3 N = DT_ShadingNormal(input, IS_FRONT_VFACE(face, true, false),
                                             TEXTURE2D_ARGS(_DT_NormalMap, sampler_linear_repeat), _DT_NormalStrength);
                 InputData inputData = DT_MakeInputData(input.positionWS, N, input.positionCS, input.fogFactor);

@@ -11,7 +11,9 @@ using UnityEngine;
 namespace DaskToon.Editor
 {
     /// <summary>When Unity imports a model with a DaskToon <model>.rig.json beside it, adds a DaskToonSpringBone for
-    /// each chain that sways at run time and a DaskToonSpringCollider on each collider bone (anime rig spec 9.5).</summary>
+    /// each chain that sways at run time and a DaskToonSpringCollider on each collider bone (anime rig spec 9.5), a
+    /// DaskToonFlatEye for each flat eye and a DaskToonMouthAtlas for each 2D mouth (spec 10, rig file version 2).
+    /// </summary>
     public class DaskToonRigImporter : AssetPostprocessor
     {
         [Serializable]
@@ -36,11 +38,46 @@ namespace DaskToon.Editor
         }
 
         [Serializable]
+        class FlatEyeData
+        {
+            public string @object;
+            public string material;
+            public int slot;
+            public string side;
+            public float range;
+        }
+
+        [Serializable]
+        class MouthData
+        {
+            public string @object;
+            public string material;
+            public int slot;
+            public int rows;
+            public int columns;
+            public string bone;
+        }
+
+        [Serializable]
         class RigData
         {
             public int version;
             public ChainData[] chains;
             public ColliderData[] colliders;
+            public FlatEyeData[] flatEyes;
+            public MouthData[] mouths;
+        }
+
+        /// <summary>The slot of `renderer` whose material is named `material`, else `slot` (kept within the slots).
+        /// </summary>
+        static int MaterialIndex(Renderer renderer, string material, int slot)
+        {
+            var materials = renderer.sharedMaterials;
+            for (var i = 0; i < materials.Length; i++)
+            {
+                if (materials[i] != null && materials[i].name == material) return i;
+            }
+            return Mathf.Clamp(slot, 0, Mathf.Max(materials.Length - 1, 0));
         }
 
         public static string RigPath(string modelPath) => Path.ChangeExtension(modelPath, ".rig.json");
@@ -65,7 +102,7 @@ namespace DaskToon.Editor
             if (!File.Exists(path)) return;
             context.DependsOnSourceAsset(path);  // a new rig file imports the model again
             var data = JsonUtility.FromJson<RigData>(File.ReadAllText(path));
-            if (data == null || data.version != 1)
+            if (data == null || data.version < 1 || data.version > 2)
             {
                 Debug.LogWarning("DaskToon: " + path + " is not a rig file this version understands");
                 return;
@@ -102,6 +139,42 @@ namespace DaskToon.Editor
                 spring.drag = chain.drag;
                 spring.radius = chain.radius;
                 spring.colliders = colliders.ToArray();
+            }
+            AddFace(root, data, byName);
+        }
+
+        static void AddFace(GameObject root, RigData data, Dictionary<string, Transform> byName)
+        {
+            foreach (var e in data.flatEyes ?? new FlatEyeData[0])
+            {
+                if (!byName.TryGetValue(e.@object, out var mesh) || !(mesh.GetComponent<Renderer>() is Renderer renderer))
+                    continue;
+                if (!byName.TryGetValue("LeftEye", out var leftEye) || !byName.TryGetValue("RightEye", out var rightEye))
+                    continue;
+                var bone = e.side == "RIGHT" ? rightEye : leftEye;
+                var eye = mesh.gameObject.AddComponent<DaskToonFlatEye>();
+                eye.eye = bone;
+                eye.target = renderer;
+                eye.materialIndex = MaterialIndex(renderer, e.material, e.slot);
+                eye.range = e.range;
+                eye.restLocalRotation = bone.localRotation;
+                // The character's left (from its right eye to its left) and up, in the eye's rest frame: the same
+                // directions DaskToon's drivers use, whatever axes the FBX import gave the bone.
+                var rest = Quaternion.Inverse(bone.rotation);
+                eye.left = (rest * (leftEye.position - rightEye.position)).normalized;
+                eye.up = (rest * root.transform.up).normalized;
+            }
+            foreach (var m in data.mouths ?? new MouthData[0])
+            {
+                if (!byName.TryGetValue(m.@object, out var mesh) || !(mesh.GetComponent<Renderer>() is Renderer renderer))
+                    continue;
+                if (!byName.TryGetValue(m.bone ?? "", out var cellBone)) continue;
+                var mouth = mesh.gameObject.AddComponent<DaskToonMouthAtlas>();
+                mouth.cellBone = cellBone;
+                mouth.target = renderer;
+                mouth.materialIndex = MaterialIndex(renderer, m.material, m.slot);
+                mouth.rows = Mathf.Max(m.rows, 1);
+                mouth.columns = Mathf.Max(m.columns, 1);
             }
         }
     }

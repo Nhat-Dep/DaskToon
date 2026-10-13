@@ -9,6 +9,8 @@ the eye bones themselves; the exported animation bakes the turned eyes, so Unity
 LookTarget and the other face helper bones carry FACE_MARK, not Build Rig's mark: building again keeps them where the
 animator put them."""
 
+from contextlib import contextmanager
+
 from mathutils import Vector
 
 from . import skeleton
@@ -48,6 +50,26 @@ def sync_limits(rig):
             continue
         limit.min_x, limit.max_x = -data.look_pitch_limit, data.look_pitch_limit
         limit.min_z, limit.max_z = -data.look_yaw_limit, data.look_yaw_limit
+
+
+@contextmanager
+def resting(rig):
+    """Meanwhile the eyes' look constraints are muted, so the eyes are at rest (Engine Export writes the model FBX
+    this way: Unity measures a flat eye's turn from the pose it imports); afterwards each is as it was."""
+    saved = []
+    for eye in EYES:
+        pose_bone = rig.pose.bones.get(eye)
+        for name in (TRACK, LIMIT):
+            con = pose_bone.constraints.get(name) if pose_bone is not None else None
+            if con is not None:
+                saved.append((con, con.mute))
+    try:
+        for con, _mute in saved:
+            con.mute = True
+        yield
+    finally:
+        for con, mute in saved:
+            con.mute = mute
 
 
 def ensure(context, rig):

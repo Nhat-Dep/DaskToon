@@ -36,7 +36,8 @@ class RigJsonTest(unittest.TestCase):
         rig.data.dasktoon_rig.parts["Skirt"].sway_in_unity = 'BAKED'
         rig.data.dasktoon_rig.parts["Hair"].stiffness = 2.5
         data = rig_json.rig_data(rig)
-        self.assertEqual(data["version"], 1)
+        self.assertEqual(data["version"], 2)
+        self.assertEqual((data["flatEyes"], data["mouths"]), ([], []))
         hair = next(c for c in data["chains"] if c["part"] == "Hair")
         self.assertEqual(hair["bones"], ["Hair_1", "Hair_2", "Hair_3", "Hair_4"])
         self.assertEqual(hair["unity"], "runtime")
@@ -97,7 +98,7 @@ class ScriptsInstallTest(unittest.TestCase):
         self.assertIn("if (dt <= 0f) return;", code)
         with open(os.path.join(root, si.SCRIPT_DIR, "Editor", "DaskToonRigImporter.cs"), encoding="utf-8") as f:
             self.assertIn("static void OnPostprocessAllAssets(", f.read())
-        self.assertEqual(si.SCRIPTS_VERSION, 4)
+        self.assertEqual(si.SCRIPTS_VERSION, 5)
 
     def test_older_scripts_are_replaced(self):
         from dasktoon_export import scripts_install as si
@@ -116,6 +117,50 @@ class ScriptsInstallTest(unittest.TestCase):
             f.write("%d\n" % (si.SCRIPTS_VERSION + 1))
         self.assertFalse(si.install_scripts(self.target(root), []))
         self.assertTrue(si.install_scripts(self.target(root), [], force=True))
+
+
+def face_built(with_body=True):
+    """The test character with a flat eye (a plane "Iris", material "Iris", Range 0.1) and a 2D mouth (a plane
+    "MouthCard", material "Mouth" with an image texture, 2 x 4 cells), built."""
+    import dasktoon_rig_face_test as face
+    bpy.ops.wm.read_factory_settings(use_empty=True)
+    objs = fx.character()
+    rig = fx.rig_for()
+    iris = face.iris(rig)
+    iris.data.materials.append(bpy.data.materials.new("Iris"))
+    card, _mat = face.mouth_card(rig)
+    if with_body:
+        ui.add_part(rig, objs["Body"], 'BODY')
+    eye = ui.add_part(rig, iris, 'FLAT_EYE')
+    eye.eye_range = 0.1
+    mouth = ui.add_part(rig, card, 'MOUTH_2D')
+    mouth.mouth_rows, mouth.mouth_columns = 2, 4
+    build.build(bpy.context, rig, list(rig.data.dasktoon_rig.parts))
+    return rig, objs, iris, card
+
+
+class FaceJsonTest(unittest.TestCase):
+    def test_flat_eyes_and_mouths(self):
+        rig, _objs, _iris, _card = face_built()
+        data = rig_json.rig_data(rig)
+        self.assertEqual(data["version"], 2)
+        self.assertEqual(data["chains"], [])
+        self.assertEqual(data["flatEyes"], [{"object": "Iris", "material": "Iris", "slot": 0, "side": "LEFT",
+                                             "range": 0.1}])
+        self.assertEqual(data["mouths"], [{"object": "MouthCard", "material": "Mouth", "slot": 0, "rows": 2,
+                                           "columns": 4, "bone": "MouthCell"}])
+        self.assertIs(rig_json.find_rig([rig]), rig)
+
+    def test_shaders_take_a_uv_transform(self):
+        from dasktoon_export import shaders_install
+        self.assertEqual(shaders_install.SHADER_VERSION, 2)
+        folder = os.path.join(os.path.dirname(rig_json.__file__), "unity_urp")
+        for name in ("AnimeBSDF", "AnimeCel", "AnimeEye", "DaskCel"):
+            with open(os.path.join(folder, name + ".shader"), encoding="utf-8") as f:
+                code = f.read()
+            self.assertIn('_DT_UVTransform ("UV Transform", Vector) = (1, 1, 0, 0)', code, name)
+            self.assertIn("float4 _DT_UVTransform;", code, name)
+            self.assertIn("float2 uv = input.uv0 * _DT_UVTransform.xy + _DT_UVTransform.zw;", code, name)
 
 
 def export(rig, objs, folder=None):
@@ -190,6 +235,27 @@ class ExportRigTest(unittest.TestCase):
         self.assertTrue(seen["skirt"])    # Runtime: Unity sways it, so the FBX has it still
         self.assertFalse(seen["hair"])    # Baked: keeps its sway
         self.assertFalse(sway.spring_constraint(rig.pose.bones["Skirt1_3"]).mute)  # back afterwards
+
+    def test_eyes_rest_while_the_model_is_written(self):
+        """The model FBX holds the eyes at rest, so Unity's flat eye measures turns from the rest (R3)."""
+        from dasktoon_export import model_fbx
+        from dasktoon_rig import look
+        rig, objs, iris, card = face_built()
+        seen = {}
+        original = model_fbx.write_fbx
+
+        def spy(context, objects, filepath, include_animation, **kwargs):
+            seen["mute"] = [rig.pose.bones[eye].constraints[name].mute for eye in look.EYES
+                            for name in (look.TRACK, look.LIMIT)]
+            return original(context, objects, filepath, include_animation, **kwargs)
+
+        model_fbx.write_fbx = spy
+        try:
+            export(rig, dict(objs, Iris=iris, MouthCard=card))
+        finally:
+            model_fbx.write_fbx = original
+        self.assertEqual(seen["mute"], [True] * 4)
+        self.assertFalse(any(rig.pose.bones[eye].constraints[look.TRACK].mute for eye in look.EYES))
 
     def test_runtime_chain_with_keys_warns(self):
         from dasktoon_rig import sway
