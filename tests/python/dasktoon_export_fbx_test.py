@@ -54,6 +54,22 @@ class FbxTest(unittest.TestCase):
         self.assertIn("DT_OutlineW", names)
         self.assertEqual([m.name for m in imported.data.materials], ["Skin"])
 
+    def test_region_layer_stays_out_of_the_fbx(self):
+        """The anime rig's region colors are for painting in DaskToon, not Unity's vertex colors (rig regions spec 7)."""
+        import numpy as np
+        from dasktoon_rig import regions
+        obj = outlined_character()
+        count = len(obj.data.vertices)
+        regions.write(obj, np.arange(count), np.full(count, regions.REGIONS.index('HEAD')))
+        path = os.path.join(tempfile.mkdtemp(prefix="dt_fbx_"), "Painted.fbx")
+        model_fbx.write_fbx(bpy.context, [obj], path, include_animation=False)
+        self.assertEqual(set(regions.read(obj).tolist()), {regions.REGIONS.index('HEAD')})  # back after writing
+        self.assertEqual(obj.data.color_attributes.default_color_name, "")
+        tu.reset_scene()
+        bpy.ops.import_scene.fbx(filepath=path)
+        imported = next(o for o in bpy.data.objects if o.type == 'MESH')
+        self.assertEqual([layer.name for layer in imported.data.color_attributes], [])
+
     def test_selection_is_restored_after_writing(self):
         obj = outlined_character()
         other = tu.add_sphere(segments=8, rings=4)

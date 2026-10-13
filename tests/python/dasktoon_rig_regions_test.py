@@ -118,5 +118,95 @@ class RecognizeTest(unittest.TestCase):
         self.assertEqual({name: sorted(v.tolist()) for name, v in found}, {"Lock M1": [0, 1, 2], "Lock L1": [3]})
 
 
+def rigged():
+    """The character with its parts in the rig (as the interface adds them)."""
+    from bl_ui import dasktoon_rig as ui
+    rig, objs, _parts = character()
+    ui.add_part(rig, objs["Body"], 'BODY')
+    ui.add_part(rig, objs["Shirt"], 'CLOTHING')
+    ui.add_part(rig, objs["Boots"], 'CLOTHING')
+    return rig, objs
+
+
+class LayerTest(unittest.TestCase):
+    def setUp(self):
+        bpy.ops.wm.read_factory_settings(use_empty=True)
+        self.obj = st.box("Box", (0, 0, 0), (1, 1, 1))
+
+    def test_write_then_read(self):
+        head, torso, arm, leg = (regions.REGIONS.index(r) for r in ('HEAD', 'TORSO', 'ARM_L', 'LEG_R'))
+        regions.write(self.obj, np.array([0, 1, 2, 3]), np.array([head, torso, arm, leg]))
+        self.assertEqual(regions.read(self.obj).tolist(), [head, torso, arm, leg] + [regions.AUTO] * 4)
+        layers = self.obj.data.color_attributes
+        self.assertEqual((layers.active_color_name, layers.default_color_name), ("", ""))
+
+    def test_the_mesh_keeps_its_own_colors(self):
+        layers = self.obj.data.color_attributes
+        layers.new("Col", 'BYTE_COLOR', 'CORNER')
+        regions.write(self.obj, np.array([0]), np.array([0]))
+        self.assertEqual((layers.active_color_name, layers.default_color_name), ("Col", "Col"))
+
+    def test_painted_colors_snap_to_the_nearest_region(self):
+        regions.write(self.obj, np.arange(8), np.zeros(8, np.int64))
+        layer = self.obj.data.color_attributes[regions.LAYER]
+        blue = regions.COLORS['TORSO']
+        layer.data[0].color_srgb = (0.4, 0.6, 0.85, 1.0)  # a soft brush between head yellow and torso blue, near blue
+        layer.data[1].color_srgb = (0.97, 0.98, 0.95, 1.0)  # unpainted: white
+        layer.data[2].color_srgb = (0.02, 0.0, 0.03, 1.0)  # black
+        layer.data[3].color_srgb = (*blue, 1.0)
+        found = regions.read(self.obj)
+        torso = regions.REGIONS.index('TORSO')
+        self.assertEqual(found[:4].tolist(), [torso, regions.AUTO, regions.AUTO, torso])
+
+    def test_no_layer_is_all_automatic(self):
+        self.assertEqual(set(regions.read(self.obj).tolist()), {regions.AUTO})
+
+
+class RecognizePartsTest(unittest.TestCase):
+    def setUp(self):
+        self.rig, self.objs = rigged()
+
+    def locks(self):
+        return {part.name: part for part in self.rig.data.dasktoon_rig.parts if part.made_by_recognize}
+
+    def test_regions_are_written_and_locks_are_parts(self):
+        regions.recognize(bpy.context, self.rig)
+        body = self.objs["Body"]
+        found = regions.read(body)
+        self.assertEqual(regions.REGIONS[found[nearest(body, ARM_END)]], 'ARM_L')
+        self.assertEqual(regions.REGIONS[found[nearest(body, (0.38, 0.1, 1.6))]], 'HEAD')
+        locks = self.locks()
+        self.assertEqual(sorted(locks), ["Lock L1", "Lock R1", "Lock R2"])
+        ear = locks["Lock L1"]
+        self.assertEqual((ear.object, ear.scope, ear.vertex_group, ear.role, ear.bone),
+                         (body, 'VERTEX_GROUP', "DT_Lock L1", 'ACCESSORY', "Head"))
+        vertices = rig_parts.part_vertices(ear)
+        self.assertEqual(nearest(body, (0.38, 0.1, 1.6)) in set(vertices.tolist()), True)
+
+    def test_recognize_again_keeps_what_you_chose(self):
+        regions.recognize(bpy.context, self.rig)
+        hair = self.locks()["Lock R2"]
+        hair.role, hair.stiffness = 'HAIR', 2.5
+        regions.recognize(bpy.context, self.rig)
+        locks = self.locks()
+        self.assertEqual(sorted(locks), ["Lock L1", "Lock R1", "Lock R2"])
+        self.assertEqual((locks["Lock R2"].role, locks["Lock R2"].stiffness), ('HAIR', 2.5))
+        self.assertEqual(locks["Lock R1"].role, 'ACCESSORY')
+        groups = sorted(g.name for g in self.objs["Body"].vertex_groups if g.name.startswith("DT_Lock"))
+        self.assertEqual(groups, ["DT_Lock L1", "DT_Lock R1", "DT_Lock R2"])
+
+    def test_parts_you_made_are_left_alone(self):
+        from bl_ui import dasktoon_rig as ui
+        body = self.objs["Body"]
+        world, edges = rig_parts.mesh_arrays(body)
+        ear = [p for p in rig_parts.pieces(edges, np.arange(len(world))) if nearest(body, (-0.38, 0.1, 1.6)) in p][0]
+        group = body.vertex_groups.new(name="My Ear")
+        group.add(ear.tolist(), 1.0, 'REPLACE')
+        ui.add_part(self.rig, body, 'HAIR', name="My Ear", scope='VERTEX_GROUP', vertex_group="My Ear")
+        regions.recognize(bpy.context, self.rig)
+        self.assertEqual(sorted(self.locks()), ["Lock L1", "Lock R1"])  # the right side has only the hair lock now
+        self.assertIn("My Ear", [part.name for part in self.rig.data.dasktoon_rig.parts])
+
+
 if __name__ == "__main__":
     tu.run_tests()

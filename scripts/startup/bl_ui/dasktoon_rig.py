@@ -102,6 +102,9 @@ class DaskRigPart(PropertyGroup):
         ],
         default='RUNTIME',
     )
+    made_by_recognize: BoolProperty(
+        name="Made by Recognize", description="A lock Recognize made from pieces hanging from the head; Recognize makes "
+        "it again (keeping its role and settings)")
 
 
 class DaskRigCollider(PropertyGroup):

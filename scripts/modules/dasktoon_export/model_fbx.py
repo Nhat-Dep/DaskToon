@@ -5,7 +5,10 @@
 """FBX model for Unity (spec 4). Modifiers are not applied, so shape keys survive and the Geometry Nodes outline
 hull stays out of the file; Unity draws the outline in the shader from DT_OutlineN/W."""
 
+from contextlib import contextmanager
+
 import bpy
+import numpy as np
 from bpy.app.translations import pgettext_rpt as rpt_
 
 EXPORT_TYPES = {'ARMATURE', 'MESH', 'EMPTY'}
@@ -79,6 +82,32 @@ def modifier_notes(objects):
     return notes
 
 
+@contextmanager
+def _without_region_layers(objects):
+    """The anime rig's region layers (rig regions spec 7) out of the meshes of `objects` meanwhile, then back with their
+    colors and the meshes' active and default colors: they are for painting in DaskToon, not Unity's vertex colors."""
+    from dasktoon_rig import regions
+    saved = []
+    for obj in objects:
+        mesh = obj.data if obj.type == 'MESH' else None
+        layer = mesh.color_attributes.get(regions.LAYER) if mesh is not None else None
+        if layer is None or any(mesh is other[0] for other in saved):
+            continue
+        colors = np.empty(len(layer.data) * 4, np.float32)
+        layer.data.foreach_get("color", colors)
+        layers = mesh.color_attributes
+        saved.append((mesh, colors, layer.data_type, layer.domain, layers.active_color_name, layers.default_color_name))
+        layers.remove(layer)
+    try:
+        yield
+    finally:
+        for mesh, colors, data_type, domain, active, default in saved:
+            layer = mesh.color_attributes.new(regions.LAYER, data_type, domain)
+            layer.data.foreach_set("color", colors)
+            mesh.color_attributes.active_color_name = active
+            mesh.color_attributes.default_color_name = default
+
+
 def write_fbx(context, objects, filepath, include_animation, single_take=False):
     """Export `objects` with the fixed settings of spec 4; the user's selection and active object are restored.
     `single_take` bakes one take of the scene's frame range, named after the scene (a clip, clips spec 6), instead of a
@@ -97,8 +126,9 @@ def write_fbx(context, objects, filepath, include_animation, single_take=False):
             except RuntimeError:
                 left_out.append(obj.name)
         takes = dict(bake_anim_use_all_actions=False, bake_anim_use_nla_strips=False) if single_take else {}
-        bpy.ops.export_scene.fbx(filepath=filepath, use_selection=True, bake_anim=include_animation, **FBX_SETTINGS,
-                                 **takes)
+        with _without_region_layers(objects):
+            bpy.ops.export_scene.fbx(filepath=filepath, use_selection=True, bake_anim=include_animation, **FBX_SETTINGS,
+                                     **takes)
         return left_out
     finally:
         for obj in view_layer.objects:

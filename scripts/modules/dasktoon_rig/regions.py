@@ -34,6 +34,8 @@ SIDE_MARGIN = 0.01  # (x height) how far past the neck joint a vertex is on that
 LOCK_GAP = 0.005  # (x height) pieces this near are one lock
 MIDDLE_LOCK = 0.02  # (x height) a lock whose middle is this near the body's middle is on neither side
 BODY_ROLES = ('BODY', 'CLOTHING')
+LOCK_SETTINGS = ("role", "bone", "bone_count", "chain_count", "stiffness", "gravity", "drag", "radius", "sway_in_unity")
+LOCK_KEEP = 0.5  # a new lock at least this much over an old one (share of its vertices) keeps the old one's settings
 
 
 def _side(region):
@@ -251,4 +253,120 @@ def analyse(context, rig, parts, owners=None):
             named += [(_side_of(world, g, middle, height), float(world[g, 2].max()), (obj, g))
                       for g in _groups(pieces, world, LOCK_GAP * height)]
     found.locks = [(name, obj, g) for name, (obj, g) in _named(named)]
+    return found
+
+
+def ensure_layer(obj):
+    """The region layer of obj's mesh, made when missing (white: every vertex automatic) without becoming the mesh's
+    active or default color, so materials reading vertex colors and the colors shown do not change."""
+    layers = obj.data.color_attributes
+    layer = layers.get(LAYER)
+    if layer is None:
+        active, default = layers.active_color_name, layers.default_color_name
+        layer = layers.new(LAYER, 'BYTE_COLOR', 'POINT')
+        layers.active_color_name, layers.default_color_name = active, default
+    return layer
+
+
+def _colors(layer):
+    colors = np.empty(len(layer.data) * 4, np.float32)
+    layer.data.foreach_get("color_srgb", colors)
+    return colors.reshape(-1, 4)
+
+
+def write(obj, vertices, found):
+    """Paint the regions `found` (indices in REGIONS) on `vertices` of obj's region layer."""
+    layer = ensure_layer(obj)
+    colors = _colors(layer)
+    table = np.array([COLORS[region] + (1.0,) for region in REGIONS], np.float32)
+    colors[np.asarray(vertices)] = table[np.asarray(found)]
+    layer.data.foreach_set("color_srgb", colors.ravel())
+    obj.data.update()
+
+
+def read(obj):
+    """Region (index in REGIONS) of every vertex of obj as painted: the region of the nearest color; AUTO where the
+    mesh has no region layer or the color is near white or black (new vertices, never painted)."""
+    out = np.full(len(obj.data.vertices), AUTO, np.int8)
+    layer = obj.data.color_attributes.get(LAYER)
+    if layer is None or layer.domain != 'POINT':
+        return out
+    rgb = _colors(layer)[:, :3]
+    table = np.array([COLORS[region] for region in REGIONS], np.float32)
+    nearest = np.linalg.norm(rgb[:, None, :] - table[None, :, :], axis=2).argmin(axis=1)
+    painted = (rgb.min(axis=1) <= 0.9) & (rgb.max(axis=1) >= 0.1)
+    out[painted] = nearest[painted]
+    return out
+
+
+def has_layers(rig):
+    """True when a mesh of the rig's Body or Clothing parts has a region layer."""
+    return any(part.object is not None and part.object.type == 'MESH' and part.role in BODY_ROLES
+               and part.object.data.color_attributes.get(LAYER) is not None for part in rig.data.dasktoon_rig.parts)
+
+
+def _is_lock(part):
+    return bool(getattr(part, "made_by_recognize", False))
+
+
+def _remove_locks(rig):
+    """Take the locks Recognize made out of the rig, with their vertex groups; returns [(object, vertex set,
+    settings)] of them."""
+    data = rig.data.dasktoon_rig
+    old = []
+    for part in [part for part in data.parts if _is_lock(part)]:
+        obj = part.object
+        group = obj.vertex_groups.get(part.vertex_group) if obj is not None else None
+        if group is None:
+            continue
+        try:
+            vertices = set(rig_parts.part_vertices(part).tolist())
+        except rig_parts.PartError:
+            vertices = set()
+        old.append((obj, vertices, {key: getattr(part, key) for key in LOCK_SETTINGS}))
+        if not any(other.object == obj and other.vertex_group == group.name and not _is_lock(other)
+                   for other in data.parts):
+            obj.vertex_groups.remove(group)
+    for index in reversed(range(len(data.parts))):
+        if _is_lock(data.parts[index]):
+            data.parts.remove(index)
+    data.active_part_index = min(data.active_part_index, max(len(data.parts) - 1, 0))
+    return old
+
+
+def make_lock(rig, obj, name, vertices, settings=None, made_by_recognize=True):
+    """A part for a lock: the vertices in a new vertex group "DT_<name>", rigid on the Head unless `settings` (from an
+    old lock) say otherwise."""
+    group = obj.vertex_groups.new(name="DT_" + name)
+    group.add([int(v) for v in vertices], 1.0, 'REPLACE')
+    data = rig.data.dasktoon_rig
+    part = data.parts.add()
+    part.name = name
+    part.object = obj
+    part.scope = 'VERTEX_GROUP'
+    part.vertex_group = group.name
+    part.role = 'ACCESSORY'
+    part.bone = "Head"
+    for key, value in (settings or {}).items():
+        setattr(part, key, value)
+    part.made_by_recognize = made_by_recognize
+    return part
+
+
+def recognize(context, rig):
+    """Recognize the regions of the rig's Body and Clothing parts, paint them on their meshes' region layers, and make
+    again the locks Recognize made: a new lock that is mostly an old one keeps its role and settings. Returns the
+    Analysis."""
+    old = _remove_locks(rig)
+    found = analyse(context, rig, list(rig.data.dasktoon_rig.parts))
+    for obj, (vertices, labelled) in found.objects.items():
+        write(obj, vertices, labelled)
+    for name, obj, vertices in found.locks:
+        mine = set(vertices.tolist())
+        settings = None
+        for old_obj, old_vertices, old_settings in old:
+            if old_obj == obj and len(mine & old_vertices) >= LOCK_KEEP * len(mine):
+                settings = old_settings
+                break
+        make_lock(rig, obj, name, vertices, settings)
     return found
