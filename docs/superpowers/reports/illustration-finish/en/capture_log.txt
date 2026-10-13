@@ -1,0 +1,7 @@
+saved 41_finish_before_after (960, 300)
+saved 43_finish_styles (960, 900)
+styles ['Default', 'Early Morning', 'Sunset', 'Night', 'Watercolor']
+saved 40_finish_panel (339, 781)
+camera view compositor CAMERA
+saved 42_finish_camera_view (559, 554)
+done
