@@ -1081,8 +1081,12 @@ VI = {
     "Add Part from Selection": "Thêm phần từ vùng chọn",
     "Make the selected vertices a part of the rig, kept in a new vertex group":
         "Biến các đỉnh đang chọn thành một phần của rig, lưu trong một vertex group mới",
-    "Fit the joints in Edit Mode, then press Build Rig in Properties › Object Data":
-        "Chỉnh khớp trong Edit Mode, rồi bấm Dựng rig ở Properties › Object Data",
+    "Skeleton fitted to the selected meshes. Next press Build Rig: in the panel on the right, the green stick figure "
+    "tab, Anime Rig":
+        "Đã khớp khung xương theo các mô hình đang chọn. Tiếp theo bấm Dựng rig: ở bảng bên phải, thẻ hình người que màu "
+        "xanh lá, mục Rig anime",
+    "Select the character's meshes, add them in Anime Rig › Parts, then press Fit to Parts and Build Rig":
+        "Chọn các mô hình của nhân vật, thêm chúng ở mục Các phần trong Rig anime, rồi bấm Khớp theo các phần và Dựng rig",
     "The selected meshes are already parts": "Các mesh đang chọn đã là phần của rig",
     "No standard skeleton to add the part to": "Không có khung chuẩn nào để thêm phần vào",
     "Select the vertices of the part first": "Hãy chọn các đỉnh của phần trước",

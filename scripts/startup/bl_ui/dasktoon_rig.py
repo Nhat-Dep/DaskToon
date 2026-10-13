@@ -191,6 +191,16 @@ def add_part(rig, obj, role, name=None, scope='OBJECT', material="", vertex_grou
     return part
 
 
+def fit_to_parts(context, rig):
+    """Fit the skeleton of `rig` to the meshes of its parts, reading the body's shape from the Body and Clothing parts
+    (hair, a skirt or a held staff is no limb)."""
+    from dasktoon_rig import skeleton
+    parts = [part for part in rig.data.dasktoon_rig.parts if part.object is not None and part.object.type == 'MESH']
+    meshes = list(dict.fromkeys(part.object for part in parts))
+    body = list(dict.fromkeys(part.object for part in parts if part.role in {'BODY', 'CLOTHING'}))
+    skeleton.fit(context, rig, meshes, body=body or None)
+
+
 def add_meshes(rig, meshes):
     """Whole-object parts for the meshes not yet in the rig, with the roles their names suggest; returns how many."""
     from dasktoon_rig import parts as rig_parts
@@ -227,10 +237,16 @@ class DASKTOON_OT_rig_add_humanoid(Operator):
         rig = skeleton.create_humanoid(context, height, location)
         if meshes:
             add_meshes(rig, meshes)
+            fit_to_parts(context, rig)  # at once: someone new to rigging should not need Fit to Parts
         for obj in context.view_layer.objects:
             obj.select_set(obj == rig)
         context.view_layer.objects.active = rig
-        self.report({'INFO'}, rpt_("Fit the joints in Edit Mode, then press Build Rig in Properties › Object Data"))
+        if meshes:
+            self.report({'INFO'}, rpt_("Skeleton fitted to the selected meshes. Next press Build Rig: in the panel on "
+                                       "the right, the green stick figure tab, Anime Rig"))
+        else:
+            self.report({'INFO'}, rpt_("Select the character's meshes, add them in Anime Rig › Parts, then press Fit "
+                                       "to Parts and Build Rig"))
         return {'FINISHED'}
 
 
@@ -266,13 +282,7 @@ class DASKTOON_OT_rig_fit(Operator):
         return context.window_manager.invoke_confirm(self, event)
 
     def execute(self, context):
-        from dasktoon_rig import skeleton
-        rig = rig_of(context)
-        parts = [part for part in rig.data.dasktoon_rig.parts if part.object is not None and part.object.type == 'MESH']
-        meshes = list(dict.fromkeys(part.object for part in parts))
-        # The shape of the body is read from the Body and Clothing parts: hair, a skirt or a held staff is no limb.
-        body = list(dict.fromkeys(part.object for part in parts if part.role in {'BODY', 'CLOTHING'}))
-        skeleton.fit(context, rig, meshes, body=body or None)
+        fit_to_parts(context, rig_of(context))
         return {'FINISHED'}
 
 

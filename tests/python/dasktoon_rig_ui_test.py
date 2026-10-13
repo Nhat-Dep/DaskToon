@@ -57,6 +57,17 @@ class AddTest(unittest.TestCase):
         roles = {p.object.name: p.role for p in rig.data.dasktoon_rig.parts}
         self.assertEqual(roles, {"Body": 'BODY', "Hair": 'HAIR', "Shirt": 'CLOTHING'})
 
+    def test_add_follows_the_shape_of_the_character(self):
+        """Adding the skeleton to selected meshes fits it to their shape at once (no separate Fit to Parts for someone
+        new to rigging): the arms of an A-pose chibi reach its hands."""
+        import dasktoon_rig_skeleton_test as st
+        body, ears, marks = st.chibi()
+        select_only([body, ears], body)
+        bpy.ops.dasktoon.rig_add_humanoid()
+        rig = bpy.context.view_layer.objects.active
+        tip = rig.matrix_world @ rig.data.bones["LeftMiddleDistal"].tail_local
+        self.assertLess((tip - marks["tip_left"]).length, 0.06)
+
     def test_add_without_meshes_uses_the_cursor(self):
         bpy.context.scene.cursor.location = (2.0, 0.0, 0.0)
         bpy.ops.dasktoon.rig_add_humanoid()
