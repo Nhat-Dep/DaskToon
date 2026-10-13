@@ -259,6 +259,15 @@ class RegionsPanelTest(unittest.TestCase):
         self.assertEqual([(space.shading.type, space.shading.color_type) for space in spaces], before)
         self.assertEqual(body.data.color_attributes.active_color_name, "")
 
+    def test_buttons_report_a_skeleton_they_cannot_use(self):
+        """Not a standard skeleton: Build and Recognize say so, as Build always did, before recognizing anything."""
+        with skeleton.editing(bpy.context, self.rig) as edit:
+            edit.remove(edit["Hips"])  # the bone recognizing measures from
+        for op in (bpy.ops.dasktoon.rig_build, bpy.ops.dasktoon.rig_recognize):
+            with self.assertRaises(RuntimeError) as caught:
+                op()
+            self.assertIn("is not a standard skeleton", str(caught.exception))
+
     def test_highlight_part(self):
         data = self.rig.data.dasktoon_rig
         self.assertTrue(data.highlight_part)

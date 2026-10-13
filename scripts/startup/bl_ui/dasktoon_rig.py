@@ -367,13 +367,15 @@ class DASKTOON_OT_rig_build(Operator):
         from dasktoon_rig import build, parts as rig_parts, regions
         rig = rig_of(context)
         recognized = None
-        if rig.data.dasktoon_rig.parts and not regions.has_layers(rig):
-            # Never recognized: do it first, so the one-button way still gets regions and locks (rig regions spec 5).
-            try:
-                recognized = regions.recognize(context, rig)
-            except rig_parts.PartError:
-                pass  # Build reports the part
         try:
+            build.check(rig, list(rig.data.dasktoon_rig.parts))  # its message, before recognizing anything
+            if not regions.has_layers(rig):
+                # Never recognized: do it first, so the one-button way still gets regions and locks (rig regions
+                # spec 5).
+                try:
+                    recognized = regions.recognize(context, rig)
+                except rig_parts.PartError:
+                    pass  # Build reports the part
             result = build.build(context, rig, list(rig.data.dasktoon_rig.parts))
         except build.BuildError as ex:
             self.report({'ERROR'}, str(ex))
@@ -520,10 +522,12 @@ class DASKTOON_OT_rig_recognize(Operator):
         return self.execute(context)
 
     def execute(self, context):
-        from dasktoon_rig import parts as rig_parts, regions
+        from dasktoon_rig import build, parts as rig_parts, regions
+        rig = rig_of(context)
         try:
-            found = regions.recognize(context, rig_of(context))
-        except rig_parts.PartError as ex:
+            build.check(rig, list(rig.data.dasktoon_rig.parts))  # a rig Build cannot use cannot be recognized either
+            found = regions.recognize(context, rig)
+        except (build.BuildError, rig_parts.PartError) as ex:
             self.report({'ERROR'}, str(ex))
             return {'CANCELLED'}
         self.report({'INFO'}, rpt_("Recognized the regions and %d locks") % len(found.locks))
