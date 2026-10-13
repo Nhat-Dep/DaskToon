@@ -350,8 +350,15 @@ class DASKTOON_OT_rig_build(Operator):
         return rig_of(context) is not None
 
     def execute(self, context):
-        from dasktoon_rig import build
+        from dasktoon_rig import build, parts as rig_parts, regions
         rig = rig_of(context)
+        recognized = None
+        if rig.data.dasktoon_rig.parts and not regions.has_layers(rig):
+            # Never recognized: do it first, so the one-button way still gets regions and locks (rig regions spec 5).
+            try:
+                recognized = regions.recognize(context, rig)
+            except rig_parts.PartError:
+                pass  # Build reports the part
         try:
             result = build.build(context, rig, list(rig.data.dasktoon_rig.parts))
         except build.BuildError as ex:
@@ -359,6 +366,8 @@ class DASKTOON_OT_rig_build(Operator):
             return {'CANCELLED'}
         for warning in result.warnings:
             self.report({'WARNING'}, warning)
+        if recognized is not None:
+            self.report({'INFO'}, rpt_("Recognized the regions and %d locks first") % len(recognized.locks))
         self.report({'INFO'}, result.summary())
         return {'FINISHED'}
 

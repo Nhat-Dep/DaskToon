@@ -44,7 +44,7 @@ def mirrored(point):
 def character():
     """A chibi 2 tall in A-pose: one Body mesh of loose pieces (torso, a big head, arms 50 degrees down, legs, a rabbit
     ear beside each side of the head hanging down to the shoulders, a hair lock in front of the right shoulder); a
-    Shirt with a strap on the chest (a loose piece of the shirt); wide Boots. The skeleton is fitted to them. Returns
+    Shirt with a strap on the chest (a loose piece of the shirt); Boots wider than the legs, not touching. The skeleton is fitted to them. Returns
     (rig, {name: object}, parts)."""
     bpy.ops.wm.read_factory_settings(use_empty=True)
     tube = st.tube
@@ -57,7 +57,7 @@ def character():
     shirt_tube = st.tube((0, 0, 1.40), (0, 0, 0.9), 0.2)
     strap = tube((0.1, -0.215, 1.38), (0.1, -0.215, 1.0), 0.012)
     objs = {"Body": merged("Body", body), "Shirt": merged("Shirt", [shirt_tube, strap]),
-            "Boots": merged("Boots", [tube((s * 0.09, 0, 0.0), (s * 0.09, 0, 0.25), 0.12) for s in (1.0, -1.0)])}
+            "Boots": merged("Boots", [tube((s * 0.09, 0, 0.0), (s * 0.09, 0, 0.25), 0.085) for s in (1.0, -1.0)])}
     rig = skeleton.create_humanoid(bpy.context, 1.0, (0.0, 0.0, 0.0))
     meshes = list(objs.values())
     skeleton.fit(bpy.context, rig, meshes, body=meshes)
@@ -92,7 +92,7 @@ class RecognizeTest(unittest.TestCase):
             ("Body", (0.38, 0.1, 1.6), 'HEAD'), ("Body", (-0.38, 0.1, 1.6), 'HEAD'),  # the ears
             ("Body", (-0.21, -0.25, 1.4), 'HEAD'),  # the hair lock, in front of the right arm
             ("Shirt", (0.1, -0.227, 1.2), 'TORSO'), ("Shirt", (0.2, 0.0, 1.1), 'TORSO'),  # the strap, the side
-            ("Boots", (0.21, 0.0, 0.1), 'LEG_L'), ("Boots", (-0.21, 0.0, 0.1), 'LEG_R'),
+            ("Boots", (0.175, 0.0, 0.1), 'LEG_L'), ("Boots", (-0.175, 0.0, 0.1), 'LEG_R'),
         ]
         for name, point, region in expected:
             self.assertEqual(self.region_at(name, point), region, (name, tuple(point)))
@@ -206,6 +206,82 @@ class RecognizePartsTest(unittest.TestCase):
         regions.recognize(bpy.context, self.rig)
         self.assertEqual(sorted(self.locks()), ["Lock L1", "Lock R1"])  # the right side has only the hair lock now
         self.assertIn("My Ear", [part.name for part in self.rig.data.dasktoon_rig.parts])
+
+
+def piece_at(obj, point):
+    """The loose piece of obj's mesh that has the vertex nearest `point`."""
+    world, edges = rig_parts.mesh_arrays(obj)
+    index = nearest(obj, point)
+    return next(p for p in rig_parts.pieces(edges, np.arange(len(world))) if index in p)
+
+
+def limb_weight(rig, obj, vertices, region):
+    from dasktoon_rig import weights
+    names = regions.region_bones(rig)[region]
+    return weights.read(obj, names)[vertices].sum(axis=1)
+
+
+class BuildTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        from dasktoon_rig import build
+        cls.rig, cls.objs, cls.parts = character()
+        cls.result = build.build(bpy.context, cls.rig, cls.parts)
+
+    def test_lifting_an_arm_leaves_the_ears_locks_and_straps(self):
+        body, shirt = self.objs["Body"], self.objs["Shirt"]
+        for region, obj, point in (('ARM_L', body, (0.38, 0.1, 1.6)), ('ARM_R', body, (-0.38, 0.1, 1.6)),
+                                   ('ARM_R', body, (-0.21, -0.25, 1.4)), ('ARM_L', shirt, (0.1, -0.227, 1.2))):
+            piece = piece_at(obj, point)
+            self.assertEqual(limb_weight(self.rig, obj, piece, region).max(), 0.0, (region, obj.name, point))
+            from dasktoon_rig import weights
+            shoulder = ("Left" if region == 'ARM_L' else "Right") + "Shoulder"
+            self.assertEqual(weights.read(obj, [shoulder])[piece].max(), 0.0, (shoulder, obj.name, point))
+
+    def test_arms_and_boots_keep_their_limbs(self):
+        body, boots = self.objs["Body"], self.objs["Boots"]
+        arm = piece_at(body, ARM_END)
+        world, _edges = rig_parts.mesh_arrays(body)
+        axis = np.array(ARM_END - ARM_START)
+        along = (world[arm] - np.array(ARM_START)) @ axis / (axis @ axis)
+        outer = arm[along > 0.5]  # the start of the tube is inside the torso
+        self.assertGreater(limb_weight(self.rig, body, outer, 'ARM_L').mean(), 0.9)
+        boot = piece_at(boots, (-0.175, 0.0, 0.1))
+        self.assertGreater(limb_weight(self.rig, boots, boot, 'LEG_R').mean(), 0.9)
+
+    def test_painted_regions_win(self):
+        from dasktoon_rig import build
+        body = self.objs["Body"]
+        arm = piece_at(body, ARM_END)
+        regions.write(body, arm, np.full(len(arm), regions.REGIONS.index('TORSO')))
+        try:
+            build.build(bpy.context, self.rig, self.parts)
+            tip = nearest(body, ARM_END)
+            self.assertEqual(limb_weight(self.rig, body, [tip], 'ARM_L')[0], 0.0)
+        finally:
+            body.data.color_attributes.remove(body.data.color_attributes[regions.LAYER])
+            build.build(bpy.context, self.rig, self.parts)
+
+
+class BuildButtonTest(unittest.TestCase):
+    def test_build_recognizes_first_when_it_never_did(self):
+        rig, objs = rigged()
+        for obj in bpy.context.view_layer.objects:
+            obj.select_set(obj == rig)
+        bpy.context.view_layer.objects.active = rig
+        self.assertEqual(bpy.ops.dasktoon.rig_build(), {'FINISHED'})
+        self.assertIsNotNone(objs["Body"].data.color_attributes.get(regions.LAYER))
+        locks = sorted(part.name for part in rig.data.dasktoon_rig.parts if part.made_by_recognize)
+        self.assertEqual(locks, ["Lock L1", "Lock R1", "Lock R2"])
+        from dasktoon_rig import weights
+        ear = piece_at(objs["Body"], (0.38, 0.1, 1.6))
+        self.assertEqual(set(weights.read(objs["Body"], ["Head"])[ear, 0].round(6).tolist()), {1.0})
+        # A second Build keeps what is there (painted regions, the locks and their roles).
+        hair = next(part for part in rig.data.dasktoon_rig.parts if part.name == "Lock R2")
+        hair.role = 'HAIR'
+        self.assertEqual(bpy.ops.dasktoon.rig_build(), {'FINISHED'})
+        self.assertEqual(next(p for p in rig.data.dasktoon_rig.parts if p.name == "Lock R2").role, 'HAIR')
+        self.assertIn("LockR2_1", rig.data.bones)  # chain bones are named after the part, without spaces
 
 
 if __name__ == "__main__":

@@ -34,6 +34,8 @@ SIDE_MARGIN = 0.01  # (x height) how far past the neck joint a vertex is on that
 LOCK_GAP = 0.005  # (x height) pieces this near are one lock
 MIDDLE_LOCK = 0.02  # (x height) a lock whose middle is this near the body's middle is on neither side
 BODY_ROLES = ('BODY', 'CLOTHING')
+SMOOTH_ROUNDS = 3  # a region's edge is softened over this many rings of vertices
+BLEND = 3.0  # a limb's bones keep weight this many of its half widths around its root joint (the shoulder bone: itself)
 LOCK_SETTINGS = ("role", "bone", "bone_count", "chain_count", "stiffness", "gravity", "drag", "radius", "sway_in_unity")
 LOCK_KEEP = 0.5  # a new lock at least this much over an old one (share of its vertices) keeps the old one's settings
 
@@ -371,3 +373,80 @@ def recognize(context, rig):
                 break
         make_lock(rig, obj, name, vertices, settings)
     return found
+
+
+def _smooth(values, edges, rounds):
+    """`values` (one per vertex) averaged with their neighbours along `edges` (m x 2 indices into `values`), `rounds`
+    times."""
+    if len(edges) == 0:
+        return values
+    degree = np.bincount(edges.ravel(), minlength=len(values)).astype(float)
+    for _ in range(rounds):
+        sums = (np.bincount(edges[:, 0], weights=values[edges[:, 1]], minlength=len(values))
+                + np.bincount(edges[:, 1], weights=values[edges[:, 0]], minlength=len(values)))
+        values = (values + sums) / (1.0 + degree)
+    return values
+
+
+def keep_factors(rig, world, labelled, edges, half):
+    """{bone: share of its weight each point keeps} (spec 5): the bones of an arm or a leg keep their weight in the
+    limb's region (softened over `edges`) and around the limb's root joint, there only on pieces that have some of the
+    limb: the blend keeps skin and clothing whole at the shoulder and hip, a separate piece (an ear, a hair lock, a
+    strap) has nothing to keep whole there. An arm's shoulder bone keeps its weight around itself, out of the head."""
+    bones = region_bones(rig)
+    pieces = chains.components(len(world), edges)
+    out = {}
+    for region in LIMBS:
+        if not bones[region]:
+            continue
+        mine = labelled == REGIONS.index(region)
+        member = _smooth(mine.astype(float), edges, SMOOTH_ROUNDS)
+        touching = np.zeros(len(world), bool)
+        for piece in pieces:
+            if mine[piece].any():
+                touching[piece] = True
+        radius = BLEND * half[ROOTS[region]]
+        joint = np.linalg.norm(world - rig_parts.bone_segment(rig, ROOTS[region])[0], axis=1)
+        blend = np.where(touching, np.clip(1.0 - joint / radius, 0.0, 1.0), 0.0)
+        out.update({name: np.maximum(member, blend) for name in bones[region]})
+        shoulder = _side(region) + "Shoulder"
+        if region.startswith("ARM") and rig.data.bones.get(shoulder) is not None:
+            near = chains.segment_distance(world, *rig_parts.bone_segment(rig, shoulder))
+            head = labelled == REGIONS.index('HEAD')
+            out[shoulder] = np.where(head, 0.0, np.clip(1.0 - near / radius, 0.0, 1.0))
+    return out
+
+
+def restrict(context, rig, parts, owners, found=None, roles=BODY_ROLES):
+    """Keep the bones of each arm and leg to their region on the vertices of the parts with `roles` (spec 5): the
+    regions as painted, the rest as recognized (`found`, from analyse; recognized now when None). What a vertex keeps
+    sums to 1 again (the jaw rings and the clothing build on these weights); a vertex left without weight takes its
+    nearest trunk or head bone."""
+    from . import weights
+    found = analyse(context, rig, parts, owners) if found is None else found
+    ids = [i for i, part in enumerate(parts) if part.role in roles]
+    deform = [bone.name for bone in rig.data.bones if bone.use_deform]
+    trunk = [name for name in TRUNK + ("Head",) if name in deform]
+    for obj, (vertices, recognized) in found.objects.items():
+        chosen = np.isin(owners[obj][vertices], ids)
+        if not chosen.any():
+            continue
+        world, edges = rig_parts.mesh_arrays(obj)
+        labelled = read(obj)[vertices]
+        automatic = labelled == AUTO
+        labelled[automatic] = recognized[automatic]
+        keep = keep_factors(rig, world[vertices], labelled, rig_parts.local_edges(edges, vertices), found.half)
+        mine = vertices[chosen]
+        matrix = weights.read(obj, deform)[mine]
+        for name, factor in keep.items():
+            if name in deform:
+                matrix[:, deform.index(name)] *= factor[chosen]
+        empty = np.nonzero(matrix.sum(axis=1) <= 1e-9)[0]
+        if len(empty) and trunk:
+            distance = np.stack([surface_distance(rig, world[mine[empty]], [name], found.half) for name in trunk],
+                                axis=1)
+            matrix[empty, [deform.index(trunk[k]) for k in distance.argmin(axis=1)]] = 1.0
+        sums = matrix.sum(axis=1)
+        matrix[sums > 0.0] /= sums[sums > 0.0, None]
+        weights.clear(obj, mine, deform)
+        weights.write(obj, mine, deform, matrix)

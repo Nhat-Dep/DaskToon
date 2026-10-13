@@ -41,7 +41,8 @@ cách tay hơn 20 cm. Mẫu thử (prototype) hai quy tắc dưới đây đưa 
 | `LEG_R` | Right Leg (Chân phải) | tím (0,7; 0,4; 0,95) | như trên, bên phải |
 
 Trái, phải là của nhân vật (trái ở +X), như tên xương. Xương vai (LeftShoulder, RightShoulder), mắt và hàm không
-thuộc vùng nào: không dùng để chia vùng và không bị giới hạn theo vùng.
+dùng để chia vùng. Mắt, hàm không bị giới hạn theo vùng; xương vai bị giới hạn như tay (§5) nhưng pha quanh chính
+nó (*bổ sung khi làm*: nhân vật thử cho tai có 36% weight xương vai).
 
 ### 3.2 Lưu và đọc
 
@@ -101,8 +102,11 @@ của nhiều lọn).
   - `member` = 1 nếu vùng của đỉnh là chi đó, 0 nếu không; làm mềm qua cạnh lưới 3 lượt (trung bình với đỉnh kề), để
     ranh giới vùng không thành vết gãy;
   - `blend` = 1 − khoảng cách tới khớp gốc của chi (đầu UpperArm, UpperLeg) chia (3 × nửa bề rộng chi), không âm: quanh
-    vai, hông vẫn pha;
+    vai, hông vẫn pha; chỉ trên mảnh có đỉnh thuộc vùng chi đó (*bổ sung khi làm*: mảnh rời như tai, lọn tóc, dây đeo
+    không cần pha, nhân vật thử cho lọn tóc trước vai 15% weight tay vì pha);
   - `keep` = lớn hơn của hai giá trị trên.
+- Xương vai (LeftShoulder, RightShoulder) chỉ giữ weight quanh chính nó: 1 − khoảng cách tới đoạn xương vai chia
+  (3 × nửa bề rộng tay cùng bên), không âm, trên mọi mảnh (dây đeo vắt qua vai vẫn theo vai), trừ đỉnh vùng Đầu.
 - Phần weight bị bỏ dồn cho các xương còn lại (chia lại cho tổng 1); đỉnh không còn weight nào lấy xương thân gần nhất
   (cùng cách đo từ bề mặt).
 - Vùng lấy từ lớp màu; đỉnh tự động được tính lúc Build. Lọn theo vai trò của nó (Accessory, Hair thắng Body, Clothing

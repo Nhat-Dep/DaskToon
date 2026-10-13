@@ -216,6 +216,7 @@ def _make_bones(context, rig, plan):
 
 
 def _paint(context, rig, parts, owners, plan, actual, result):
+    from . import regions
     from .look import FACE_MARK
     deform = [b.name for b in rig.data.bones if b.use_deform]
     generated = set(actual.values())
@@ -242,6 +243,11 @@ def _paint(context, rig, parts, owners, plan, actual, result):
                           weights.nearest_bone_weights(rig, body_bones, world[vertices[empty]]))
             result.warnings.append(rpt_("%s: %d vertices took the nearest bone (automatic weights found no "
                                         "solution there)") % (obj.name, int(empty.sum())))
+    # Arms and legs keep to their regions (rig regions spec 5): the Body's weights before the jaw rings and the
+    # clothing copy them, the clothing's own after. Recognized after binding: switching the rig to its rest pose
+    # between making the 2D mouth's driver and binding left that driver unevaluated.
+    found = regions.analyse(context, rig, parts, owners)
+    regions.restrict(context, rig, parts, owners, found, ('BODY',))
     for i, part in enumerate(parts):
         obj = part.object
         vertices = np.nonzero(owners[obj] == i)[0]
@@ -260,6 +266,7 @@ def _paint(context, rig, parts, owners, plan, actual, result):
             world, _edges = rig_parts.mesh_arrays(obj)
             bone = part.bone or rig_parts.nearest_bone(rig, world[vertices].mean(axis=0), fixed_bones)
             weights.write(obj, vertices, [bone], np.ones((len(vertices), 1)))
+    regions.restrict(context, rig, parts, owners, found, ('CLOTHING',))
     for index, vertices, names, matrix in plan.paint:
         obj = parts[index].object
         weights.clear(obj, vertices, deform)

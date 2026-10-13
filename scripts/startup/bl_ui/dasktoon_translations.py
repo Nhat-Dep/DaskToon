@@ -1169,6 +1169,7 @@ VI = {
     "Sway in Unity": "Lắc trong Unity",
     "How the chain sways in Unity": "Cách chuỗi lắc trong Unity",
     "Made by Recognize": "Do Nhận diện tạo",
+    "Recognized the regions and %d locks first": "Đã nhận diện vùng và %d lọn trước",
     "A lock Recognize made from pieces hanging from the head; Recognize makes it again (keeping its role and "
     "settings)": "Lọn do Nhận diện tạo từ các mảnh gắn đầu; Nhận diện lại thì tạo lại (giữ vai trò và thiết lập)",
     "Runtime": "Khi chạy",
