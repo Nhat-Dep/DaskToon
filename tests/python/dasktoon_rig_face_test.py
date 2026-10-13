@@ -18,7 +18,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import dasktoon_rig_fixtures as fx  # noqa: E402
 import dasktoon_test_utils as tu  # noqa: E402
 from bl_ui import dasktoon_rig as ui  # noqa: E402
-from dasktoon_rig import build, look, parts, skeleton  # noqa: E402
+from dasktoon_rig import build, eyes, look, parts, skeleton  # noqa: E402
 
 
 def built(roles=(("Body", 'BODY'),)):
@@ -166,6 +166,84 @@ class JawTest(unittest.TestCase):
         moved = where(chosen[0]) - before_chin
         self.assertGreater(moved.length, 0.005)
         self.assertLess((where(low) - before_low).length, 1e-6)
+
+
+def iris(rig):
+    """A small plane with UVs just in front of the left eye, facing forward (-Y)."""
+    head = rig.matrix_world @ rig.data.bones["LeftEye"].head_local
+    bpy.ops.mesh.primitive_plane_add(size=0.02, location=head + Vector((0.0, -0.02, 0.0)),
+                                     rotation=(math.radians(90.0), 0.0, 0.0))
+    obj = bpy.context.object
+    obj.name = "Iris"
+    return obj
+
+
+def mean_uv(obj):
+    bpy.context.view_layer.update()
+    mesh = obj.evaluated_get(bpy.context.evaluated_depsgraph_get()).data
+    uvs = [loop.uv for loop in mesh.uv_layers.active.data]
+    return Vector((sum(u.x for u in uvs) / len(uvs), sum(u.y for u in uvs) / len(uvs)))
+
+
+def aim(rig, yaw, pitch):
+    """LookTarget straight in front of the left eye, turned `yaw` degrees to the character's left (+X) and `pitch`
+    degrees up."""
+    eye = rig.matrix_world @ rig.data.bones["LeftEye"].head_local
+    direction = Vector((math.sin(math.radians(yaw)) * math.cos(math.radians(pitch)),
+                        -math.cos(math.radians(yaw)) * math.cos(math.radians(pitch)), math.sin(math.radians(pitch))))
+    target = rig.pose.bones[look.TARGET]
+    world = rig.matrix_world @ target.bone.matrix_local
+    world.translation = eye + direction * 0.5
+    target.matrix = rig.matrix_world.inverted() @ world
+    bpy.context.view_layer.update()
+
+
+class FlatEyeTest(unittest.TestCase):
+    def setUp(self):
+        bpy.ops.wm.read_factory_settings(use_empty=True)
+        self.objs = fx.character()
+        self.rig = fx.rig_for()
+        self.iris = iris(self.rig)
+        ui.add_part(self.rig, self.objs["Body"], 'BODY')
+        self.part = ui.add_part(self.rig, self.iris, 'FLAT_EYE')
+        self.part.eye_range = 0.1
+        build.build(bpy.context, self.rig, list(self.rig.data.dasktoon_rig.parts))
+
+    def modifier(self):
+        return self.iris.modifiers.get("%s %s" % (eyes.MODIFIER_PREFIX, self.part.name))
+
+    def test_modifier_and_drivers(self):
+        modifier = self.modifier()
+        self.assertIsNotNone(modifier)
+        self.assertEqual(modifier.type, 'UV_WARP')
+        self.assertTrue(modifier.vertex_group)
+        self.assertEqual(eyes.side_of(self.rig, self.part, parts.part_vertices(self.part)), 'LEFT')
+        found = [d for d in self.iris.animation_data.drivers if d.data_path.endswith(".offset")]
+        self.assertEqual(len(found), 2)
+        self.assertTrue(all(d.driver.is_simple_expression for d in found))  # no Python, no Auto Run
+        # The iris follows the head, not the eye that turns.
+        self.assertEqual({g.name for g in self.iris.vertex_groups if g.name in self.rig.data.bones}, {"Head"})
+
+    def test_iris_slides_with_the_gaze(self):
+        aim(self.rig, 0.0, 0.0)
+        rest = mean_uv(self.iris)
+        aim(self.rig, 20.0, 0.0)  # to the character's left: the drawing moves left, so its UVs move right
+        moved = mean_uv(self.iris) - rest
+        self.assertAlmostEqual(moved.x, -0.1 * math.sin(math.radians(20.0)), delta=2e-3)
+        self.assertAlmostEqual(moved.y, 0.0, delta=2e-3)
+        aim(self.rig, 0.0, 10.0)  # up
+        moved = mean_uv(self.iris) - rest
+        self.assertAlmostEqual(moved.x, 0.0, delta=2e-3)
+        self.assertAlmostEqual(moved.y, -0.1 * math.sin(math.radians(10.0)), delta=2e-3)
+
+    def test_build_again_and_change_role(self):
+        build.build(bpy.context, self.rig, list(self.rig.data.dasktoon_rig.parts))
+        self.assertEqual(len([m for m in self.iris.modifiers if m.name.startswith(eyes.MODIFIER_PREFIX)]), 1)
+        self.assertEqual(len([d for d in self.iris.animation_data.drivers if d.data_path.endswith(".offset")]), 2)
+        self.part.role = 'ACCESSORY'
+        build.build(bpy.context, self.rig, list(self.rig.data.dasktoon_rig.parts))
+        self.assertIsNone(self.modifier())
+        self.assertEqual(len([d for d in self.iris.animation_data.drivers if d.data_path.endswith(".offset")]), 0)
 
 
 if __name__ == "__main__":

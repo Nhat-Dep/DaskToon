@@ -254,6 +254,9 @@ def _paint(context, rig, parts, owners, plan, actual, result):
             if not (matrix.sum(axis=1) > 0.0).all():
                 result.warnings.append(rpt_("%s: no Body surface to copy weights from") % part.name)
             weights.write(obj, vertices, body_bones, matrix)
+        elif part.role in rig_parts.FACE_ROLES:
+            # A flat eye or 2D mouth not on the Body (an iris plane, a mouth card) sits on the head.
+            weights.write(obj, vertices, [part.bone or "Head"], np.ones((len(vertices), 1)))
         else:
             world, _edges = rig_parts.mesh_arrays(obj)
             bone = part.bone or rig_parts.nearest_bone(rig, world[vertices].mean(axis=0), fixed_bones)
@@ -361,11 +364,12 @@ def build(context, rig, parts):
             elif part.role == 'SKIRT':
                 _plan_skirt(rig, i, part, vertices, plan)
         actual, removed = _make_bones(context, rig, plan)
-        from . import look
+        from . import eyes, look
         look.ensure(context, rig)
         _paint(context, rig, parts, owners, plan, actual, result)
         _drop_stale_groups(owners, removed, set(actual.values()))
         _tidy(rig, owners)
+        eyes.apply(rig, parts)
         from . import sway  # sway imports build
         result.colliders = collider_radii(rig, parts, owners)
         _write_colliders(rig, result.colliders, sway.rig_scale(rig))
