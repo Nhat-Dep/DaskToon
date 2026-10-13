@@ -120,6 +120,44 @@ class SeparateTest(CheckedWeightsMixin, unittest.TestCase):
         self.assertNotIn("Skirt8_1", self.rig.data.bones)
 
 
+class FarClothingTest(unittest.TestCase):
+    def test_dress_over_no_skin_takes_its_own_weights(self):
+        """A dress over a Body that has no torso under it (real model test: the dress copied the weights of the
+        shoulders 30 cm away and followed the arms) takes automatic weights of its own: the front of its middle
+        follows the spine."""
+        import dasktoon_rig_skeleton_test as st
+        bpy.ops.wm.read_factory_settings(use_empty=True)
+        h = fx.HEIGHT
+        pieces = [fx.tube(0.99, 0.80, 0.06, 0.06, rings=6)]  # head and neck
+        for s in (1.0, -1.0):
+            pieces.append(st.tube((0.05 * s * h, 0.0, 0.47 * h), (0.06 * s * h, 0.0, 0.05 * h), 0.04 * h))
+        verts, faces = [], []
+        for piece_verts, piece_faces in pieces:
+            faces += [tuple(i + len(verts) for i in f) for f in piece_faces]
+            verts += piece_verts
+        body = fx.mesh_object("Body", verts, faces)
+        dress = fx.mesh_object("Dress", *fx.tube(0.74, 0.5, 0.12, 0.12, rings=6))
+        rig = fx.rig_for()
+        result = build.build(bpy.context, rig, [parts.Part("Body", body, 'BODY'), parts.Part("Dress", dress, 'CLOTHING')])
+        front_middle = 3 * 16 + 12  # ring 3 of 6 (0.62 of the height), the vertex at -Y
+        self.assertIn(dominant(dress, rig, front_middle)[0], {"Hips", "Spine", "Chest", "UpperChest"})
+        CheckedWeightsMixin.assert_unity_weights(self, dress, rig)
+        self.assertFalse([w for w in result.warnings if "Dress" in w], result.warnings)
+
+    def test_shirt_on_the_skin_still_copies_it(self):
+        bpy.ops.wm.read_factory_settings(use_empty=True)
+        objs = fx.character()
+        rig = fx.rig_for()
+        build.build(bpy.context, rig, [parts.Part("Body", objs["Body"], 'BODY'),
+                                       parts.Part("Shirt", objs["Shirt"], 'CLOTHING')])
+        names = deform_names(rig)
+        shirt, body = weights.read(objs["Shirt"], names), weights.read(objs["Body"], names)
+        # The Shirt (radius 0.08 of the height) is 0.01 out from the Body (0.07): it copies the Body, so it uses only
+        # bones the Body uses.
+        self.assertGreater(shirt.sum(), 0.0)
+        self.assertEqual({names[j] for j in np.nonzero(shirt.sum(axis=0))[0]} - {names[j] for j in np.nonzero(body.sum(axis=0))[0]}, set())
+
+
 def merged_parts(obj):
     return [
         parts.Part("Body", obj, 'BODY'),

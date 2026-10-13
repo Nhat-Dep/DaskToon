@@ -63,8 +63,14 @@ bàn tay cách da dưới 5 cm trên bản sao `tdt.blend` và `lr_shape`.
 Thiết kế duyệt: `weights.surface_weights` chỉ lấy tam giác da có pháp tuyến cùng phía với pháp tuyến đỉnh áo (tích vô hướng
 > 0); không có thì lấy gần nhất như cũ.
 
-- Modify: `scripts/modules/dasktoon_rig/weights.py` (`surface_weights`)
-- Test: `tests/python/dasktoon_rig_weights_test.py`
+*Đổi khi làm (ruling):* đo trên `tdt.blend` cho thấy nguyên nhân không phải hướng tam giác: da không có phần thân dưới
+váy, nên váy chép weight từ da cổ và vai cách 14–42 cm. Quy tắc cùng hướng không đổi gì trên tdt và làm tóc của lr_shape
+tệ hơn, nên bỏ. Thay bằng: đỉnh áo xa Body hơn 2% chiều cao Body thì pha dần sang weight tự động của chính phần áo, xa từ
+4% trở lên thì dùng hẳn.
+
+- Modify: `scripts/modules/dasktoon_rig/weights.py` (`clothing_weights`, `heat_of_copy`, `surface_weights(distances=)`),
+  `scripts/modules/dasktoon_rig/build.py`
+- Test: `tests/python/dasktoon_rig_build_test.py` (`FarClothingTest`)
 
 ### Task 4: Hành động nhanh theo cỡ nhân vật
 

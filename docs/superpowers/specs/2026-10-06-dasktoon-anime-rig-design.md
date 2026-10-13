@@ -130,7 +130,7 @@ Phần lưu theo tên material và tên vertex group, nên đổi tên material/
 | Vai trò | Rig thế nào |
 |---|---|
 | **Body** | Weight tự động (bone heat của Blender) theo các xương Deform của rig, trừ xương sinh, `LeftEye`, `RightEye`, `Jaw` (tạm tắt Deform trong lúc tính) |
-| **Clothing** | Chép weight từ bề mặt Body gần nhất: điểm gần nhất trên tam giác Body, nội suy theo tọa độ trọng tâm |
+| **Clothing** | Chép weight từ bề mặt Body gần nhất: điểm gần nhất trên tam giác Body, nội suy theo tọa độ trọng tâm. *Bổ sung 2026-10-13:* đỉnh xa Body hơn 2% chiều cao Body thì pha dần sang weight tự động (bone heat) của chính phần áo, xa từ 4% trở lên thì dùng hẳn weight đó (váy không có da bên dưới không còn chép vai cách 30 cm) |
 | **Accessory** | Cứng: toàn bộ weight 1 cho một xương (kính, kẹp tóc, mắt cầu gắn `LeftEye`/`RightEye`) |
 | **Hair** | Mỗi mảnh dài thành một chuỗi `bone_count` xương gắn vào `bone`; mảnh ngắn/bè (mũ tóc) thành Accessory trên `bone` |
 | **Skirt** | `chain_count` dải quanh trục đứng, mỗi dải `bone_count` xương gắn vào `bone` |

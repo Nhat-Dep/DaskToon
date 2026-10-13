@@ -13,6 +13,9 @@ from . import chains, parts
 
 LIMIT = 4
 MINIMUM = 0.01
+# A Clothing point up to this far from the Body (x the Body's height) copies the Body; twice as far or more it takes
+# automatic weights of its own; in between, a blend (real model test: a dress over no skin copied shoulders 30 cm away).
+CLOTH_GAP = 0.02
 
 
 def read(obj, names):
@@ -136,10 +139,45 @@ def _barycentric(p, a, b, c):
     return out / out.sum()
 
 
-def surface_weights(sources, names, points):
+def heat_of_copy(context, rig, obj, body_bones):
+    """Automatic weights (vertices x len(body_bones)) of obj from `body_bones`, worked out on a copy so obj keeps its
+    weights; a row is empty where bone heat finds no solution."""
+    copy = obj.copy()
+    copy.data = obj.data.copy()
+    context.scene.collection.objects.link(copy)
+    try:
+        clear(copy, range(len(copy.data.vertices)), body_bones)
+        body_heat(context, rig, copy, set(body_bones))
+        return read(copy, body_bones)
+    finally:
+        mesh = copy.data
+        bpy.data.objects.remove(copy)
+        bpy.data.meshes.remove(mesh)
+
+
+def clothing_weights(context, rig, sources, names, obj, vertices):
+    """Weights (len(vertices) x len(names)) of Clothing vertices of obj (spec 5.2): copied from the Body surface where
+    it is near (CLOTH_GAP), automatic weights of the clothing itself where it is far, a blend in between."""
+    world, _edges = parts.mesh_arrays(obj)
+    matrix, distance = surface_weights(sources, names, world[vertices], distances=True)
+    body = [parts.mesh_arrays(source)[0][mask] for source, mask in sources]
+    body = np.concatenate(body) if body else np.zeros((0, 3))
+    gap = CLOTH_GAP * float(np.ptp(body[:, 2])) if len(body) else 0.0
+    far = np.clip(distance / gap - 1.0, 0.0, 1.0) if gap > 0.0 else np.ones(len(vertices))
+    if far.any():
+        heat = heat_of_copy(context, rig, obj, names)[vertices]
+        empty = heat.sum(axis=1) <= 0.0
+        if empty.any():
+            heat[empty] = nearest_bone_weights(rig, names, world[vertices[empty]])
+        matrix = matrix * (1.0 - far[:, None]) + heat * far[:, None]
+    return matrix
+
+
+def surface_weights(sources, names, points, distances=False):
     """Weights (len(points) x len(names)) at world `points` copied from the nearest point of the source surfaces and
     interpolated between the corners of that triangle (spec 5.2, Clothing). `sources` is a list of (object, vertex
-    mask); only triangles with every corner in the mask are used."""
+    mask); only triangles with every corner in the mask are used. With `distances`, also how far each point is from
+    the surface (inf where there is none)."""
     verts, tris, table, offset = [], [], [], 0
     for obj, mask in sources:
         mesh = obj.data
@@ -154,18 +192,20 @@ def surface_weights(sources, names, points):
         table.append(read(obj, names))
         offset += len(world)
     out = np.zeros((len(points), len(names)))
+    away = np.full(len(points), np.inf)
     if not tris or sum(len(t) for t in tris) == 0:
-        return out
+        return (out, away) if distances else out
     verts, tris, table = np.concatenate(verts), np.concatenate(tris), np.concatenate(table)
     tree = BVHTree.FromPolygons(verts.tolist(), tris.tolist(), all_triangles=True)
     for i, point in enumerate(np.asarray(points, float).tolist()):
-        location, _normal, index, _distance = tree.find_nearest(point)
+        location, _normal, index, distance = tree.find_nearest(point)
         if index is None:
             continue
         a, b, c = tris[index]
         bary = _barycentric(np.array(location), verts[a], verts[b], verts[c])
         out[i] = bary[0] * table[a] + bary[1] * table[b] + bary[2] * table[c]
-    return out
+        away[i] = distance
+    return (out, away) if distances else out
 
 
 def nearest_bone_weights(rig, names, points):

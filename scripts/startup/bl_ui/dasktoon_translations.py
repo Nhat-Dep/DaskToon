@@ -1056,7 +1056,6 @@ VI = {
         "Quần áo chép weight từ phần Body; hãy thêm phần Body trước",
     "%s: %d vertices took the nearest bone (automatic weights found no solution there)":
         "%s: %d đỉnh lấy theo xương gần nhất (weight tự động không tìm được nghiệm ở đó)",
-    "%s: no Body surface to copy weights from": "%s: không có bề mặt Body để chép weight",
     # bl_ui/dasktoon_rig.py
     "Anime Humanoid": "Khung người anime",
     "Add the DaskToon standard skeleton, fitted to the selected meshes, which become its parts":

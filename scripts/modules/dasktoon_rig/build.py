@@ -251,11 +251,8 @@ def _paint(context, rig, parts, owners, plan, actual, result):
         if part.role == 'JAW':
             _paint_jaw(obj, vertices, owners[obj], body_ids, deform)
         elif part.role == 'CLOTHING':
-            world, _edges = rig_parts.mesh_arrays(obj)
-            matrix = weights.surface_weights(sources, body_bones, world[vertices])
-            if not (matrix.sum(axis=1) > 0.0).all():
-                result.warnings.append(rpt_("%s: no Body surface to copy weights from") % part.name)
-            weights.write(obj, vertices, body_bones, matrix)
+            weights.write(obj, vertices, body_bones,
+                          weights.clothing_weights(context, rig, sources, body_bones, obj, vertices))
         elif part.role in rig_parts.FACE_ROLES:
             # A flat eye or 2D mouth not on the Body (an iris plane, a mouth card) sits on the head.
             weights.write(obj, vertices, [part.bone or "Head"], np.ones((len(vertices), 1)))
