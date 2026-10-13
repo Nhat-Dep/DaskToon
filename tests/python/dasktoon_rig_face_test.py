@@ -105,5 +105,68 @@ class LookTest(unittest.TestCase):
             self.assertEqual(sorted(names), sorted([look.TRACK, look.LIMIT]))
 
 
+def chin(body):
+    """A vertex group "Chin" on the front of the top two rings of the Body tube, by the Jaw bone's tip."""
+    top = max(v.co.z for v in body.data.vertices)
+    chosen = [v.index for v in body.data.vertices if v.co.z > top - 0.06 and v.co.y < -0.02]
+    group = body.vertex_groups.new(name="Chin")
+    group.add(chosen, 1.0, 'REPLACE')
+    return chosen
+
+
+def jaw_weight(obj, index):
+    group = obj.vertex_groups.get("Jaw")
+    if group is None:
+        return 0.0
+    return next((g.weight for g in obj.data.vertices[index].groups if g.group == group.index), 0.0)
+
+
+class JawTest(unittest.TestCase):
+    def test_rings(self):
+        import numpy as np
+        # A strip of 5 vertices in a row: 0-1-2-3-4.
+        edges = np.array([(0, 1), (1, 2), (2, 3), (3, 4)])
+        first, second = parts.rings(edges, np.array([0]), 2)
+        self.assertEqual((first.tolist(), second.tolist()), ([1], [2]))
+
+    def test_jaw(self):
+        bpy.ops.wm.read_factory_settings(use_empty=True)
+        objs = fx.character()
+        rig = fx.rig_for()
+        body = objs["Body"]
+        chosen = chin(body)
+        ui.add_part(rig, body, 'BODY')
+        ui.add_part(rig, body, 'JAW', name="Chin", scope='VERTEX_GROUP', vertex_group="Chin")
+        build.build(bpy.context, rig, list(rig.data.dasktoon_rig.parts))
+        for index in chosen:
+            self.assertAlmostEqual(jaw_weight(body, index), 1.0, places=3)
+        import numpy as np
+        _world, edges = parts.mesh_arrays(body)
+        first, second = parts.rings(edges, np.array(chosen), 2)
+        # 2/3 and 1/3 of the Jaw bone in the rings; tidying for Unity (at most 4 bones a vertex, summing to 1) raises
+        # its share a little where the face had more bones.
+        ring1 = [jaw_weight(body, index) for index in first]
+        ring2 = [jaw_weight(body, index) for index in second]
+        self.assertTrue(all(0.6 < w < 0.8 for w in ring1), ring1)
+        self.assertTrue(all(0.28 < w < 0.45 for w in ring2), ring2)
+        for vertex in body.data.vertices:
+            self.assertAlmostEqual(sum(g.weight for g in vertex.groups if body.vertex_groups[g.group].name in
+                                       rig.data.bones), 1.0, places=2)
+        low = min(body.data.vertices, key=lambda v: v.co.z).index
+        self.assertEqual(jaw_weight(body, low), 0.0)
+        # Opening the jaw moves the chin down and leaves the legs where they are.
+        def where(index):
+            bpy.context.view_layer.update()
+            mesh = body.evaluated_get(bpy.context.evaluated_depsgraph_get()).data
+            return body.matrix_world @ mesh.vertices[index].co
+        before_chin, before_low = where(chosen[0]), where(low)
+        pose = rig.pose.bones["Jaw"]
+        pose.rotation_mode = 'XYZ'
+        pose.rotation_euler = (math.radians(20.0), 0.0, 0.0)
+        moved = where(chosen[0]) - before_chin
+        self.assertGreater(moved.length, 0.005)
+        self.assertLess((where(low) - before_low).length, 1e-6)
+
+
 if __name__ == "__main__":
     tu.run_tests()

@@ -89,7 +89,8 @@ class DaskRigPart(PropertyGroup):
     eye_range: FloatProperty(
         name="Range", description="How far the iris slides on its UVs when the eye turns all the way; negative turns "
         "it the other way", default=0.1, min=-1.0, max=1.0)
-    mouth_rows: IntProperty(name="Rows", description="Rows of mouth cells in the atlas texture", default=2, min=1, max=8)
+    mouth_rows: IntProperty(name="Rows", description="Rows of mouth cells in the atlas texture", default=2, min=1,
+                            max=8)
     mouth_columns: IntProperty(name="Columns", description="Columns of mouth cells in the atlas texture", default=4,
                                min=1, max=8)
     sway_in_unity: EnumProperty(

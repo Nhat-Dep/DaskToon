@@ -19,6 +19,7 @@ COLLIDER_BONES = ("Head", "Neck", "UpperChest", "Chest", "Spine", "Hips", "LeftU
 COLLIDER_SHARE = 0.9
 COLLIDER_FALLBACK = 0.03  # of the skeleton's height, for a bone no Body vertex follows
 INWARD_RATIO = -0.5  # signed over unsigned volume of a Body below this: its faces point inward (about -1)
+JAW_RINGS = (2.0 / 3.0, 1.0 / 3.0)  # share of the Jaw bone in the rings of Body vertices around a Jaw part (spec 10.3)
 
 
 class BuildError(Exception):
@@ -245,7 +246,9 @@ def _paint(context, rig, parts, owners, plan, actual, result):
         if len(vertices) == 0 or part.role in ('BODY',) + rig_parts.CHAIN_ROLES:
             continue
         weights.clear(obj, vertices, deform)
-        if part.role == 'CLOTHING':
+        if part.role == 'JAW':
+            _paint_jaw(obj, vertices, owners[obj], body_ids, deform)
+        elif part.role == 'CLOTHING':
             world, _edges = rig_parts.mesh_arrays(obj)
             matrix = weights.surface_weights(sources, body_bones, world[vertices])
             if not (matrix.sum(axis=1) > 0.0).all():
@@ -259,6 +262,22 @@ def _paint(context, rig, parts, owners, plan, actual, result):
         obj = parts[index].object
         weights.clear(obj, vertices, deform)
         weights.write(obj, vertices, [actual.get(n, n) for n in names], matrix)
+
+
+def _paint_jaw(obj, vertices, owner, body_ids, deform):
+    """The Jaw part follows the Jaw bone alone; the Body vertices in the rings around it blend from their own weights
+    to the Jaw bone (JAW_RINGS), so the face does not tear at its edge."""
+    weights.write(obj, vertices, ["Jaw"], np.ones((len(vertices), 1)))
+    _world, edges = rig_parts.mesh_arrays(obj)
+    jaw = deform.index("Jaw")
+    for ring, share in zip(rig_parts.rings(edges, vertices, len(JAW_RINGS)), JAW_RINGS):
+        ring = ring[np.isin(owner[ring], body_ids)]
+        if len(ring) == 0:
+            continue
+        matrix = weights.read(obj, deform)[ring] * (1.0 - share)
+        matrix[:, jaw] += share
+        weights.clear(obj, ring, deform)
+        weights.write(obj, ring, deform, matrix)
 
 
 def _drop_stale_groups(owners, removed, current):

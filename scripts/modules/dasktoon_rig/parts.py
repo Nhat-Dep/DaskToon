@@ -150,6 +150,26 @@ def part_vertices(part):
     return found
 
 
+def rings(edges, vertices, count):
+    """The `count` rings of vertices around `vertices` along `edges` (m x 2 vertex indices), the nearest first: ring 1
+    is every vertex one edge away from `vertices` and not in it, ring 2 one edge further."""
+    taken = set(int(v) for v in vertices)
+    current = set(taken)
+    out = []
+    for _ in range(count):
+        found = set()
+        for a, b in edges:
+            a, b = int(a), int(b)
+            if a in current and b not in taken:
+                found.add(b)
+            elif b in current and a not in taken:
+                found.add(a)
+        out.append(np.array(sorted(found), np.int64))
+        taken |= found
+        current = found
+    return out
+
+
 def local_edges(edges, vertices):
     """The edges with both ends in `vertices`, renumbered as positions in `vertices`."""
     if len(edges) == 0 or len(vertices) == 0:
