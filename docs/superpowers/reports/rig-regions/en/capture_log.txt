@@ -1,0 +1,6 @@
+locks ['Lock L1', 'Lock R1', 'Lock R2']
+saved 60_regions_panel (1920, 963)
+saved 61_show_regions (1574, 888)
+saved 62_highlight (1574, 888)
+saved 63_paint_regions (1921, 781)
+done

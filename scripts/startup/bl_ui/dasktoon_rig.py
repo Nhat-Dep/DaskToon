@@ -35,12 +35,12 @@ ROLE_ITEMS = (
 ROLE_ICONS = {item[0]: item[3] for item in ROLE_ITEMS}
 # The body regions (rig regions spec 3.1), each with the strip color icon nearest its paint color.
 REGION_ITEMS = (
-    ('HEAD', "Head", "The head, and the locks hanging from it", 'SEQUENCE_COLOR_03', 0),
-    ('TORSO', "Torso", "The body from the hips to the neck", 'SEQUENCE_COLOR_05', 1),
-    ('ARM_L', "Left Arm", "The character's left arm and hand", 'SEQUENCE_COLOR_01', 2),
-    ('ARM_R', "Right Arm", "The character's right arm and hand", 'SEQUENCE_COLOR_02', 3),
-    ('LEG_L', "Left Leg", "The character's left leg and foot", 'SEQUENCE_COLOR_04', 4),
-    ('LEG_R', "Right Leg", "The character's right leg and foot", 'SEQUENCE_COLOR_06', 5),
+    ('HEAD', "Head", "The head, and the locks hanging from it", 'STRIP_COLOR_03', 0),
+    ('TORSO', "Torso", "The body from the hips to the neck", 'STRIP_COLOR_05', 1),
+    ('ARM_L', "Left Arm", "The character's left arm and hand", 'STRIP_COLOR_01', 2),
+    ('ARM_R', "Right Arm", "The character's right arm and hand", 'STRIP_COLOR_02', 3),
+    ('LEG_L', "Left Leg", "The character's left leg and foot", 'STRIP_COLOR_04', 4),
+    ('LEG_R', "Right Leg", "The character's right leg and foot", 'STRIP_COLOR_06', 5),
 )
 PALETTE = "DaskToon Regions"
 
@@ -637,6 +637,7 @@ def show_regions(show):
             if layers.get(regions.LAYER) is not None and layers.active_color_name != regions.LAYER:
                 _shown[("mesh", mesh.name)] = layers.active_color_name
                 layers.active_color_name = regions.LAYER
+                mesh.update()  # the 3D views draw the new active color only after this
         return
     for space in spaces:
         saved = _shown.pop(("space", space.as_pointer()), None)
@@ -647,6 +648,7 @@ def show_regions(show):
         name = _shown.pop(key)
         if mesh is not None:
             mesh.color_attributes.active_color_name = name
+            mesh.update()
 
 
 def _show_regions_changed(self, _context):
@@ -656,6 +658,7 @@ def _show_regions_changed(self, _context):
 # Highlight Part: the triangles of the part chosen in the list, drawn in the 3D view while the rig is active.
 _highlight = {"handle": None, "key": None, "batch": None, "shader": None, "generation": 0}
 HIGHLIGHT_COLOR = (0.2, 0.9, 1.0, 0.35)
+HIGHLIGHT_PULL = 0.999  # drawn as if 0.1% nearer: on its own faces it shows over the mesh (onion ghosts go behind)
 
 
 def part_triangles(part):
@@ -705,7 +708,6 @@ def _highlight_draw():
     if not data.highlight_part or part is None or part.object is None or part.object.type != 'MESH':
         return
     import gpu
-    from bl_ui import dasktoon_animation
     from gpu_extras.batch import batch_for_shader
     shader = _highlight_shader()
     key = (rig.name, data.active_part_index, part.object.name, part.scope, part.material, part.vertex_group,
@@ -719,7 +721,7 @@ def _highlight_draw():
     view = context.region_data
     shader.bind()
     shader.uniform_float("perspective", view.perspective_matrix)
-    shader.uniform_float("depth", (view.window_matrix[2][2], view.window_matrix[2][3], dasktoon_animation.ONION_PUSH,
+    shader.uniform_float("depth", (view.window_matrix[2][2], view.window_matrix[2][3], HIGHLIGHT_PULL,
                                    1.0 if view.is_perspective else 0.0))
     shader.uniform_float("color", HIGHLIGHT_COLOR)
     state = gpu.state.blend_get(), gpu.state.depth_test_get(), gpu.state.depth_mask_get()

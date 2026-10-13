@@ -75,9 +75,13 @@ cứng theo đầu, không còn weight tay; không đỉnh nào cách tay hơn 2
 
 ## 5. Còn lại
 
-- **Chưa chụp giao diện trong cửa sổ thật** (panel Vùng, Xem vùng, Làm sáng phần): chụp cần mở cửa sổ DaskToon khoảng nửa
-  phút, sẽ làm gián đoạn khi bạn đang chơi game nên tôi để lại. Phần vẽ làm sáng vì thế chưa chạy thật lần nào (test chạy
-  nền không có khung 3D).
+- Ảnh giao diện chụp trong cửa sổ thật (nhân vật thử, không phải mô hình của bạn), tiếng Việt và tiếng Anh, ở
+  `docs/superpowers/reports/rig-regions/vi` và `.../en`, công cụ `tools/dasktoon_rig_regions_screenshots.py`:
+  `60_regions_panel` (danh sách Parts có lọn, panel Vùng), `61_show_regions` (Xem vùng), `62_highlight` (lọn tai trái
+  sáng lên), `63_paint_regions` (đang tô tay trái: panel mesh có sáu nút và Tô xong). Chạy cửa sổ thật tìm ra ba lỗi mà
+  test chạy nền không thấy, đã sửa: tên biểu tượng màu của Blender 5.2 là `STRIP_COLOR_xx` (tên cũ làm panel Vùng không vẽ
+  được; nay có test kiểm tra mọi biểu tượng có thật); Xem vùng đổi lớp màu đang xem mà khung 3D không vẽ lại; phần làm
+  sáng bị chính mặt lưới che (nay vẽ nhích về phía người xem).
 - lr_shape: bốn lọn trên mesh thân (L1, L2, R1, R2) là mắt, lông mày; chúng cứng theo đầu như trước. Phần 4 (mắt, miệng)
   sẽ nhận ra chúng.
 - Tên lọn tiếng Anh; cột sống tdt hơi ra trước (từ lần trước).

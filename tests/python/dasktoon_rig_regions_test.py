@@ -41,12 +41,14 @@ def mirrored(point):
     return Vector((-point.x, point.y, point.z))
 
 
-def character():
+def character(reset=True):
     """A chibi 2 tall in A-pose: one Body mesh of loose pieces (torso, a big head, arms 50 degrees down, legs, a rabbit
     ear beside each side of the head hanging down to the shoulders, a hair lock in front of the right shoulder); a
-    Shirt with a strap on the chest (a loose piece of the shirt); Boots wider than the legs, not touching. The skeleton is fitted to them. Returns
-    (rig, {name: object}, parts)."""
-    bpy.ops.wm.read_factory_settings(use_empty=True)
+    Shirt with a strap on the chest (a loose piece of the shirt); Boots wider than the legs, not touching. The skeleton
+    is fitted to them. Returns (rig, {name: object}, parts). `reset` starts from an empty file (not in a window: the
+    screenshot tool clears the scene itself)."""
+    if reset:
+        bpy.ops.wm.read_factory_settings(use_empty=True)
     tube = st.tube
     body = [tube((0, 0, 0.88), (0, 0, 1.46), 0.18), tube((0, 0, 1.46), (0, 0, 2.0), 0.3)]
     for s in (1.0, -1.0):
@@ -118,10 +120,10 @@ class RecognizeTest(unittest.TestCase):
         self.assertEqual({name: sorted(v.tolist()) for name, v in found}, {"Lock M1": [0, 1, 2], "Lock L1": [3]})
 
 
-def rigged():
+def rigged(reset=True):
     """The character with its parts in the rig (as the interface adds them)."""
     from bl_ui import dasktoon_rig as ui
-    rig, objs, _parts = character()
+    rig, objs, _parts = character(reset)
     ui.add_part(rig, objs["Body"], 'BODY')
     ui.add_part(rig, objs["Shirt"], 'CLOTHING')
     ui.add_part(rig, objs["Boots"], 'CLOTHING')

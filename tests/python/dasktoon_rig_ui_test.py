@@ -207,9 +207,15 @@ class RegionsPanelTest(unittest.TestCase):
         self.assertIn("dasktoon_show_regions", [entry[1] for entry in log if entry[0] == "prop"])
         painted = [entry for entry in log if entry[0] == "operator" and entry[1] == "dasktoon.rig_paint_regions"]
         self.assertEqual([(entry[5].region, entry[3]) for entry in painted],
-                         [('HEAD', 'SEQUENCE_COLOR_03'), ('TORSO', 'SEQUENCE_COLOR_05'),
-                          ('ARM_L', 'SEQUENCE_COLOR_01'), ('ARM_R', 'SEQUENCE_COLOR_02'),
-                          ('LEG_L', 'SEQUENCE_COLOR_04'), ('LEG_R', 'SEQUENCE_COLOR_06')])
+                         [('HEAD', 'STRIP_COLOR_03'), ('TORSO', 'STRIP_COLOR_05'),
+                          ('ARM_L', 'STRIP_COLOR_01'), ('ARM_R', 'STRIP_COLOR_02'),
+                          ('LEG_L', 'STRIP_COLOR_04'), ('LEG_R', 'STRIP_COLOR_06')])
+
+    def test_region_icons_exist(self):
+        """The recording layout takes any icon name; Blender's does not (a wrong one stops the panel drawing)."""
+        icons = bpy.types.UILayout.bl_rna.functions["operator"].parameters["icon"].enum_items.keys()
+        for item in ui.REGION_ITEMS + ui.ROLE_ITEMS:
+            self.assertIn(item[3], icons, item[0])
 
     def test_recognize(self):
         from dasktoon_rig import regions
