@@ -25,6 +25,10 @@ ROLE_ITEMS = (
     ('ACCESSORY', "Accessory", "Rigid on one bone", 'PINNED', 2),
     ('HAIR', "Hair", "A chain of bones for each long lock", 'STRANDS', 3),
     ('SKIRT', "Skirt", "Chains of bones around the hips", 'MOD_CLOTH', 4),
+    ('JAW', "Jaw", "The lower jaw and chin: follows the Jaw bone, blended into the face", 'MESH_CAPSULE', 5),
+    ('FLAT_EYE', "Flat Eye", "An iris drawn on the face: slides on its UVs as the eye looks around", 'HIDE_OFF', 6),
+    ('MOUTH_2D', "2D Mouth", "A drawn mouth: shows one cell of its texture atlas, chosen by the dt_mouth property",
+     'IMAGE_DATA', 7),
 )
 ROLE_ICONS = {item[0]: item[3] for item in ROLE_ITEMS}
 
@@ -76,6 +80,18 @@ class DaskRigPart(PropertyGroup):
                         default=0.4, min=0.0, max=1.0, update=_sway_changed)
     radius: FloatProperty(name="Radius", description="How far each joint keeps from the colliders", default=0.03,
                           min=0.0, max=1.0, unit='LENGTH', update=_sway_changed)
+    eye_side: EnumProperty(
+        name="Side", description="Which eye the iris belongs to",
+        items=[('AUTO', "Automatic", "The side the part lies on"),
+               ('LEFT', "Left", "The character's left eye"),
+               ('RIGHT', "Right", "The character's right eye")],
+        default='AUTO')
+    eye_range: FloatProperty(
+        name="Range", description="How far the iris slides on its UVs when the eye turns all the way; negative turns "
+        "it the other way", default=0.1, min=-1.0, max=1.0)
+    mouth_rows: IntProperty(name="Rows", description="Rows of mouth cells in the atlas texture", default=2, min=1, max=8)
+    mouth_columns: IntProperty(name="Columns", description="Columns of mouth cells in the atlas texture", default=4,
+                               min=1, max=8)
     sway_in_unity: EnumProperty(
         name="Sway in Unity",
         description="How the chain sways in Unity",
@@ -94,6 +110,13 @@ class DaskRigCollider(PropertyGroup):
                           min=0.0, unit='LENGTH', update=_sway_changed)
 
 
+def _look_changed(self, _context):
+    from dasktoon_rig import look
+    for obj in bpy.data.objects:
+        if obj.type == 'ARMATURE' and obj.data == self.id_data:
+            look.sync_limits(obj)
+
+
 class DaskRig(PropertyGroup):
     """The parts of an anime rig"""
     parts: CollectionProperty(type=DaskRigPart, name="Parts", description="Parts of the character")
@@ -102,6 +125,12 @@ class DaskRig(PropertyGroup):
                                   description="Capsules that hair and skirts do not go through; Build Rig makes them")
     live_sway: BoolProperty(name="Live Sway", description="Sway hair and skirts while the animation plays",
                             default=True, update=_sway_changed)
+    look_yaw_limit: FloatProperty(name="Side Limit", description="How far the eyes turn to the side to follow "
+                                  "LookTarget", subtype='ANGLE', default=0.5235988, min=0.0, max=1.5707963,
+                                  update=_look_changed)
+    look_pitch_limit: FloatProperty(name="Up and Down Limit", description="How far the eyes turn up and down to "
+                                    "follow LookTarget", subtype='ANGLE', default=0.3490659, min=0.0, max=1.5707963,
+                                    update=_look_changed)
 
 
 def rig_of(context):

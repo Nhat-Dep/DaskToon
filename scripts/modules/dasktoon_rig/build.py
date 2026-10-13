@@ -342,6 +342,8 @@ def build(context, rig, parts):
             elif part.role == 'SKIRT':
                 _plan_skirt(rig, i, part, vertices, plan)
         actual, removed = _make_bones(context, rig, plan)
+        from . import look
+        look.ensure(context, rig)
         _paint(context, rig, parts, owners, plan, actual, result)
         _drop_stale_groups(owners, removed, set(actual.values()))
         _tidy(rig, owners)

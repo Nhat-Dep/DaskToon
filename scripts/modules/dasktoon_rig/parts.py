@@ -13,13 +13,17 @@ from bpy.app.translations import pgettext_rpt as rpt_
 
 from . import chains, skeleton
 
-ROLES = ('BODY', 'CLOTHING', 'ACCESSORY', 'HAIR', 'SKIRT')  # a later role wins a vertex (spec 5.2)
+# A later role wins a vertex (spec 5.2): a flat eye or 2D mouth drawn on the Body keeps the Body's weights, a Jaw part
+# takes its vertices from the Body (spec 10).
+ROLES = ('FLAT_EYE', 'MOUTH_2D', 'BODY', 'CLOTHING', 'ACCESSORY', 'HAIR', 'SKIRT', 'JAW')
+FACE_ROLES = ('FLAT_EYE', 'MOUTH_2D')
 CHAIN_ROLES = ('HAIR', 'SKIRT')
 DEFAULT_BONE = {'HAIR': "Head", 'SKIRT': "Hips"}
 BONE_COUNT = 4
 DEFAULT_BONE_COUNT = {'SKIRT': 3}
 CHAIN_COUNT = 8
 WORDS = (
+    ('FLAT_EYE', {"iris", "pupil", "hitomi"}),
     ('HAIR', {"hair", "bang", "bangs", "fringe", "ponytail", "twintail", "twintails", "tail", "tails", "ahoge",
               "braid", "toc", "kami"}),
     ('SKIRT', {"skirt", "vay"}),

@@ -1457,6 +1457,29 @@ VI = {
     "Dark Area Color": "Màu vùng tối",
     "Light Area Color": "Màu vùng sáng",
     "Painting Depth": "Chiều sâu tranh",
+    # Anime rig R3: eyes and mouth (anime rig spec 10)
+    "Jaw": "Hàm",
+    "The lower jaw and chin: follows the Jaw bone, blended into the face":
+        "Hàm dưới và cằm: theo xương Jaw, hòa dần vào mặt",
+    "Flat Eye": "Mắt phẳng",
+    "An iris drawn on the face: slides on its UVs as the eye looks around":
+        "Tròng mắt vẽ trên mặt: trượt trên UV khi mắt nhìn quanh",
+    "2D Mouth": "Miệng 2D",
+    "A drawn mouth: shows one cell of its texture atlas, chosen by the dt_mouth property":
+        "Miệng vẽ: hiện một ô trong atlas texture, chọn bằng thuộc tính dt_mouth",
+    "Which eye the iris belongs to": "Tròng mắt thuộc mắt nào",
+    "The side the part lies on": "Theo phía phần nằm",
+    "The character's left eye": "Mắt trái của nhân vật",
+    "The character's right eye": "Mắt phải của nhân vật",
+    "How far the iris slides on its UVs when the eye turns all the way; negative turns it the other way":
+        "Tròng mắt trượt trên UV bao xa khi mắt xoay hết cỡ; số âm thì trượt ngược lại",
+    "Rows": "Số hàng",
+    "Rows of mouth cells in the atlas texture": "Số hàng ô miệng trong atlas texture",
+    "Columns of mouth cells in the atlas texture": "Số cột ô miệng trong atlas texture",
+    "Side Limit": "Giới hạn ngang",
+    "How far the eyes turn to the side to follow LookTarget": "Mắt xoay sang bên tối đa bao nhiêu để theo LookTarget",
+    "Up and Down Limit": "Giới hạn dọc",
+    "How far the eyes turn up and down to follow LookTarget": "Mắt xoay lên xuống tối đa bao nhiêu để theo LookTarget",
 }
 
 # Words that need their own translation context, because Blender's own translation of the same word in the default
