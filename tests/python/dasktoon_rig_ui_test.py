@@ -2,7 +2,8 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-"""Anime rig interface: Add › Armature › Anime Humanoid, the Anime Rig panels and their commands (spec 7)."""
+"""Anime rig interface: Add › Armature › Anime Humanoid, the Anime Rig panels and their commands (spec 7); the auto rig
+and the Check panel (docs/superpowers/specs/2026-10-14-dasktoon-auto-rig-design.md)."""
 
 import os
 import sys
@@ -10,10 +11,12 @@ import types
 import unittest
 
 import bpy
+import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import dasktoon_i18n_utils as iu  # noqa: E402
 import dasktoon_rig_fixtures as fx  # noqa: E402
+import dasktoon_rig_regions_test as rt  # noqa: E402
 import dasktoon_test_utils as tu  # noqa: E402
 from bl_ui import dasktoon_rig as ui  # noqa: E402
 from bl_ui import dasktoon_translations as dt  # noqa: E402
@@ -30,6 +33,45 @@ def select_only(objects, active):
 
 def panel_context(obj):
     return types.SimpleNamespace(object=obj, scene=bpy.context.scene, mode='OBJECT')
+
+
+def chibi_meshes():
+    """The meshes of the regions test's chibi (Body, Shirt, Boots), without its skeleton."""
+    rig, objs, _parts = rt.character()
+    armature = rig.data
+    bpy.data.objects.remove(rig)
+    bpy.data.armatures.remove(armature)
+    return objs
+
+
+def add_skirt_and_hair(rig):
+    """A flared skirt and a lock of hair hanging behind the head, both added as Clothing."""
+    skirt = rt.merged("Circle.007", [rt.st.tube((0, 0, 0.92), (0, 0, 0.62), 0.22)])
+    for v in skirt.data.vertices:  # wider at the hem
+        if v.co.z < 0.8:
+            v.co.x *= 1.4
+            v.co.y *= 1.4
+    hair = rt.merged("Circle.008", [rt.st.tube((0, 0.32, 1.95), (0, 0.36, 1.2), 0.05)])
+    ui.add_part(rig, skirt, 'CLOTHING')
+    ui.add_part(rig, hair, 'CLOTHING')
+    return skirt, hair
+
+
+def move_left_wrist(rig, x):
+    rig.data.use_mirror_x = False  # the right wrist stays
+    with skeleton.editing(bpy.context, rig) as edit:
+        edit["LeftHand"].head.x += x  # the elbow-to-wrist bone follows: it is connected
+        edit["LeftHand"].tail.x += x
+
+
+def properties_spaces():
+    return [area.spaces.active for window in bpy.context.window_manager.windows for area in window.screen.areas
+            if area.type == 'PROPERTIES']
+
+
+def logged(log, idname):
+    """[(text, properties)] of each logged button of operator `idname`."""
+    return [(entry[2], entry[5]) for entry in log if entry[0] == "operator" and entry[1] == idname]
 
 
 class AddTest(unittest.TestCase):
@@ -67,6 +109,42 @@ class AddTest(unittest.TestCase):
         rig = bpy.context.view_layer.objects.active
         tip = rig.matrix_world @ rig.data.bones["LeftMiddleDistal"].tail_local
         self.assertLess((tip - marks["tip_left"]).length, 0.06)
+
+    def test_add_rigs_the_selected_character(self):
+        """Selected meshes: one press adds the skeleton fitted to them, recognizes the regions and locks, builds the rig
+        and checks it (auto rig spec 2); the Properties editor shows the rig's data, where Anime Rig is."""
+        objs = chibi_meshes()
+        for space in properties_spaces():
+            space.context = 'OBJECT'
+        select_only(list(objs.values()), objs["Body"])
+        self.assertEqual(bpy.ops.dasktoon.rig_add_humanoid(), {'FINISHED'})
+        rig = bpy.context.view_layer.objects.active
+        data = rig.data.dasktoon_rig
+        self.assertTrue(skeleton.is_humanoid(rig))
+        self.assertEqual(sorted(part.name for part in data.parts if part.made_by_recognize),
+                         ["Lock L1", "Lock R1", "Lock R2"])
+        self.assertTrue(any(m.type == 'ARMATURE' and m.object == rig for m in objs["Body"].modifiers))  # built
+        self.assertTrue(data.checked)
+        # The chibi's arms are tubes pushed into its torso and Bone Heat gives their first rings to the chest: raising
+        # the arms tears each arm's root, which the Check rightly finds; nothing else.
+        self.assertEqual(sorted((item.kind, item.pose, item.region) for item in data.issues),
+                         [('STRETCH', 'ARMS_UP', 'ARM_L'), ('STRETCH', 'ARMS_UP', 'ARM_R')])
+        self.assertTrue(properties_spaces())
+        self.assertEqual({space.context for space in properties_spaces()}, {'DATA'})
+        self.assertTrue(rig.select_get())
+
+    def test_add_keeps_the_skeleton_when_the_rig_cannot_be_built(self):
+        objs = fx.character()
+        objs["Shirt"].data = objs["Body"].data  # one mesh for two objects: Build cannot paint it
+        select_only([objs["Body"], objs["Shirt"]], objs["Body"])
+        with self.assertRaises(RuntimeError) as caught:
+            bpy.ops.dasktoon.rig_add_humanoid()
+        self.assertIn("the rig could not be built", str(caught.exception))
+        self.assertIn("shares its mesh with other objects", str(caught.exception))
+        rig = bpy.context.view_layer.objects.active
+        self.assertTrue(skeleton.is_humanoid(rig))
+        self.assertEqual(len(rig.data.dasktoon_rig.parts), 2)
+        self.assertFalse(rig.data.dasktoon_rig.checked)
 
     def test_add_without_meshes_uses_the_cursor(self):
         bpy.context.scene.cursor.location = (2.0, 0.0, 0.0)
@@ -306,6 +384,165 @@ class RegionsPanelTest(unittest.TestCase):
         self.assertEqual(ui._highlight["generation"], generation + 1)
 
 
+class CheckPanelTest(unittest.TestCase):
+    """The Check panel (auto rig spec 5): the test poses, the list of spots to look at and the buttons that fix them."""
+
+    def setUp(self):
+        self.rig, self.objs = rt.rigged()
+        select_only([self.rig], self.rig)
+        self.data = self.rig.data.dasktoon_rig
+
+    def draw(self):
+        return tu.draw(ui.DATA_PT_dasktoon_rig_check, panel_context(self.rig))
+
+    def first_stretch(self):
+        return next(i for i, item in enumerate(self.data.issues) if item.kind == 'STRETCH')
+
+    def test_panel_comes_first_with_the_test_poses(self):
+        self.assertEqual(ui.DATA_PT_dasktoon_rig_check.bl_parent_id, "DATA_PT_dasktoon_rig")
+        children = [cls for cls in ui.classes if getattr(cls, "bl_parent_id", "") == "DATA_PT_dasktoon_rig"]
+        self.assertIs(children[0], ui.DATA_PT_dasktoon_rig_check)
+        log = self.draw()
+        self.assertEqual([props.pose for _text, props in logged(log, "dasktoon.rig_test_pose")],
+                         ['ARMS_UP', 'SIT', 'TURN_HEAD', 'WAVE', 'REST'])
+        self.assertIn("Not checked yet", tu.labels(log))
+        self.assertEqual([text for text, _props in logged(log, "dasktoon.rig_check")], ["Check"])
+        self.data.checked = True  # checked, nothing found
+        log = self.draw()
+        self.assertIn("Nothing to fix found", tu.labels(log))
+        self.assertEqual([text for text, _props in logged(log, "dasktoon.rig_check")], ["Check Again"])
+        self.assertTrue(logged(log, "dasktoon.rig_check_done"))
+
+    def test_panel_without_a_standard_skeleton(self):
+        with skeleton.editing(bpy.context, self.rig) as edit:
+            edit.remove(edit["Hips"])
+        self.assertIn("The Check needs a standard skeleton", tu.labels(self.draw()))
+        with self.assertRaises(RuntimeError) as caught:
+            bpy.ops.dasktoon.rig_check()
+        self.assertIn("is not a standard skeleton", str(caught.exception))
+
+    def test_test_poses(self):
+        self.assertEqual(bpy.ops.dasktoon.rig_test_pose(pose='ARMS_UP'), {'FINISHED'})
+        hand = self.rig.matrix_world @ self.rig.pose.bones["LeftHand"].head
+        shoulder = self.rig.matrix_world @ self.rig.pose.bones["LeftUpperArm"].head
+        self.assertGreater(hand.z, shoulder.z + 0.2)
+        self.assertEqual(bpy.ops.dasktoon.rig_test_pose(pose='REST'), {'FINISHED'})
+        self.assertTrue(ui.at_rest(self.rig))
+        self.assertIsNone(self.rig.animation_data)  # nothing keyed
+
+    def test_the_list_and_its_buttons(self):
+        add_skirt_and_hair(self.rig)
+        self.assertEqual(bpy.ops.dasktoon.rig_build(), {'FINISHED'})
+        move_left_wrist(self.rig, 0.2)
+        self.assertEqual(bpy.ops.dasktoon.rig_check(), {'FINISHED'})
+        log = self.draw()
+        labels = tu.labels(log)
+        for sentence in ("Left wrist is outside the body", "Circle.007 looks like a skirt",
+                         "Circle.008 looks like hair", "Left Arm stretched in the Arms Up pose (Body)"):
+            self.assertIn(sentence, labels)
+        self.assertEqual([(text, props.bone) for text, props in logged(log, "dasktoon.rig_fix_joint")],
+                         [("Fix", "LeftHand")])
+        roles = sorted((text, props.part, props.role) for text, props in logged(log, "dasktoon.rig_change_role"))
+        self.assertEqual(roles, [("Make it Hair", "Circle.008", 'HAIR'), ("Make it a Skirt", "Circle.007", 'SKIRT')])
+        shown = [props.index for _text, props in logged(log, "dasktoon.rig_show_spot")]
+        painted = [props.index for _text, props in logged(log, "dasktoon.rig_paint_spot")]
+        self.assertTrue(shown)
+        self.assertEqual(painted, shown)  # every spot here is on a Body or Clothing mesh
+        self.assertEqual({self.data.issues[i].kind for i in shown}, {'STRETCH'})
+        self.assertIn("After a fix, press Build Rig: the list is checked again", labels)
+        self.assertEqual([text for text, _props in logged(log, "dasktoon.rig_check")], ["Check Again"])
+
+    def test_icons_exist(self):
+        """The recording layout takes any icon name; Blender's does not (a wrong one stops the panel drawing)."""
+        add_skirt_and_hair(self.rig)
+        bpy.ops.dasktoon.rig_build()
+        move_left_wrist(self.rig, 0.2)
+        bpy.ops.dasktoon.rig_check()
+        self.assertEqual({'JOINT', 'STRETCH', 'ROLE'}, {item.kind for item in self.data.issues})
+        icons = set(bpy.types.UILayout.bl_rna.functions["operator"].parameters["icon"].enum_items.keys())
+        used = {entry[3] for entry in self.draw() if entry[0] in ("operator", "label")}
+        self.assertEqual(used - icons, set())
+
+    def test_fix_selects_the_joint(self):
+        self.assertEqual(bpy.ops.dasktoon.rig_fix_joint(bone="LeftHand"), {'FINISHED'})
+        self.assertEqual(self.rig.mode, 'EDIT')
+        self.assertTrue(self.rig.data.use_mirror_x)
+        bones = self.rig.data.edit_bones
+        self.assertEqual((bones["LeftHand"].select_head, bones["LeftHand"].select_tail, bones["LeftHand"].select),
+                         (True, False, False))
+        self.assertTrue(bones["LeftLowerArm"].select_tail)  # the same joint
+        self.assertEqual(sum(bone.select_head or bone.select_tail for bone in bones), 2)
+        self.assertEqual(bones.active.name, "LeftHand")
+        bpy.ops.object.mode_set(mode='OBJECT')
+
+    def test_show_and_paint_a_spot_then_done(self):
+        from dasktoon_rig import check, regions
+        bpy.ops.dasktoon.rig_build()
+        bpy.ops.dasktoon.rig_check()
+        index = self.first_stretch()
+        issue = self.data.issues[index]
+        body, region, spot = issue.object, issue.region, list(issue["vertices"])
+        self.assertEqual(bpy.ops.dasktoon.rig_show_spot(index=index), {'FINISHED'})
+        self.assertIs(ui.spot_shown(), self.rig)
+        self.assertFalse(ui.at_rest(self.rig))  # in the pose of the spot
+        corners = ui._spot["triangles"]
+        self.assertTrue(len(corners))
+        moved = check.deformed(self.rig, body)  # lit up where the pose moves the spot
+        self.assertLess(np.linalg.norm(corners.mean(axis=0) - moved[spot].mean(axis=0)), 0.1)
+        self.assertEqual(bpy.ops.dasktoon.rig_paint_spot(index=index), {'FINISHED'})
+        self.assertEqual((bpy.context.object, body.mode), (body, 'VERTEX_PAINT'))
+        self.assertEqual(body.data.color_attributes.active_color_name, regions.LAYER)
+        color = bpy.context.scene.tool_settings.vertex_paint.unified_paint_settings.color
+        for got, want in zip(color, regions.COLORS[region]):
+            self.assertAlmostEqual(got, want, places=3)
+        self.assertIs(ui.spot_shown(), self.rig)  # still lit while painting
+        bpy.ops.dasktoon.rig_paint_done()
+        self.assertEqual(bpy.context.object, self.rig)
+        self.assertEqual(bpy.ops.dasktoon.rig_check_done(), {'FINISHED'})
+        self.assertEqual((len(self.data.issues), self.data.checked), (0, False))
+        self.assertIsNone(ui.spot_shown())
+
+    def test_highlights_follow_the_pose(self):
+        """The spot shows only while the rig is in its pose; the part, drawn at rest, only while the rig is at rest."""
+        bpy.ops.dasktoon.rig_build()
+        bpy.ops.dasktoon.rig_check()
+        self.assertTrue(ui.at_rest(self.rig))
+        bpy.ops.dasktoon.rig_show_spot(index=self.first_stretch())
+        self.assertIs(ui.spot_shown(), self.rig)
+        bpy.ops.dasktoon.rig_test_pose(pose='REST')
+        self.assertIsNone(ui.spot_shown())
+        bpy.ops.dasktoon.rig_show_spot(index=self.first_stretch())
+        bpy.ops.dasktoon.rig_check()  # a new list: what was shown is not in it
+        self.assertIsNone(ui._spot["rig"])
+
+    def test_change_role_builds_and_checks_again(self):
+        from dasktoon_rig import parts as rig_parts
+        _skirt, hair = add_skirt_and_hair(self.rig)
+        bpy.ops.dasktoon.rig_build()  # recognizes first: the hair hangs from the head, a lock of a Clothing mesh
+        self.assertTrue(any(part.made_by_recognize and part.object == hair for part in self.data.parts))
+        bpy.ops.dasktoon.rig_check()
+        self.assertEqual(bpy.ops.dasktoon.rig_change_role(part="Circle.008", role='HAIR'), {'FINISHED'})
+        part = next(part for part in self.data.parts if part.name == "Circle.008")
+        self.assertEqual((part.role, part.bone_count), ('HAIR', rig_parts.BONE_COUNT))
+        self.assertFalse(any(part.made_by_recognize and part.object == hair for part in self.data.parts))
+        self.assertEqual([group.name for group in hair.vertex_groups if group.name.startswith("DT_Lock")], [])
+        self.assertIn(rig_parts.ascii_name("Circle.008") + "_1", self.rig.data.bones)  # built again
+        self.assertTrue(self.data.checked)
+        self.assertEqual([(item.part, item.role) for item in self.data.issues if item.kind == 'ROLE'],
+                         [("Circle.007", 'SKIRT')])
+        with self.assertRaises(RuntimeError) as caught:
+            bpy.ops.dasktoon.rig_change_role(part="Nothing", role='SKIRT')
+        self.assertIn("There is no part Nothing", str(caught.exception))
+
+    def test_build_checks_again_when_a_list_shows(self):
+        bpy.ops.dasktoon.rig_build()
+        self.assertFalse(self.data.checked)  # Build checks only to keep a list up to date
+        bpy.ops.dasktoon.rig_check()
+        move_left_wrist(self.rig, 0.2)
+        bpy.ops.dasktoon.rig_build()
+        self.assertIn(('JOINT', "LeftHand"), [(item.kind, item.bone) for item in self.data.issues])
+
+
 class SwayPanelTest(unittest.TestCase):
     def test_sway_panel_and_bake(self):
         bpy.ops.wm.read_factory_settings(use_empty=True)
@@ -336,7 +573,7 @@ class TextTest(unittest.TestCase):
         strings = {ui.DaskRigPart.bl_rna.description, ui.DaskRig.bl_rna.description,
                    ui.DaskRigCollider.bl_rna.description}
         operators = [cls for cls in ui.classes if issubclass(cls, bpy.types.Operator)]
-        self.assertEqual(len(operators), 13)
+        self.assertEqual(len(operators), 20)
         for struct in operators:
             strings.update((struct.bl_label, struct.__doc__))
         for struct in [ui.DaskRigPart, ui.DaskRigCollider, ui.DaskRig] + operators:
@@ -350,6 +587,21 @@ class TextTest(unittest.TestCase):
         strings.discard("")
         with iu.language('vi_VN'):
             self.assertEqual(iu.untranslated(strings, dt.KEEP), [])
+
+    def test_check_words_are_translated(self):
+        """The joints in the Check's sentences, and the poses and Show, which Blender's own words would take ("Wave" is
+        a modifier there)."""
+        tr = bpy.app.translations
+        with iu.language('vi_VN'):
+            self.assertEqual(iu.untranslated(set(ui.JOINT_NAMES.values())), [])
+            self.assertEqual([tr.pgettext_iface(name, "DaskToon") for _identifier, name, _tip in ui.POSE_ITEMS],
+                             ["Giơ tay", "Ngồi", "Quay đầu", "Vẫy tay", "Về nghỉ"])
+            self.assertEqual(tr.pgettext_iface("Show", "DaskToon"), "Xem")
+            self.assertEqual(ui.issue_sentence(types.SimpleNamespace(kind='JOINT', bone="LeftHand")),
+                             "Cổ tay trái nằm ngoài thân")
+            self.assertEqual(ui.issue_sentence(types.SimpleNamespace(kind='STRETCH', region='HEAD', pose='ARMS_UP',
+                                                                     part="Body")),
+                             "Đầu bị kéo giãn ở tư thế Giơ tay (Body)")
 
     def test_chains_has_its_own_vietnamese_word(self):
         self.assertEqual(ui.DaskRigPart.bl_rna.properties["chain_count"].translation_context, "DaskToon")

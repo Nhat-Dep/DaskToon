@@ -197,6 +197,18 @@ class RecognizePartsTest(unittest.TestCase):
         groups = sorted(g.name for g in self.objs["Body"].vertex_groups if g.name.startswith("DT_Lock"))
         self.assertEqual(groups, ["DT_Lock L1", "DT_Lock R1", "DT_Lock R2"])
 
+    def test_recognize_again_with_locks_on_two_meshes(self):
+        """Locks on the Body and on a Clothing mesh (a lock of hair hanging behind the head): recognized again, each is
+        made again once."""
+        from bl_ui import dasktoon_rig as ui
+        hair = merged("Hair", [st.tube((0, 0.32, 1.95), (0, 0.36, 1.2), 0.05)])
+        ui.add_part(self.rig, hair, 'CLOTHING')
+        regions.recognize(bpy.context, self.rig)
+        first = sorted((part.name, part.object.name) for part in self.locks().values())
+        self.assertIn("Hair", [obj for _name, obj in first])
+        regions.recognize(bpy.context, self.rig)
+        self.assertEqual(sorted((part.name, part.object.name) for part in self.locks().values()), first)
+
     def test_parts_you_made_are_left_alone(self):
         from bl_ui import dasktoon_rig as ui
         body = self.objs["Body"]

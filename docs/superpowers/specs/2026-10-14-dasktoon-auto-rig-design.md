@@ -81,6 +81,17 @@ Mục con **Kiểm tra** đứng đầu mục Rig anime (trước Khớp nối):
 - trạng thái: "Chưa kiểm tra", "Không thấy chỗ nào cần sửa", hoặc danh sách chỗ cần xem (mỗi dòng: câu, nút);
 - **Kiểm tra lại**, **Xong** (xóa danh sách, tắt chỗ đang làm sáng).
 
+*Bổ sung khi làm*:
+
+- Mỗi chỗ cần xem là một ô: câu và nút. Nút **Tô vùng** chỉ có khi chỗ đó nằm trên phần Cơ thể hay Quần áo, vì chỉ hai
+  vai trò này có vùng.
+- Chỗ đang xem được vẽ màu cam, xuyên qua mọi thứ (vì nó có thể nằm trong thân). Nó chỉ hiện khi rig còn ở đúng tư thế
+  đó; bấm Tô vùng vẫn thấy nó trên mô hình đang tô.
+- Phần đang chọn trong danh sách Các phần được làm sáng ở tư thế nghỉ, nên chỉ vẽ khi rig đang ở tư thế nghỉ.
+- **Dựng rig** chạy lại Kiểm tra khi đang có danh sách, vì danh sách cũ là của rig trước lần dựng.
+- **Đổi thành Tóc/Váy** bỏ các lọn mà Nhận diện đã tạo trên mô hình đó, vì mảnh của nó không còn là lọn của Cơ thể
+  hay Quần áo.
+
 Chữ mới có bản Việt; tên khớp, vùng, tư thế trong câu cũng dịch.
 
 ## 6. Ngoài phạm vi

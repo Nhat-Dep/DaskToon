@@ -1058,8 +1058,8 @@ VI = {
         "%s: %d đỉnh lấy theo xương gần nhất (weight tự động không tìm được nghiệm ở đó)",
     # bl_ui/dasktoon_rig.py
     "Anime Humanoid": "Khung người anime",
-    "Add the DaskToon standard skeleton, fitted to the selected meshes, which become its parts":
-        "Thêm khung xương chuẩn của DaskToon, khớp với các mesh đang chọn và lấy chúng làm phần",
+    "Add the DaskToon standard skeleton; with meshes selected, rig them in one go and check the rig":
+        "Thêm khung xương chuẩn của DaskToon; nếu đang chọn mô hình thì rig chúng một lần và kiểm tra rig",
     "Edit Joints": "Sửa khớp",
     "Edit the joints of the skeleton with X-Axis Mirror on, so both sides move together":
         "Sửa khớp của khung xương với X-Axis Mirror bật, hai bên cùng di chuyển",
@@ -1081,10 +1081,6 @@ VI = {
     "Add Part from Selection": "Thêm phần từ vùng chọn",
     "Make the selected vertices a part of the rig, kept in a new vertex group":
         "Biến các đỉnh đang chọn thành một phần của rig, lưu trong một vertex group mới",
-    "Skeleton fitted to the selected meshes. Next press Build Rig: in the panel on the right, the green stick figure "
-    "tab, Anime Rig":
-        "Đã khớp khung xương theo các mô hình đang chọn. Tiếp theo bấm Dựng rig: ở bảng bên phải, thẻ hình người que màu "
-        "xanh lá, mục Rig anime",
     "Select the character's meshes, add them in Anime Rig › Parts, then press Fit to Parts and Build Rig":
         "Chọn các mô hình của nhân vật, thêm chúng ở mục Các phần trong Rig anime, rồi bấm Khớp theo các phần và Dựng rig",
     "The selected meshes are already parts": "Các mesh đang chọn đã là phần của rig",
@@ -1216,6 +1212,83 @@ VI = {
         "Những gì mục Kiểm tra tìm ra: khớp nằm ngoài thân, chỗ bị kéo giãn, vai trò có vẻ sai",
     "Checked": "Đã kiểm tra",
     "The Check has run since the rig was built": "Mục Kiểm tra đã chạy sau lần dựng rig gần nhất",
+    # The auto rig and the Check (auto rig spec 2, 5)
+    "The skeleton is added and fitted, but the rig could not be built: %s":
+        "Đã thêm và khớp khung xương, nhưng chưa dựng được rig: %s",
+    "Rig built. The Check found spots to look at (%d): see Anime Rig › Check":
+        "Đã dựng rig. Mục Kiểm tra thấy chỗ cần xem (%d): xem Rig anime › Kiểm tra",
+    "Rig built. The Check found nothing to fix; try the test poses in Anime Rig › Check":
+        "Đã dựng rig. Mục Kiểm tra không thấy chỗ nào cần sửa; thử các tư thế thử trong Rig anime › Kiểm tra",
+    "Spots to look at: %d": "Chỗ cần xem: %d",
+    "Nothing to fix found": "Không thấy chỗ nào cần sửa",
+    "Arms Up": "Giơ tay",
+    "Sit": "Ngồi",
+    "Turn Head": "Quay đầu",
+    "Rest": "Về nghỉ",
+    "Raise both arms": "Giơ hai tay lên",
+    "Bend the thighs forward and the knees down, as if sitting": "Gập đùi ra trước và gập gối xuống, như đang ngồi",
+    "Turn the head to the left": "Quay đầu sang trái",
+    "Raise the right arm and wave the forearm": "Giơ tay phải lên và vẫy cẳng tay",
+    "Every bone back at rest": "Mọi xương về tư thế nghỉ",
+    "Left shoulder": "Vai trái",
+    "Right shoulder": "Vai phải",
+    "Left elbow": "Khuỷu tay trái",
+    "Right elbow": "Khuỷu tay phải",
+    "Left wrist": "Cổ tay trái",
+    "Right wrist": "Cổ tay phải",
+    "Left hip": "Hông trái",
+    "Right hip": "Hông phải",
+    "Left knee": "Đầu gối trái",
+    "Right knee": "Đầu gối phải",
+    "Left ankle": "Cổ chân trái",
+    "Right ankle": "Cổ chân phải",
+    "Base of the neck": "Gốc cổ",
+    "Head joint": "Khớp đầu",
+    "Test Pose": "Tư thế thử",
+    "Put the character in a test pose to see how the rig bends; nothing is keyed":
+        "Đặt nhân vật vào một tư thế thử để xem rig uốn thế nào; không khóa hình nào",
+    "The test pose": "Tư thế thử",
+    "Check": "Kiểm tra",
+    "Look for joints outside the body, spots torn in the test poses and parts whose role looks wrong":
+        "Tìm khớp nằm ngoài thân, chỗ bị rách ở các tư thế thử và phần có vai trò trông sai",
+    "Done Checking": "Xong kiểm tra",
+    "Clear the list of spots to look at and stop lighting up the spot shown":
+        "Xóa danh sách chỗ cần xem và tắt chỗ đang làm sáng",
+    "Fix Joint": "Sửa khớp này",
+    "Edit the joints with this one selected: move it into the body, then press Build Rig":
+        "Chỉnh khớp, khớp này đã được chọn sẵn: dời nó vào trong thân, rồi bấm Dựng rig",
+    "The bone whose joint, its head, is selected": "Xương có khớp (đầu xương) được chọn",
+    "There is no bone %s": "Không có xương %s",
+    "Show Spot": "Xem chỗ này",
+    "Put the character in the pose that tears this spot and light the spot up":
+        "Đặt nhân vật vào tư thế làm rách chỗ này và làm sáng chỗ đó",
+    "Spot": "Chỗ",
+    "Which spot of the list": "Chỗ nào trong danh sách",
+    "That spot is not in the list": "Chỗ đó không có trong danh sách",
+    "Paint Regions at Spot": "Tô vùng ở chỗ này",
+    "Light up the spot in its pose and paint the regions on its mesh: the torn faces take their region's color":
+        "Làm sáng chỗ đó trong tư thế của nó và tô vùng trên mesh của nó: các mặt bị rách tô bằng màu vùng của chúng",
+    "That spot is not on a Body or Clothing part": "Chỗ đó không nằm trên phần Cơ thể hay Quần áo",
+    "Change Role": "Đổi vai trò",
+    "Give the part this role, then build the rig and check it again":
+        "Đổi vai trò của phần, rồi dựng lại rig và kiểm tra lại",
+    "Part": "Phần",
+    "The part to change": "Phần cần đổi",
+    "The new role": "Vai trò mới",
+    "There is no part %s": "Không có phần %s",
+    "%s is outside the body": "%s nằm ngoài thân",
+    "%s stretched in the %s pose (%s)": "%s bị kéo giãn ở tư thế %s (%s)",
+    "%s looks like a skirt": "%s trông như váy",
+    "%s looks like hair": "%s trông như tóc",
+    "Fix": "Sửa",
+    "Make it a Skirt": "Đổi thành Váy",
+    "Make it Hair": "Đổi thành Tóc",
+    "Check Again": "Kiểm tra lại",
+    "Done": "Xong",
+    "The Check needs a standard skeleton": "Mục Kiểm tra cần khung xương chuẩn",
+    "Test poses:": "Tư thế thử:",
+    "Not checked yet": "Chưa kiểm tra",
+    "After a fix, press Build Rig: the list is checked again": "Sửa xong thì bấm Dựng rig: danh sách được kiểm tra lại",
     "Draw the faces of the part chosen in the list in the 3D view, at rest":
         "Vẽ sáng các mặt của phần đang chọn trong danh sách lên khung 3D, ở tư thế nghỉ",
     "A lock Recognize made from pieces hanging from the head; Recognize makes it again (keeping its role and "
@@ -1565,6 +1638,14 @@ VI_CONTEXT = {
     "DaskToon": {
         "Project": "Dự án",
         "Chains": "Số chuỗi",
+        # The Check's test poses and Show (Blender's "Wave" is the modifier, its "Show" is "Hiển thị").
+        "Pose": "Tư thế",
+        "Arms Up": "Giơ tay",
+        "Sit": "Ngồi",
+        "Turn Head": "Quay đầu",
+        "Wave": "Vẫy tay",
+        "Rest": "Về nghỉ",
+        "Show": "Xem",
     },
 }
 

@@ -312,26 +312,26 @@ def _is_lock(part):
     return bool(getattr(part, "made_by_recognize", False))
 
 
-def _remove_locks(rig):
-    """Take the locks Recognize made out of the rig, with their vertex groups; returns [(object, vertex set,
-    settings)] of them."""
+def remove_locks(rig, obj=None):
+    """Take the locks Recognize made (on `obj` only, when given) out of the rig, with their vertex groups; returns
+    [(object, vertex set, settings)] of them."""
     data = rig.data.dasktoon_rig
     old = []
-    for part in [part for part in data.parts if _is_lock(part)]:
-        obj = part.object
-        group = obj.vertex_groups.get(part.vertex_group) if obj is not None else None
+    for part in [part for part in data.parts if _is_lock(part) and (obj is None or part.object == obj)]:
+        mesh = part.object
+        group = mesh.vertex_groups.get(part.vertex_group) if mesh is not None else None
         if group is None:
             continue
         try:
             vertices = set(rig_parts.part_vertices(part).tolist())
         except rig_parts.PartError:
             vertices = set()
-        old.append((obj, vertices, {key: getattr(part, key) for key in LOCK_SETTINGS}))
-        if not any(other.object == obj and other.vertex_group == group.name and not _is_lock(other)
+        old.append((mesh, vertices, {key: getattr(part, key) for key in LOCK_SETTINGS}))
+        if not any(other.object == mesh and other.vertex_group == group.name and not _is_lock(other)
                    for other in data.parts):
-            obj.vertex_groups.remove(group)
+            mesh.vertex_groups.remove(group)
     for index in reversed(range(len(data.parts))):
-        if _is_lock(data.parts[index]):
+        if _is_lock(data.parts[index]) and (obj is None or data.parts[index].object == obj):
             data.parts.remove(index)
     data.active_part_index = min(data.active_part_index, max(len(data.parts) - 1, 0))
     return old
@@ -361,7 +361,7 @@ def recognize(context, rig):
     """Recognize the regions of the rig's Body and Clothing parts, paint them on their meshes' region layers, and make
     again the locks Recognize made: a new lock that is mostly an old one keeps its role and settings. Returns the
     Analysis."""
-    old = _remove_locks(rig)
+    old = remove_locks(rig)
     found = analyse(context, rig, list(rig.data.dasktoon_rig.parts))
     for obj, (vertices, labelled) in found.objects.items():
         write(obj, vertices, labelled)

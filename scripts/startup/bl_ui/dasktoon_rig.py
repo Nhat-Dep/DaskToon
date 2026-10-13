@@ -5,11 +5,13 @@
 """Anime rig, R1 (docs/superpowers/specs/2026-10-06-dasktoon-anime-rig-design.md, section 7): Add › Armature › Anime
 Humanoid; the Anime Rig panel in Properties › Object Data of an armature (Joints, Parts, Regions, Build) and of a mesh
 (its parts, Add Part from Selection, Lock from Selection, the region colors while painting). The regions and locks:
-docs/superpowers/specs/2026-10-13-dasktoon-rig-regions-design.md, section 6. The work is done by the dasktoon_rig
-module."""
+docs/superpowers/specs/2026-10-13-dasktoon-rig-regions-design.md, section 6. The auto rig (Anime Humanoid on selected
+meshes) and the Check panel: docs/superpowers/specs/2026-10-14-dasktoon-auto-rig-design.md. The work is done by the
+dasktoon_rig module."""
 
 import bpy
-from bpy.app.translations import pgettext_rpt as rpt_
+from bpy.app.handlers import persistent
+from bpy.app.translations import pgettext_iface as iface_, pgettext_rpt as rpt_
 from bpy.props import (
     BoolProperty,
     CollectionProperty,
@@ -43,6 +45,26 @@ REGION_ITEMS = (
     ('LEG_R', "Right Leg", "The character's right leg and foot", 'STRIP_COLOR_06', 5),
 )
 PALETTE = "DaskToon Regions"
+# The test poses of the Check (auto rig spec 3), in the order of check.POSES. Their names have the "DaskToon"
+# translation context: Blender's Vietnamese for "Wave" is the modifier.
+POSE_ITEMS = (
+    ('ARMS_UP', "Arms Up", "Raise both arms"),
+    ('SIT', "Sit", "Bend the thighs forward and the knees down, as if sitting"),
+    ('TURN_HEAD', "Turn Head", "Turn the head to the left"),
+    ('WAVE', "Wave", "Raise the right arm and wave the forearm"),
+    ('REST', "Rest", "Every bone back at rest"),
+)
+# The joint at the head of each bone the Check looks at (auto rig spec 4.1), as its sentences name it.
+JOINT_NAMES = {
+    "LeftUpperArm": "Left shoulder", "RightUpperArm": "Right shoulder",
+    "LeftLowerArm": "Left elbow", "RightLowerArm": "Right elbow",
+    "LeftHand": "Left wrist", "RightHand": "Right wrist",
+    "LeftUpperLeg": "Left hip", "RightUpperLeg": "Right hip",
+    "LeftLowerLeg": "Left knee", "RightLowerLeg": "Right knee",
+    "LeftFoot": "Left ankle", "RightFoot": "Right ankle",
+    "Neck": "Base of the neck", "Head": "Head joint",
+}
+ISSUE_ICONS = {'JOINT': 'BONE_DATA', 'STRETCH': 'MOD_SIMPLEDEFORM'}
 
 
 def _is_mesh(_self, obj):
@@ -237,8 +259,45 @@ def _active_part(rig):
     return None
 
 
+def show_rig_tab(context):
+    """Every Properties editor of the windows shows the object data tab, where Anime Rig is."""
+    for window in context.window_manager.windows:
+        for area in window.screen.areas:
+            if area.type == 'PROPERTIES':
+                try:
+                    area.spaces.active.context = 'DATA'
+                except TypeError:  # not a tab of what the editor shows
+                    pass
+
+
+def build_rig(context, rig):
+    """Build `rig` as Build Rig does: the regions and locks are recognized first when they never were (rig regions spec
+    5). Returns (the build result, the Analysis when it recognized or None); raises build.BuildError."""
+    from dasktoon_rig import build, parts as rig_parts, regions
+    build.check(rig, list(rig.data.dasktoon_rig.parts))  # its message, before recognizing anything
+    recognized = None
+    if not regions.has_layers(rig):
+        try:
+            recognized = regions.recognize(context, rig)
+        except rig_parts.PartError:
+            pass  # Build reports the part
+    hide_spot()  # its weights change
+    return build.build(context, rig, list(rig.data.dasktoon_rig.parts)), recognized
+
+
+def run_check(context, rig):
+    """The Check (auto rig spec 4): a new list on the rig, nothing of the old one lit up. Returns how many spots."""
+    from dasktoon_rig import check
+    hide_spot()
+    return check.run(context, rig)
+
+
+def check_summary(count):
+    return rpt_("Spots to look at: %d") % count if count else rpt_("Nothing to fix found")
+
+
 class DASKTOON_OT_rig_add_humanoid(Operator):
-    """Add the DaskToon standard skeleton, fitted to the selected meshes, which become its parts"""
+    """Add the DaskToon standard skeleton; with meshes selected, rig them in one go and check the rig"""
     bl_idname = "dasktoon.rig_add_humanoid"
     bl_label = "Anime Humanoid"
     bl_options = {'REGISTER', 'UNDO'}
@@ -248,22 +307,46 @@ class DASKTOON_OT_rig_add_humanoid(Operator):
         return context.mode == 'OBJECT'
 
     def execute(self, context):
-        from dasktoon_rig import skeleton
+        from dasktoon_rig import build, skeleton
         meshes = [obj for obj in context.selected_objects if obj.type == 'MESH']
         height, location = skeleton.placement(meshes, context.scene.cursor.location)
         rig = skeleton.create_humanoid(context, height, location)
-        if meshes:
-            add_meshes(rig, meshes)
-            fit_to_parts(context, rig)  # at once: someone new to rigging should not need Fit to Parts
-        for obj in context.view_layer.objects:
-            obj.select_set(obj == rig)
-        context.view_layer.objects.active = rig
-        if meshes:
-            self.report({'INFO'}, rpt_("Skeleton fitted to the selected meshes. Next press Build Rig: in the panel on "
-                                       "the right, the green stick figure tab, Anime Rig"))
-        else:
+        if not meshes:
+            for obj in context.view_layer.objects:
+                obj.select_set(obj == rig)
+            context.view_layer.objects.active = rig
             self.report({'INFO'}, rpt_("Select the character's meshes, add them in Anime Rig › Parts, then press Fit "
                                        "to Parts and Build Rig"))
+            return {'FINISHED'}
+        # The auto rig (auto rig spec 2): parts, fitted, regions and locks, built, checked.
+        progress = context.window_manager
+        progress.progress_begin(0, 3)
+        try:
+            add_meshes(rig, meshes)
+            fit_to_parts(context, rig)
+            for obj in context.view_layer.objects:
+                obj.select_set(obj == rig)
+            context.view_layer.objects.active = rig
+            show_rig_tab(context)
+            progress.progress_update(1)
+            try:
+                result, _recognized = build_rig(context, rig)
+            except build.BuildError as ex:  # the skeleton stays, fitted: fix what it says, then Build Rig
+                self.report({'ERROR'}, rpt_("The skeleton is added and fitted, but the rig could not be built: %s")
+                            % ex)
+                return {'FINISHED'}
+            progress.progress_update(2)
+            for warning in result.warnings:
+                self.report({'WARNING'}, warning)
+            count = run_check(context, rig)
+        finally:
+            progress.progress_end()
+        if count:
+            self.report({'INFO'}, rpt_("Rig built. The Check found spots to look at (%d): see Anime Rig › Check")
+                        % count)
+        else:
+            self.report({'INFO'}, rpt_("Rig built. The Check found nothing to fix; try the test poses in Anime Rig › "
+                                       "Check"))
         return {'FINISHED'}
 
 
@@ -391,19 +474,10 @@ class DASKTOON_OT_rig_build(Operator):
         return rig_of(context) is not None
 
     def execute(self, context):
-        from dasktoon_rig import build, parts as rig_parts, regions
+        from dasktoon_rig import build
         rig = rig_of(context)
-        recognized = None
         try:
-            build.check(rig, list(rig.data.dasktoon_rig.parts))  # its message, before recognizing anything
-            if not regions.has_layers(rig):
-                # Never recognized: do it first, so the one-button way still gets regions and locks (rig regions
-                # spec 5).
-                try:
-                    recognized = regions.recognize(context, rig)
-                except rig_parts.PartError:
-                    pass  # Build reports the part
-            result = build.build(context, rig, list(rig.data.dasktoon_rig.parts))
+            result, recognized = build_rig(context, rig)
         except build.BuildError as ex:
             self.report({'ERROR'}, str(ex))
             return {'CANCELLED'}
@@ -412,6 +486,8 @@ class DASKTOON_OT_rig_build(Operator):
         if recognized is not None:
             self.report({'INFO'}, rpt_("Recognized the regions and %d locks first") % len(recognized.locks))
         self.report({'INFO'}, result.summary())
+        if rig.data.dasktoon_rig.checked:  # the list showing was for the rig before this build
+            self.report({'INFO'}, check_summary(run_check(context, rig)))
         return {'FINISHED'}
 
 
@@ -602,24 +678,32 @@ class DASKTOON_OT_rig_paint_regions(Operator):
                     self.report({'ERROR'}, str(ex))
                     return {'CANCELLED'}
             part = _active_part(rig)
-            target = part.object if part is not None and part in _region_parts(rig) else _region_parts(rig)[0].object
-            if obj.mode != 'OBJECT':
-                bpy.ops.object.mode_set(mode='OBJECT')
-            for other in context.view_layer.objects:
-                other.select_set(other == target)
-            context.view_layer.objects.active = target
-            obj = target
-        regions.ensure_layer(obj)
-        obj.data.color_attributes.active_color_name = regions.LAYER
-        if obj.mode != 'VERTEX_PAINT':
-            bpy.ops.object.mode_set(mode='VERTEX_PAINT')
-        paint = context.tool_settings.vertex_paint
-        paint.palette = regions_palette()
-        settings = paint.unified_paint_settings
-        settings.use_unified_color = True
-        settings.color = regions.COLORS[self.region]
-        context.window_manager.dasktoon_show_regions = True
+            obj = part.object if part is not None and part in _region_parts(rig) else _region_parts(rig)[0].object
+        paint_regions(context, obj, self.region)
         return {'FINISHED'}
+
+
+def paint_regions(context, target, region):
+    """Vertex Paint on the region layer of `target` (selected and active now) with the color of `region`, the region
+    palette at hand and Show Regions on."""
+    from dasktoon_rig import regions
+    obj = context.object
+    if obj != target:
+        if obj is not None and obj.mode != 'OBJECT':
+            bpy.ops.object.mode_set(mode='OBJECT')
+        for other in context.view_layer.objects:
+            other.select_set(other == target)
+        context.view_layer.objects.active = target
+    regions.ensure_layer(target)
+    target.data.color_attributes.active_color_name = regions.LAYER
+    if target.mode != 'VERTEX_PAINT':
+        bpy.ops.object.mode_set(mode='VERTEX_PAINT')
+    paint = context.tool_settings.vertex_paint
+    paint.palette = regions_palette()
+    settings = paint.unified_paint_settings
+    settings.use_unified_color = True
+    settings.color = regions.COLORS[region]
+    context.window_manager.dasktoon_show_regions = True
 
 
 class DASKTOON_OT_rig_paint_done(Operator):
@@ -724,41 +808,128 @@ def _highlight_shader():
     return _highlight["shader"]
 
 
+def _draw_batch(context, batch, color, pull, depth_test):
+    import gpu
+    shader = _highlight_shader()
+    view = context.region_data
+    shader.bind()
+    shader.uniform_float("perspective", view.perspective_matrix)
+    shader.uniform_float("depth", (view.window_matrix[2][2], view.window_matrix[2][3], pull,
+                                   1.0 if view.is_perspective else 0.0))
+    shader.uniform_float("color", color)
+    state = gpu.state.blend_get(), gpu.state.depth_test_get(), gpu.state.depth_mask_get()
+    gpu.state.blend_set('ALPHA')
+    gpu.state.depth_test_set(depth_test)
+    gpu.state.depth_mask_set(False)
+    batch.draw(shader)
+    gpu.state.blend_set(state[0])
+    gpu.state.depth_test_set(state[1])
+    gpu.state.depth_mask_set(state[2])
+
+
+def at_rest(rig):
+    """True when no bone of `rig` is moved from its rest position (the part highlight is drawn at rest)."""
+    from mathutils import Matrix
+    identity = Matrix.Identity(4)
+    return all(bone.matrix_basis == identity for bone in rig.pose.bones)
+
+
+# Show: the stretched spot the Check found, lit up where its pose moves it (auto rig spec 4.2) while the rig stays in
+# that pose.
+_spot = {"rig": None, "index": -1, "signature": None, "triangles": None, "batch": None}
+SPOT_COLOR = (1.0, 0.3, 0.1, 0.5)
+
+
+def _pose_signature(rig):
+    return tuple(round(value, 5) for bone in rig.pose.bones for row in bone.matrix_basis for value in row)
+
+
+def spot_triangles(rig, issue):
+    """World corners (3 rows a triangle) of the faces of a stretched spot (every corner in it; those touching it when
+    none is), where the rig's pose moves them through their weights."""
+    import numpy as np
+    from dasktoon_rig import check
+    obj = issue.object
+    if obj is None or obj.type != 'MESH':
+        return np.zeros((0, 3), np.float32)
+    moved = check.deformed(rig, obj)
+    mesh = obj.data
+    mesh.calc_loop_triangles()
+    corners = np.empty(len(mesh.loop_triangles) * 3, np.int32)
+    mesh.loop_triangles.foreach_get("vertices", corners)
+    corners = corners.reshape(-1, 3)
+    inside = np.zeros(len(moved), bool)
+    inside[[v for v in issue.get("vertices", ()) if 0 <= v < len(moved)]] = True
+    chosen = corners[inside[corners].all(axis=1)]
+    if not len(chosen):
+        chosen = corners[inside[corners].any(axis=1)]
+    return moved[chosen.ravel()].astype(np.float32)
+
+
+def show_spot(context, rig, index):
+    """Put `rig` in the pose of its stretched spot `index` and light the spot up there."""
+    from dasktoon_rig import check
+    issue = rig.data.dasktoon_rig.issues[index]
+    check.apply_pose(context, rig, issue.pose)
+    _spot.update(rig=rig.name, index=index, signature=_pose_signature(rig), triangles=spot_triangles(rig, issue),
+                 batch=None)
+    for window in context.window_manager.windows:
+        for area in window.screen.areas:
+            if area.type == 'VIEW_3D':
+                area.tag_redraw()
+
+
+def hide_spot():
+    _spot.update(rig=None, index=-1, signature=None, triangles=None, batch=None)
+
+
+def spot_shown():
+    """The rig whose stretched spot is lit up now (it is still in the pose of the spot), or None."""
+    rig = bpy.data.objects.get(_spot["rig"]) if _spot["rig"] else None
+    if rig is None or rig.type != 'ARMATURE' or _pose_signature(rig) != _spot["signature"]:
+        return None
+    return rig
+
+
+@persistent
+def _forget_spot(_dummy):
+    hide_spot()
+
+
+def _spot_draw(context):
+    """Draw the spot shown, through everything (it may be inside the body); True when it is drawn."""
+    if spot_shown() is None or _spot["triangles"] is None or not len(_spot["triangles"]):
+        return False
+    if _spot["batch"] is None:
+        from gpu_extras.batch import batch_for_shader
+        _spot["batch"] = batch_for_shader(_highlight_shader(), 'TRIS', {"pos": _spot["triangles"]})
+    _draw_batch(context, _spot["batch"], SPOT_COLOR, 1.0, 'NONE')
+    return True
+
+
 def _highlight_draw():
     context = bpy.context
+    if context.region_data is None or context.screen.is_animation_playing:  # not while the character moves
+        return
+    if _spot_draw(context):  # the spot the Check shows, in place of the part
+        return
     rig = context.object
-    if (rig is None or rig.type != 'ARMATURE' or context.region_data is None
-            or context.screen.is_animation_playing):  # drawn at rest: not while the character moves
+    if rig is None or rig.type != 'ARMATURE' or not at_rest(rig):  # the part is drawn at rest
         return
     data = rig.data.dasktoon_rig
     part = _active_part(rig)
     if not data.highlight_part or part is None or part.object is None or part.object.type != 'MESH':
         return
-    import gpu
     from gpu_extras.batch import batch_for_shader
-    shader = _highlight_shader()
     key = (rig.name, data.active_part_index, part.object.name, part.scope, part.material, part.vertex_group,
            len(part.object.data.vertices), _highlight["generation"])
     if key != _highlight["key"]:
         triangles = part_triangles(part)
-        _highlight["batch"] = batch_for_shader(shader, 'TRIS', {"pos": triangles}) if len(triangles) else None
+        _highlight["batch"] = (batch_for_shader(_highlight_shader(), 'TRIS', {"pos": triangles}) if len(triangles)
+                               else None)
         _highlight["key"] = key
-    if _highlight["batch"] is None:
-        return
-    view = context.region_data
-    shader.bind()
-    shader.uniform_float("perspective", view.perspective_matrix)
-    shader.uniform_float("depth", (view.window_matrix[2][2], view.window_matrix[2][3], HIGHLIGHT_PULL,
-                                   1.0 if view.is_perspective else 0.0))
-    shader.uniform_float("color", HIGHLIGHT_COLOR)
-    state = gpu.state.blend_get(), gpu.state.depth_test_get(), gpu.state.depth_mask_get()
-    gpu.state.blend_set('ALPHA')
-    gpu.state.depth_test_set('LESS_EQUAL')
-    gpu.state.depth_mask_set(False)
-    _highlight["batch"].draw(shader)
-    gpu.state.blend_set(state[0])
-    gpu.state.depth_test_set(state[1])
-    gpu.state.depth_mask_set(state[2])
+    if _highlight["batch"] is not None:
+        _draw_batch(context, _highlight["batch"], HIGHLIGHT_COLOR, HIGHLIGHT_PULL, 'LESS_EQUAL')
 
 
 def _highlight_depsgraph(_scene, depsgraph):
@@ -771,6 +942,227 @@ def draw_region_buttons(layout):
     grid = layout.grid_flow(columns=2, even_columns=True, align=True)
     for identifier, name, _description, icon, _number in REGION_ITEMS:
         grid.operator("dasktoon.rig_paint_regions", text=name, icon=icon).region = identifier
+
+
+def _check_poll(context):
+    rig = rig_of(context)
+    return rig is not None and rig.mode != 'EDIT'
+
+
+def _stretch_issue(rig, index):
+    issues = rig.data.dasktoon_rig.issues
+    return issues[index] if 0 <= index < len(issues) and issues[index].kind == 'STRETCH' else None
+
+
+class DASKTOON_OT_rig_test_pose(Operator):
+    """Put the character in a test pose to see how the rig bends; nothing is keyed"""
+    bl_idname = "dasktoon.rig_test_pose"
+    bl_label = "Test Pose"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    pose: EnumProperty(name="Pose", description="The test pose", items=POSE_ITEMS, default='REST',
+                       translation_context="DaskToon")
+
+    @classmethod
+    def poll(cls, context):
+        return _check_poll(context)
+
+    def execute(self, context):
+        from dasktoon_rig import check
+        check.apply_pose(context, rig_of(context), self.pose)
+        return {'FINISHED'}
+
+
+class DASKTOON_OT_rig_check(Operator):
+    """Look for joints outside the body, spots torn in the test poses and parts whose role looks wrong"""
+    bl_idname = "dasktoon.rig_check"
+    bl_label = "Check"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        return _check_poll(context)
+
+    def execute(self, context):
+        from dasktoon_rig import build
+        rig = rig_of(context)
+        try:
+            build.check(rig, list(rig.data.dasktoon_rig.parts))  # what Build needs, the Check needs
+        except build.BuildError as ex:
+            self.report({'ERROR'}, str(ex))
+            return {'CANCELLED'}
+        self.report({'INFO'}, check_summary(run_check(context, rig)))
+        return {'FINISHED'}
+
+
+class DASKTOON_OT_rig_check_done(Operator):
+    """Clear the list of spots to look at and stop lighting up the spot shown"""
+    bl_idname = "dasktoon.rig_check_done"
+    bl_label = "Done Checking"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        rig = rig_of(context)
+        return rig is not None and rig.data.dasktoon_rig.checked
+
+    def execute(self, context):
+        data = rig_of(context).data.dasktoon_rig
+        data.issues.clear()
+        data.checked = False
+        hide_spot()
+        return {'FINISHED'}
+
+
+class DASKTOON_OT_rig_fix_joint(Operator):
+    """Edit the joints with this one selected: move it into the body, then press Build Rig"""
+    bl_idname = "dasktoon.rig_fix_joint"
+    bl_label = "Fix Joint"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    bone: StringProperty(name="Bone", description="The bone whose joint, its head, is selected")
+
+    @classmethod
+    def poll(cls, context):
+        rig = rig_of(context)
+        return rig is not None and context.view_layer.objects.active == rig
+
+    def execute(self, context):
+        rig = rig_of(context)
+        if rig.data.bones.get(self.bone) is None:
+            self.report({'ERROR'}, rpt_("There is no bone %s") % self.bone)
+            return {'CANCELLED'}
+        rig.data.use_mirror_x = True  # as Edit Joints: both sides move together
+        if rig.mode != 'EDIT':
+            bpy.ops.object.mode_set(mode='EDIT')
+        bones = rig.data.edit_bones
+        bones.active = bones[self.bone]  # first: making a bone active selects all of it
+        for bone in bones:
+            bone.select = bone.select_head = bone.select_tail = False
+        bone = bones[self.bone]
+        bone.select_head = True
+        if bone.parent is not None and bone.use_connect:
+            bone.parent.select_tail = True  # the same joint
+        return {'FINISHED'}
+
+
+class DASKTOON_OT_rig_show_spot(Operator):
+    """Put the character in the pose that tears this spot and light the spot up"""
+    bl_idname = "dasktoon.rig_show_spot"
+    bl_label = "Show Spot"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    index: IntProperty(name="Spot", description="Which spot of the list", min=0)
+
+    @classmethod
+    def poll(cls, context):
+        return _check_poll(context)
+
+    def execute(self, context):
+        rig = rig_of(context)
+        if _stretch_issue(rig, self.index) is None:
+            self.report({'ERROR'}, rpt_("That spot is not in the list"))
+            return {'CANCELLED'}
+        show_spot(context, rig, self.index)
+        return {'FINISHED'}
+
+
+class DASKTOON_OT_rig_paint_spot(Operator):
+    """Light up the spot in its pose and paint the regions on its mesh: the torn faces take their region's color"""
+    bl_idname = "dasktoon.rig_paint_spot"
+    bl_label = "Paint Regions at Spot"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    index: IntProperty(name="Spot", description="Which spot of the list", min=0)
+
+    @classmethod
+    def poll(cls, context):
+        return _check_poll(context)
+
+    def execute(self, context):
+        rig = rig_of(context)
+        issue = _stretch_issue(rig, self.index)
+        if issue is None:
+            self.report({'ERROR'}, rpt_("That spot is not in the list"))
+            return {'CANCELLED'}
+        target, region = issue.object, issue.region
+        if target not in [part.object for part in _region_parts(rig)]:
+            self.report({'ERROR'}, rpt_("That spot is not on a Body or Clothing part"))
+            return {'CANCELLED'}
+        show_spot(context, rig, self.index)
+        paint_regions(context, target, region)
+        return {'FINISHED'}
+
+
+class DASKTOON_OT_rig_change_role(Operator):
+    """Give the part this role, then build the rig and check it again"""
+    bl_idname = "dasktoon.rig_change_role"
+    bl_label = "Change Role"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    part: StringProperty(name="Part", description="The part to change")
+    role: EnumProperty(name="Role", description="The new role", items=ROLE_ITEMS, default='HAIR')
+
+    @classmethod
+    def poll(cls, context):
+        return _check_poll(context)
+
+    def execute(self, context):
+        from dasktoon_rig import build, parts as rig_parts, regions
+        rig = rig_of(context)
+        parts = rig.data.dasktoon_rig.parts
+        part = next((part for part in parts if part.name == self.part), None)
+        if part is None:
+            self.report({'ERROR'}, rpt_("There is no part %s") % self.part)
+            return {'CANCELLED'}
+        part.role = self.role
+        part.bone_count = rig_parts.DEFAULT_BONE_COUNT.get(self.role, rig_parts.BONE_COUNT)
+        obj = part.object
+        if self.role not in regions.BODY_ROLES and not any(
+                other.object == obj and other.role in regions.BODY_ROLES and not other.made_by_recognize
+                for other in parts):
+            regions.remove_locks(rig, obj)  # its pieces are locks of a Body or Clothing mesh no more
+        try:
+            result, _recognized = build_rig(context, rig)
+        except build.BuildError as ex:
+            self.report({'ERROR'}, str(ex))
+            return {'FINISHED'}  # the role is changed
+        for warning in result.warnings:
+            self.report({'WARNING'}, warning)
+        self.report({'INFO'}, check_summary(run_check(context, rig)))
+        return {'FINISHED'}
+
+
+def issue_sentence(issue):
+    """What a spot of the Check's list says, in the interface's language."""
+    if issue.kind == 'JOINT':
+        return rpt_("%s is outside the body") % iface_(JOINT_NAMES.get(issue.bone, issue.bone))
+    if issue.kind == 'STRETCH':
+        region = next((name for identifier, name, *_rest in REGION_ITEMS if identifier == issue.region), issue.region)
+        pose = next((name for identifier, name, _tip in POSE_ITEMS if identifier == issue.pose), issue.pose)
+        return rpt_("%s stretched in the %s pose (%s)") % (iface_(region), iface_(pose, "DaskToon"), issue.part)
+    if issue.role == 'SKIRT':
+        return rpt_("%s looks like a skirt") % issue.part
+    return rpt_("%s looks like hair") % issue.part
+
+
+def draw_issue(layout, rig, index, issue):
+    box = layout.box()
+    box.label(text=issue_sentence(issue), icon=ISSUE_ICONS.get(issue.kind) or ROLE_ICONS.get(issue.role, 'ERROR'),
+              translate=False)
+    row = box.row(align=True)
+    if issue.kind == 'JOINT':
+        row.operator("dasktoon.rig_fix_joint", text="Fix", icon='EDITMODE_HLT').bone = issue.bone
+    elif issue.kind == 'STRETCH':
+        shown = _spot["rig"] == rig.name and _spot["index"] == index and spot_shown() is not None
+        row.operator("dasktoon.rig_show_spot", text="Show", text_ctxt="DaskToon", icon='HIDE_OFF',
+                     depress=shown).index = index
+        if issue.object in [part.object for part in _region_parts(rig)]:
+            row.operator("dasktoon.rig_paint_spot", text="Paint Regions", icon='BRUSH_DATA').index = index
+    else:
+        op = row.operator("dasktoon.rig_change_role", icon=ROLE_ICONS.get(issue.role, 'NONE'),
+                          text="Make it a Skirt" if issue.role == 'SKIRT' else "Make it Hair")
+        op.part, op.role = issue.part, issue.role
 
 
 class DASKTOON_UL_rig_parts(UIList):
@@ -798,6 +1190,39 @@ class DATA_PT_dasktoon_rig(DaskRigPanel, Panel):
 
     def draw(self, _context):
         pass
+
+
+class DATA_PT_dasktoon_rig_check(DaskRigPanel, Panel):
+    bl_label = "Check"
+    bl_parent_id = "DATA_PT_dasktoon_rig"
+
+    def draw(self, context):
+        from dasktoon_rig import skeleton
+        layout = self.layout
+        rig = rig_of(context)
+        data = rig.data.dasktoon_rig
+        if skeleton.missing_bones(rig.data):
+            layout.label(text="The Check needs a standard skeleton", icon='INFO')
+            return
+        layout.label(text="Test poses:")
+        grid = layout.grid_flow(columns=2, even_columns=True, align=True)
+        for identifier, name, _tip in POSE_ITEMS[:-1]:
+            grid.operator("dasktoon.rig_test_pose", text=name, text_ctxt="DaskToon").pose = identifier
+        layout.operator("dasktoon.rig_test_pose", text="Rest", text_ctxt="DaskToon", icon='LOOP_BACK').pose = 'REST'
+        if not data.checked:
+            layout.label(text="Not checked yet")
+            layout.operator("dasktoon.rig_check", text="Check", icon='VIEWZOOM')
+            return
+        if not len(data.issues):
+            layout.label(text="Nothing to fix found", icon='CHECKMARK')
+        else:
+            column = layout.column()
+            for index, issue in enumerate(data.issues):
+                draw_issue(column, rig, index, issue)
+            layout.label(text="After a fix, press Build Rig: the list is checked again", icon='INFO')
+        row = layout.row(align=True)
+        row.operator("dasktoon.rig_check", text="Check Again", icon='FILE_REFRESH')
+        row.operator("dasktoon.rig_check_done", text="Done", icon='CHECKMARK')
 
 
 class DATA_PT_dasktoon_rig_joints(DaskRigPanel, Panel):
@@ -1006,8 +1431,16 @@ classes = (
     DASKTOON_OT_rig_recognize,
     DASKTOON_OT_rig_paint_regions,
     DASKTOON_OT_rig_paint_done,
+    DASKTOON_OT_rig_test_pose,
+    DASKTOON_OT_rig_check,
+    DASKTOON_OT_rig_check_done,
+    DASKTOON_OT_rig_fix_joint,
+    DASKTOON_OT_rig_show_spot,
+    DASKTOON_OT_rig_paint_spot,
+    DASKTOON_OT_rig_change_role,
     DASKTOON_UL_rig_parts,
     DATA_PT_dasktoon_rig,
+    DATA_PT_dasktoon_rig_check,
     DATA_PT_dasktoon_rig_joints,
     DATA_PT_dasktoon_rig_parts,
     DATA_PT_dasktoon_rig_regions,
@@ -1032,6 +1465,8 @@ def register():
         _highlight["handle"] = bpy.types.SpaceView3D.draw_handler_add(_highlight_draw, (), 'WINDOW', 'POST_VIEW')
     if _highlight_depsgraph not in bpy.app.handlers.depsgraph_update_post:
         bpy.app.handlers.depsgraph_update_post.append(_highlight_depsgraph)
+    if _forget_spot not in bpy.app.handlers.load_post:
+        bpy.app.handlers.load_post.append(_forget_spot)
 
 
 def unregister():
@@ -1042,5 +1477,7 @@ def unregister():
         _highlight["handle"] = None
     if _highlight_depsgraph in bpy.app.handlers.depsgraph_update_post:
         bpy.app.handlers.depsgraph_update_post.remove(_highlight_depsgraph)
+    if _forget_spot in bpy.app.handlers.load_post:
+        bpy.app.handlers.load_post.remove(_forget_spot)
     del bpy.types.WindowManager.dasktoon_show_regions
     del bpy.types.Armature.dasktoon_rig
