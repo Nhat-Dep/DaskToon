@@ -50,7 +50,10 @@ khớp đó được chọn sẵn.
 ### 4.2 Chỗ bị kéo giãn
 
 Với mỗi tư thế thử (trừ Về nghỉ), máy tính vị trí đỉnh của mọi phần bằng chính weight và tư thế xương (như modifier
-Armature, không cần vẽ lại cảnh). Một cạnh lưới **bị kéo giãn** khi dài ra hơn 2,5 lần. Các cạnh kéo giãn nối nhau là một
+Armature, không cần vẽ lại cảnh). Một cạnh lưới **bị kéo giãn** khi dài ra hơn 2,5 lần **và** hai đầu của nó theo những
+xương cách nhau từ 4 bậc trở lên trong cây xương (*bổ sung khi làm*: khớp gập bình thường như nách, mông, gáy cũng kéo da
+dài ra nhiều, nhưng giữa hai xương kề nhau; tai nửa theo đầu nửa theo tay thì giữa đầu và cánh tay, cách nhau 4 bậc). Các
+cạnh kéo giãn nối nhau, hay cách nhau dưới 5% chiều cao nhân vật (một vết rách có thể tách một vòng đỉnh làm hai), là một
 chỗ; chỗ có từ 3 cạnh trở lên thì báo, theo vùng của nó: "Đầu bị kéo giãn ở tư thế Giơ tay (Body)". Nút **Xem**: đặt tư
 thế đó và làm sáng chỗ đó (vẽ ở vị trí đã biến dạng); nút **Tô vùng**: tô vùng trên mô hình đó.
 
@@ -64,8 +67,9 @@ phần lớn trường hợp này.
 - **Trông như tóc**: điểm cao nhất trên khớp đầu, điểm thấp nhất dưới khớp đầu (thõng xuống) nhưng trên khớp hông, và
   không bao quanh cổ (như mảnh gắn đầu, spec vùng §4.1). Mũ (nằm hết trên khớp đầu) không bị báo.
 - **Trông như váy**: từ 80% đỉnh trở lên nằm giữa đầu gối và eo (đầu xương Spine), bao quanh hông (có đỉnh ở cả bốn phía
-  quanh trục hông ở giữa độ cao), dải đáy có đỉnh ngay trước hoặc sau chính giữa (không tách thành hai ống như quần), và
-  loe xuống (bán kính trung bình ở dải đáy lớn hơn dải đỉnh ít nhất 10%).
+  quanh trục hông ở giữa độ cao), dải đáy là một vòng bao quanh trục hông (điểm gần trục nhất cách trục ít nhất nửa bán
+  kính trung bình; hai ống quần thì mặt trong sát trục), và loe xuống (bán kính trung bình ở dải đáy lớn hơn dải đỉnh ít
+  nhất 10%).
 
 Báo "Circle.003 trông như váy", nút **Đổi thành Váy** (hay **Đổi thành Tóc**): đổi vai trò, dựng lại, kiểm tra lại.
 

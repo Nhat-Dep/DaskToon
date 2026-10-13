@@ -1210,6 +1210,12 @@ VI = {
     "Paint regions:": "Tô vùng:",
     "In Vertex Paint, select faces and press Shift+K to fill them": "Trong Vertex Paint, chọn mặt rồi bấm Shift+K để tô kín",
     "Highlight Part": "Làm sáng phần",
+    "A spot the Check of the auto rig found": "Một chỗ mà mục Kiểm tra của tự rig tìm ra",
+    "Spots to Look At": "Chỗ cần xem",
+    "What the Check found: joints outside the body, stretched spots, roles that look wrong":
+        "Những gì mục Kiểm tra tìm ra: khớp nằm ngoài thân, chỗ bị kéo giãn, vai trò có vẻ sai",
+    "Checked": "Đã kiểm tra",
+    "The Check has run since the rig was built": "Mục Kiểm tra đã chạy sau lần dựng rig gần nhất",
     "Draw the faces of the part chosen in the list in the 3D view, at rest":
         "Vẽ sáng các mặt của phần đang chọn trong danh sách lên khung 3D, ở tư thế nghỉ",
     "A lock Recognize made from pieces hanging from the head; Recognize makes it again (keeping its role and "

@@ -133,6 +133,19 @@ def _look_changed(self, _context):
             look.sync_limits(obj)
 
 
+# A spot the Check found (auto rig spec 4); its message is written when the panel draws. A stretched spot keeps its
+# vertices in the item's "vertices" property.
+class DaskRigIssue(PropertyGroup):
+    """A spot the Check of the auto rig found"""
+    kind: EnumProperty(items=[('JOINT', "", ""), ('STRETCH', "", ""), ('ROLE', "", "")], default='JOINT')
+    bone: StringProperty()
+    part: StringProperty()
+    object: PointerProperty(type=bpy.types.Object)
+    pose: StringProperty()
+    region: StringProperty()
+    role: StringProperty()
+
+
 class DaskRig(PropertyGroup):
     """The parts of an anime rig"""
     parts: CollectionProperty(type=DaskRigPart, name="Parts", description="Parts of the character")
@@ -149,6 +162,10 @@ class DaskRig(PropertyGroup):
                                     update=_look_changed)
     highlight_part: BoolProperty(name="Highlight Part", default=True,
                                  description="Draw the faces of the part chosen in the list in the 3D view, at rest")
+    issues: CollectionProperty(type=DaskRigIssue, name="Spots to Look At",
+                               description="What the Check found: joints outside the body, stretched spots, roles that "
+                               "look wrong")
+    checked: BoolProperty(name="Checked", description="The Check has run since the rig was built")
 
 
 def rig_of(context):
@@ -974,6 +991,7 @@ def menu_func(self, _context):
 classes = (
     DaskRigPart,
     DaskRigCollider,
+    DaskRigIssue,
     DaskRig,
     DASKTOON_OT_rig_add_humanoid,
     DASKTOON_OT_rig_edit_joints,
