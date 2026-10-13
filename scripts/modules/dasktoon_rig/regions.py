@@ -366,6 +366,8 @@ def recognize(context, rig):
     for obj, (vertices, labelled) in found.objects.items():
         write(obj, vertices, labelled)
     for name, obj, vertices in found.locks:
+        if any(part.name == name for part in rig.data.dasktoon_rig.parts):  # a lock of yours has it
+            name = _free_name(rig, name[len("Lock ")])
         mine = set(vertices.tolist())
         settings = None
         for old_obj, old_vertices, old_settings in old:

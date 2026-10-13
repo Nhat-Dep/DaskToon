@@ -253,6 +253,17 @@ class LockFromSelectionTest(unittest.TestCase):
         self.assertEqual(sorted(self.locks()), ["Lock L1", "Lock R1", "Lock R2"])
         self.assertEqual(regions.REGIONS[regions.read(self.body)[self.hair[0]]], 'HEAD')
 
+    def test_recognized_locks_take_free_names(self):
+        """A lock you made before Recognize ever ran keeps its name; the locks Recognize makes take other names."""
+        rig, objs = rigged()
+        body = objs["Body"]
+        mine = regions.lock_from_selection(rig, body, [int(piece_at(body, (-0.21, -0.25, 1.4))[0])])
+        self.assertEqual(mine.name, "Lock R1")
+        regions.recognize(bpy.context, rig)
+        names = [part.name for part in rig.data.dasktoon_rig.parts]
+        self.assertEqual(len(names), len(set(names)), names)
+        self.assertEqual(sorted(n for n in names if n.startswith("Lock")), ["Lock L1", "Lock R1", "Lock R2"])
+
     def test_nothing_selected(self):
         with self.assertRaises(rig_parts.PartError):
             regions.lock_from_selection(self.rig, self.body, [])
