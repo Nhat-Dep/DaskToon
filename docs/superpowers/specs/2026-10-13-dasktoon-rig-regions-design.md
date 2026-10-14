@@ -62,6 +62,10 @@ Tính ở tư thế nghỉ (pose của rig tạm đặt về Rest), vị trí đ
    rộng chi tìm được; mỗi xương thân là nửa bề rộng đoạn bóng chạy qua giữa thân ở độ cao giữa xương, riêng UpperChest
    và Neck không quá nửa bề rộng lớn nhất của Hips, Spine, Chest (ở ngang vai, bóng thân dính vào tay nên rộng giả).
    Không đọc được thì lấy 0,03 (tay), 0,05 (chân), 0,1 (thân) của chiều cao nhân vật.
+   *Sửa 2026-10-14 (độ chính xác)*: vùng Đầu rộng bằng nửa bề rộng đầu quanh xương Head, nhưng dưới gốc xương Head
+   (đỉnh cổ) thì hẹp dần, về 0 ở một nửa bề rộng đầu phía dưới. Trước đây đầu to của chibi chiếm cả đỉnh ngực, cổ áo
+   và dây đeo trên áo (nên gốc tay bị rách khi giơ tay, dây đeo xoay theo đầu). Trên tdt chỉ 417 đỉnh ở cổ trên (trong
+   7 cm dưới gốc đầu) đổi sang Thân, lr 59 đỉnh.
 
 ## 4. Mảnh gắn đầu và lọn
 
@@ -105,6 +109,9 @@ của nhiều lọn).
     cạnh dài 7 cm) rách qua một cạnh khi Ngồi (+23 và +31 cm); 9% còn tối đa +5 và +9 cm, không đỉnh nào cách chi hơn
     10% chiều cao mà có weight chi;
   - mảnh không nối với vùng chi (tai, lọn tóc, dây đeo) và đỉnh vùng Đầu: 0.
+- Xương Head cũng vậy, quanh vùng Đầu (*sửa 2026-10-14*): giữ trọn trong vùng Đầu, giảm dần theo bề mặt lưới qua cổ
+  trên cùng dải 9%, bằng 0 trên mảnh không nối với vùng Đầu. Dây đeo trên ngực của áo nhân vật thử nằm ngoài ống áo,
+  Bone Heat chỉ "thấy" xương cổ và đầu qua cổ áo hở nên cho nó 0,87 Head; nó xoay theo đầu.
   - *Sửa 2026-10-14 (độ chính xác)*: trước đây là `member` làm mềm 3 lượt (vài mm trên lưới dày) cộng một hình cầu
     pha quanh khớp gốc rộng 3 × nửa bề rộng chi đo từ hình chiếu. Lối cũ cắt gắt chỗ pha tự nhiên của Bone Heat giữa
     chi và thân: khi đo bằng công cụ `tools/dasktoon_rig_accuracy.py`, hông của tdt khi Ngồi rách 19 lần, lr 26 lần;
@@ -118,7 +125,7 @@ của nhiều lọn).
   - đỉnh vùng chi: xương của chính chi đó;
   - đỉnh vùng thân: chỉ các xương thân (Hips đến Neck), không phải xương Đầu (*sửa 2026-10-14*: cổ áo sau gáy của tdt
     mất phần vai, phần đó dồn hết cho xương Đầu, nên cổ áo xoay theo đầu);
-  - đỉnh vùng Đầu: các xương không chi nào giữ.
+  - đỉnh vùng Đầu: các xương không chi nào giữ (kể cả Head).
   Đỉnh không có xương nhà nào thì cho xương nhà gần nhất (cùng cách đo từ bề mặt). Đỉnh không còn weight nào cũng vậy.
   (*Bổ sung khi làm tự rig*: trước đây phần bị bỏ được chia lại cho mọi xương còn lại cho tổng 1, nên đỉnh eo chỉ có
   weight tay, giữ lại 3%, lại thành 100% tay; mục Kiểm tra thấy eo nhân vật thử rách khi giơ tay.)

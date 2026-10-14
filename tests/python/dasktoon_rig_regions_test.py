@@ -99,6 +99,12 @@ class RecognizeTest(unittest.TestCase):
         for name, point, region in expected:
             self.assertEqual(self.region_at(name, point), region, (name, tuple(point)))
 
+    def test_the_head_does_not_reach_down_over_the_chest(self):
+        """Measured from a head as wide as itself all the way down, the chibi's big head took the top of its chest,
+        its collar and the strap on it."""
+        for name, point in (("Body", (0, -0.18, 1.42)), ("Shirt", (0, -0.2, 1.39)), ("Shirt", (0.1, -0.227, 1.37))):
+            self.assertEqual(self.region_at(name, point), 'TORSO', (name, point))
+
     def test_locks_are_the_pieces_hanging_from_the_head(self):
         locks = {name: (obj.name, len(vertices)) for name, obj, vertices in self.found.locks}
         ear, hair = len(st.tube((0, 0, 0), (0, 0, 1), 0.04)[0]), len(st.tube((0, 0, 0), (0, 0, 1), 0.03)[0])
@@ -343,6 +349,23 @@ class KeepTest(unittest.TestCase):
         self.assertGreater(keep[near < 0.6 * length].min(), 0.99)
         self.assertLess(keep[near > 1.3 * length].max(), 1e-6)
 
+    def test_the_head_keeps_its_weight_on_the_head_fading_into_the_torso(self):
+        """As a limb's bones do: a strap on the chest, a piece of the shirt, saw the head bone alone through the
+        collar and Bone Heat gave it the head's weight; it turned with the head."""
+        world, edges = tube_mesh((0.0, 0.0, 1.0), (0.0, 0.0, 1.8), 0.07, rings=160)
+        strap, strap_edges = tube_mesh((0.0, -0.25, 1.0), (0.0, -0.25, 1.3), 0.02, rings=10)
+        joined, edges = np.concatenate([world, strap]), np.concatenate([edges, strap_edges + len(world)])
+        head, torso = regions.REGIONS.index('HEAD'), regions.REGIONS.index('TORSO')
+        labelled = np.concatenate([np.where(world[:, 2] > 1.4025, head, torso),
+                                   np.full(len(strap), torso)]).astype(np.int8)
+        band = 0.1
+        keep = regions.keep_factors(self.rig, joined, labelled, edges, band)["Head"]
+        z = joined[:, 2]
+        self.assertTrue(np.all(keep[labelled == head] == 1.0))
+        below = keep[:len(world)][(z[:len(world)] < 1.4025) & (z[:len(world)] > 1.39)]
+        self.assertGreater(below.min(), 0.9)  # next to the head: hardly anything taken
+        self.assertLess(keep[:len(world)][z[:len(world)] < 1.4 - band - 0.006].max(), 1e-6)
+        self.assertEqual(keep[len(world):].max(), 0.0)  # the strap
 
 
 class GiveUpTest(unittest.TestCase):
@@ -361,9 +384,9 @@ class GiveUpTest(unittest.TestCase):
         weights.write(body, [vertex], names, np.array([[0.7, 0.3]]))
         regions.restrict(bpy.context, rig, parts, build.ownership(parts))
         after = weights.read(body, ["Head", "RightLowerArm"] + list(regions.TRUNK))[vertex]
-        self.assertAlmostEqual(after[0], 0.3, places=3)  # the head keeps its share, no more
+        self.assertLessEqual(after[0], 0.3 + 1e-6)  # the head gets nothing more (far from it, it keeps nothing)
         self.assertAlmostEqual(after[1], 0.0, places=6)
-        self.assertAlmostEqual(after[2:].sum(), 0.7, places=3)  # the rest went to the trunk
+        self.assertAlmostEqual(after[0] + after[2:].sum(), 1.0, places=3)  # the rest went to the trunk
 
 
 class BuildTest(unittest.TestCase):
@@ -382,6 +405,12 @@ class BuildTest(unittest.TestCase):
             from dasktoon_rig import weights
             shoulder = ("Left" if region == 'ARM_L' else "Right") + "Shoulder"
             self.assertEqual(weights.read(obj, [shoulder])[piece].max(), 0.0, (shoulder, obj.name, point))
+
+    def test_a_strap_on_the_chest_does_not_follow_the_head(self):
+        from dasktoon_rig import weights
+        shirt = self.objs["Shirt"]
+        strap = piece_at(shirt, (0.1, -0.227, 1.2))
+        self.assertLess(weights.read(shirt, ["Head"])[strap].max(), 1e-6)
 
     def test_arms_and_boots_keep_their_limbs(self):
         body, boots = self.objs["Body"], self.objs["Boots"]

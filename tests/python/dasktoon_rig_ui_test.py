@@ -70,6 +70,19 @@ def add_skirt_and_hair(rig):
     return skirt, hair
 
 
+def tear_left_arm(rig, objs):
+    """Weights tearing the chibi's left arm when it rises: a ring halfway down it on the hips. (The auto rig used to
+    leave the arm roots torn, which the Check's tests relied on.)"""
+    from dasktoon_rig import parts as rig_parts, weights
+    body = objs["Body"]
+    arm = rt.piece_at(body, rt.ARM_END)
+    world, _edges = rig_parts.mesh_arrays(body)
+    axis = np.array(rt.ARM_END - rt.ARM_START)
+    ring = arm[np.abs((world[arm] - np.array(rt.ARM_START)) @ axis / (axis @ axis) - 0.5) < 0.05]
+    weights.clear(body, ring, [bone.name for bone in rig.data.bones if bone.use_deform])
+    weights.write(body, ring, ["Hips"], np.ones((len(ring), 1)))
+
+
 def move_left_wrist(rig, x):
     rig.data.use_mirror_x = False  # the right wrist stays
     with skeleton.editing(bpy.context, rig) as edit:
@@ -146,12 +159,9 @@ class AddTest(unittest.TestCase):
                          ["Lock L1", "Lock R1", "Lock R2"])
         self.assertTrue(any(m.type == 'ARMATURE' and m.object == rig for m in objs["Body"].modifiers))  # built
         self.assertTrue(data.checked)
-        # The chibi's arms are tubes pushed into its torso and Bone Heat gives their first rings to the chest: raising
-        # the arms tears an arm's root, which the Check rightly finds; nothing else. (Its weights are not quite
-        # symmetric: with the shoulders lifting with the arms, the right root stays under the 2.5 times.)
-        found = {(item.kind, item.pose, item.region) for item in data.issues}
-        self.assertTrue(found)
-        self.assertLessEqual(found, {('STRETCH', 'ARMS_UP', 'ARM_L'), ('STRETCH', 'ARMS_UP', 'ARM_R')})
+        # Nothing to fix: the arm roots it tore before, under a head region reaching down over the shoulders, and the
+        # strap on the shirt turning with the head are gone.
+        self.assertEqual({(item.kind, item.pose, item.region) for item in data.issues}, set())
         self.assertTrue(properties_spaces())
         self.assertEqual({space.context for space in properties_spaces()}, {'DATA'})
         self.assertTrue(rig.select_get())
@@ -464,6 +474,7 @@ class CheckPanelTest(unittest.TestCase):
     def test_the_list_and_its_buttons(self):
         add_skirt_and_hair(self.rig)
         self.assertEqual(bpy.ops.dasktoon.rig_build(), {'FINISHED'})
+        tear_left_arm(self.rig, self.objs)
         move_left_wrist(self.rig, 0.2)
         self.assertEqual(bpy.ops.dasktoon.rig_check(), {'FINISHED'})
         log = self.draw()
@@ -487,6 +498,7 @@ class CheckPanelTest(unittest.TestCase):
         """The recording layout takes any icon name; Blender's does not (a wrong one stops the panel drawing)."""
         add_skirt_and_hair(self.rig)
         bpy.ops.dasktoon.rig_build()
+        tear_left_arm(self.rig, self.objs)
         move_left_wrist(self.rig, 0.2)
         bpy.ops.dasktoon.rig_check()
         self.assertEqual({'JOINT', 'STRETCH', 'ROLE'}, {item.kind for item in self.data.issues})
@@ -509,6 +521,7 @@ class CheckPanelTest(unittest.TestCase):
     def test_show_and_paint_a_spot_then_done(self):
         from dasktoon_rig import check, regions
         bpy.ops.dasktoon.rig_build()
+        tear_left_arm(self.rig, self.objs)
         bpy.ops.dasktoon.rig_check()
         index = self.first_stretch()
         issue = self.data.issues[index]
@@ -536,6 +549,7 @@ class CheckPanelTest(unittest.TestCase):
     def test_highlights_follow_the_pose(self):
         """The spot shows only while the rig is in its pose; the part, drawn at rest, only while the rig is at rest."""
         bpy.ops.dasktoon.rig_build()
+        tear_left_arm(self.rig, self.objs)
         bpy.ops.dasktoon.rig_check()
         self.assertTrue(ui.at_rest(self.rig))
         bpy.ops.dasktoon.rig_show_spot(index=self.first_stretch())

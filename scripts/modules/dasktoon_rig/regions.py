@@ -128,11 +128,22 @@ def surface_distance(rig, world, names, half):
                             for name in names], axis=1), axis=1)
 
 
+def head_distance(rig, world, half):
+    """Distance of each world point to the head's surface: round the Head bone as wide as the head, narrowing below its
+    root (the top of the neck) to nothing one half width down (as wide all the way down, the big head of a chibi took
+    the top of its chest and the strap on it)."""
+    start, end = rig_parts.bone_segment(rig, "Head")
+    axis = (end - start) / np.linalg.norm(end - start)
+    drop = np.clip((start - world) @ axis, 0.0, None)
+    return chains.segment_distance(world, start, end) - half["Head"] * np.clip(1.0 - drop / half["Head"], 0.0, None)
+
+
 def labels(rig, world, half, head=None):
-    """Region (index in REGIONS) of each world point: the one nearest from its surface; points of the mask `head` are
-    HEAD."""
+    """Region (index in REGIONS) of each world point: the one nearest from its surface (the head's: head_distance);
+    points of the mask `head` are HEAD."""
     bones = region_bones(rig)
-    distance = np.stack([surface_distance(rig, world, bones[region], half) for region in REGIONS], axis=1)
+    distance = np.stack([head_distance(rig, world, half) if region == 'HEAD' else
+                         surface_distance(rig, world, bones[region], half) for region in REGIONS], axis=1)
     out = distance.argmin(axis=1).astype(np.int8)
     if head is not None:
         out[head] = REGIONS.index('HEAD')
@@ -407,7 +418,8 @@ def keep_factors(rig, world, labelled, edges, band):
     blend between the limb and the torso stays smooth (cut short, the hips and shoulders tore in the test poses of the
     real models), while a piece apart (an ear, a hair lock, a strap) and a vertex far along the mesh (a waist beside a
     hanging forearm) keep none. Nothing on the head. An arm's shoulder bone keeps its weight within SHOULDER_KEEP of
-    its own length round itself, out of the head."""
+    its own length round itself, out of the head. The head's bone keeps its weight as a limb's does, about the head (a
+    strap on the chest, a piece of the shirt, saw the head bone alone through the collar and turned with the head)."""
     bones = region_bones(rig)
     head = labelled == REGIONS.index('HEAD')
     out = {}
@@ -424,6 +436,8 @@ def keep_factors(rig, world, labelled, edges, band):
             near = chains.segment_distance(world, start, end)
             out[shoulder] = np.where(head, 0.0, 1.0 - _smoothstep(SHOULDER_KEEP[0] * length,
                                                                   SHOULDER_KEEP[1] * length, near))
+    if rig.data.bones.get("Head") is not None:
+        out["Head"] = 1.0 - _smoothstep(0.0, band, _along(world, edges, head, band))
     return out
 
 
@@ -469,6 +483,8 @@ def restrict(context, rig, parts, owners, found=None, roles=BODY_ROLES):
             home[rows] = False
             for name in limbs[region]:
                 home[rows, deform.index(name)] = True
+        if "Head" in deform:  # kept whole there
+            home[label == REGIONS.index('HEAD'), deform.index("Head")] = True
         lost = before - matrix.sum(axis=1)
         at_home = np.where(home, matrix, 0.0)
         share = at_home.sum(axis=1)

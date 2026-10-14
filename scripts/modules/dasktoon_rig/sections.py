@@ -10,7 +10,9 @@ heels of shoes).
 A plane across a limb cuts its surface in closed outlines. The limb is the innermost outline round the bone (a leg
 inside a skirt, the skin inside a shell a few millimetres out for the anime outline), or the nearest one when the bone
 is outside it; its centre by area is the middle of the limb there. The joints of each arm and leg move onto the line
-through the middles of their limb, both sides alike."""
+through the middles of their limb, both sides alike; the spine and neck, front to back, onto the middles of the body
+at their joints (the median depth of the torso's vertices put the waists of tdt and lr_shape 10 to 12 cm behind their
+middles)."""
 
 import numpy as np
 
@@ -19,14 +21,19 @@ from mathutils import Vector
 UPPER_SAMPLES = (0.35, 0.5, 0.65, 0.8)  # along an upper arm or thigh: away from the shoulder or the crotch
 LOWER_SAMPLES = (0.2, 0.35, 0.5, 0.65)  # along a forearm or shin: away from the hand or the foot
 REACH = 0.1  # (x height) outlines this near the bone
+TRUNK_REACH = 0.3  # (x height) the same for the spine: the body is wider than a limb (the neck is as a limb: wider,
+# its cut takes in the head and hair round it)
 WIDEST = 0.15  # (x height) a wider outline is no limb (the torso)
 MOVE = 0.08  # (x height) a joint moves at most this far (farther, the outlines are not the limb)
 LIMBS = (("UpperArm", "LowerArm", "Hand"), ("UpperLeg", "LowerLeg", "Foot"))
+TRUNK = ("Hips", "Spine", "Chest", "UpperChest", "Neck")  # their middles (at their ends: the crotch, the chin)
+LIMB_WORDS = ("UpperArm", "LowerArm", "Hand", "Thumb", "Index", "Middle", "Ring", "Little", "UpperLeg", "LowerLeg",
+              "Foot", "Toes")
 
 
 def outlines(world, tris, point, along, reach):
     """The closed outlines [(n x 3 world points)] where the plane through `point` across `along` cuts the triangles
-    `tris` of `world` near it."""
+    `tris` of `world` with a corner within `reach` of it (cut short there, an outline is not closed and is left out)."""
     near = np.linalg.norm(world - point, axis=1) < reach
     side = (world - point) @ along
     keep = near[tris].any(axis=1) & (side[tris].min(axis=1) < 0.0) & (side[tris].max(axis=1) > 0.0)
@@ -54,7 +61,7 @@ def outlines(world, tris, point, along, reach):
             previous, current = current, following[0]
             seen.add(current)
             loop.append(current)
-        if len(loop) >= 3:
+        if len(loop) >= 3 and first in links[current]:
             loops.append(np.array([spot[k] for k in loop]))
     return loops
 
@@ -82,15 +89,16 @@ def outline(loop, point, along):
     return abs(area), point + cx * u + cy * v, inside
 
 
-def section(meshes, point, along, height):
+def section(meshes, point, along, height, reach=REACH, round_only=False):
     """(centre, radius) of the limb round `point` across `along`: the innermost outline of `meshes` [(world, tris)]
-    round it, else the nearest; None when there is none of a limb's size."""
+    within `reach` (x height) round it, else (unless `round_only`) the nearest; None when there is none of a limb's
+    size."""
     found = []
     for world, tris in meshes:
-        for loop in outlines(world, tris, point, along, REACH * height):
+        for loop in outlines(world, tris, point, along, reach * height):
             area, centre, inside = outline(loop, point, along)
             radius = np.sqrt(area / np.pi)
-            if 0.0 < radius < WIDEST * height:
+            if 0.0 < radius < WIDEST * height and (inside or not round_only):
                 found.append((not inside, area if inside else np.linalg.norm(centre - point), centre, radius))
     if not found:
         return None
@@ -154,6 +162,46 @@ def centre_limbs(out, meshes, height):
             shared = (left + right * np.array([-1.0, 1.0, 1.0])) / 2.0
             for side, move in (("Left", shared), ("Right", shared * np.array([-1.0, 1.0, 1.0]))):
                 _move_joint(out, side, (upper, lower, end), k, Vector(move))
+
+
+def centre_trunk(out, meshes, height):
+    """Move the spine and neck of `out` ({bone: (head, tail, z axis)}, world) front to back onto the middles of the
+    body's sections round the middles of the bones of TRUNK (`meshes` as in centre_limbs; cut at a joint, the neck's
+    top took in the head and the hips' the thighs), and the bones hanging from them with them (the head, the face, the
+    shoulders' roots): each point by the moves at the heights next to it, in proportion, above the neck's middle as it
+    (a spine bending smoothly from the middle of the chest to the middle of the neck: moved whole, the neck stood
+    straight on a bent spine and turning the head swung the hair behind it further, tearing it). A bone without a
+    section round it (a hand hanging beside the waist is none), or which would move more than MOVE of the height,
+    does not count; the arms and legs stay."""
+    heights, moves = [], []
+    for name in TRUNK:
+        if name not in out:
+            continue
+        head, tail, _axis = out[name]
+        middle, along = np.array((head + tail) / 2.0), np.array(tail - head)
+        if np.linalg.norm(along) < 1e-9:
+            continue
+        for group in meshes:
+            reach = REACH if name == "Neck" else TRUNK_REACH
+            found = section(group, middle, along / np.linalg.norm(along), height, reach, round_only=True)
+            if found is not None:
+                if abs(found[0][1] - middle[1]) < MOVE * height:
+                    heights.append(middle[2])
+                    moves.append(found[0][1] - middle[1])
+                break
+    if not heights:
+        return
+    limbs = [name for name in out if any(word in name for word in LIMB_WORDS)]
+    stay = [point for name in limbs for point in out[name][:2]]
+
+    def moved(point):
+        if any((point - other).length < 1e-6 for other in stay):
+            return point
+        return point + Vector((0.0, float(np.interp(point.z, heights, moves)), 0.0))
+
+    for name, (head, tail, axis) in list(out.items()):
+        if name not in limbs:
+            out[name] = (moved(head), moved(tail), axis)
 
 
 def _move_joint(out, side, chain, k, move):

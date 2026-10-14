@@ -361,6 +361,34 @@ class CentreLineTest(unittest.TestCase):
             self.assertAlmostEqual(wrist.y, depth_on(forearm, wrist.z), delta=0.015, msg=side)
 
 
+class OutlineTest(unittest.TestCase):
+    def test_an_outline_cut_short_is_left_out(self):
+        """Triangles far from the point are not looked at: what is left of an outline there is no outline (the torso
+        of the chibi with hair gave a crescent, its middle 2.5 cm off)."""
+        from dasktoon_rig import sections
+        verts, faces = tube((0.0, 0.0, 0.0), (0.0, 0.0, 1.0), 0.2, rings=4)
+        tris = np.array([tri for face in faces if len(face) == 4 for tri in (face[:3], (face[0], face[2], face[3]))])
+        world, point, along = np.array(verts), np.array((0.15, 0.0, 0.6)), np.array((0.0, 0.0, 1.0))
+        self.assertEqual(len(sections.outlines(world, tris, point, along, 1.0)), 1)
+        self.assertEqual(sections.outlines(world, tris, point, along, 0.3), [])
+
+
+class TrunkTest(unittest.TestCase):
+    """The spine and neck lie in the middle of the body's cross-section, front to back (the median depth of the
+    torso's vertices put the waists of tdt and lr_shape 10 to 12 cm behind their middles)."""
+
+    def setUp(self):
+        bpy.ops.wm.read_factory_settings(use_empty=True)
+
+    def test_hair_hanging_behind_the_back_does_not_pull_the_spine_back(self):
+        hair = ((0.06, 0.3, 1.9), (0.06, 0.3, 0.9), 0.08)  # from the back of the head down to the hips
+        body = polyline_chibi(CentreLineTest.ARM, CentreLineTest.LEG, extra=[hair])
+        rig = skeleton.create_humanoid(bpy.context, 1.0, (0.0, 0.0, 0.0))
+        skeleton.fit(bpy.context, rig, [body], body=[body])
+        for name in ("Hips", "Spine", "Chest", "UpperChest", "Neck", "Head"):
+            self.assertAlmostEqual(world_head(rig, name).y, 0.5, delta=0.015, msg=name)
+
+
 def shown(obj):
     from dasktoon_rig import body_shape
     return body_shape.evaluated(bpy.context, obj)[0]

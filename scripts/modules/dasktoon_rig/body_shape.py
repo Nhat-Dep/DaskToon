@@ -221,7 +221,8 @@ def joints(context, objects, feet, height, skin=None):
     """{bone: (head, tail, z axis)} in world space of the standard skeleton fitted to the silhouette of `objects`, for
     a character `height` tall with its feet at `feet`; None when they have no faces. What is not found (arms, legs)
     stays as in the template, at the heights found. The joints of the arms and legs then lie on the middle lines of the
-    limbs of `skin` (the Body meshes) where it has them, else of `objects`."""
+    limbs of `skin` (the Body meshes) where it has them, else of `objects`; the spine and neck in the middle of the
+    body, front to back."""
     from . import skeleton
     shape = Shape(context, objects, feet, height)
     if shape.mask is None:
@@ -291,6 +292,7 @@ def joints(context, objects, feet, height, skin=None):
     from . import sections
     groups = [[evaluated(context, obj) for obj in group if obj.type == 'MESH'] for group in (skin or [], objects)]
     sections.centre_limbs(out, [group for group in groups if group], height)
+    sections.centre_trunk(out, [group for group in groups if group], height)
     return out
 
 

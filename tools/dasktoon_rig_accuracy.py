@@ -42,6 +42,7 @@ JOINTS = {
     "Neck": ("Neck", 0.5, None), "Waist": ("Spine", 0.5, None),
 }
 REACH = 0.12  # (x height) the cross-section: triangles this near the joint
+TRUNK_REACH = 0.3  # (x height) the same for the waist: wider than a limb (cut short, no outline closes)
 STRETCHED, TORN, SQUASHED = 1.5, 2.5, 0.4
 GROWN = 0.003  # (x height) an edge must also grow by this much
 FAR = 0.1
@@ -92,12 +93,15 @@ def joints(rig, parts, height):
             p = rig.data.bones[before]
             direction = direction + (p.tail_local - p.head_local).normalized()
         along = np.array((rig.matrix_world.to_3x3() @ direction).normalized())
+        if joint == "Neck":  # its own cross-section, level: across a neck bone leaning forward the cut ran into the jaw
+            along = np.array((0.0, 0.0, 1.0))
         best = None
         for name, objects in (("skin", skin), ("body", body)):
             found = []
             for obj in objects:
                 world, tris, _edges = meshes[obj]
-                for loop in sections.outlines(world, tris, point, along, REACH * height):
+                reach = TRUNK_REACH if joint == "Waist" else REACH
+                for loop in sections.outlines(world, tris, point, along, reach * height):
                     found.append(sections.outline(loop, point, along))
             inside = [f for f in found if f[2] and f[0] > 0.0]
             if inside:

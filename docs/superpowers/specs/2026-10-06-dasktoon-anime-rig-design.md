@@ -99,6 +99,14 @@ là **khung chuẩn**, kể cả khi người dùng xóa ngón, mắt, hàm hay 
   đi qua cho đường tay/chân; khuôn tay, chân được xoay và co giãn lên đó; cột sống giãn giữa độ cao hông và vai tìm được
   (hợp nhân vật chibi đầu to). Không tìm được thì giữ khuôn như cũ; tìm được một bên thì bên kia lấy đối xứng. Khi ghi
   khớp, X-Axis Mirror tạm tắt (nó lật mỗi bên theo giữa armature, không theo giữa nhân vật).
+  *Sửa 2026-10-14 (độ chính xác, đo bằng `tools/dasktoon_rig_accuracy.py` trên tdt, lr_shape):* khớp tay chân nằm trên
+  đường giữa của chi, tìm từ mặt cắt ngang của chi (`sections.py`; hông trước đây lệch 4–7 cm, cổ chân 3–11 cm). Cột
+  sống và cổ, theo chiều trước sau, đi qua tâm mặt cắt thân ở giữa mỗi đốt Hips, Spine, Chest, UpperChest, Neck (chỉ
+  vòng cắt bao quanh đốt; bàn tay buông cạnh eo không tính), các điểm giữa nội suy theo độ cao; xương vai, đầu, mặt đi
+  theo. Trước đây cả cột sống ở một độ sâu là trung vị các đỉnh quanh thân, bị tóc dài sau lưng kéo: eo lệch 10–12 cm
+  khỏi giữa thân, nay 6–7 mm. Cổ để nghiêng theo đường nối giữa ngực với giữa cổ (lệch giữa cổ 3 cm): dựng cổ thẳng
+  đúng tâm thì Quay đầu làm tóc sau gáy rách 13–26 cạnh, cổ nghiêng thì không cạnh nào. Vòng cắt chỉ tính khi khép kín
+  (đoạn hở do cắt cụt từng cho tâm lệch 2,5 cm).
 
 ## 5. Phần và vai trò (R1)
 
