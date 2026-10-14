@@ -300,6 +300,24 @@ def tube_mesh(a, b, radius, rings, segments=12):
     return np.array(verts, float), np.array(sorted(edges))
 
 
+class SideTest(unittest.TestCase):
+    def test_a_piece_on_one_leg_crossing_the_middle_is_that_leg_only(self):
+        """lr_shape's leg warmer, modelled for the left leg and mirrored, reaches 8 mm past the middle on its inner
+        side: that vertex was the right leg's, and the warmer tore 35 to 47 cm whenever the legs parted."""
+        rig, objs, parts = character()
+        warmer = merged("Warmer", [st.tube((0.09, 0.0, 0.1), (0.09, 0.0, 0.35), 0.095, rings=6, segments=16)])
+        found = regions.analyse(bpy.context, rig, parts + [rig_parts.Part("Warmer", warmer, 'CLOTHING')])
+        world, _edges = rig_parts.mesh_arrays(warmer)
+        self.assertTrue((world[:, 0] < 0.0).any())  # it does cross the middle
+        _vertices, labels = found.objects[warmer]
+        self.assertEqual({regions.REGIONS[k] for k in labels.tolist()}, {"LEG_L"})
+
+    def test_a_piece_on_both_legs_keeps_both(self):
+        _vertices, labels = regions.analyse(bpy.context, *character()[::2]).objects[bpy.data.objects["Body"]]
+        self.assertIn(regions.REGIONS.index('LEG_L'), labels)
+        self.assertIn(regions.REGIONS.index('LEG_R'), labels)
+
+
 class KeepTest(unittest.TestCase):
     """How much of its weight each bone of a limb keeps on a vertex (rig regions spec 5, made more accurate after the
     tears the real models showed in the test poses): all of it on the limb, fading along the mesh into the region next

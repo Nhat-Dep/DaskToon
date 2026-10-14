@@ -38,6 +38,7 @@ BODY_ROLES = ('BODY', 'CLOTHING')
 BAND = 0.09  # (x height) along the mesh, a limb's bones keep a share fading from whole to nothing past the limb (narrower,
 # the coarse buttocks of the real models tore across one edge when sitting)
 SHOULDER_KEEP = (0.6, 1.3)  # (x its length) the shoulder bone keeps all its weight this near itself, nothing past
+SIDE_SHARE = 0.1  # a piece with at most this share of its arm's or leg's vertices on the other side is of one side
 LOCK_SETTINGS = ("role", "bone", "bone_count", "chain_count", "stiffness", "gravity", "drag", "radius", "sway_in_unity")
 LOCK_KEEP = 0.5  # a new lock at least this much over an old one (share of its vertices) keeps the old one's settings
 
@@ -147,6 +148,21 @@ def labels(rig, world, half, head=None):
     out = distance.argmin(axis=1).astype(np.int8)
     if head is not None:
         out[head] = REGIONS.index('HEAD')
+    return out
+
+
+def one_side(labelled, vertices, edges):
+    """`labelled` with each loose piece (along `edges`, indices into `vertices`) of one side where it nearly is: its
+    vertices of the other arm or leg, at most SIDE_SHARE of the two, become the side's (lr_shape's left leg warmer
+    reached 8 mm past the middle: that vertex followed the right leg, tearing the warmer whenever the legs parted). A
+    piece on both (the body, shorts, a skirt) stays."""
+    out = labelled.copy()
+    for piece in chains.components(len(vertices), edges):
+        for left, right in (('ARM_L', 'ARM_R'), ('LEG_L', 'LEG_R')):
+            on_left, on_right = out[piece] == REGIONS.index(left), out[piece] == REGIONS.index(right)
+            few, many = sorted((on_left, on_right), key=lambda side: side.sum())
+            if few.any() and few.sum() <= SIDE_SHARE * (few.sum() + many.sum()):
+                out[piece[few]] = REGIONS.index(left if many is on_left else right)
     return out
 
 
@@ -263,7 +279,8 @@ def analyse(context, rig, parts, owners=None):
         head = np.zeros(len(world), bool)
         for piece in pieces:
             head[piece] = True
-        found.objects[obj] = (vertices, labels(rig, world[vertices], found.half, head[vertices]))
+        found.objects[obj] = (vertices, one_side(labels(rig, world[vertices], found.half, head[vertices]), vertices,
+                                                 rig_parts.local_edges(edges, vertices)))
         if pieces:
             named += [(_side_of(world, g, middle, height), float(world[g, 2].max()), (obj, g))
                       for g in _groups(pieces, world, LOCK_GAP * height)]

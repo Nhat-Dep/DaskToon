@@ -62,6 +62,10 @@ Tính ở tư thế nghỉ (pose của rig tạm đặt về Rest), vị trí đ
    rộng chi tìm được; mỗi xương thân là nửa bề rộng đoạn bóng chạy qua giữa thân ở độ cao giữa xương, riêng UpperChest
    và Neck không quá nửa bề rộng lớn nhất của Hips, Spine, Chest (ở ngang vai, bóng thân dính vào tay nên rộng giả).
    Không đọc được thì lấy 0,03 (tay), 0,05 (chân), 0,1 (thân) của chiều cao nhân vật.
+   *Sửa 2026-10-14 (cảnh đánh nhau thử)*: một mảnh liền mà hầu hết thuộc một tay hay một chân (bên kia không quá 10%
+   số đỉnh tay, chân của nó) thì cả mảnh thuộc bên đó. Tất ống của lr_shape dựng cho chân trái rồi Mirror, mép trong
+   vượt đường giữa 8 mm: đỉnh đó theo chân phải, và tất rách 35–47 cm mỗi khi hai chân tách ra. Mảnh trên cả hai chân
+   (thân, quần, váy) giữ nguyên.
    *Sửa 2026-10-14 (độ chính xác)*: vùng Đầu rộng bằng nửa bề rộng đầu quanh xương Head, nhưng dưới gốc xương Head
    (đỉnh cổ) thì hẹp dần, về 0 ở một nửa bề rộng đầu phía dưới. Trước đây đầu to của chibi chiếm cả đỉnh ngực, cổ áo
    và dây đeo trên áo (nên gốc tay bị rách khi giơ tay, dây đeo xoay theo đầu). Trên tdt chỉ 417 đỉnh ở cổ trên (trong
