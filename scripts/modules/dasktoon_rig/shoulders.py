@@ -6,10 +6,13 @@
 past START below horizontal, an upper arm lifts its shoulder bone, RATIO of a degree for each degree it rises, up to
 LIFT with the arm straight up: turning only the arm folded the top of the shoulder in.
 
-A hidden helper bone beside each shoulder (its rest, its parent; no deform, so not in the FBX) is turned by a driver
-that reads how far the upper arm is raised sideways from the arm's own quaternion (its rotation channels: a Transform
-variable would wait for the arm's final pose, which waits for its parent, the shoulder: a cycle). The shoulder copies
-the helper's rotation in local space, before its own: keys on the shoulder still count. The constraint's influence is
+A hidden helper bone on each shoulder (its head and tail, its parent; no deform, so not in the FBX) is rolled so its X
+axis is the axis lifting the shoulder, and turned about it by a driver that reads how far the upper arm is raised
+sideways from the arm's own quaternion (its rotation channels: a Transform variable would wait for the arm's final pose,
+which waits for its parent, the shoulder: a cycle). An X axis of its own, not a fixed axis of an axis-angle rotation:
+putting the bones at rest (the test poses, Clear Rotation) set that axis back to Y and twisted the shoulder instead. The
+shoulder copies the helper's rotation in the helper's local space turned to the shoulder's orientation, before its own:
+keys on the shoulder still count. The constraint's influence is
 the rig's Shoulder Follows Arm. Clips bake the result, so Unity needs no constraint. An arm turned to an Euler
 rotation mode is not followed (the standard skeleton's bones use quaternions)."""
 
@@ -44,13 +47,17 @@ def _local(matrix_local, axis):
     return local.normalized()
 
 
-def _helpers(context, rig, sides):
-    """A helper bone for each side, made or moved to its shoulder's rest."""
+def _helpers(context, rig, sides, up):
+    """A helper bone for each side, made or moved onto its shoulder, its X axis the axis lifting the shoulder."""
     with skeleton.editing(context, rig) as edit:
         for side in sides:
             shoulder = edit[side + "Shoulder"]
             helper = edit.get(helper_name(side)) or edit.new(helper_name(side))
-            helper.head, helper.tail, helper.roll = shoulder.head.copy(), shoulder.tail.copy(), shoulder.roll
+            helper.head, helper.tail = shoulder.head.copy(), shoulder.tail.copy()
+            direction = (shoulder.tail - shoulder.head).normalized()
+            lift = _raise_axis(direction, up)
+            if lift is not None:
+                helper.align_roll(lift.cross(direction))  # Z = X x Y, with X the lift axis and Y along the bone
             helper.parent = shoulder.parent
             helper.use_connect = False
             helper.use_deform = False
@@ -67,17 +74,18 @@ RAISE = "2*atan2(%s,%s)*(%%.4f*%s%%+.4f*%s)/max(%s,0.000001)" % (SWING, KEEP, SW
 LONGEST = 255
 
 
-def _drive(rig, side, arm_axis, shoulder_axis, start, top):
-    """The helper turns about `shoulder_axis` (its own frame, the shoulder's) `top` at most: RATIO of the upper arm's
-    swing about `arm_axis` (the arm's frame) past `start`."""
+def _drive(rig, side, arm_axis, start, top):
+    """The helper turns about its X axis `top` at most: RATIO of the upper arm's swing about `arm_axis` (the arm's
+    frame) past `start`."""
     name = helper_name(side)
     pose_bone = rig.pose.bones[name]
-    pose_bone.rotation_mode = 'AXIS_ANGLE'
-    path = 'pose.bones["%s"].rotation_axis_angle' % name
-    for index in range(4):
-        rig.driver_remove(path, index)
-    pose_bone.rotation_axis_angle = (0.0, shoulder_axis.x, shoulder_axis.y, shoulder_axis.z)
-    driver = rig.driver_add(path, 0).driver
+    pose_bone.rotation_mode = 'XYZ'
+    for path, count in (('pose.bones["%s"].rotation_euler' % name, 3),
+                        ('pose.bones["%s"].rotation_axis_angle' % name, 4)):  # the latter: a lift made before
+        for index in range(count):
+            rig.driver_remove(path, index)
+    pose_bone.rotation_euler = (0.0, 0.0, 0.0)
+    driver = rig.driver_add('pose.bones["%s"].rotation_euler' % name, 0).driver
     driver.type = 'SCRIPTED'
     for index, letter in enumerate("wxyz"):
         component = driver.variables.new()
@@ -103,7 +111,7 @@ def _constrain(rig, side):
         found = pose_bone.constraints.new('COPY_ROTATION')
         found.name = NAME
     found.target, found.subtarget = rig, helper_name(side)
-    found.owner_space = found.target_space = 'LOCAL'
+    found.owner_space, found.target_space = 'LOCAL', 'LOCAL_OWNER_ORIENT'
     found.mix_mode = 'BEFORE'
     found.use_x = found.use_y = found.use_z = True
 
@@ -126,8 +134,8 @@ def apply(context, rig):
              and bones.get(side + "UpperArm") is not None]
     if not sides:
         return []
-    _helpers(context, rig, sides)
     up = (rig.matrix_world.inverted().to_3x3() @ Vector((0.0, 0.0, 1.0))).normalized()
+    _helpers(context, rig, sides, up)
     done = []
     for side in sides:
         arm, shoulder = bones[side + "UpperArm"], bones[side + "Shoulder"]
@@ -139,7 +147,7 @@ def apply(context, rig):
         rest = math.asin(max(-1.0, min(1.0, arm_direction.dot(up))))
         start = max(0.0, -START - rest)  # how far the arm rises from rest before its shoulder lifts
         top = RATIO * (math.pi / 2.0 - max(rest, -START))
-        _drive(rig, side, _local(arm.matrix_local, arm_axis), _local(shoulder.matrix_local, shoulder_axis), start, top)
+        _drive(rig, side, _local(arm.matrix_local, arm_axis), start, top)
         _constrain(rig, side)
         done.append(side)
     sync(rig)

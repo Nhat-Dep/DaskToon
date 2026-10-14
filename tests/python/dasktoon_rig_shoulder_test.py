@@ -40,6 +40,12 @@ def lift(rig, side):
     return angle if posed.z >= rest.z - 1e-9 else -angle
 
 
+def tip_rise(rig, side):
+    """Degrees the shoulder bone's tip turns up, seen from the front (a lift, not a twist about the bone itself)."""
+    rest, posed = direction(rig, side + "Shoulder", False), direction(rig, side + "Shoulder", True)
+    return math.degrees(math.asin(max(-1.0, min(1.0, posed.z))) - math.asin(max(-1.0, min(1.0, rest.z))))
+
+
 def rest_elevation(rig, side):
     return math.degrees(math.asin(direction(rig, side + "UpperArm", False).z))
 
@@ -75,6 +81,9 @@ class ShoulderTest(unittest.TestCase):
         for side in ("Left", "Right"):
             self.assertGreater(expected(self.rig, side, 110.0), 15.0)
             self.assertAlmostEqual(lift(self.rig, side), expected(self.rig, side, 110.0), delta=2.0, msg=side)
+            # Its tip goes up by that much: the shoulder is lifted, not twisted about itself (which turned the arm
+            # backwards on tdt).
+            self.assertAlmostEqual(tip_rise(self.rig, side), expected(self.rig, side, 110.0), delta=2.0, msg=side)
         check.apply_pose(bpy.context, self.rig, 'REST')
         for side in ("Left", "Right"):
             self.assertAlmostEqual(lift(self.rig, side), 0.0, places=3)
@@ -118,6 +127,7 @@ class ShoulderTest(unittest.TestCase):
         self.assertAlmostEqual(lift(self.rig, "Left"), 0.0, places=3)
         turn(self.rig, "LeftUpperArm", 'Y', -45.0)  # the left arm up 45 degrees (as Arms Up turns it)
         self.assertAlmostEqual(lift(self.rig, "Left"), RATIO * 45.0, delta=1.5)
+        self.assertAlmostEqual(tip_rise(self.rig, "Left"), RATIO * 45.0, delta=1.5)
 
     def test_one_of_each_after_building_again(self):
         build.build(bpy.context, self.rig, list(self.rig.data.dasktoon_rig.parts))
@@ -133,7 +143,7 @@ class ShoulderTest(unittest.TestCase):
             self.assertEqual(len(constraints), 1)
             ours = [d for d in drivers if d.data_path.startswith('pose.bones["%s"]' % helper)]
             self.assertEqual(len(ours), 1)
-            self.assertEqual(ours[0].data_path, 'pose.bones["%s"].rotation_axis_angle' % helper)
+            self.assertEqual((ours[0].data_path, ours[0].array_index), ('pose.bones["%s"].rotation_euler' % helper, 0))
             self.assertTrue(ours[0].driver.is_simple_expression, ours[0].driver.expression)
 
     def test_the_exported_clip_carries_the_lift(self):
