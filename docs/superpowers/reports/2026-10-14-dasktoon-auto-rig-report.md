@@ -136,3 +136,69 @@ khớp vai, còn xương vai đứng yên, nên đỉnh vai bẹp và nách gậ
   - driver kiểu "Transform" gây vòng lặp phụ thuộc, nên driver đọc thẳng quaternion của cánh tay;
   - trục kiểu trục–góc bị trả về mặc định khi đưa xương về nghỉ, làm vai xoắn thay vì nâng.
 
+
+## 8. Độ chính xác của rig (nhánh `dasktoon-rig-accuracy`)
+
+Bạn yêu cầu làm rig thật chính xác trước khi làm tiếp. Mục Kiểm tra trên tdt và lr_shape báo "không có gì cần sửa",
+nhưng đo kỹ thì có rách. Công cụ đo mới `tools/dasktoon_rig_accuracy.py` chạy trên bản sao đã tự rig và đo bốn thứ:
+
+- khớp lệch khỏi giữa chi bao nhiêu (mặt cắt ngang qua khớp);
+- cạnh lưới giãn bao nhiêu ở bốn tư thế thử (rách = dài ra hơn 2,5 lần và thêm hơn 0,3% chiều cao);
+- trọng số hai bên trái, phải có giống nhau không;
+- trọng số tay chân có lọt ra xa khỏi chi không.
+
+Kết quả, trước khi sửa → sau khi sửa (tdt / lr_shape, cao 2,95):
+
+| Đo | Trước | Sau |
+|---|---|---|
+| Hông lệch khỏi giữa đùi | 3,7–6,7 cm | 2,5 / 12 mm |
+| Cổ chân lệch khỏi giữa cẳng chân | 3–11 cm | 4 / 6 mm |
+| Cổ tay lệch khỏi giữa cẳng tay | 1–2 cm | 4 / 6 mm |
+| Eo (cột sống) lệch khỏi giữa thân | 12 / 10 cm | 5,6 / 7,3 mm |
+| Ngồi: chỗ giãn nặng nhất | 19× / 26×, dài thêm 11–16 cm | 2,2× / 2,3×, không cạnh nào rách |
+| Giơ tay | 6× / 8,9× | 3,2× / 4,3× (7 cạnh, dài thêm 13 / 21 mm) |
+| Quay đầu | 8,4× (tdt) | 1,7× / 2,0×, không cạnh nào rách |
+| Trọng số lọt xa khỏi chi | 0 | 0 |
+
+Đã sửa (mỗi phần có kiểm tra hỏng trước rồi mới qua):
+
+1. **Giữ tay chân trong vùng của chúng** nay giảm dần dọc bề mặt lưới trên dải 9% chiều cao, không cắt gắt nữa. Thử
+   3,5%, 6%, 9%; dải hẹp làm mông rách khi Ngồi.
+2. **Khớp tay chân nằm trên đường giữa của chi**, tìm từ mặt cắt ngang. Trước đây độ sâu lấy từ mọi đỉnh gần đó, gồm cả
+   tóc buông sau hông và gót giày.
+3. **Nhân vật quay lưng được xoay lại** (lr_shape quay mặt về +Y): bàn chân cho biết hướng mặt (§2).
+4. **Cột sống đi qua giữa thân** theo mặt cắt từng đốt. Tóc dài sau lưng từng kéo cả cột sống lùi 10–12 cm. Cổ để nghiêng
+   theo đường nối giữa ngực với giữa cổ.
+5. **Vùng đầu không lấn xuống ngực** nữa, và **xương Đầu chỉ giữ trọng số quanh đầu**. Đầu chibi to từng chiếm đỉnh
+   ngực, làm gốc tay rách và dây đeo trên áo xoay theo đầu.
+6. **Trọng số hai bên giống hệt nhau** ở chỗ mô hình đối xứng đúng từng đỉnh (Bone Heat cho hai bên hơi khác nhau).
+7. **Mục Kiểm tra bắt được chỗ rách rộng giữa hai xương kề nhau** (dài thêm hơn 2% chiều cao). Trước đây hông rách 11–16
+   cm mà không báo.
+
+Quyết định tôi tự đưa ra:
+
+- Dải giảm dần 9% chiều cao: rộng nhất mà chưa làm tay chân kéo theo bụng hay lưng. Nếu sai: mông, vai trên mô hình lưới
+  thưa khác có thể vẫn giãn, hoặc bụng nhích theo đùi một chút.
+- Cổ để nghiêng (giữa cổ lệch 3 cm khỏi tâm cổ) thay vì đúng tâm: dựng cổ thẳng đúng tâm thì Quay đầu làm tóc sau gáy
+  rách 13–26 cạnh, cổ nghiêng thì không cạnh nào. Nếu sai: cổ xoay quanh trục hơi lùi sau.
+- Chỉ ghép cặp đối xứng đúng vị trí: ghép gần đúng (3–6 mm) làm vai áo tdt rách 4,9–7,4 lần. Nếu sai: chỗ mô hình lệch
+  vài mm (cổ áo tdt) vẫn hơi khác hai bên (2,5% cặp đỉnh lệch hơn 0,1).
+- Xoay nhân vật tự động khi cả hai bàn chân chỉ rõ cùng một hướng; không rõ thì để nguyên. Nếu sai: một nhân vật bị xoay
+  nhầm. Cảnh báo luôn nói đã xoay bao nhiêu độ, và Ctrl+Z hoàn tác được.
+- Ngưỡng "rách rộng" của mục Kiểm tra là 2% chiều cao: khớp gập thường trên hai mô hình chỉ làm da dài thêm tối đa 2 cm.
+  Nếu sai: bỏ sót chỗ rách vừa vừa, hoặc báo nhầm khớp gập mạnh.
+
+Giới hạn còn lại, nên làm sau:
+
+- **Da xuyên qua áo khi giơ tay** (thấy trên lr_shape ở sườn dưới nách). Áo lr dựng một nửa, lưới thưa, làm mịn bằng
+  Subdivision sau Armature. Áo đã chép trọng số từ da (93% đỉnh áo), nhưng mặt áo làm mịn co vào ở nách. Cách chữa
+  thường dùng là ẩn phần da nằm dưới áo. Nên làm thành một tính năng riêng.
+- Vai, nách khi giơ tay vẫn giãn 3–4 lần trên một mảnh áo (dài thêm 1–2 cm).
+- Chỗ nối cổ với đầu vẫn theo tỉ lệ cố định của khung mẫu. Chibi đầu rất to (đầu chiếm hơn một phần tư chiều cao) thì đỉnh
+  cổ nằm lọt vào trong đầu. Nên đo từ chỗ cổ hẹp nhất.
+- Công cụ đo đo cổ bằng mặt cắt nằm ngang; cắt xiên theo đốt cổ nghiêng thì đường cắt chạy vào hàm.
+
+Kiểm tra tự động: toàn bộ 67 tệp, 647 kiểm tra (gồm 7 tệp chạy Unity 6000.5). Tự rà soát cả nhánh (không dùng người rà
+soát khác) tìm thêm một lỗi: bước soi gương trọng số đụng cả những đỉnh không thuộc phần nào, nên trọng số bạn tự vẽ ở
+đó có thể bị đổi. Đã sửa: nay chỉ soi gương đỉnh thuộc phần. Lỗi này có kiểm tra hỏng trước rồi mới qua, và các kiểm
+tra rig chạy lại đều qua.

@@ -21,8 +21,8 @@ from mathutils import Vector
 UPPER_SAMPLES = (0.35, 0.5, 0.65, 0.8)  # along an upper arm or thigh: away from the shoulder or the crotch
 LOWER_SAMPLES = (0.2, 0.35, 0.5, 0.65)  # along a forearm or shin: away from the hand or the foot
 REACH = 0.1  # (x height) outlines this near the bone
-TRUNK_REACH = 0.3  # (x height) the same for the spine: the body is wider than a limb (the neck is as a limb: wider,
-# its cut takes in the head and hair round it)
+TRUNK_REACH = 0.3  # (x height) the same for the spine, the body being wider than a limb; the neck takes REACH (cut
+# this wide, it took in the head and the hair round it)
 WIDEST = 0.15  # (x height) a wider outline is no limb (the torso)
 MOVE = 0.08  # (x height) a joint moves at most this far (farther, the outlines are not the limb)
 LIMBS = (("UpperArm", "LowerArm", "Hand"), ("UpperLeg", "LowerLeg", "Foot"))
@@ -168,11 +168,12 @@ def centre_trunk(out, meshes, height):
     """Move the spine and neck of `out` ({bone: (head, tail, z axis)}, world) front to back onto the middles of the
     body's sections round the middles of the bones of TRUNK (`meshes` as in centre_limbs; cut at a joint, the neck's
     top took in the head and the hips' the thighs), and the bones hanging from them with them (the head, the face, the
-    shoulders' roots): each point by the moves at the heights next to it, in proportion, above the neck's middle as it
-    (a spine bending smoothly from the middle of the chest to the middle of the neck: moved whole, the neck stood
-    straight on a bent spine and turning the head swung the hair behind it further, tearing it). A bone without a
-    section round it (a hand hanging beside the waist is none), or which would move more than MOVE of the height,
-    does not count; the arms and legs stay."""
+    shoulders' roots). Each point moves by the moves of the two middles above and below it, in proportion to its height
+    between them; above the neck's middle by the neck's move, below the hips' middle by the hips'. So the spine bends
+    smoothly from the middle of the chest to the middle of the neck (moved whole, the neck stood straight on a bent
+    spine, and turning the head swung the hair behind it further, tearing it). A bone without a section round it (a
+    hand hanging beside the waist is none), or which would move more than MOVE of the height, does not count; the arms
+    and legs stay."""
     heights, moves = [], []
     for name in TRUNK:
         if name not in out:
