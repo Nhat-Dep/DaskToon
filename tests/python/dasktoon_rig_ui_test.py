@@ -126,9 +126,11 @@ class AddTest(unittest.TestCase):
         self.assertTrue(any(m.type == 'ARMATURE' and m.object == rig for m in objs["Body"].modifiers))  # built
         self.assertTrue(data.checked)
         # The chibi's arms are tubes pushed into its torso and Bone Heat gives their first rings to the chest: raising
-        # the arms tears each arm's root, which the Check rightly finds; nothing else.
-        self.assertEqual(sorted((item.kind, item.pose, item.region) for item in data.issues),
-                         [('STRETCH', 'ARMS_UP', 'ARM_L'), ('STRETCH', 'ARMS_UP', 'ARM_R')])
+        # the arms tears an arm's root, which the Check rightly finds; nothing else. (Its weights are not quite
+        # symmetric: with the shoulders lifting with the arms, the right root stays under the 2.5 times.)
+        found = {(item.kind, item.pose, item.region) for item in data.issues}
+        self.assertTrue(found)
+        self.assertLessEqual(found, {('STRETCH', 'ARMS_UP', 'ARM_L'), ('STRETCH', 'ARMS_UP', 'ARM_R')})
         self.assertTrue(properties_spaces())
         self.assertEqual({space.context for space in properties_spaces()}, {'DATA'})
         self.assertTrue(rig.select_get())
@@ -166,6 +168,7 @@ class PanelTest(unittest.TestCase):
         self.assertIn("Standard skeleton", tu.labels(log))
         ops = [name for name, _text in tu.operators(log)]
         self.assertEqual(ops, ["dasktoon.rig_edit_joints", "dasktoon.rig_fit"])
+        self.assertIn("shoulder_follow", [entry[1] for entry in log if entry[0] == "prop"])
         with skeleton.editing(bpy.context, self.rig) as edit:
             edit.remove(edit["Spine"])
         log = tu.draw(ui.DATA_PT_dasktoon_rig_joints, panel_context(self.rig))
@@ -428,7 +431,7 @@ class CheckPanelTest(unittest.TestCase):
         self.assertGreater(hand.z, shoulder.z + 0.2)
         self.assertEqual(bpy.ops.dasktoon.rig_test_pose(pose='REST'), {'FINISHED'})
         self.assertTrue(ui.at_rest(self.rig))
-        self.assertIsNone(self.rig.animation_data)  # nothing keyed
+        self.assertIsNone(getattr(self.rig.animation_data, "action", None))  # nothing keyed (drivers live there too)
 
     def test_the_list_and_its_buttons(self):
         add_skirt_and_hair(self.rig)

@@ -148,6 +148,13 @@ class DaskRigCollider(PropertyGroup):
                           min=0.0, unit='LENGTH', update=_sway_changed)
 
 
+def _shoulder_changed(self, _context):
+    from dasktoon_rig import shoulders
+    for obj in bpy.data.objects:
+        if obj.type == 'ARMATURE' and obj.data == self.id_data:
+            shoulders.sync(obj)
+
+
 def _look_changed(self, _context):
     from dasktoon_rig import look
     for obj in bpy.data.objects:
@@ -188,6 +195,9 @@ class DaskRig(PropertyGroup):
                                description="What the Check found: joints outside the body, stretched spots, roles that "
                                "look wrong")
     checked: BoolProperty(name="Checked", description="The Check has run since the rig was built")
+    shoulder_follow: FloatProperty(name="Shoulder Follows Arm", default=1.0, min=0.0, max=1.0, subtype='FACTOR',
+                                   description="How much the shoulders lift when the arms rise above them: 1 as a "
+                                   "person's, 0 not at all", update=_shoulder_changed)
 
 
 def rig_of(context):
@@ -1242,6 +1252,7 @@ class DATA_PT_dasktoon_rig_joints(DaskRigPanel, Panel):
         row = layout.row(align=True)
         row.operator("dasktoon.rig_edit_joints", icon='EDITMODE_HLT')
         row.operator("dasktoon.rig_fit", icon='FULLSCREEN_ENTER')
+        layout.prop(rig_of(context).data.dasktoon_rig, "shoulder_follow", slider=True)
 
 
 class DATA_PT_dasktoon_rig_parts(DaskRigPanel, Panel):

@@ -25,7 +25,13 @@ modifier Armature gần như không đổi gì (và Unity không dùng). Ngườ
 - Một driver xoay xương phụ quanh trục nâng vai.
   - Driver đọc góc giơ ngang của cánh tay trên từ chính giá trị xoay của cánh tay đó (không gồm cha), nên không thành
     vòng lặp với xương vai là cha của cánh tay.
-  - Biểu thức chỉ dùng phép tính và `min`, `max`, nên chạy được cả trong file chưa cho phép chạy script.
+  - *Bổ sung khi làm*:
+    - Biến driver kiểu "Transform" vẫn thành vòng lặp trong Blender 5.2, kể cả ở không gian cục bộ, vì nó chờ tư
+      thế cuối của xương. Driver nay đọc thẳng bốn số quaternion của cánh tay.
+    - Góc giơ là phần "xoay hướng" (bỏ phần xoay quanh chính nó), chiếu lên trục giơ ngang.
+    - Xương phụ xoay kiểu trục–góc, với trục cố định là trục nâng vai.
+  - Biểu thức chỉ dùng phép tính, `sqrt`, `atan2`, `min`, `max`, nên chạy được cả trong file chưa cho phép chạy
+    script. Blender chỉ giữ 255 ký tự biểu thức, nên biểu thức được viết gọn.
 - Xương vai có ràng buộc Copy Rotation `DaskToon Shoulder Follow`:
   - chép xoay của xương phụ, trong không gian cục bộ, cộng trước phần khóa hình;
   - độ ảnh hưởng là giá trị Vai nâng theo tay.
@@ -43,6 +49,7 @@ modifier Armature gần như không đổi gì (và Unity không dùng). Ngườ
 - Chỉnh weight quanh đỉnh vai: đo lại sau khi có vai nâng, chưa cần thì để sau.
 - Vai nâng khi đưa tay ra trước hoặc ra sau.
 - Hoạt hình làm thẳng trong Unity: Unity tự xử lý vai theo cách của nó.
+- Cánh tay chuyển sang kiểu xoay Euler: không được theo (xương của khung chuẩn dùng quaternion).
 
 ## 5. Kiểm tra tự động
 

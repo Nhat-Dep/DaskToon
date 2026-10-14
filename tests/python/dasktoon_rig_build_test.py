@@ -106,8 +106,8 @@ class SeparateTest(CheckedWeightsMixin, unittest.TestCase):
     def test_second_build_replaces_generated_bones(self):
         again = build.build(bpy.context, self.rig, self.parts)
         self.assertEqual(sorted(again.bones), sorted(HAIR + SKIRT))
-        # The 55 of the skeleton, LookTarget (R3, spec 10.1) and the chains.
-        self.assertEqual(len(self.rig.data.bones), 55 + 1 + len(HAIR) + len(SKIRT))
+        # The 55 of the skeleton, LookTarget (R3, spec 10.1), the two shoulder lift helpers and the chains.
+        self.assertEqual(len(self.rig.data.bones), 55 + 1 + 2 + len(HAIR) + len(SKIRT))
         for obj in self.objs.values():
             self.assertEqual(len([m for m in obj.modifiers if m.type == 'ARMATURE']), 1)
             self.assert_unity_weights(obj, self.rig)
