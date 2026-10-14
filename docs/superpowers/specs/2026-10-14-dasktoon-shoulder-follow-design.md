@@ -29,7 +29,10 @@ modifier Armature gần như không đổi gì (và Unity không dùng). Ngườ
     - Biến driver kiểu "Transform" vẫn thành vòng lặp trong Blender 5.2, kể cả ở không gian cục bộ, vì nó chờ tư
       thế cuối của xương. Driver nay đọc thẳng bốn số quaternion của cánh tay.
     - Góc giơ là phần "xoay hướng" (bỏ phần xoay quanh chính nó), chiếu lên trục giơ ngang.
-    - Xương phụ xoay kiểu trục–góc, với trục cố định là trục nâng vai.
+    - Xương phụ được xoay hướng (roll) sao cho trục X của nó là trục nâng vai, và driver xoay nó quanh X. Lúc đầu
+      xương phụ xoay kiểu trục–góc với trục cố định, nhưng đưa xương về nghỉ (tư thế thử, Alt+R) trả trục đó về Y
+      (dọc xương), làm vai xoắn và kéo tay ra sau. Render tdt cho thấy lỗi này.
+    - Ràng buộc chép xoay trong không gian cục bộ của xương phụ, xoay theo hướng của xương vai.
   - Biểu thức chỉ dùng phép tính, `sqrt`, `atan2`, `min`, `max`, nên chạy được cả trong file chưa cho phép chạy
     script. Blender chỉ giữ 255 ký tự biểu thức, nên biểu thức được viết gọn.
 - Xương vai có ràng buộc Copy Rotation `DaskToon Shoulder Follow`:
