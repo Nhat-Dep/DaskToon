@@ -1457,6 +1457,53 @@ VI = {
     "Dark Area Color": "Màu vùng tối",
     "Light Area Color": "Màu vùng sáng",
     "Painting Depth": "Chiều sâu tranh",
+    # Anime rig R3: eyes and mouth (anime rig spec 10)
+    "Jaw": "Hàm",
+    "The lower jaw and chin: follows the Jaw bone, blended into the face":
+        "Hàm dưới và cằm: theo xương Jaw, hòa dần vào mặt",
+    "Flat Eye": "Mắt phẳng",
+    "An iris drawn on the face: slides on its UVs as the eye looks around":
+        "Tròng mắt vẽ trên mặt: trượt trên UV khi mắt nhìn quanh",
+    "2D Mouth": "Miệng 2D",
+    "A drawn mouth: shows one cell of its texture atlas, chosen by the dt_mouth property":
+        "Miệng vẽ: hiện một ô trong atlas texture, chọn bằng thuộc tính dt_mouth",
+    "Which eye the iris belongs to": "Tròng mắt thuộc mắt nào",
+    "The side the part lies on": "Theo phía phần nằm",
+    "The character's left eye": "Mắt trái của nhân vật",
+    "The character's right eye": "Mắt phải của nhân vật",
+    "How far the iris slides on its UVs when the eye turns all the way; negative turns it the other way":
+        "Tròng mắt trượt trên UV bao xa khi mắt xoay hết cỡ; số âm thì trượt ngược lại",
+    "Rows": "Số hàng",
+    "Rows of mouth cells in the atlas texture": "Số hàng ô miệng trong atlas texture",
+    "Columns of mouth cells in the atlas texture": "Số cột ô miệng trong atlas texture",
+    "Side Limit": "Giới hạn ngang",
+    "How far the eyes turn to the side to follow LookTarget": "Mắt xoay sang bên tối đa bao nhiêu để theo LookTarget",
+    "Up and Down Limit": "Giới hạn dọc",
+    "How far the eyes turn up and down to follow LookTarget": "Mắt xoay lên xuống tối đa bao nhiêu để theo LookTarget",
+    # Anime rig R3: the 2D mouth (anime rig spec 10.3)
+    "%s: its material has no image texture to show mouth cells from":
+        "%s: material của phần không có image texture để hiện các ô miệng",
+    "Cell of the mouth atlas to show": "Ô trong atlas miệng được hiện",
+    # Anime rig R3: lip sync (anime rig spec 10.3)
+    "Lip Sync from Audio": "Khẩu hình từ âm thanh",
+    "Key the mouth from a voice file: the vowel shape keys, the jaw and the 2D mouth, in the clip being played":
+        "Key miệng theo file giọng nói: shape key nguyên âm, hàm và miệng 2D, vào clip đang dùng",
+    "Voice File": "File giọng nói",
+    "Sound file of the voice; empty takes the first sound strip of the Sequencer":
+        "File âm thanh của giọng nói; để trống thì lấy strip âm thanh đầu tiên trong Sequencer",
+    "Frame the voice starts at, for a file (a sound strip starts where it is)":
+        "Khung giọng nói bắt đầu, khi dùng file (strip âm thanh thì bắt đầu ở chỗ của nó)",
+    "How wide the mouth opens: 1 is the full vowel shapes": "Miệng mở rộng đến đâu: 1 là đủ hình nguyên âm",
+    "Choose a voice file, or add a sound strip to the Sequencer":
+        "Hãy chọn file giọng nói, hoặc thêm một strip âm thanh vào Sequencer",
+    "Cannot read the sound file %s": "Không đọc được file âm thanh %s",
+    "Lip sync: %d frames from frame %d": "Khẩu hình: %d khung từ khung %d",
+    "%s has no vowel shape keys (A I U E O, aa ih ou ee oh…), Jaw part or 2D mouth to key":
+        "%s không có shape key nguyên âm (A I U E O, aa ih ou ee oh…), phần Jaw hay miệng 2D để key",
+    # Anime rig R3: the rig panel (anime rig spec 10)
+    "Cells from the top left: closed, A, I, U, E, O": "Các ô từ góc trên trái: ngậm, A, I, U, E, O",
+    "The object's dt_mouth picks the cell; lip sync keys it": "Thuộc tính dt_mouth của object chọn ô; lip sync key nó",
+    "Gaze": "Ánh mắt",
 }
 
 # Words that need their own translation context, because Blender's own translation of the same word in the default

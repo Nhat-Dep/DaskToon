@@ -7,6 +7,7 @@ Shader "DaskToon/AnimeEye"
     Properties
     {
         [MainColor] _BaseColor ("Iris Color", Color) = (0.424, 0.701, 0.931, 1)
+        [HideInInspector] _DT_UVTransform ("UV Transform", Vector) = (1, 1, 0, 0)
         [MainTexture] _BaseMap ("Iris Color Map", 2D) = "white" {}
         [HideInInspector] _DT_BaseMapOn ("Iris Color Map On", Float) = 0
         _DT_PupilColor ("Pupil Color", Color) = (0.152, 0.248, 0.381, 1)
@@ -61,6 +62,7 @@ Shader "DaskToon/AnimeEye"
 
         CBUFFER_START(UnityPerMaterial)
             float4 _BaseColor;
+            float4 _DT_UVTransform;  // xy scale, zw offset of every UV (flat eye, 2D mouth)
             float4 _DT_PupilColor;
             float4 _DT_GlowColor;
             float4 _DT_TopShadowTint;
@@ -108,7 +110,7 @@ Shader "DaskToon/AnimeEye"
             {
                 UNITY_SETUP_INSTANCE_ID(input);
                 UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
-                float2 uv = input.uv0;
+                float2 uv = input.uv0 * _DT_UVTransform.xy + _DT_UVTransform.zw;
                 // The node falls back to the Blender world position when its UV input is unlinked or zero.
                 float3 pb = DT_UnityToBlenderPos(input.positionWS);
                 float2 eye_uv = (_DT_EyeUseUV > 0.5 && dot(uv, uv) > 1e-6) ? uv : pb.xy * 0.5 + 0.5;

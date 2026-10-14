@@ -9,7 +9,7 @@ import os
 
 from . import assets, unity_yaml
 
-SHADER_VERSION = 1
+SHADER_VERSION = 2
 SHADER_DIR = "Shaders"
 VERSION_FILE = "DaskToonShaders.version"
 SOURCE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "unity_urp")

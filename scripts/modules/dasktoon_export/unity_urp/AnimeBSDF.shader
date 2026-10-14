@@ -7,6 +7,7 @@ Shader "DaskToon/AnimeBSDF"
     Properties
     {
         [MainColor] _BaseColor ("Base Color", Color) = (0.991, 0.945, 0.916, 1)
+        [HideInInspector] _DT_UVTransform ("UV Transform", Vector) = (1, 1, 0, 0)
         [MainTexture] _BaseMap ("Base Color Map", 2D) = "white" {}
         [HideInInspector] _DT_BaseMapOn ("Base Color Map On", Float) = 0
         _DT_ShadowColor ("Shadow Color", Color) = (0.945, 0.827, 0.832, 1)
@@ -114,6 +115,7 @@ Shader "DaskToon/AnimeBSDF"
 
         CBUFFER_START(UnityPerMaterial)
             float4 _BaseColor;
+            float4 _DT_UVTransform;  // xy scale, zw offset of every UV (flat eye, 2D mouth)
             float4 _DT_ShadowColor;
             float4 _DT_AmbientColor;
             float4 _DT_AOColor;
@@ -218,7 +220,7 @@ Shader "DaskToon/AnimeBSDF"
             {
                 UNITY_SETUP_INSTANCE_ID(input);
                 UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
-                float2 uv = input.uv0;
+                float2 uv = input.uv0 * _DT_UVTransform.xy + _DT_UVTransform.zw;
                 float alpha = DT_SurfaceAlpha(uv);
                 DT_ClipAlpha(uv);
                 float3 N = DT_ShadingNormal(input, IS_FRONT_VFACE(face, true, false),

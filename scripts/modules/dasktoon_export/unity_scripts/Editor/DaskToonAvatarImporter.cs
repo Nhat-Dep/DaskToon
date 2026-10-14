@@ -78,7 +78,9 @@ namespace DaskToon.Editor
             }
         }
 
-        /// <summary>The clip files beside `modelPath` (model@clip.fbx, marked) copy its Humanoid avatar.</summary>
+        /// <summary>The clip files beside `modelPath` (model@clip.fbx, marked) copy its Humanoid avatar. Their clips get
+        /// a mask of every transform of the file: without one, a Humanoid clip drops the curves of bones outside the
+        /// avatar, such as MouthCell, which carries the 2D mouth's cell (anime rig spec 10.3).</summary>
         static void UseAvatarInClips(string modelPath)
         {
             Avatar avatar = null;
@@ -96,6 +98,19 @@ namespace DaskToon.Editor
                 clip.animationType = ModelImporterAnimationType.Human;
                 clip.avatarSetup = ModelImporterAvatarSetup.CopyFromOther;
                 clip.sourceAvatar = avatar;
+                var hierarchy = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+                var animations = clip.clipAnimations;
+                if (hierarchy != null && animations.Length > 0)
+                {
+                    var mask = new AvatarMask();
+                    mask.AddTransformPath(hierarchy.transform, true);
+                    foreach (var animation in animations)
+                    {
+                        animation.ConfigureClipFromMask(mask);
+                        animation.maskType = ClipAnimationMaskType.CreateFromThisModel;  // else the mask is ignored
+                    }
+                    clip.clipAnimations = animations;
+                }
                 clip.SaveAndReimport();
             }
         }

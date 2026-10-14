@@ -19,6 +19,7 @@ COLLIDER_BONES = ("Head", "Neck", "UpperChest", "Chest", "Spine", "Hips", "LeftU
 COLLIDER_SHARE = 0.9
 COLLIDER_FALLBACK = 0.03  # of the skeleton's height, for a bone no Body vertex follows
 INWARD_RATIO = -0.5  # signed over unsigned volume of a Body below this: its faces point inward (about -1)
+JAW_RINGS = (2.0 / 3.0, 1.0 / 3.0)  # share of the Jaw bone in the rings of Body vertices around a Jaw part (spec 10.3)
 
 
 class BuildError(Exception):
@@ -215,10 +216,12 @@ def _make_bones(context, rig, plan):
 
 
 def _paint(context, rig, parts, owners, plan, actual, result):
+    from .look import FACE_MARK
     deform = [b.name for b in rig.data.bones if b.use_deform]
     generated = set(actual.values())
-    body_bones = [n for n in deform if n not in generated and n not in skeleton.FACE_BONES]
-    fixed_bones = [n for n in deform if n not in generated]
+    helpers = {b.name for b in rig.data.bones if FACE_MARK in b}  # MouthCell: deform, but never weighted
+    body_bones = [n for n in deform if n not in generated and n not in skeleton.FACE_BONES and n not in helpers]
+    fixed_bones = [n for n in deform if n not in generated and n not in helpers]
     body_ids = [i for i, part in enumerate(parts) if part.role == 'BODY']
     for obj in owners:
         weights.bind(rig, obj)
@@ -245,12 +248,17 @@ def _paint(context, rig, parts, owners, plan, actual, result):
         if len(vertices) == 0 or part.role in ('BODY',) + rig_parts.CHAIN_ROLES:
             continue
         weights.clear(obj, vertices, deform)
-        if part.role == 'CLOTHING':
+        if part.role == 'JAW':
+            _paint_jaw(obj, vertices, owners[obj], body_ids, deform)
+        elif part.role == 'CLOTHING':
             world, _edges = rig_parts.mesh_arrays(obj)
             matrix = weights.surface_weights(sources, body_bones, world[vertices])
             if not (matrix.sum(axis=1) > 0.0).all():
                 result.warnings.append(rpt_("%s: no Body surface to copy weights from") % part.name)
             weights.write(obj, vertices, body_bones, matrix)
+        elif part.role in rig_parts.FACE_ROLES:
+            # A flat eye or 2D mouth not on the Body (an iris plane, a mouth card) sits on the head.
+            weights.write(obj, vertices, [part.bone or "Head"], np.ones((len(vertices), 1)))
         else:
             world, _edges = rig_parts.mesh_arrays(obj)
             bone = part.bone or rig_parts.nearest_bone(rig, world[vertices].mean(axis=0), fixed_bones)
@@ -259,6 +267,22 @@ def _paint(context, rig, parts, owners, plan, actual, result):
         obj = parts[index].object
         weights.clear(obj, vertices, deform)
         weights.write(obj, vertices, [actual.get(n, n) for n in names], matrix)
+
+
+def _paint_jaw(obj, vertices, owner, body_ids, deform):
+    """The Jaw part follows the Jaw bone alone; the Body vertices in the rings around it blend from their own weights
+    to the Jaw bone (JAW_RINGS), so the face does not tear at its edge."""
+    weights.write(obj, vertices, ["Jaw"], np.ones((len(vertices), 1)))
+    _world, edges = rig_parts.mesh_arrays(obj)
+    jaw = deform.index("Jaw")
+    for ring, share in zip(rig_parts.rings(edges, vertices, len(JAW_RINGS)), JAW_RINGS):
+        ring = ring[np.isin(owner[ring], body_ids)]
+        if len(ring) == 0:
+            continue
+        matrix = weights.read(obj, deform)[ring] * (1.0 - share)
+        matrix[:, jaw] += share
+        weights.clear(obj, ring, deform)
+        weights.write(obj, ring, deform, matrix)
 
 
 def _drop_stale_groups(owners, removed, current):
@@ -342,9 +366,13 @@ def build(context, rig, parts):
             elif part.role == 'SKIRT':
                 _plan_skirt(rig, i, part, vertices, plan)
         actual, removed = _make_bones(context, rig, plan)
+        from . import eyes, look, mouth
+        look.ensure(context, rig)
+        mouth.apply(context, rig, parts, result)
         _paint(context, rig, parts, owners, plan, actual, result)
         _drop_stale_groups(owners, removed, set(actual.values()))
         _tidy(rig, owners)
+        eyes.apply(rig, parts)
         from . import sway  # sway imports build
         result.colliders = collider_radii(rig, parts, owners)
         _write_colliders(rig, result.colliders, sway.rig_scale(rig))

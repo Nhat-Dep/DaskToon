@@ -13,13 +13,17 @@ from bpy.app.translations import pgettext_rpt as rpt_
 
 from . import chains, skeleton
 
-ROLES = ('BODY', 'CLOTHING', 'ACCESSORY', 'HAIR', 'SKIRT')  # a later role wins a vertex (spec 5.2)
+# A later role wins a vertex (spec 5.2): a flat eye or 2D mouth drawn on the Body keeps the Body's weights, a Jaw part
+# takes its vertices from the Body (spec 10).
+ROLES = ('FLAT_EYE', 'MOUTH_2D', 'BODY', 'CLOTHING', 'ACCESSORY', 'HAIR', 'SKIRT', 'JAW')
+FACE_ROLES = ('FLAT_EYE', 'MOUTH_2D')
 CHAIN_ROLES = ('HAIR', 'SKIRT')
 DEFAULT_BONE = {'HAIR': "Head", 'SKIRT': "Hips"}
 BONE_COUNT = 4
 DEFAULT_BONE_COUNT = {'SKIRT': 3}
 CHAIN_COUNT = 8
 WORDS = (
+    ('FLAT_EYE', {"iris", "pupil", "hitomi"}),
     ('HAIR', {"hair", "bang", "bangs", "fringe", "ponytail", "twintail", "twintails", "tail", "tails", "ahoge",
               "braid", "toc", "kami"}),
     ('SKIRT', {"skirt", "vay"}),
@@ -144,6 +148,38 @@ def part_vertices(part):
     if len(found) == 0:
         raise PartError(rpt_("Part %s has no vertices") % part.name)
     return found
+
+
+def rings(edges, vertices, count):
+    """The `count` rings of vertices around `vertices` along `edges` (m x 2 vertex indices), the nearest first: ring 1
+    is every vertex one edge away from `vertices` and not in it, ring 2 one edge further."""
+    taken = set(int(v) for v in vertices)
+    current = set(taken)
+    out = []
+    for _ in range(count):
+        found = set()
+        for a, b in edges:
+            a, b = int(a), int(b)
+            if a in current and b not in taken:
+                found.add(b)
+            elif b in current and a not in taken:
+                found.add(a)
+        out.append(np.array(sorted(found), np.int64))
+        taken |= found
+        current = found
+    return out
+
+
+def part_materials(part, vertices):
+    """[(slot index, material)] of the materials the part's faces use."""
+    obj = part.object
+    if part.scope == 'MATERIAL':
+        return [(i, slot.material) for i, slot in enumerate(obj.material_slots)
+                if slot.material is not None and slot.material.name == part.material][:1]
+    inside = set(int(v) for v in vertices)
+    slots = {p.material_index for p in obj.data.polygons if all(v in inside for v in p.vertices)}
+    return [(i, obj.material_slots[i].material) for i in sorted(slots)
+            if i < len(obj.material_slots) and obj.material_slots[i].material is not None]
 
 
 def local_edges(edges, vertices):
