@@ -111,6 +111,7 @@ Header timeline nhân vật, sau phần clip: nút **Timing** (popover), chữ t
 | Key ở khung giữa hai khung vẽ không thấy ngay | Key Pose key vào khung vẽ; ghi chú trong popover |
 | Onion skin chậm với mesh lớn | Chỉ tính khi dừng tay, giữ bộ nhớ đệm theo khung và clip |
 | Simulation Zone cần chạy tuần tự | Render và phát chạy tuần tự; tua ngược dùng bộ nhớ đệm của Blender |
+| Số đỉnh khác số đã nhớ (Subdivision render mịn hơn lúc xem, dùng chung bộ nhớ đệm với khung nhìn) | Không đỉnh nào nhanh ở khung đó, cả khi Blender lấy lại trạng thái đã nhớ (*sửa 2026-10-14*: cảnh đánh nhau thử trên lr_shape, áo chia 1 lần lúc xem, 2 lần lúc render, vệt và bóng mờ ghép nhầm đỉnh, xòe thành hình quạt từ khung đầu) |
 | Lắc tóc/váy vẫn on 1s khi thân on 2s | Ghi rõ; làm tùy chọn sau |
 
 ## 11. Nhật ký quyết định

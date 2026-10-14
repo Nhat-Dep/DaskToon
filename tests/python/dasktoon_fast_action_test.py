@@ -97,6 +97,36 @@ class FastActionTest(unittest.TestCase):
         # Lines trail behind the cube: some of their vertices are far behind it.
         self.assertLess(min(v[0] for v in verts), -HALF - 0.3)
 
+    def test_a_mesh_changing_its_vertices_starts_afresh(self):
+        """Subdivision rendered finer than shown (lr_shape's clothes: 1 level shown, 2 rendered) gives the mesh other
+        vertices than those the motion was remembered for: matched by their numbers, the afterimages and lines of a
+        character fanned out to the wrong places, from its first frame. Where the vertices change, nothing is fast."""
+        subdivision = self.body.modifiers.new("Subdivision", 'SUBSURF')
+        subdivision.levels = 1
+        self.settings.enabled = True
+        self.settings.line_density = 1.0
+        evaluated(self.body, 3)
+        subdivision.levels = 2
+        verts, _materials = evaluated(self.body, 4)
+        self.assertEqual(len(verts), 98)  # the cube subdivided twice, and nothing more
+        for v in verts:
+            self.assertLess(max(abs(v[0]), abs(v[1]), abs(v[2])), HALF + 1e-4, v)
+
+    def test_a_remembered_frame_with_other_vertices_shows_nothing_fast(self):
+        """Back on a frame played before, the remembered state is shown as it was, for the vertices of then (the render
+        of lr_shape read what the viewport remembered at 1 level of Subdivision with the 2 it renders)."""
+        subdivision = self.body.modifiers.new("Subdivision", 'SUBSURF')
+        subdivision.levels = 1
+        self.settings.enabled = True
+        self.settings.line_density = 1.0
+        evaluated(self.body, 4)
+        subdivision.levels = 2
+        bpy.context.scene.frame_set(3)
+        mesh = self.body.evaluated_get(bpy.context.evaluated_depsgraph_get()).data
+        self.assertEqual(len(mesh.vertices), 98)
+        for v in mesh.vertices:
+            self.assertLess(max(abs(c) for c in v.co), HALF + 1e-4, tuple(v.co))
+
     def test_settings_drive_the_modifier(self):
         self.settings.enabled = True
         self.settings.smear = 0.2
