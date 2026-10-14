@@ -1290,7 +1290,7 @@ VI = {
     "The Check needs a standard skeleton": "Mục Kiểm tra cần khung xương chuẩn",
     "Test poses:": "Tư thế thử:",
     "Not checked yet": "Chưa kiểm tra",
-    "After a fix, press Build Rig: the list is checked again": "Sửa xong thì bấm Dựng rig: danh sách được kiểm tra lại",
+    "After a fix, press Build Rig to check again": "Sửa xong, bấm Dựng rig để kiểm tra lại",
     "Draw the faces of the part chosen in the list in the 3D view, at rest":
         "Vẽ sáng các mặt của phần đang chọn trong danh sách lên khung 3D, ở tư thế nghỉ",
     "A lock Recognize made from pieces hanging from the head; Recognize makes it again (keeping its role and "

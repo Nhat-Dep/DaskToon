@@ -449,7 +449,7 @@ class CheckPanelTest(unittest.TestCase):
         self.assertTrue(shown)
         self.assertEqual(painted, shown)  # every spot here is on a Body or Clothing mesh
         self.assertEqual({self.data.issues[i].kind for i in shown}, {'STRETCH'})
-        self.assertIn("After a fix, press Build Rig: the list is checked again", labels)
+        self.assertIn("After a fix, press Build Rig to check again", labels)
         self.assertEqual([text for text, _props in logged(log, "dasktoon.rig_check")], ["Check Again"])
 
     def test_icons_exist(self):

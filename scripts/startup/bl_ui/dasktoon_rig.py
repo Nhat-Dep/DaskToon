@@ -1206,7 +1206,7 @@ class DATA_PT_dasktoon_rig_check(DaskRigPanel, Panel):
             layout.label(text="The Check needs a standard skeleton", icon='INFO')
             return
         layout.label(text="Test poses:")
-        grid = layout.grid_flow(columns=2, even_columns=True, align=True)
+        grid = layout.grid_flow(row_major=True, columns=2, even_columns=True, align=True)
         for identifier, name, _tip in POSE_ITEMS[:-1]:
             grid.operator("dasktoon.rig_test_pose", text=name, text_ctxt="DaskToon").pose = identifier
         layout.operator("dasktoon.rig_test_pose", text="Rest", text_ctxt="DaskToon", icon='LOOP_BACK').pose = 'REST'
@@ -1220,7 +1220,7 @@ class DATA_PT_dasktoon_rig_check(DaskRigPanel, Panel):
             column = layout.column()
             for index, issue in enumerate(data.issues):
                 draw_issue(column, rig, index, issue)
-            layout.label(text="After a fix, press Build Rig: the list is checked again", icon='INFO')
+            layout.label(text="After a fix, press Build Rig to check again", icon='INFO')
         row = layout.row(align=True)
         row.operator("dasktoon.rig_check", text="Check Again", icon='FILE_REFRESH')
         row.operator("dasktoon.rig_check_done", text="Done", icon='CHECKMARK')
