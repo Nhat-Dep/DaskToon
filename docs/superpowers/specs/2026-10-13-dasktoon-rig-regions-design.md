@@ -98,20 +98,28 @@ của nhiều lọn).
 
 ## 5. Build
 
-- Với đỉnh thuộc phần Body, Clothing, sau weight tự động hoặc chép từ Body: xương của mỗi chi chỉ giữ weight × `keep`:
-  - `member` = 1 nếu vùng của đỉnh là chi đó, 0 nếu không; làm mềm qua cạnh lưới 3 lượt (trung bình với đỉnh kề), để
-    ranh giới vùng không thành vết gãy;
-  - `blend` = 1 − khoảng cách tới khớp gốc của chi (đầu UpperArm, UpperLeg) chia (3 × nửa bề rộng chi), không âm: quanh
-    vai, hông vẫn pha; chỉ trên mảnh có đỉnh thuộc vùng chi đó (*bổ sung khi làm*: mảnh rời như tai, lọn tóc, dây đeo
-    không cần pha, nhân vật thử cho lọn tóc trước vai 15% weight tay vì pha);
-  - `keep` = lớn hơn của hai giá trị trên.
-- Xương vai (LeftShoulder, RightShoulder) chỉ giữ weight quanh chính nó: 1 − khoảng cách tới đoạn xương vai chia
-  (3 × nửa bề rộng tay cùng bên), không âm, trên mọi mảnh (dây đeo vắt qua vai vẫn theo vai), trừ đỉnh vùng Đầu.
-- Phần weight bị bỏ dồn cho các **xương nhà** mà đỉnh đang có, theo tỉ lệ của chúng: đỉnh vùng chi thì xương của chính
-  chi đó, đỉnh vùng thân, đầu thì các xương không chi nào giữ (thân, đầu); đỉnh không có xương nhà nào thì cho xương nhà
-  gần nhất (cùng cách đo từ bề mặt). Đỉnh không còn weight nào cũng vậy. (*Bổ sung khi làm tự rig*:
-  trước đây phần bị bỏ được chia lại cho mọi xương còn lại cho tổng 1, nên đỉnh eo chỉ có weight tay, giữ lại 3%, lại
-  thành 100% tay; mục Kiểm tra thấy eo nhân vật thử rách khi giơ tay.)
+- Với đỉnh thuộc phần Body, Clothing, sau weight tự động hoặc chép từ Body, xương của mỗi chi chỉ giữ weight × `keep`:
+  - trong vùng của chi: `keep` = 1;
+  - ra khỏi vùng, `keep` giảm mượt theo **khoảng cách dọc bề mặt lưới** tới vùng chi, từ 1 về 0 trên một dải rộng
+    3,5% chiều cao nhân vật (đường cong smoothstep);
+  - mảnh không nối với vùng chi (tai, lọn tóc, dây đeo) và đỉnh vùng Đầu: 0.
+  - *Sửa 2026-10-14 (độ chính xác)*: trước đây là `member` làm mềm 3 lượt (vài mm trên lưới dày) cộng một hình cầu
+    pha quanh khớp gốc rộng 3 × nửa bề rộng chi đo từ hình chiếu. Lối cũ cắt gắt chỗ pha tự nhiên của Bone Heat giữa
+    chi và thân: khi đo bằng công cụ `tools/dasktoon_rig_accuracy.py`, hông của tdt khi Ngồi rách 19 lần, lr 26 lần;
+    vai khi Giơ tay rách 6–9 lần; bỏ hẳn giới hạn thì chỉ còn 2–3 lần. Đo dọc bề mặt nên eo cạnh cẳng tay đang buông
+    vẫn không theo tay (hai bên không nối nhau qua khe hở), và bề rộng chi đo từ hình chiếu (tay lr chỉ 2,7 cm vì tay áo
+    là mesh riêng) không còn quyết định gì.
+- Xương vai (LeftShoulder, RightShoulder) giữ trọn weight trong khoảng 0,6 lần chiều dài của nó quanh đoạn xương vai,
+  giảm mượt về 0 ở 1,3 lần chiều dài, trên mọi mảnh trừ đỉnh vùng Đầu (*sửa 2026-10-14*: trước đây tính theo bề rộng
+  tay đo từ hình chiếu).
+- Phần weight bị bỏ dồn cho các **xương nhà** mà đỉnh đang có, theo tỉ lệ của chúng:
+  - đỉnh vùng chi: xương của chính chi đó;
+  - đỉnh vùng thân: chỉ các xương thân (Hips đến Neck), không phải xương Đầu (*sửa 2026-10-14*: cổ áo sau gáy của tdt
+    mất phần vai, phần đó dồn hết cho xương Đầu, nên cổ áo xoay theo đầu);
+  - đỉnh vùng Đầu: các xương không chi nào giữ.
+  Đỉnh không có xương nhà nào thì cho xương nhà gần nhất (cùng cách đo từ bề mặt). Đỉnh không còn weight nào cũng vậy.
+  (*Bổ sung khi làm tự rig*: trước đây phần bị bỏ được chia lại cho mọi xương còn lại cho tổng 1, nên đỉnh eo chỉ có
+  weight tay, giữ lại 3%, lại thành 100% tay; mục Kiểm tra thấy eo nhân vật thử rách khi giơ tay.)
 - Vùng lấy từ lớp màu; đỉnh tự động được tính lúc Build. Lọn theo vai trò của nó (Accessory, Hair thắng Body, Clothing
   như spec rig §5.2).
 - Nút **Build Rig**: nếu chưa mesh Body, Clothing nào có lớp vùng thì chạy Nhận diện trước (tô vùng, tạo lọn) rồi Build;

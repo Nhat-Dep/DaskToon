@@ -283,6 +283,89 @@ class LockFromSelectionTest(unittest.TestCase):
             regions.lock_from_selection(self.rig, self.body, [])
 
 
+def tube_mesh(a, b, radius, rings, segments=12):
+    """(world vertices, edges) of a tube from a to b."""
+    verts, faces = st.tube(a, b, radius, rings=rings, segments=segments)
+    edges = set()
+    for face in faces:
+        for i in range(len(face)):
+            edge = (face[i], face[(i + 1) % len(face)])
+            edges.add((min(edge), max(edge)))
+    return np.array(verts, float), np.array(sorted(edges))
+
+
+class KeepTest(unittest.TestCase):
+    """How much of its weight each bone of a limb keeps on a vertex (rig regions spec 5, made more accurate after the
+    tears the real models showed in the test poses): all of it on the limb, fading along the mesh into the region next
+    to it over BAND of the height, none on the head or on a piece apart."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.rig, cls.objs, cls.parts = character()
+
+    def test_the_torso_next_to_a_leg_fades(self):
+        world, edges = tube_mesh((0.09, 0.0, 0.6), (0.09, 0.0, 1.4), 0.07, rings=160)  # rings 5 mm apart
+        torso, leg = regions.REGIONS.index('TORSO'), regions.REGIONS.index('LEG_L')
+        labelled = np.where(world[:, 2] < 0.9975, leg, torso).astype(np.int8)
+        band = 0.1
+        keep = regions.keep_factors(self.rig, world, labelled, edges, band)["LeftUpperLeg"]
+        z = world[:, 2]
+        self.assertTrue(np.all(keep[labelled == leg] == 1.0))
+        rings = sorted(set(np.round(z[labelled == torso], 6)))
+        values = [keep[np.isclose(z, ring)].mean() for ring in rings]
+        self.assertGreater(values[0], 0.9)  # next to the leg: hardly anything taken
+        self.assertLess(keep[z > rings[0] + band + 0.006].max(), 1e-6)  # past the band: nothing
+        self.assertTrue(all(b <= a + 1e-9 for a, b in zip(values, values[1:])))  # fading, never coming back
+        self.assertLess(np.abs(np.diff([1.0] + values)).max(), 0.1)  # no ring takes a big step: no tear
+
+    def test_nothing_on_the_head_or_a_piece_apart(self):
+        world, edges = tube_mesh((0.09, 0.0, 0.6), (0.09, 0.0, 1.4), 0.07, rings=80)
+        apart, apart_edges = tube_mesh((0.3, 0.0, 1.0), (0.3, 0.0, 1.2), 0.05, rings=10)
+        joined = np.concatenate([world, apart])
+        edges = np.concatenate([edges, apart_edges + len(world)])
+        head, leg = regions.REGIONS.index('HEAD'), regions.REGIONS.index('LEG_L')
+        labelled = np.concatenate([np.where(world[:, 2] < 1.0, leg, head),
+                                   np.full(len(apart), regions.REGIONS.index('TORSO'))]).astype(np.int8)
+        keep = regions.keep_factors(self.rig, joined, labelled, edges, 0.1)["LeftUpperLeg"]
+        self.assertEqual(keep[len(world):].max(), 0.0)  # the piece apart
+        self.assertEqual(keep[:len(world)][world[:, 2] > 1.0].max(), 0.0)  # the head
+
+    def test_the_shoulder_keeps_its_weight_about_its_own_length(self):
+        """The shoulder bone's reach comes from its own length, not from how wide the arm looks from the front (thin on
+        lr_shape, whose sleeves are meshes of their own: the shoulder lost its weight 7 cm away)."""
+        from dasktoon_rig import chains
+        head, tail = rig_parts.bone_segment(self.rig, "LeftShoulder")
+        length = float(np.linalg.norm(tail - head))
+        world, edges = tube_mesh((0.0, 0.0, 0.9), (0.0, 0.0, 1.45), 0.18, rings=40)
+        labelled = np.full(len(world), regions.REGIONS.index('TORSO'), np.int8)
+        keep = regions.keep_factors(self.rig, world, labelled, edges, 0.1)["LeftShoulder"]
+        near = chains.segment_distance(world, head, tail)
+        self.assertGreater(keep[near < 0.6 * length].min(), 0.99)
+        self.assertLess(keep[near > 1.3 * length].max(), 1e-6)
+
+
+
+class GiveUpTest(unittest.TestCase):
+    def test_a_torso_vertex_gives_what_it_loses_to_the_trunk(self):
+        """The back of tdt's collar: Bone Heat gave it the shoulder and the arm, the limit took them, and the head, the
+        one other bone it had, got all of it: the collar turned with the head."""
+        from dasktoon_rig import build, weights
+        rig, objs, parts = character()
+        build.build(bpy.context, rig, parts)
+        body = objs["Body"]
+        torso = piece_at(body, (0, -0.18, 1.15))
+        world, _edges = rig_parts.mesh_arrays(body)
+        vertex = int(torso[np.argmin(np.linalg.norm(world[torso] - np.array((0.0, 0.18, 1.2)), axis=1))])  # the back
+        names = ["RightLowerArm", "Head"]
+        weights.clear(body, [vertex], [b.name for b in rig.data.bones if b.use_deform])
+        weights.write(body, [vertex], names, np.array([[0.7, 0.3]]))
+        regions.restrict(bpy.context, rig, parts, build.ownership(parts))
+        after = weights.read(body, ["Head", "RightLowerArm"] + list(regions.TRUNK))[vertex]
+        self.assertAlmostEqual(after[0], 0.3, places=3)  # the head keeps its share, no more
+        self.assertAlmostEqual(after[1], 0.0, places=6)
+        self.assertAlmostEqual(after[2:].sum(), 0.7, places=3)  # the rest went to the trunk
+
+
 class BuildTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
