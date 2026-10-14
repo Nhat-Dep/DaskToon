@@ -1081,8 +1081,12 @@ VI = {
     "Add Part from Selection": "Thêm phần từ vùng chọn",
     "Make the selected vertices a part of the rig, kept in a new vertex group":
         "Biến các đỉnh đang chọn thành một phần của rig, lưu trong một vertex group mới",
-    "Fit the joints in Edit Mode, then press Build Rig in Properties › Object Data":
-        "Chỉnh khớp trong Edit Mode, rồi bấm Dựng rig ở Properties › Object Data",
+    "Skeleton fitted to the selected meshes. Next press Build Rig: in the panel on the right, the green stick figure "
+    "tab, Anime Rig":
+        "Đã khớp khung xương theo các mô hình đang chọn. Tiếp theo bấm Dựng rig: ở bảng bên phải, thẻ hình người que màu "
+        "xanh lá, mục Rig anime",
+    "Select the character's meshes, add them in Anime Rig › Parts, then press Fit to Parts and Build Rig":
+        "Chọn các mô hình của nhân vật, thêm chúng ở mục Các phần trong Rig anime, rồi bấm Khớp theo các phần và Dựng rig",
     "The selected meshes are already parts": "Các mesh đang chọn đã là phần của rig",
     "No standard skeleton to add the part to": "Không có khung chuẩn nào để thêm phần vào",
     "Select the vertices of the part first": "Hãy chọn các đỉnh của phần trước",
@@ -1168,6 +1172,48 @@ VI = {
     # bl_ui/dasktoon_rig.py (Sway in Unity)
     "Sway in Unity": "Lắc trong Unity",
     "How the chain sways in Unity": "Cách chuỗi lắc trong Unity",
+    "Made by Recognize": "Do Nhận diện tạo",
+    "Recognized the regions and %d locks first": "Đã nhận diện vùng và %d lọn trước",
+    "Select a vertex of each piece first": "Hãy chọn một đỉnh của mỗi mảnh trước",
+    "Lock from Selection": "Lọn từ chỗ chọn",
+    "Make the pieces under the selected vertices one lock, rigid on the head (with the role Hair it sways)":
+        "Gom các mảnh có đỉnh đang chọn thành một lọn, cứng theo đầu (đổi vai trò sang Tóc thì lọn lắc)",
+    "Made lock %s": "Đã tạo lọn %s",
+    "Regions": "Vùng",
+    "Recognize": "Nhận diện",
+    "Paint the head, torso, arms and legs on the Body and Clothing meshes and make locks of the pieces on the head":
+        "Tô đầu, thân, tay, chân lên mesh Body và Clothing, gom các mảnh gắn đầu thành lọn",
+    "Paint the regions again and remake the locks? What you painted is replaced":
+        "Tô lại vùng và tạo lại lọn? Chỗ bạn đã tô sẽ bị thay",
+    "Recognized the regions and %d locks": "Đã nhận diện vùng và %d lọn",
+    "Show Regions": "Xem vùng",
+    "Show the body regions in the 3D views: Solid shading colored by the region layer":
+        "Hiện vùng cơ thể trong khung 3D: chế độ Solid tô theo lớp màu vùng",
+    "Paint Regions": "Tô vùng",
+    "Paint the body regions in Vertex Paint with this region's color": "Tô vùng cơ thể trong Vertex Paint bằng màu của vùng này",
+    "Region": "Vùng",
+    "Region to paint": "Vùng sẽ tô",
+    "Head": "Đầu",
+    "The head, and the locks hanging from it": "Đầu và các lọn gắn trên đầu",
+    "Torso": "Thân",
+    "The body from the hips to the neck": "Thân từ hông tới cổ",
+    "Left Arm": "Tay trái",
+    "The character's left arm and hand": "Tay và bàn tay trái của nhân vật",
+    "Right Arm": "Tay phải",
+    "The character's right arm and hand": "Tay và bàn tay phải của nhân vật",
+    "Left Leg": "Chân trái",
+    "The character's left leg and foot": "Chân và bàn chân trái của nhân vật",
+    "Right Leg": "Chân phải",
+    "The character's right leg and foot": "Chân và bàn chân phải của nhân vật",
+    "Done Painting": "Tô xong",
+    "Leave Vertex Paint and select the rig again": "Rời Vertex Paint và chọn lại rig",
+    "Paint regions:": "Tô vùng:",
+    "In Vertex Paint, select faces and press Shift+K to fill them": "Trong Vertex Paint, chọn mặt rồi bấm Shift+K để tô kín",
+    "Highlight Part": "Làm sáng phần",
+    "Draw the faces of the part chosen in the list in the 3D view, at rest":
+        "Vẽ sáng các mặt của phần đang chọn trong danh sách lên khung 3D, ở tư thế nghỉ",
+    "A lock Recognize made from pieces hanging from the head; Recognize makes it again (keeping its role and "
+    "settings)": "Lọn do Nhận diện tạo từ các mảnh gắn đầu; Nhận diện lại thì tạo lại (giữ vai trò và thiết lập)",
     "Runtime": "Khi chạy",
     "DaskToon's spring bone script sways the chain while the game runs":
         "Script spring bone của DaskToon cho chuỗi lắc khi game chạy",

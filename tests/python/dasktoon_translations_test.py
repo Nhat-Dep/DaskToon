@@ -54,6 +54,7 @@ TRANSLATED = [
     "scripts/modules/dasktoon_rig/__init__.py",
     "scripts/modules/dasktoon_rig/skeleton.py",
     "scripts/modules/dasktoon_rig/body_shape.py",
+    "scripts/modules/dasktoon_rig/regions.py",
     "scripts/modules/dasktoon_rig/chains.py",
     "scripts/modules/dasktoon_rig/parts.py",
     "scripts/modules/dasktoon_rig/weights.py",

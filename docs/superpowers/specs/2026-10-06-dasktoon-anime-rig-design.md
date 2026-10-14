@@ -87,8 +87,10 @@ là **khung chuẩn**, kể cả khi người dùng xóa ngón, mắt, hàm hay 
 - Đang chọn mesh thì khung khớp với chúng: chiều cao = chiều cao hộp bao (world) của các mesh, chân ở đáy hộp, tâm
   X/Y ở tâm hộp. Không chọn mesh: cao 1,6 m, đặt tại 3D cursor.
 - Các mesh đang chọn thành **phần** của rig (§5.3, đoán vai trò theo tên).
-- Armature mới: `show_in_front`, bật **X-Axis Mirror** khi sửa khớp, được chọn và active. Thông báo: "Fit the joints in
-  Edit Mode, then press Build Rig in Properties › Object Data".
+- Armature mới: `show_in_front`, bật **X-Axis Mirror** khi sửa khớp, được chọn và active. *Đổi 2026-10-14 (cho người không
+  chuyên):* đang chọn mesh thì khung được khớp theo hình ngay (như bấm Fit to Parts), thông báo: "Skeleton fitted to the
+  selected meshes. Next press Build Rig: in the panel on the right, the green stick figure tab, Anime Rig"; không chọn
+  mesh: "Select the character's meshes, add them in Anime Rig › Parts, then press Fit to Parts and Build Rig".
 - **Fit to Parts** (panel con Joints): khớp lại khung theo các mesh của phần; thay vị trí khớp hiện có (hỏi xác
   nhận); không tạo lại xương người dùng đã xóa; không dời object armature (mesh đã gắn không bị kéo theo).
   *Bổ sung 2026-10-13 (thử trên mô hình thật):* chiều cao và chân vẫn theo hộp bao; còn lại đọc theo bóng nhìn từ trước
