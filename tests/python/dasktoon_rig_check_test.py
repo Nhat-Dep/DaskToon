@@ -137,6 +137,20 @@ class CheckTest(unittest.TestCase):
             edit["LeftHand"].tail.x += 0.2
         self.assertEqual(check.joint_issues(self.rig, parts), ["LeftHand"])
 
+    def test_a_body_modelled_in_half(self):
+        """Half a body, the other half made by a Mirror modifier (common in models made by hand): the joints of the
+        mirrored side are inside it too, not outside the body."""
+        import bmesh
+        body = self.objs["Body"]
+        mesh = bmesh.new()
+        mesh.from_mesh(body.data)  # cut along the middle, the right half kept with half of each cap
+        bmesh.ops.bisect_plane(mesh, geom=mesh.verts[:] + mesh.edges[:] + mesh.faces[:], plane_co=(0.0, 0.0, 0.0),
+                               plane_no=(1.0, 0.0, 0.0), clear_outer=True)
+        mesh.to_mesh(body.data)
+        mesh.free()
+        body.modifiers.new("Mirror", 'MIRROR')
+        self.assertEqual(check.joint_issues(self.rig, list(self.rig.data.dasktoon_rig.parts)), [])
+
     def test_run_keeps_what_it_found_on_the_rig(self):
         self.probe("Ear", (0.33, 0.12, 1.85), (0.34, 0.15, 1.42), ["Head", "LeftUpperArm"])
         count = check.run(bpy.context, self.rig)

@@ -534,6 +534,16 @@ class CheckPanelTest(unittest.TestCase):
             bpy.ops.dasktoon.rig_change_role(part="Nothing", role='SKIRT')
         self.assertIn("There is no part Nothing", str(caught.exception))
 
+    def test_change_role_of_a_part_without_a_mesh_keeps_the_locks(self):
+        """A part whose mesh is gone cannot be built; the locks of the other meshes stay (no mesh is not every mesh)."""
+        bpy.ops.dasktoon.rig_build()
+        part = ui.add_part(self.rig, self.objs["Shirt"], 'CLOTHING', name="Gone")
+        part.object = None
+        with self.assertRaises(RuntimeError):
+            bpy.ops.dasktoon.rig_change_role(part="Gone", role='HAIR')
+        self.assertEqual(sorted(part.name for part in self.data.parts if part.made_by_recognize),
+                         ["Lock L1", "Lock R1", "Lock R2"])
+
     def test_build_checks_again_when_a_list_shows(self):
         bpy.ops.dasktoon.rig_build()
         self.assertFalse(self.data.checked)  # Build checks only to keep a list up to date

@@ -82,8 +82,20 @@ def deformed(rig, obj):
     return out
 
 
+def _mirror_copies(obj):
+    """World-to-world matrices of the halves the Mirror modifiers of obj make across X (a mesh modelled in half)."""
+    from mathutils import Matrix, Vector
+    out = []
+    for modifier in obj.modifiers:
+        if modifier.type == 'MIRROR' and modifier.use_axis[0] and modifier.show_viewport:
+            frame = (modifier.mirror_object or obj).matrix_world
+            out.append(np.array(frame @ Matrix.Scale(-1.0, 4, Vector((1.0, 0.0, 0.0))) @ frame.inverted()))
+    return out
+
+
 def _body_tree(parts):
-    """BVH tree of the meshes of the Body and Clothing parts at rest (world), or None."""
+    """BVH tree of the meshes of the Body and Clothing parts at rest (world), with the halves their Mirror modifiers
+    make, or None."""
     from mathutils.bvhtree import BVHTree
     verts, tris = [], []
     for obj in dict.fromkeys(part.object for part in parts if part.object is not None and part.object.type == 'MESH'
@@ -93,8 +105,11 @@ def _body_tree(parts):
         mesh.calc_loop_triangles()
         corners = np.empty(len(mesh.loop_triangles) * 3, np.int32)
         mesh.loop_triangles.foreach_get("vertices", corners)
-        tris.append(corners.reshape(-1, 3) + sum(len(v) for v in verts))
-        verts.append(world)
+        corners = corners.reshape(-1, 3)
+        for copy, order in [(world, corners)] + [(world @ m[:3, :3].T + m[:3, 3], corners[:, ::-1])
+                                                 for m in _mirror_copies(obj)]:
+            tris.append(order + sum(len(v) for v in verts))
+            verts.append(copy)
     if not verts or not sum(len(t) for t in tris):
         return None
     return BVHTree.FromPolygons(np.concatenate(verts).tolist(), np.concatenate(tris).tolist(), all_triangles=True)

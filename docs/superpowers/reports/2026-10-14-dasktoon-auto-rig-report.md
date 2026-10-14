@@ -95,8 +95,8 @@ Mỗi dòng là: quyết định — cái giá nếu sai.
 
 ## 5. Giới hạn đã biết, việc nên làm sau
 
-- Mục Kiểm tra đo trên mesh như đã dựng, chưa qua modifier: nửa do Mirror sinh ra và lớp Subdivision không được đo.
-  Lỗi tay áo của lr_shape chỉ thấy qua ảnh render.
+- Phép thử chỗ rách đo trên mesh như đã dựng, chưa qua modifier: nửa do Mirror sinh ra và lớp Subdivision không được
+  đo (phép thử khớp thì có tính nửa Mirror). Lỗi tay áo của lr_shape chỉ thấy qua ảnh render.
 - Một mảnh rời đi theo nhầm xương mà không bị kéo giãn (cả mảnh dời đi) không bị bắt (spec 4.2).
 - **Váy loe không mang tên "váy"** (bị đoán là Quần áo) bị bước khớp xương coi là một phần thân. Hông bị đặt xuống ngang
   gấu váy. Mục Kiểm tra khi đó báo "Thân bị kéo giãn ở tư thế Ngồi" nhưng không báo "trông như váy", vì phép đoán váy
@@ -111,3 +111,6 @@ Mỗi dòng là: quyết định — cái giá nếu sai.
   trong `dasktoon_rig_skeleton_test` (13), xương nhà và lọn hai mesh trong `dasktoon_rig_regions_test` (20), nửa soi
   gương trong `dasktoon_rig_build_test` (27).
 - Toàn bộ: 66 tệp, 622 kiểm tra đều qua (59 tệp thường và 7 tệp chạy Unity 6000.5).
+- Tự rà soát cả nhánh sau đó (không dùng người rà soát khác) tìm thêm hai lỗi, đã sửa, mỗi lỗi có kiểm tra hỏng trước:
+  thân dựng một nửa rồi dùng Mirror bị báo nhầm các khớp bên kia "nằm ngoài thân" (phép thử khớp nay tính cả nửa do
+  Mirror sinh ra); nút Đổi vai trò với một phần đã mất mesh xóa hết lọn. Chạy lại các kiểm tra rig: đều qua.

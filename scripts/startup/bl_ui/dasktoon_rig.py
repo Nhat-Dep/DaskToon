@@ -1119,7 +1119,7 @@ class DASKTOON_OT_rig_change_role(Operator):
         part.role = self.role
         part.bone_count = rig_parts.DEFAULT_BONE_COUNT.get(self.role, rig_parts.BONE_COUNT)
         obj = part.object
-        if self.role not in regions.BODY_ROLES and not any(
+        if obj is not None and self.role not in regions.BODY_ROLES and not any(
                 other.object == obj and other.role in regions.BODY_ROLES and not other.made_by_recognize
                 for other in parts):
             regions.remove_locks(rig, obj)  # its pieces are locks of a Body or Clothing mesh no more
