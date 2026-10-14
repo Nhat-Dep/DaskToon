@@ -397,6 +397,43 @@ def evaluated(obj):
     return co.reshape(-1, 3) @ matrix[:3, :3].T + matrix[:3, 3]
 
 
+def asymmetry(rig, obj):
+    """The largest difference between the weights of a vertex and of its mirror image (sides swapped) over the
+    vertices of obj that have one, and the share of vertices that do."""
+    from mathutils.kdtree import KDTree
+    names = deform_names(rig)
+    swap = [names.index(build._other_side(n)) if build._other_side(n) in names else i for i, n in enumerate(names)]
+    world, _edges = parts.mesh_arrays(obj)
+    middle = (rig.matrix_world @ rig.data.bones["Hips"].head_local).x
+    tree = KDTree(len(world))
+    for i, co in enumerate(world.tolist()):
+        tree.insert(co, i)
+    tree.balance()
+    pairs = []
+    for i, (x, y, z) in enumerate(world.tolist()):
+        _co, j, distance = tree.find((2.0 * middle - x, y, z))
+        if distance < 1e-5:
+            pairs.append((i, j))
+    matrix = weights.read(obj, names)
+    a, b = np.array(pairs).T
+    return float(np.abs(matrix[a] - matrix[b][:, swap]).max()), len(pairs) / len(world)
+
+
+class SymmetryTest(unittest.TestCase):
+    def test_a_symmetric_mesh_gets_symmetric_weights(self):
+        """Bone Heat answers a little differently on the two sides of a mesh (tdt's collar: 0.9 of the upper chest on
+        one side, 0.56 of it and 0.44 of the neck on the other); the skeleton mirrors, so do the weights where the
+        mesh does."""
+        bpy.ops.wm.read_factory_settings(use_empty=True)
+        objs = fx.character()
+        rig = fx.rig_for()
+        build.build(bpy.context, rig, separate_parts(objs))
+        for name in ("Body", "Shirt"):
+            difference, share = asymmetry(rig, objs[name])
+            self.assertGreater(share, 0.9, name)
+            self.assertLess(difference, 1e-5, name)
+
+
 class MirrorTest(unittest.TestCase):
     def test_a_mirrored_half_follows_its_own_side(self):
         """A sleeve modelled on the right arm only, the left one made by a Mirror modifier (as on lr_shape). Blender
