@@ -197,6 +197,18 @@ class RecognizePartsTest(unittest.TestCase):
         groups = sorted(g.name for g in self.objs["Body"].vertex_groups if g.name.startswith("DT_Lock"))
         self.assertEqual(groups, ["DT_Lock L1", "DT_Lock R1", "DT_Lock R2"])
 
+    def test_recognize_again_with_locks_on_two_meshes(self):
+        """Locks on the Body and on a Clothing mesh (a lock of hair hanging behind the head): recognized again, each is
+        made again once."""
+        from bl_ui import dasktoon_rig as ui
+        hair = merged("Hair", [st.tube((0, 0.32, 1.95), (0, 0.36, 1.2), 0.05)])
+        ui.add_part(self.rig, hair, 'CLOTHING')
+        regions.recognize(bpy.context, self.rig)
+        first = sorted((part.name, part.object.name) for part in self.locks().values())
+        self.assertIn("Hair", [obj for _name, obj in first])
+        regions.recognize(bpy.context, self.rig)
+        self.assertEqual(sorted((part.name, part.object.name) for part in self.locks().values()), first)
+
     def test_parts_you_made_are_left_alone(self):
         from bl_ui import dasktoon_rig as ui
         body = self.objs["Body"]
@@ -298,6 +310,17 @@ class BuildTest(unittest.TestCase):
         self.assertGreater(limb_weight(self.rig, body, outer, 'ARM_L').mean(), 0.9)
         boot = piece_at(boots, (-0.175, 0.0, 0.1))
         self.assertGreater(limb_weight(self.rig, boots, boot, 'LEG_R').mean(), 0.9)
+
+    def test_what_an_arm_gives_up_goes_to_the_torso(self):
+        """Bone Heat gives the slim waist of the chibi to the forearm hanging beside it (nearer than the spine): keeping
+        the arm to its region takes that weight away, and the torso gets it; making what is left add up to 1 would give
+        it back to the arm (the Check of the auto rig found the waist torn when the arms go up)."""
+        body = self.objs["Body"]
+        torso = piece_at(body, (0, -0.18, 1.15))
+        world, _edges = rig_parts.mesh_arrays(body)
+        waist = torso[world[torso, 2] < 1.2]  # well below the shoulders
+        for region in ('ARM_L', 'ARM_R'):
+            self.assertLess(limb_weight(self.rig, body, waist, region).max(), 0.1, region)
 
     def test_painted_regions_win(self):
         from dasktoon_rig import build

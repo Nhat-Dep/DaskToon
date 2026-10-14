@@ -306,6 +306,34 @@ def _tidy(rig, owners):
         weights.write(obj, rows, names, weights.tidy(matrix[rows]))
 
 
+def _other_side(name):
+    if name.startswith("Left"):
+        return "Right" + name[len("Left"):]
+    if name.startswith("Right"):
+        return "Left" + name[len("Right"):]
+    return None
+
+
+def _mirror_groups(rig, owners, result):
+    """A mesh modelled in half, the other half made by a Mirror modifier across X before the Armature modifier (bind
+    puts it there): Blender gives the mirrored half the Left group of a Right one only when the object has that group
+    and the modifier flips vertex groups. Both are made so, or the mirrored half follows the other side's bones."""
+    deform = {bone.name for bone in rig.data.bones if bone.use_deform}
+    for obj in owners:
+        mirrors = [m for m in obj.modifiers if m.type == 'MIRROR' and m.use_axis[0]]
+        if not mirrors:
+            continue
+        for modifier in mirrors:
+            if not modifier.use_mirror_vertex_groups:
+                modifier.use_mirror_vertex_groups = True
+                result.warnings.append(rpt_("%s: the Mirror modifier now flips the vertex groups, so the mirrored half "
+                                            "follows its own side") % obj.name)
+        for group in list(obj.vertex_groups):
+            other = _other_side(group.name)
+            if other in deform and obj.vertex_groups.get(other) is None:
+                obj.vertex_groups.new(name=other)
+
+
 def collider_radii(rig, parts, owners):
     """[(bone, world radius)] of a capsule along each COLLIDER_BONES bone of the rig (spec 9.2): COLLIDER_SHARE of the
     mean distance from the bone to the Body vertices whose largest weight is that bone."""
@@ -376,6 +404,7 @@ def build(context, rig, parts):
         _paint(context, rig, parts, owners, plan, actual, result)
         _drop_stale_groups(owners, removed, set(actual.values()))
         _tidy(rig, owners)
+        _mirror_groups(rig, owners, result)
         eyes.apply(rig, parts)
         from . import sway  # sway imports build
         result.colliders = collider_radii(rig, parts, owners)

@@ -228,6 +228,63 @@ class CreateTest(unittest.TestCase):
             self.assertAlmostEqual(left.y, right.y, places=4, msg=bone)
             self.assertAlmostEqual(left.x - middle, middle - right.x, places=4, msg=bone)
 
+    def bent_chibi(self):
+        """The chibi of chibi(), as one Body mesh, seen the same from the front, with its elbows 8 cm forward and its
+        knees 6 cm back."""
+        o = Vector((3.0, 0.5, 0.0))
+        angle = math.radians(50.0)
+        down = Vector((math.cos(angle), 0.0, -math.sin(angle)))
+        pieces = [tube(o + Vector((0, 0, 0.88)), o + Vector((0, 0, 1.46)), 0.18),
+                  tube(o + Vector((0, 0, 1.46)), o + Vector((0, 0, 2.0)), 0.3)]
+        elbow, knee = Vector((0.0, -0.08, 0.0)), Vector((0.0, 0.06, 0.0))
+        for s in (1.0, -1.0):
+            flip = Vector((s, 1.0, 1.0))
+            shoulder = o + Vector((0.12, 0.0, 1.42)) * flip
+            arm = [shoulder + (down * 0.62 * t) * flip for t in (0.0, 0.35, 0.65, 1.0)]
+            arm[1] += elbow
+            arm[2] += elbow
+            hip, ankle = o + Vector((0.08 * s, 0.0, 0.95)), o + Vector((0.09 * s, 0.0, 0.0))
+            leg = [hip + (ankle - hip) * t for t in (0.0, 0.35, 0.65, 1.0)]
+            leg[1] += knee
+            leg[2] += knee
+            for line, radius in ((arm, 0.05), (leg, 0.07)):
+                pieces += [tube(line[k], line[k + 1], radius) for k in range(3)]
+        verts, faces = [], []
+        for piece_verts, piece_faces in pieces:
+            faces += [tuple(i + len(verts) for i in face) for face in piece_faces]
+            verts += piece_verts
+        mesh = bpy.data.meshes.new("Body")
+        mesh.from_pydata(verts, [], faces)
+        body = bpy.data.objects.new("Body", mesh)
+        bpy.context.scene.collection.objects.link(body)
+        return body
+
+    def assert_bends_followed(self, rig):
+        for side in ("Left", "Right"):
+            self.assertAlmostEqual(world_head(rig, side + "LowerArm").y, 0.5 - 0.08, delta=0.015, msg=side)
+            self.assertAlmostEqual(world_head(rig, side + "LowerLeg").y, 0.5 + 0.06, delta=0.015, msg=side)
+            self.assertLess((world_tail(rig, side + "UpperArm") - world_head(rig, side + "LowerArm")).length, 1e-5)
+            self.assertLess((world_tail(rig, side + "UpperLeg") - world_head(rig, side + "LowerLeg")).length, 1e-5)
+
+    def test_elbows_and_knees_sit_in_the_middle_of_the_limb(self):
+        """Real models (tdt, lr_shape) hold their arms a little forward at the elbow and bend their knees: on the
+        straight line from the shoulder to the hand, the hip to the ankle, the Check of the auto rig found the elbows
+        and knees 1 to 4 cm outside the arms and legs."""
+        body = self.bent_chibi()
+        rig = skeleton.create_humanoid(bpy.context, 1.0, (0.0, 0.0, 0.0))
+        skeleton.fit(bpy.context, rig, [body], body=[body])
+        self.assert_bends_followed(rig)
+
+    def test_an_outline_shell_is_not_the_limb(self):
+        """An anime outline: a shell a few millimetres outside the skin with its faces turned in (Solidify, normals
+        flipped), as on tdt. Its surfaces are crossed the other way round and pair with nothing: the knee is not put
+        between the shell and the skin."""
+        body = self.bent_chibi()
+        shell = body.modifiers.new("Outline", 'SOLIDIFY')
+        shell.thickness, shell.offset, shell.use_flip_normals = 0.004, 1.0, True
+        rig = skeleton.create_humanoid(bpy.context, 1.0, (0.0, 0.0, 0.0))
+        skeleton.fit(bpy.context, rig, [body], body=[body])
+        self.assert_bends_followed(rig)
 
 if __name__ == "__main__":
     tu.run_tests()

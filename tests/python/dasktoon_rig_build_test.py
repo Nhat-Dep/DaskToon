@@ -384,5 +384,50 @@ class HumanoidTest(unittest.TestCase):
             self.assertIn("  userData: DaskToonHumanoid\n", f.read())  # its importer makes it Humanoid
 
 
+def evaluated(obj):
+    """World positions of obj's vertices as shown (modifiers on)."""
+    shown = obj.evaluated_get(bpy.context.evaluated_depsgraph_get())
+    mesh = shown.to_mesh()
+    try:
+        co = np.empty(len(mesh.vertices) * 3)
+        mesh.vertices.foreach_get("co", co)
+    finally:
+        shown.to_mesh_clear()
+    matrix = np.array(obj.matrix_world)
+    return co.reshape(-1, 3) @ matrix[:3, :3].T + matrix[:3, 3]
+
+
+class MirrorTest(unittest.TestCase):
+    def test_a_mirrored_half_follows_its_own_side(self):
+        """A sleeve modelled on the right arm only, the left one made by a Mirror modifier (as on lr_shape). Blender
+        gives the mirrored half the Left groups only where the object has them, with the modifier's Vertex Groups on:
+        Build sees to both. Before, the left sleeve followed the right arm and flew across the body in Wave."""
+        import dasktoon_rig_regions_test as rt
+        from bl_ui import dasktoon_rig as ui
+        from dasktoon_rig import check
+        rig, _objs = rt.rigged()
+        start, end = rt.mirrored(rt.ARM_START), rt.mirrored(rt.ARM_END)  # the right arm
+        sleeve = rt.merged("Sleeve", [rt.st.tube(tuple(start + (end - start) * 0.3), tuple(start + (end - start) * 0.9),
+                                                 0.07)])
+        mirror = sleeve.modifiers.new("Mirror", 'MIRROR')
+        mirror.use_mirror_vertex_groups = False
+        ui.add_part(rig, sleeve, 'CLOTHING')
+        result = build.build(bpy.context, rig, list(rig.data.dasktoon_rig.parts))
+        self.assertTrue(mirror.use_mirror_vertex_groups)
+        self.assertIn("Sleeve: the Mirror modifier now flips the vertex groups, so the mirrored half follows its own "
+                      "side", result.warnings)
+        self.assertIsNotNone(sleeve.vertex_groups.get("LeftLowerArm"))
+        rest = evaluated(sleeve)
+        check.apply_pose(bpy.context, rig, 'WAVE')
+        try:
+            moved = evaluated(sleeve)
+        finally:
+            check.apply_pose(bpy.context, rig, 'REST')
+        left, right = rest[:, 0] > 0.05, rest[:, 0] < -0.05
+        self.assertTrue(left.any())
+        self.assertLess(np.linalg.norm(moved[left] - rest[left], axis=1).max(), 1e-3)  # the left arm stays down
+        self.assertGreater(np.linalg.norm(moved[right] - rest[right], axis=1).max(), 0.3)  # the right one waves
+
+
 if __name__ == "__main__":
     tu.run_tests()

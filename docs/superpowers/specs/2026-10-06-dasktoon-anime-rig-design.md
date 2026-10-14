@@ -371,7 +371,7 @@ Module thư viện không import `bl_ui`; giao diện gọi thư viện. Toán c
 | Trường hợp | Xử lý |
 |---|---|
 | Bone heat không tìm được nghiệm cho một số đỉnh Body | Các đỉnh đó lấy weight theo xương gần nhất (khoảng cách tới đoạn xương); cảnh báo số đỉnh |
-| Mesh có modifier khác trước Armature (Mirror, Subdivision…) | Weight tính trên mesh gốc; modifier Armature được đặt sau Mirror nếu có, trước các modifier còn lại |
+| Mesh có modifier khác trước Armature (Mirror, Subdivision…) | Weight tính trên mesh gốc; modifier Armature được đặt sau Mirror nếu có, trước các modifier còn lại. *Bổ sung 2026-10-14 (lr_shape)*: Mirror theo trục X chỉ đổi nhóm `Right…` thành `Left…` cho nửa soi gương khi mesh có sẵn nhóm `Left…` và Mirror bật lật nhóm đỉnh; Dựng rig tạo nhóm bên kia (rỗng) và bật lật nhóm (kèm cảnh báo), nếu không nửa soi gương đi theo xương bên kia |
 | Mesh có scale âm hoặc scale không đều | Vẫn chạy (tính ở world); cảnh báo nên Apply Scale trước khi xuất Unity |
 | Mảnh tóc quá ít đỉnh (< 4) | Thành Accessory trên xương gắn |
 | Váy không bao quanh trục (một mảnh vạt) | Vẫn chia dải theo góc; dải không có đỉnh nào thì không sinh |

@@ -312,26 +312,26 @@ def _is_lock(part):
     return bool(getattr(part, "made_by_recognize", False))
 
 
-def _remove_locks(rig):
-    """Take the locks Recognize made out of the rig, with their vertex groups; returns [(object, vertex set,
-    settings)] of them."""
+def remove_locks(rig, obj=None):
+    """Take the locks Recognize made (on `obj` only, when given) out of the rig, with their vertex groups; returns
+    [(object, vertex set, settings)] of them."""
     data = rig.data.dasktoon_rig
     old = []
-    for part in [part for part in data.parts if _is_lock(part)]:
-        obj = part.object
-        group = obj.vertex_groups.get(part.vertex_group) if obj is not None else None
+    for part in [part for part in data.parts if _is_lock(part) and (obj is None or part.object == obj)]:
+        mesh = part.object
+        group = mesh.vertex_groups.get(part.vertex_group) if mesh is not None else None
         if group is None:
             continue
         try:
             vertices = set(rig_parts.part_vertices(part).tolist())
         except rig_parts.PartError:
             vertices = set()
-        old.append((obj, vertices, {key: getattr(part, key) for key in LOCK_SETTINGS}))
-        if not any(other.object == obj and other.vertex_group == group.name and not _is_lock(other)
+        old.append((mesh, vertices, {key: getattr(part, key) for key in LOCK_SETTINGS}))
+        if not any(other.object == mesh and other.vertex_group == group.name and not _is_lock(other)
                    for other in data.parts):
-            obj.vertex_groups.remove(group)
+            mesh.vertex_groups.remove(group)
     for index in reversed(range(len(data.parts))):
-        if _is_lock(data.parts[index]):
+        if _is_lock(data.parts[index]) and (obj is None or data.parts[index].object == obj):
             data.parts.remove(index)
     data.active_part_index = min(data.active_part_index, max(len(data.parts) - 1, 0))
     return old
@@ -361,7 +361,7 @@ def recognize(context, rig):
     """Recognize the regions of the rig's Body and Clothing parts, paint them on their meshes' region layers, and make
     again the locks Recognize made: a new lock that is mostly an old one keeps its role and settings. Returns the
     Analysis."""
-    old = _remove_locks(rig)
+    old = remove_locks(rig)
     found = analyse(context, rig, list(rig.data.dasktoon_rig.parts))
     for obj, (vertices, labelled) in found.objects.items():
         write(obj, vertices, labelled)
@@ -422,14 +422,17 @@ def keep_factors(rig, world, labelled, edges, half):
 
 def restrict(context, rig, parts, owners, found=None, roles=BODY_ROLES):
     """Keep the bones of each arm and leg to their region on the vertices of the parts with `roles` (spec 5): the
-    regions as painted, the rest as recognized (`found`, from analyse; recognized now when None). What a vertex keeps
-    sums to 1 again (the jaw rings and the clothing build on these weights); a vertex left without weight takes its
-    nearest trunk or head bone."""
+    regions as painted, the rest as recognized (`found`, from analyse; recognized now when None). What a vertex gives
+    up goes to its home bones, as they share it: on an arm or a leg that limb's bones, elsewhere those no limb holds
+    (the trunk, the head); to the nearest one when it has none (made to add up to 1, a waist that kept 3% of an arm
+    would follow the arm again). The rows sum to 1 (the jaw rings and the clothing build on these weights)."""
     from . import weights
     found = analyse(context, rig, parts, owners) if found is None else found
     ids = [i for i, part in enumerate(parts) if part.role in roles]
     deform = [bone.name for bone in rig.data.bones if bone.use_deform]
     trunk = [name for name in TRUNK + ("Head",) if name in deform]
+    limbs = {region: [name for name in names if name in deform] for region, names in region_bones(rig).items()
+             if region in LIMBS}
     for obj, (vertices, recognized) in found.objects.items():
         chosen = np.isin(owners[obj][vertices], ids)
         if not chosen.any():
@@ -439,16 +442,34 @@ def restrict(context, rig, parts, owners, found=None, roles=BODY_ROLES):
         automatic = labelled == AUTO
         labelled[automatic] = recognized[automatic]
         keep = keep_factors(rig, world[vertices], labelled, rig_parts.local_edges(edges, vertices), found.half)
-        mine = vertices[chosen]
+        mine, label = vertices[chosen], labelled[chosen]
         matrix = weights.read(obj, deform)[mine]
+        before = matrix.sum(axis=1)
+        home = np.ones(matrix.shape, bool)
         for name, factor in keep.items():
             if name in deform:
                 matrix[:, deform.index(name)] *= factor[chosen]
-        empty = np.nonzero(matrix.sum(axis=1) <= 1e-9)[0]
-        if len(empty) and trunk:
-            distance = np.stack([surface_distance(rig, world[mine[empty]], [name], found.half) for name in trunk],
+                home[:, deform.index(name)] = False
+        for region in LIMBS:
+            rows = label == REGIONS.index(region)
+            home[rows] = False
+            for name in limbs[region]:
+                home[rows, deform.index(name)] = True
+        lost = before - matrix.sum(axis=1)
+        at_home = np.where(home, matrix, 0.0)
+        share = at_home.sum(axis=1)
+        spread = (lost > 1e-9) & (share > 1e-9)
+        matrix[spread] += at_home[spread] * (lost[spread] / share[spread])[:, None]
+        alone = ((lost > 1e-9) & (share <= 1e-9)) | (matrix.sum(axis=1) <= 1e-9)
+        for region in set(label[alone].tolist()):
+            names = limbs.get(REGIONS[region]) or trunk
+            rows = np.nonzero(alone & (label == region))[0]
+            if not names:
+                continue
+            distance = np.stack([surface_distance(rig, world[mine[rows]], [name], found.half) for name in names],
                                 axis=1)
-            matrix[empty, [deform.index(trunk[k]) for k in distance.argmin(axis=1)]] = 1.0
+            nearest = [deform.index(names[k]) for k in distance.argmin(axis=1)]
+            matrix[rows, nearest] += np.where(lost[rows] > 1e-9, lost[rows], 1.0)
         sums = matrix.sum(axis=1)
         matrix[sums > 0.0] /= sums[sums > 0.0, None]
         weights.clear(obj, mine, deform)

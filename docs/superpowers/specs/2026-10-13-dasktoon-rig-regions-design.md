@@ -107,8 +107,11 @@ của nhiều lọn).
   - `keep` = lớn hơn của hai giá trị trên.
 - Xương vai (LeftShoulder, RightShoulder) chỉ giữ weight quanh chính nó: 1 − khoảng cách tới đoạn xương vai chia
   (3 × nửa bề rộng tay cùng bên), không âm, trên mọi mảnh (dây đeo vắt qua vai vẫn theo vai), trừ đỉnh vùng Đầu.
-- Phần weight bị bỏ dồn cho các xương còn lại (chia lại cho tổng 1); đỉnh không còn weight nào lấy xương thân gần nhất
-  (cùng cách đo từ bề mặt).
+- Phần weight bị bỏ dồn cho các **xương nhà** mà đỉnh đang có, theo tỉ lệ của chúng: đỉnh vùng chi thì xương của chính
+  chi đó, đỉnh vùng thân, đầu thì các xương không chi nào giữ (thân, đầu); đỉnh không có xương nhà nào thì cho xương nhà
+  gần nhất (cùng cách đo từ bề mặt). Đỉnh không còn weight nào cũng vậy. (*Bổ sung khi làm tự rig*:
+  trước đây phần bị bỏ được chia lại cho mọi xương còn lại cho tổng 1, nên đỉnh eo chỉ có weight tay, giữ lại 3%, lại
+  thành 100% tay; mục Kiểm tra thấy eo nhân vật thử rách khi giơ tay.)
 - Vùng lấy từ lớp màu; đỉnh tự động được tính lúc Build. Lọn theo vai trò của nó (Accessory, Hair thắng Body, Clothing
   như spec rig §5.2).
 - Nút **Build Rig**: nếu chưa mesh Body, Clothing nào có lớp vùng thì chạy Nhận diện trước (tô vùng, tạo lọn) rồi Build;
