@@ -24,6 +24,8 @@ SPOT_EDGES = 3  # a stretched spot has at least this many edges
 SPOT_SAME = 0.5  # a spot mostly made of an earlier spot's vertices is that spot again, in another pose
 SPOT_GAP = 0.05  # (x height) stretched bits this near each other are one spot (one tear can split a ring in two)
 FAR_BONES = 4  # a stretch between bones this many steps apart in the skeleton is not a joint bending (an ear on an arm)
+WIDE = 0.02  # (x height) an edge growing this much is torn even between bones next to each other (a joint bending
+# stretches the skin of tdt and lr_shape 2 cm at most; the hips they tore when sitting grew 11 to 16 cm)
 FOLLOWS = 0.2  # a vertex follows the bones with at least this weight
 SKIRT_SHARE = 0.8  # of a skirt's vertices, at least this share between the knees and the waist
 SKIRT_FLARE = 1.1  # a skirt is this much wider at its hem than at its top
@@ -172,8 +174,8 @@ def _far_apart(edges, follows, names, steps):
 def stretch_issues(context, rig, parts, half=None):
     """[(object, pose, region, vertex indices)] of the stretched spots (spec 4.2): in each pose of TRIED, the edges of the
     parts' meshes moved through their weights that grow more than STRETCH times between bones far apart in the skeleton
-    (not a joint bending), in spots of at least SPOT_EDGES edges; each spot once, in the first pose that stretches it,
-    named after the region nearest its middle. The rig is left at rest."""
+    (not a joint bending), or by more than WIDE of the height, in spots of at least SPOT_EDGES edges; each spot once, in
+    the first pose that stretches it, named after the region nearest its middle. The rig is left at rest."""
     objects = list(dict.fromkeys(part.object for part in parts
                                  if part.object is not None and part.object.type == 'MESH'))
     rest = {}
@@ -182,7 +184,8 @@ def stretch_issues(context, rig, parts, half=None):
         rest[obj] = (world, edges, np.linalg.norm(world[edges[:, 0]] - world[edges[:, 1]], axis=1))
     names, steps = _steps(rig)
     follows = {}
-    gap = SPOT_GAP * _height(parts)
+    height = _height(parts)
+    gap = SPOT_GAP * height
     found = []
     try:
         for pose in TRIED:
@@ -192,13 +195,14 @@ def stretch_issues(context, rig, parts, half=None):
                 if len(edges) == 0:
                     continue
                 moved = deformed(rig, obj)
-                stretched = np.linalg.norm(moved[edges[:, 0]] - moved[edges[:, 1]], axis=1) > STRETCH * np.maximum(
-                    length, 1e-9)
+                now = np.linalg.norm(moved[edges[:, 0]] - moved[edges[:, 1]], axis=1)
+                stretched = now > STRETCH * np.maximum(length, 1e-9)
+                wide = now - length > WIDE * height
                 if stretched.sum() < SPOT_EDGES:
                     continue
                 if obj not in follows:
                     follows[obj] = [np.nonzero(row >= FOLLOWS)[0].tolist() for row in weights.read(obj, names)]
-                stretched[stretched] = _far_apart(edges[stretched], follows[obj], names, steps)
+                stretched[stretched] = wide[stretched] | _far_apart(edges[stretched], follows[obj], names, steps)
                 if stretched.sum() < SPOT_EDGES:
                     continue
                 bad = edges[stretched]

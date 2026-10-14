@@ -61,7 +61,10 @@ khớp đó được chọn sẵn.
 Với mỗi tư thế thử (trừ Về nghỉ), máy tính vị trí đỉnh của mọi phần bằng chính weight và tư thế xương (như modifier
 Armature, không cần vẽ lại cảnh). Một cạnh lưới **bị kéo giãn** khi dài ra hơn 2,5 lần **và** hai đầu của nó theo những
 xương cách nhau từ 4 bậc trở lên trong cây xương (*bổ sung khi làm*: khớp gập bình thường như nách, mông, gáy cũng kéo da
-dài ra nhiều, nhưng giữa hai xương kề nhau; tai nửa theo đầu nửa theo tay thì giữa đầu và cánh tay, cách nhau 4 bậc). Các
+dài ra nhiều, nhưng giữa hai xương kề nhau; tai nửa theo đầu nửa theo tay thì giữa đầu và cánh tay, cách nhau 4 bậc),
+**hoặc** dài ra hơn 2,5 lần và thêm hơn 2% chiều cao nhân vật dù giữa hai xương kề nhau (*sửa 2026-10-14*: hông tdt và
+lr rách 19 và 26 lần khi Ngồi, dài thêm 11–16 cm, mà mục Kiểm tra không báo; khớp gập thường trên hai mô hình đó dài thêm
+tối đa 2 cm. Nhân vật thử bằng các ống cắm vào thân nay được báo gốc tay, đùi trong rách 7 và 20 cm). Các
 cạnh kéo giãn nối nhau, hay cách nhau dưới 5% chiều cao nhân vật (một vết rách có thể tách một vòng đỉnh làm hai), là một
 chỗ; chỗ có từ 3 cạnh trở lên thì báo, theo vùng của nó: "Đầu bị kéo giãn ở tư thế Giơ tay (Body)". Nút **Xem**: đặt tư
 thế đó và làm sáng chỗ đó (vẽ ở vị trí đã biến dạng); nút **Tô vùng**: tô vùng trên mô hình đó.
