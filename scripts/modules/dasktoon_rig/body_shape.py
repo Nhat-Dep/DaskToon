@@ -11,9 +11,9 @@ only its largest piece counts (a blade or a loose strand is not a limb). Walking
 on that side) or a sole (the lowest pixel on that side) over the silhouette, the band of pixels at each walked distance
 stays as wide as the limb until the walk reaches the body, where it keeps widening: there the limb starts. The limb's
 pixels give its line (principal axis); depth comes from the vertices near a point. The template's arms and legs are then
-turned and scaled onto the limbs found, and its spine stretched between the hips and shoulders found. Last, the elbows
-and knees move to the middle of the limb front to back: real models bend them a little, off the straight line from
-the shoulder to the hand and the hip to the ankle (the Check of the auto rig found them outside the arms and legs)."""
+turned and scaled onto the limbs found, and its spine stretched between the hips and shoulders found. Last, the joints
+of the arms and legs move onto the middle lines of the limbs, from their cross-sections (sections.py): real models bend
+their elbows and knees, and depth read from the front view took in hair behind the hips and the heels of shoes."""
 
 from collections import namedtuple
 
@@ -27,8 +27,6 @@ WIDEN = 1.6  # where a limb meets the body, the band is this many times the limb
 SPREAD = 3.0  # ... and this many times wider SPREAD_AT (x height) further on: the body, not a wider sleeve
 SPREAD_AT = 0.06
 HIP_ABOVE = 0.1  # the hip joint is this part of the leg's length above where the leg meets the body
-DEPTH_REACH = 0.05  # (x height) an elbow or a knee this far in front of or behind its limb moves into it
-THINNEST_LIMB = 0.01  # (x height) thinner, front to back, is a shell (an outline around the skin), not a limb
 # Template heights (x height) of the hip and shoulder joints: the spine is stretched between the heights found.
 HIP_Z, SHOULDER_Z = 0.52, 0.78
 
@@ -198,91 +196,6 @@ class Shape:
         return None if self.mask[self.pixel((middle, halfway[1]))] else limb
 
 
-def _tree(context, objects):
-    """BVH tree of the surfaces of `objects` as shown (world), or None."""
-    from mathutils.bvhtree import BVHTree
-    verts, tris, count = [], [], 0
-    for obj in objects:
-        if obj.type != 'MESH':
-            continue
-        v, t = evaluated(context, obj)
-        if len(t):
-            verts.append(v)
-            tris.append(t + count)
-            count += len(v)
-    if not verts:
-        return None
-    return BVHTree.FromPolygons(np.concatenate(verts).tolist(), np.concatenate(tris).tolist(), all_triangles=True)
-
-
-def _crossings(tree, x, z, low, high):
-    """(depth y, the y of the surface's normal) of each crossing of the line through the front point (x, z), from y
-    `low` to `high`, with the surfaces of `tree`, in order."""
-    out = []
-    y = low
-    while len(out) < 64:
-        hit, normal, _index, _distance = tree.ray_cast(Vector((x, y, z)), Vector((0.0, 1.0, 0.0)), high - y)
-        if hit is None:
-            break
-        out.append((hit.y, normal.y))
-        y = hit.y + 1e-6 * (high - low)
-    return out
-
-
-def _insides(crossings, facing):
-    """[(front, back)] of the insides of the surfaces crossed: from a crossing that enters a surface (the y of its
-    normal has the sign of `facing`) to the next that leaves it, the innermost when they nest (a leg in a dress)."""
-    out, start = [], None
-    for y, normal_y in crossings:
-        if normal_y * facing > 0.0:
-            start = y
-        elif start is not None:
-            out.append((start, y))
-            start = None
-    return out
-
-
-def limb_depth(tree, point, reach, thinnest, low, high):
-    """The depth (y) of the middle of the limb at `point`, front to back, or None: the inside around the point, or the
-    nearest within `reach` when it is outside. Faces turned out (the front ones face -y) or a whole mesh turned in,
-    both are read; an inside thinner than `thinnest` is a shell (an outline a few millimetres outside the skin, its
-    faces turned in), not a limb."""
-    crossings = _crossings(tree, point.x, point.z, low, high)
-    best = None
-    for facing in (-1.0, 1.0):
-        for front, back in _insides(crossings, facing):
-            if back - front < thinnest:
-                continue
-            gap = max(front - point.y, point.y - back, 0.0)
-            if gap <= reach and (best is None or gap < best[0]):
-                best = (gap, (front + back) / 2.0)
-    return None if best is None else best[1]
-
-
-def _centre_depth(out, trees, reach, thinnest, low, high):
-    """Move the elbows and knees of `out` (the heads of the lower arms and legs, the tails of the upper ones) to the
-    middle of their limb front to back, from the first of `trees` that has the limb there; the same depth on both
-    sides, so the rig mirrors."""
-    for lower, upper in (("LowerArm", "UpperArm"), ("LowerLeg", "UpperLeg")):
-        found = []
-        for side in ("Left", "Right"):
-            if side + lower in out:
-                depth = next((y for y in (limb_depth(tree, out[side + lower][0], reach, thinnest, low, high)
-                                          for tree in trees) if y is not None), None)
-                if depth is not None:
-                    found.append(depth)
-        if not found:
-            continue
-        y = sum(found) / len(found)
-        for side in ("Left", "Right"):
-            if side + lower in out:
-                head, tail, axis = out[side + lower]
-                out[side + lower] = (Vector((head.x, y, head.z)), tail, axis)
-            if side + upper in out:
-                head, tail, axis = out[side + upper]
-                out[side + upper] = (head, Vector((tail.x, y, tail.z)), axis)
-
-
 def _mirrored(found, middle):
     """{side: limb}: a side not found mirrors the other one."""
     def mirror(limb):
@@ -307,8 +220,8 @@ def _similar(a_from, b_from, a_to, b_to):
 def joints(context, objects, feet, height, skin=None):
     """{bone: (head, tail, z axis)} in world space of the standard skeleton fitted to the silhouette of `objects`, for
     a character `height` tall with its feet at `feet`; None when they have no faces. What is not found (arms, legs)
-    stays as in the template, at the heights found. The elbows and knees take the depth of the limb of `skin` (the
-    Body meshes) where it has one, else of `objects`."""
+    stays as in the template, at the heights found. The joints of the arms and legs then lie on the middle lines of the
+    limbs of `skin` (the Body meshes) where it has them, else of `objects`."""
     from . import skeleton
     shape = Shape(context, objects, feet, height)
     if shape.mask is None:
@@ -375,9 +288,9 @@ def joints(context, objects, feet, height, skin=None):
         child = next((other for other, (h, _t, _a, parent) in template.items()
                       if parent == name and (h - tail).length < 1e-9), None)
         out[name] = (place(head), (region(child)[0] if child else place)(tail), rotation @ axis)
-    trees = [tree for tree in (_tree(context, skin) if skin else None, _tree(context, objects)) if tree is not None]
-    low, high = shape.vertices[:, 1].min() - height, shape.vertices[:, 1].max() + height
-    _centre_depth(out, trees, DEPTH_REACH * height, THINNEST_LIMB * height, low, high)
+    from . import sections
+    groups = [[evaluated(context, obj) for obj in group if obj.type == 'MESH'] for group in (skin or [], objects)]
+    sections.centre_limbs(out, [group for group in groups if group], height)
     return out
 
 

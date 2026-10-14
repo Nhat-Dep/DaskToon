@@ -286,5 +286,78 @@ class CreateTest(unittest.TestCase):
         skeleton.fit(bpy.context, rig, [body], body=[body])
         self.assert_bends_followed(rig)
 
+def polyline_chibi(arm, leg, extra=()):
+    """A chibi Body mesh: the torso and head of chibi(), arms and legs along the polylines `arm` and `leg` (left side,
+    points relative to the character's middle at (3, 0.5, 0); the right side mirrors), and `extra` tubes (start, end,
+    radius) on the left, mirrored too."""
+    o = Vector((3.0, 0.5, 0.0))
+    pieces = [tube(o + Vector((0, 0, 0.88)), o + Vector((0, 0, 1.46)), 0.18),
+              tube(o + Vector((0, 0, 1.46)), o + Vector((0, 0, 2.0)), 0.3)]
+    for s in (1.0, -1.0):
+        flip = Vector((s, 1.0, 1.0))
+        for line, radius in ((arm, 0.05), (leg, 0.07)):
+            points = [o + Vector(point) * flip for point in line]
+            pieces += [tube(points[k], points[k + 1], radius) for k in range(len(points) - 1)]
+        for start, end, radius in extra:
+            pieces.append(tube(o + Vector(start) * flip, o + Vector(end) * flip, radius))
+    verts, faces = [], []
+    for piece_verts, piece_faces in pieces:
+        faces += [tuple(i + len(verts) for i in face) for face in piece_faces]
+        verts += piece_verts
+    mesh = bpy.data.meshes.new("Body")
+    mesh.from_pydata(verts, [], faces)
+    body = bpy.data.objects.new("Body", mesh)
+    bpy.context.scene.collection.objects.link(body)
+    return body
+
+
+def depth_on(line, z):
+    """The depth (y, world) of the polyline segment `line` (two points relative to the middle) at height z."""
+    (_x0, y0, z0), (_x1, y1, z1) = line
+    return 0.5 + y0 + (y1 - y0) * (z - z0) / (z1 - z0)
+
+
+class CentreLineTest(unittest.TestCase):
+    """The joints of the arms and legs lie on the middle line of the limb, found from its cross-sections (the
+    accuracy tool measured on tdt and lr_shape hips 4 to 7 cm behind the thighs, ankles 3 to 11 cm off the shins,
+    wrists 1 to 2 cm off the forearms)."""
+
+    def setUp(self):
+        bpy.ops.wm.read_factory_settings(use_empty=True)
+
+    ARM = [(0.12, 0.0, 1.42), (0.28, 0.0, 1.23), (0.52, 0.0, 0.95)]
+    LEG = [(0.08, 0.0, 0.95), (0.085, 0.0, 0.5), (0.09, 0.0, 0.0)]
+
+    def fit(self, body):
+        rig = skeleton.create_humanoid(bpy.context, 1.0, (0.0, 0.0, 0.0))
+        skeleton.fit(bpy.context, rig, [body], body=[body])
+        return rig
+
+    def test_the_hips_follow_the_thighs(self):
+        """Thighs leaning forward at the top, and thick hair hanging behind the hips (it pulled tdt's hips back)."""
+        thigh = [(0.08, -0.06, 0.95), (0.085, 0.0, 0.5)]
+        hair = ((0.1, 0.25, 1.7), (0.1, 0.25, 0.85), 0.09)
+        rig = self.fit(polyline_chibi(self.ARM, thigh + [(0.09, 0.0, 0.0)], extra=[hair]))
+        for side in ("Left", "Right"):
+            hip = world_head(rig, side + "UpperLeg")
+            self.assertAlmostEqual(hip.y, depth_on(thigh, hip.z), delta=0.015, msg=side)
+
+    def test_the_ankles_follow_the_shins(self):
+        shin = [(0.085, 0.0, 0.5), (0.09, 0.05, 0.06)]  # the ankle 5 cm back
+        foot = ((0.09, 0.07, 0.04), (0.09, -0.16, 0.04), 0.04)  # reaching forward
+        heel = ((0.09, 0.07, 0.05), (0.09, 0.3, 0.05), 0.035)  # and a long heel behind it
+        rig = self.fit(polyline_chibi(self.ARM, [(0.08, 0.0, 0.95)] + shin, extra=[foot, heel]))
+        for side in ("Left", "Right"):
+            ankle = world_head(rig, side + "Foot")
+            self.assertAlmostEqual(ankle.y, depth_on(shin, ankle.z), delta=0.015, msg=side)
+
+    def test_the_wrists_follow_the_forearms(self):
+        forearm = [(0.28, 0.0, 1.23), (0.46, 0.04, 1.02)]  # the wrist 4 cm back, the hand bending forward
+        rig = self.fit(polyline_chibi([(0.12, 0.0, 1.42)] + forearm + [(0.53, -0.04, 0.94)], self.LEG))
+        for side in ("Left", "Right"):
+            wrist = world_head(rig, side + "Hand")
+            self.assertAlmostEqual(wrist.y, depth_on(forearm, wrist.z), delta=0.015, msg=side)
+
+
 if __name__ == "__main__":
     tu.run_tests()
