@@ -186,7 +186,7 @@ từ thư viện.
 4. Vẽ weight theo vai trò (§5.2), ghi đè weight cũ của các đỉnh thuộc phần, theo các xương của rig. Vertex group không
    trùng tên xương (vd. vertex group làm phần) không bị đụng.
 5. Dọn weight trên mọi đỉnh đã vẽ: bỏ weight < 0,01, giữ 4 weight lớn nhất (Unity mặc định 4 xương mỗi đỉnh), chuẩn
-   hóa tổng = 1. *Sửa 2026-10-14:* trước đó, đỉnh nào có ảnh gương đúng vị trí (trong 1/100 000 chiều cao) qua giữa
+   hóa tổng = 1. *Sửa 2026-10-14:* trước đó, đỉnh thuộc phần nào có ảnh gương (cũng thuộc phần) đúng vị trí (trong 1/100 000 chiều cao) qua giữa
    khung thì nó và ảnh gương nhận trung bình weight của nhau, đổi bên, trên các xương chuẩn; đỉnh có xương khác (chuỗi
    tóc, váy) giữ nguyên. Bone Heat cho hai bên hơi khác nhau (thân nhân vật thử lệch 0,32). Không ghép ảnh gương gần
    đúng: ghép trong 3–6 mm làm vai áo tdt (mô hình lệch vài mm) rách 4,9–7,4 lần thay vì 3,2. Hai weight bằng nhau vắt

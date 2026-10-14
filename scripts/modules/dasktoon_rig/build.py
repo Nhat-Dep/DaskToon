@@ -320,8 +320,9 @@ def _symmetric(rig, owners):
     """The same weights on both sides of a mesh where it is its own mirror image across the skeleton's middle: each
     vertex with a mirror image gets the mean of theirs, sides swapped, among the standard bones (Bone Heat answers a
     little differently on the two sides of a mesh: tdt's collar had 0.9 of the upper chest on one side, 0.56 of it and
-    0.44 of the neck on the other). A vertex without one (where the mesh is not modelled the same on both sides), or
-    weighed by any other bone (a lock of hair, a skirt), keeps its weights."""
+    0.44 of the neck on the other). Only the vertices of the parts (the rest keeps what was painted by hand); a vertex
+    without a mirror image (where the mesh is not modelled the same on both sides), or weighed by any other bone (a lock
+    of hair, a skirt), keeps its weights."""
     from mathutils.kdtree import KDTree
     names = [b.name for b in rig.data.bones if b.use_deform]
     standard = np.array([name in skeleton.BONE_NAMES for name in names])
@@ -331,7 +332,7 @@ def _symmetric(rig, owners):
         return
     gap = MIRROR_GAP * (box[1].z - box[0].z)
     middle = (rig.matrix_world @ rig.data.bones["Hips"].head_local).x
-    for obj in owners:
+    for obj, owner in owners.items():
         world, _edges = rig_parts.mesh_arrays(obj)
         if len(world) == 0:
             continue
@@ -345,7 +346,7 @@ def _symmetric(rig, owners):
             if distance < gap:
                 mirror[i] = j
         matrix = weights.read(obj, names)
-        own = (matrix[:, ~standard] <= 0.0).all(axis=1)
+        own = (owner >= 0) & (matrix[:, ~standard] <= 0.0).all(axis=1)
         rows = np.nonzero((mirror >= 0) & own)[0]
         rows = rows[own[mirror[rows]]]
         if len(rows) == 0:

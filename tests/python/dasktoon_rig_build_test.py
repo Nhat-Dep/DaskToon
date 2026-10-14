@@ -434,6 +434,26 @@ class SymmetryTest(unittest.TestCase):
             self.assertLess(difference, 1e-5, name)
 
 
+    def test_vertices_outside_the_parts_keep_their_weights(self):
+        """Build paints only the vertices of the parts (spec 6.2): weights painted by hand on the rest of a mesh stay as
+        they are, even where it is its own mirror image."""
+        bpy.ops.wm.read_factory_settings(use_empty=True)
+        objs = fx.character()
+        rig = fx.rig_for()
+        shirt = objs["Shirt"]
+        world, _edges = parts.mesh_arrays(shirt)
+        top = world[:, 2] > np.median(world[:, 2])
+        shirt.vertex_groups.new(name="DT_Top").add(np.nonzero(top)[0].tolist(), 1.0, 'REPLACE')
+        rest = np.nonzero(~top)[0]
+        painted = np.zeros((len(rest), 2))
+        painted[np.arange(len(rest)), (world[rest, 0] < 0.0).astype(int)] = 1.0  # the hips on the left, the spine right
+        weights.write(shirt, rest, ["Hips", "Spine"], painted)
+        build.build(bpy.context, rig, [parts.Part("Body", objs["Body"], 'BODY'),
+                                       parts.Part("Top", shirt, 'CLOTHING', scope='VERTEX_GROUP',
+                                                  vertex_group="DT_Top")])
+        np.testing.assert_allclose(weights.read(shirt, ["Hips", "Spine"])[rest], painted)
+
+
 class MirrorTest(unittest.TestCase):
     def test_a_mirrored_half_follows_its_own_side(self):
         """A sleeve modelled on the right arm only, the left one made by a Mirror modifier (as on lr_shape). Blender
