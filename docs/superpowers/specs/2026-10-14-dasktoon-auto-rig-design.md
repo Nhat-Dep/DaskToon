@@ -21,6 +21,15 @@ Thêm › Khung xương › Khung người anime (`dasktoon.rig_add_humanoid`):
   anime). Thông báo: đã dựng rig, xem mục Kiểm tra. Dựng rig lỗi (ví dụ mô hình bị chia sẻ dữ liệu) thì vẫn giữ khung và
   báo lỗi như nút Dựng rig.
 - **Không chọn mô hình**: chỉ thêm khung như trước.
+- **Hướng mặt** (thêm sau khi đo trên mô hình thật: lr_shape quay mặt về +Y nên khung bị dựng ngược, bên trái thành bên
+  phải, gối gập ra trước). Trước khi khớp (cả ở nút Khớp theo các phần), bàn chân cho biết nhân vật quay về đâu: lấy đế
+  chân (3% chiều cao sát sàn) so với cẳng chân ngay trên (6–12%), chia hai chân theo chiều chúng dàn ra. Chỉ tin khi cả
+  hai chân cùng vươn quá cẳng chân ít nhất 1% chiều cao, lệch nhau không quá 45°, và mọi điểm đế chân nằm trong 12%
+  chiều cao quanh cẳng chân (gấu váy dài hay bệ đứng thì không phải bàn chân). Nhân vật quay về +Y, +X hay −X (lệch
+  không quá 30°) thì được xoay tại chỗ, quanh điểm giữa hai chân, để mặt nhìn về −Y như khung xương và Unity cần, kèm
+  cảnh báo nói đã xoay bao nhiêu độ. Chỉ xoay các mô hình gốc trong số các phần (vật treo dưới chúng đi theo). Không rõ
+  thì giữ nguyên. Đo: tdt vươn 2,8% chiều cao về −Y (giữ nguyên), lr 4,1% về +Y (xoay 180°). Điểm đế chân xa nhất của
+  cả hai cách cẳng chân 8,5%.
 
 ## 3. Tư thế thử
 

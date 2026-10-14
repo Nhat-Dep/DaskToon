@@ -9,6 +9,8 @@ docs/superpowers/specs/2026-10-13-dasktoon-rig-regions-design.md, section 6. The
 meshes) and the Check panel: docs/superpowers/specs/2026-10-14-dasktoon-auto-rig-design.md. The work is done by the
 dasktoon_rig module."""
 
+import math
+
 import bpy
 from bpy.app.handlers import persistent
 from bpy.app.translations import pgettext_iface as iface_, pgettext_rpt as rpt_
@@ -242,13 +244,22 @@ def add_part(rig, obj, role, name=None, scope='OBJECT', material="", vertex_grou
 
 def fit_to_parts(context, rig):
     """Fit the skeleton of `rig` to the meshes of its parts, reading the body's shape from the Body and Clothing parts
-    (hair, a skirt or a held staff is no limb)."""
-    from dasktoon_rig import skeleton
+    (hair, a skirt or a held staff is no limb). A character whose feet face another way than the skeleton's front (-Y)
+    is turned round on the spot first. Returns that turn (radians about +Z, 0 when none)."""
+    from dasktoon_rig import facing, skeleton
     parts = [part for part in rig.data.dasktoon_rig.parts if part.object is not None and part.object.type == 'MESH']
     meshes = list(dict.fromkeys(part.object for part in parts))
     body = list(dict.fromkeys(part.object for part in parts if part.role in {'BODY', 'CLOTHING'}))
     skin = list(dict.fromkeys(part.object for part in parts if part.role == 'BODY'))
+    turn = facing.face_front(context, meshes, body=body or None)
     skeleton.fit(context, rig, meshes, body=body or None, skin=skin or None)
+    return turn
+
+
+def report_turn(operator, turn):
+    if turn:
+        operator.report({'WARNING'}, rpt_("The character did not face the front (-Y): it was turned %d° on the spot, "
+                                          "as the skeleton and Unity need") % abs(round(math.degrees(turn))))
 
 
 def add_meshes(rig, meshes):
@@ -334,7 +345,7 @@ class DASKTOON_OT_rig_add_humanoid(Operator):
         progress.progress_begin(0, 3)
         try:
             add_meshes(rig, meshes)
-            fit_to_parts(context, rig)
+            report_turn(self, fit_to_parts(context, rig))
             for obj in context.view_layer.objects:
                 obj.select_set(obj == rig)
             context.view_layer.objects.active = rig
@@ -393,7 +404,7 @@ class DASKTOON_OT_rig_fit(Operator):
         return context.window_manager.invoke_confirm(self, event)
 
     def execute(self, context):
-        fit_to_parts(context, rig_of(context))
+        report_turn(self, fit_to_parts(context, rig_of(context)))
         return {'FINISHED'}
 
 

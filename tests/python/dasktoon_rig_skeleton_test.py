@@ -10,11 +10,12 @@ import sys
 import unittest
 
 import bpy
-from mathutils import Vector
+import numpy as np
+from mathutils import Matrix, Vector
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import dasktoon_test_utils as tu  # noqa: E402
-from dasktoon_rig import skeleton  # noqa: E402
+from dasktoon_rig import facing, skeleton  # noqa: E402
 
 UNITY_HUMAN_BONES = {
     "Hips", "LeftUpperLeg", "RightUpperLeg", "LeftLowerLeg", "RightLowerLeg", "LeftFoot", "RightFoot", "Spine",
@@ -286,6 +287,7 @@ class CreateTest(unittest.TestCase):
         skeleton.fit(bpy.context, rig, [body], body=[body])
         self.assert_bends_followed(rig)
 
+
 def polyline_chibi(arm, leg, extra=()):
     """A chibi Body mesh: the torso and head of chibi(), arms and legs along the polylines `arm` and `leg` (left side,
     points relative to the character's middle at (3, 0.5, 0); the right side mirrors), and `extra` tubes (start, end,
@@ -357,6 +359,92 @@ class CentreLineTest(unittest.TestCase):
         for side in ("Left", "Right"):
             wrist = world_head(rig, side + "Hand")
             self.assertAlmostEqual(wrist.y, depth_on(forearm, wrist.z), delta=0.015, msg=side)
+
+
+def shown(obj):
+    from dasktoon_rig import body_shape
+    return body_shape.evaluated(bpy.context, obj)[0]
+
+
+def turned(angle, about):
+    about = Vector(about)
+    return Matrix.Translation(about) @ Matrix.Rotation(angle, 4, 'Z') @ Matrix.Translation(-about)
+
+
+class FacingTest(unittest.TestCase):
+    """A character facing another way than -Y, where the skeleton and Unity's front are, is turned round on the spot to
+    face it; its feet tell (lr_shape, one of the real models, faced +Y: the auto rig put its left on its right and its
+    knees bent forward)."""
+
+    def setUp(self):
+        bpy.ops.wm.read_factory_settings(use_empty=True)
+
+    ARM = CentreLineTest.ARM
+    LEG = CentreLineTest.LEG
+    FRONT = ((0.09, 0.05, 0.04), (0.09, -0.2, 0.04), 0.04)  # a foot reaching to -Y
+    BACK = ((0.09, -0.05, 0.04), (0.09, 0.2, 0.04), 0.04)  # to +Y
+    MIDDLE = (3.0, 0.5, 0.0)  # where polyline_chibi stands
+
+    def toes(self, obj):
+        """(x, y) the soles reach past the lower legs."""
+        world = shown(obj)
+        soles, legs = world[world[:, 2] < 0.06], world[(world[:, 2] > 0.12) & (world[:, 2] < 0.24)]
+        return soles[:, :2].mean(axis=0) - legs[:, :2].mean(axis=0)
+
+    def assert_matrix(self, matrix, expected):
+        np.testing.assert_allclose(np.array(matrix), np.array(expected), atol=1e-5)
+
+    def test_a_character_facing_the_back_is_turned_round_on_the_spot(self):
+        body = polyline_chibi(self.ARM, self.LEG, extra=[self.BACK])
+        self.assertAlmostEqual(abs(facing.face_front(bpy.context, [body])), math.pi, places=6)
+        self.assert_matrix(body.matrix_world, turned(math.pi, self.MIDDLE))
+        self.assertLess(self.toes(body)[1], -0.02)
+
+    def test_a_character_facing_a_side_is_turned_a_quarter(self):
+        body = polyline_chibi(self.ARM, self.LEG, extra=[self.FRONT])
+        body.matrix_world = turned(math.pi / 2.0, self.MIDDLE)  # facing +X
+        self.assertAlmostEqual(facing.face_front(bpy.context, [body]), -math.pi / 2.0, places=6)
+        self.assert_matrix(body.matrix_world, Matrix.Identity(4))
+
+    def test_a_character_facing_the_front_stays(self):
+        body = polyline_chibi(self.ARM, self.LEG, extra=[self.FRONT])
+        self.assertEqual(facing.face_front(bpy.context, [body]), 0.0)
+        self.assert_matrix(body.matrix_world, Matrix.Identity(4))
+
+    def test_without_feet_nothing_is_turned(self):
+        body = polyline_chibi(self.ARM, self.LEG)
+        self.assertEqual(facing.face_front(bpy.context, [body]), 0.0)
+
+    def test_the_hem_of_a_long_dress_is_no_foot(self):
+        """A dress widening down to the floor, with a train behind: no foot reaches back."""
+        body = polyline_chibi(self.ARM, self.LEG)
+        rings, segments = 10, 16
+        verts = []
+        for r in range(rings + 1):
+            t = r / rings  # from the waist down to the floor
+            centre, radius = Vector((3.0, 0.5 + 0.3 * t * t, 0.95 * (1.0 - t))), 0.2 + 0.15 * t
+            verts += [tuple(centre + Vector((math.cos(a), math.sin(a), 0.0)) * radius)
+                      for a in (2.0 * math.pi * k / segments for k in range(segments))]
+        faces = [(r * segments + k, (r + 1) * segments + k, (r + 1) * segments + (k + 1) % segments,
+                  r * segments + (k + 1) % segments) for r in range(rings) for k in range(segments)]
+        mesh = bpy.data.meshes.new("Dress")
+        mesh.from_pydata(verts, [], faces)
+        dress = bpy.data.objects.new("Dress", mesh)
+        bpy.context.scene.collection.objects.link(dress)
+        self.assertEqual(facing.face_front(bpy.context, [body, dress]), 0.0)
+
+    def test_what_hangs_from_a_part_turns_with_it_once(self):
+        body = polyline_chibi(self.ARM, self.LEG, extra=[self.BACK])
+        hat = box("Hat", (2.9, 0.4, 2.0), (3.1, 0.7, 2.1))
+        hat.parent = body
+        bow = bpy.data.objects.new("Bow", None)  # not a part, hanging from one
+        bpy.context.scene.collection.objects.link(bow)
+        bow.parent, bow.location = hat, (3.0, 0.7, 2.1)
+        bpy.context.view_layer.update()
+        before = {obj: obj.matrix_world.copy() for obj in (body, hat, bow)}
+        facing.face_front(bpy.context, [hat, body], body=[body])
+        for obj, matrix in before.items():
+            self.assert_matrix(obj.matrix_world, turned(math.pi, self.MIDDLE) @ matrix)
 
 
 if __name__ == "__main__":

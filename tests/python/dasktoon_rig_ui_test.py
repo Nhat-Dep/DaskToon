@@ -5,6 +5,7 @@
 """Anime rig interface: Add › Armature › Anime Humanoid, the Anime Rig panels and their commands (spec 7); the auto rig
 and the Check panel (docs/superpowers/specs/2026-10-14-dasktoon-auto-rig-design.md)."""
 
+import math
 import os
 import sys
 import types
@@ -21,6 +22,18 @@ import dasktoon_test_utils as tu  # noqa: E402
 from bl_ui import dasktoon_rig as ui  # noqa: E402
 from bl_ui import dasktoon_translations as dt  # noqa: E402
 from dasktoon_rig import skeleton  # noqa: E402
+
+
+def facing_the_back():
+    """A chibi Body modelled facing +Y, as lr_shape (one of the real models) was: its feet reach to +Y."""
+    st = rt.st
+    return st.polyline_chibi(st.CentreLineTest.ARM, st.CentreLineTest.LEG, extra=[st.FacingTest.BACK])
+
+
+def assert_turned_round(body):
+    st = rt.st
+    np.testing.assert_allclose(np.array(body.matrix_world), np.array(st.turned(math.pi, st.FacingTest.MIDDLE)),
+                               atol=1e-5)
 
 
 def select_only(objects, active):
@@ -110,6 +123,14 @@ class AddTest(unittest.TestCase):
         tip = rig.matrix_world @ rig.data.bones["LeftMiddleDistal"].tail_local
         self.assertLess((tip - marks["tip_left"]).length, 0.06)
 
+    def test_add_turns_a_character_facing_the_back(self):
+        """The skeleton faces -Y, as Unity wants: a character modelled facing +Y is turned round on the spot before
+        the skeleton is fitted, so its left gets the left bones and its knees bend the right way."""
+        body = facing_the_back()
+        select_only([body], body)
+        bpy.ops.dasktoon.rig_add_humanoid()
+        assert_turned_round(body)
+
     def test_add_rigs_the_selected_character(self):
         """Selected meshes: one press adds the skeleton fitted to them, recognizes the regions and locks, builds the rig
         and checks it (auto rig spec 2); the Properties editor shows the rig's data, where Anime Rig is."""
@@ -194,6 +215,13 @@ class PanelTest(unittest.TestCase):
         arm = self.rig.matrix_world @ self.rig.data.bones["LeftUpperArm"].head_local
         low, high = 0.05 * h, 0.86 * h  # the Body tube: the template's shoulders, no arm found
         self.assertAlmostEqual(arm.z, low + 0.78 * (high - low), delta=0.01 * h)
+
+    def test_fit_turns_a_character_facing_the_back(self):
+        body = facing_the_back()
+        ui.add_part(self.rig, body, 'BODY')
+        select_only([self.rig], self.rig)
+        self.assertEqual(bpy.ops.dasktoon.rig_fit(), {'FINISHED'})
+        assert_turned_round(body)
 
     def test_parts_list_names_the_object_only_when_it_differs(self):
         ui.add_part(self.rig, self.objs["Body"], 'BODY')
