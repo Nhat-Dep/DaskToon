@@ -51,12 +51,51 @@ def has_keys(clip):
     return any(len(bag.fcurves) for layer in clip.layers for strip in layer.strips for bag in strip.channelbags)
 
 
+def _keyed(clip, idb):
+    """{(data path, index)} `clip` animates on `idb`, in the slot named after it."""
+    slot = next((slot for slot in clip.slots if slot.target_id_type == idb.id_type and slot.name_display == idb.name),
+                None)
+    bag = anim_utils.action_get_channelbag_for_slot(clip, slot) if slot is not None else None
+    return {(curve.data_path, curve.array_index) for curve in bag.fcurves} if bag is not None else set()
+
+
+def _rest(idb, path, index):
+    """`idb`'s property at `path` (`index`) back at rest: a pose bone's transform at its rest, a shape key's value at
+    0, a custom property at its default. Other properties (where an object stands) stay as they are."""
+    try:
+        if path.endswith('"]'):
+            owner_path, _, name = path[:-2].rpartition('["')
+            owner = idb.path_resolve(owner_path) if owner_path else idb
+            default = owner.id_properties_ui(name).as_dict().get("default", 0)
+            value = owner[name]
+            if hasattr(value, "__len__"):
+                value[index] = default[index] if hasattr(default, "__len__") else default
+            else:
+                owner[name] = default
+        elif path.startswith(("pose.bones[", "key_blocks[")):
+            owner_path, _, name = path.rpartition(".")
+            owner = idb.path_resolve(owner_path)
+            prop = owner.bl_rna.properties[name]
+            if prop.is_array:
+                getattr(owner, name)[index] = prop.default_array[index]
+            else:
+                setattr(owner, name, prop.default)
+    except (ValueError, KeyError, TypeError, IndexError):
+        pass  # a bone, shape key or property that is gone
+
+
 def use(armature, objects, clip, scene=None):
-    """Every part of the character plays `clip` (None: no action); with `scene`, its preview range shows the clip."""
+    """Every part of the character plays `clip` (None: no action); with `scene`, its preview range shows the clip.
+    What the character's other clips animate and `clip` does not goes back to rest, so a clip shows, and exports, only
+    its own animation; what no clip animates stays as it is."""
+    others = [other for other in clips_of(armature) if other != clip]
     for idb in parts(armature, objects):
         anim = idb.animation_data or idb.animation_data_create()
         if anim.action != clip:
             anim.action = clip
+        mine = _keyed(clip, idb) if clip is not None else set()
+        for path, index in set().union(*(_keyed(other, idb) for other in others)) - mine:
+            _rest(idb, path, index)
     if scene is not None and clip is not None and has_keys(clip):
         scene.use_preview_range = True
         scene.frame_preview_start, scene.frame_preview_end = frame_range(clip)

@@ -494,7 +494,9 @@ class DaskFastAction(PropertyGroup):
         description="Where the character moves fast, smear it and show afterimages of the frames before and speed "
         "lines")
     threshold: FloatProperty(
-        name="Threshold", description="Speed above which a part of the character gets the effects", default=3.0,
+        name="Threshold", default=3.0,
+        description="Speed above which a part of the character gets the effects, for a character 1.6 m tall: it "
+        "scales with the character's height",
         min=0.0, soft_max=20.0, unit='VELOCITY', update=_fast_action_changed)
     smear: FloatProperty(
         name="Smear", description="How far the trailing side of a fast part is pulled back toward the frame before",
@@ -509,7 +511,7 @@ class DaskFastAction(PropertyGroup):
         name="Afterimage Color", subtype='COLOR', size=3, default=(0.55, 0.8, 1.0), min=0.0, max=1.0,
         update=_fast_action_changed)
     line_density: FloatProperty(
-        name="Line Density", description="Share of the fast vertices that trail a speed line", default=0.15,
+        name="Line Density", description="Share of the fast vertices that trail a speed line", default=0.08,
         min=0.0, max=1.0, subtype='FACTOR', update=_fast_action_changed)
     line_length: FloatProperty(
         name="Line Length", description="A speed line is as long as the distance moved in this time", default=0.04,

@@ -91,6 +91,12 @@ là **khung chuẩn**, kể cả khi người dùng xóa ngón, mắt, hàm hay 
   Edit Mode, then press Build Rig in Properties › Object Data".
 - **Fit to Parts** (panel con Joints): khớp lại khung theo các mesh của phần; thay vị trí khớp hiện có (hỏi xác
   nhận); không tạo lại xương người dùng đã xóa; không dời object armature (mesh đã gắn không bị kéo theo).
+  *Bổ sung 2026-10-13 (thử trên mô hình thật):* chiều cao và chân vẫn theo hộp bao; còn lại đọc theo bóng nhìn từ trước
+  của các phần Body và Clothing (`dasktoon_rig/body_shape.py`): tâm thân theo trung vị đỉnh (không theo hộp có tai, tóc);
+  tay và chân tìm bằng cách đi từ đầu ngón tay (hay đế chân) dọc bóng tới chỗ bóng nở ra (chạm thân), trục chính của đoạn
+  đi qua cho đường tay/chân; khuôn tay, chân được xoay và co giãn lên đó; cột sống giãn giữa độ cao hông và vai tìm được
+  (hợp nhân vật chibi đầu to). Không tìm được thì giữ khuôn như cũ; tìm được một bên thì bên kia lấy đối xứng. Khi ghi
+  khớp, X-Axis Mirror tạm tắt (nó lật mỗi bên theo giữa armature, không theo giữa nhân vật).
 
 ## 5. Phần và vai trò (R1)
 
@@ -124,7 +130,7 @@ Phần lưu theo tên material và tên vertex group, nên đổi tên material/
 | Vai trò | Rig thế nào |
 |---|---|
 | **Body** | Weight tự động (bone heat của Blender) theo các xương Deform của rig, trừ xương sinh, `LeftEye`, `RightEye`, `Jaw` (tạm tắt Deform trong lúc tính) |
-| **Clothing** | Chép weight từ bề mặt Body gần nhất: điểm gần nhất trên tam giác Body, nội suy theo tọa độ trọng tâm |
+| **Clothing** | Chép weight từ bề mặt Body gần nhất: điểm gần nhất trên tam giác Body, nội suy theo tọa độ trọng tâm. *Bổ sung 2026-10-13:* đỉnh xa Body hơn 2% chiều cao Body thì pha dần sang weight tự động (bone heat) của chính phần áo, xa từ 4% trở lên thì dùng hẳn weight đó (váy không có da bên dưới không còn chép vai cách 30 cm) |
 | **Accessory** | Cứng: toàn bộ weight 1 cho một xương (kính, kẹp tóc, mắt cầu gắn `LeftEye`/`RightEye`) |
 | **Hair** | Mỗi mảnh dài thành một chuỗi `bone_count` xương gắn vào `bone`; mảnh ngắn/bè (mũ tóc) thành Accessory trên `bone` |
 | **Skirt** | `chain_count` dải quanh trục đứng, mỗi dải `bone_count` xương gắn vào `bone` |

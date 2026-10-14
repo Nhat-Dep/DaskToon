@@ -89,6 +89,20 @@ class PanelTest(unittest.TestCase):
         self.assertEqual(self.rig.mode, 'EDIT')
         self.assertEqual(bpy.context.view_layer.objects.active, self.rig)
 
+    def test_fit_reads_the_shape_of_the_body_and_clothing_only(self):
+        """A staff held out to the side, an Accessory part, is not read as an arm."""
+        h = fx.HEIGHT
+        verts, faces = fx.cube((0.0, 0.0, 0.0), 1.0 / h)  # a cube 1 wide, stretched into a staff from x 0.04h to 0.6h
+        staff = fx.mesh_object("Staff", [(0.32 * h + x * 0.56 * h, y * 0.02 * h, 0.5 * h + z * 0.02 * h)
+                                         for x, y, z in verts], faces)
+        ui.add_part(self.rig, self.objs["Body"], 'BODY')
+        ui.add_part(self.rig, staff, 'ACCESSORY')
+        select_only([self.rig], self.rig)
+        self.assertEqual(bpy.ops.dasktoon.rig_fit(), {'FINISHED'})
+        arm = self.rig.matrix_world @ self.rig.data.bones["LeftUpperArm"].head_local
+        low, high = 0.05 * h, 0.86 * h  # the Body tube: the template's shoulders, no arm found
+        self.assertAlmostEqual(arm.z, low + 0.78 * (high - low), delta=0.01 * h)
+
     def test_parts_list_names_the_object_only_when_it_differs(self):
         ui.add_part(self.rig, self.objs["Body"], 'BODY')
         ui.add_part(self.rig, self.objs["Body"], 'CLOTHING', name="Skin")

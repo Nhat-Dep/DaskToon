@@ -251,9 +251,11 @@ class DASKTOON_OT_rig_fit(Operator):
     def execute(self, context):
         from dasktoon_rig import skeleton
         rig = rig_of(context)
-        meshes = list(dict.fromkeys(part.object for part in rig.data.dasktoon_rig.parts
-                                    if part.object is not None and part.object.type == 'MESH'))
-        skeleton.fit(context, rig, meshes)
+        parts = [part for part in rig.data.dasktoon_rig.parts if part.object is not None and part.object.type == 'MESH']
+        meshes = list(dict.fromkeys(part.object for part in parts))
+        # The shape of the body is read from the Body and Clothing parts: hair, a skirt or a held staff is no limb.
+        body = list(dict.fromkeys(part.object for part in parts if part.role in {'BODY', 'CLOTHING'}))
+        skeleton.fit(context, rig, meshes, body=body or None)
         return {'FINISHED'}
 
 

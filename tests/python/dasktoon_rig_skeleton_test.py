@@ -4,6 +4,7 @@
 
 """The DaskToon standard skeleton: Unity's 55 human bones, T-pose, mirrored sides, fitted to meshes (anime rig spec 4)."""
 
+import math
 import os
 import sys
 import unittest
@@ -34,6 +35,60 @@ def box(name, low, high):
     obj = bpy.data.objects.new(name, mesh)
     bpy.context.scene.collection.objects.link(obj)
     return obj
+
+
+def tube(a, b, radius, rings=8, segments=12):
+    """(verts, faces) of a closed tube from point a to point b."""
+    a, b = Vector(a), Vector(b)
+    axis = (b - a).normalized()
+    side = axis.orthogonal().normalized()
+    other = axis.cross(side)
+    verts, faces = [], []
+    for r in range(rings + 1):
+        centre = a + (b - a) * (r / rings)
+        for k in range(segments):
+            angle = 2.0 * math.pi * k / segments
+            verts.append(tuple(centre + (side * math.cos(angle) + other * math.sin(angle)) * radius))
+    for r in range(rings):
+        for k in range(segments):
+            i, j = r * segments + k, r * segments + (k + 1) % segments
+            faces.append((i, i + segments, j + segments, j))
+    last = rings * segments
+    faces += [tuple(range(segments))[::-1], tuple(range(last, last + segments))]
+    return verts, faces
+
+
+def chibi(offset=(3.0, 0.5, 0.0)):
+    """A chibi character 2 tall in A-pose, as one Body mesh: a big head (the top quarter), a short torso, arms 50
+    degrees down from the shoulders, legs; and rabbit ears behind the head, a mesh of their own that pushes the
+    bounding box back. Returns (body, ears, {landmark: world point})."""
+    o = Vector(offset)
+    angle = math.radians(50.0)
+    marks = {"tip_left": o + Vector((0.12 + 0.62 * math.cos(angle), 0.0, 1.42 - 0.62 * math.sin(angle))),
+             "shoulder_left": o + Vector((0.16, 0.0, 1.38)), "hip_left": o + Vector((0.08, 0.0, 0.95)),
+             "ankle_left": o + Vector((0.09, 0.0, 0.08))}
+    pieces = [tube(o + Vector((0, 0, 0.88)), o + Vector((0, 0, 1.46)), 0.18),  # torso
+              tube(o + Vector((0, 0, 1.46)), o + Vector((0, 0, 2.0)), 0.3)]  # head
+    for s in (1.0, -1.0):
+        pieces.append(tube(o + Vector((0.12 * s, 0, 1.42)),
+                           o + Vector(((0.12 + 0.62 * math.cos(angle)) * s, 0, 1.42 - 0.62 * math.sin(angle))), 0.05))
+        pieces.append(tube(o + Vector((0.08 * s, 0, 0.95)), o + Vector((0.09 * s, 0, 0.0)), 0.07))
+    verts, faces = [], []
+    for piece_verts, piece_faces in pieces:
+        faces += [tuple(i + len(verts) for i in face) for face in piece_faces]
+        verts += piece_verts
+    mesh = bpy.data.meshes.new("Body")
+    mesh.from_pydata(verts, [], faces)
+    body = bpy.data.objects.new("Body", mesh)
+    bpy.context.scene.collection.objects.link(body)
+    ears = box("Ears", tuple(o + Vector((-0.2, 0.4, 1.7))), tuple(o + Vector((0.2, 1.4, 2.0))))
+    return body, ears, marks
+
+
+def line_distance(point, a, b):
+    """Distance from `point` to the line through a and b."""
+    axis = (b - a).normalized()
+    return (point - a - axis * (point - a).dot(axis)).length
 
 
 def world_head(rig, name):
@@ -131,6 +186,47 @@ class CreateTest(unittest.TestCase):
         self.assertAlmostEqual(world_head(rig, "Hips").x, 5.0, places=5)
         self.assertNotIn("LeftLittleDistal", rig.data.bones)
         self.assertEqual(len(rig.data.bones), 54)
+
+    def test_fit_follows_the_shape_of_the_body(self):
+        """A chibi in A-pose (real model test: the bounding box fit gave T-pose arms 0.7 m from the hands and a spine
+        behind the body): the arms follow the mesh down to the hands, the legs end at the ankles, the spine is in the
+        body, not in the middle of a box that includes the ears."""
+        body, ears, marks = chibi()
+        rig = skeleton.create_humanoid(bpy.context, 1.0, (0.0, 0.0, 0.0))
+        skeleton.fit(bpy.context, rig, [body, ears], body=[body])
+        for s, side in ((1.0, "Left"), (-1.0, "Right")):
+            def mirrored(name):
+                point = marks[name + "_left"].copy()
+                point.x = 3.0 + (point.x - 3.0) * s
+                return point
+
+            shoulder, tip = mirrored("shoulder"), mirrored("tip")
+            self.assertLess((world_tail(rig, side + "MiddleDistal") - tip).length, 0.06, side)
+            self.assertLess((world_head(rig, side + "UpperArm") - shoulder).length, 0.1, side)
+            for bone in ("LowerArm", "Hand"):
+                self.assertLess(line_distance(world_head(rig, side + bone), shoulder, tip), 0.03, side + bone)
+            hip, ankle = world_head(rig, side + "UpperLeg"), world_head(rig, side + "Foot")
+            self.assertLess(abs(hip.z - mirrored("hip").z), 0.12, side)
+            self.assertLess((ankle - mirrored("ankle")).length, 0.06, side)
+        hips = world_head(rig, "Hips")
+        self.assertLess((hips.to_2d() - Vector((3.0, 0.5))).length, 0.01)
+        self.assertLess(abs(hips.z - 0.95), 0.12)
+        self.assertTrue(world_head(rig, "LeftUpperArm").z < world_head(rig, "Neck").z < world_head(rig, "Head").z
+                        < 1.7)
+        self.assertLess(abs(world_head(rig, "Head").y - 0.5), 0.05)
+
+    def test_fit_keeps_the_sides_mirrored(self):
+        """A bag behind the left hip (part of the Body) pulls that side's depth back: both sides still get the same
+        depth, so the skeleton stays mirrored (real model test: the hips were 9 cm apart in depth)."""
+        body, ears, _marks = chibi()
+        bag = box("Bag", (3.05, 0.6, 0.7), (3.25, 0.9, 1.0))
+        rig = skeleton.create_humanoid(bpy.context, 1.0, (0.0, 0.0, 0.0))
+        skeleton.fit(bpy.context, rig, [body, ears, bag], body=[body, bag])
+        middle = world_head(rig, "Hips").x
+        for bone in ("UpperLeg", "LowerLeg", "Foot", "UpperArm", "Hand"):
+            left, right = world_head(rig, "Left" + bone), world_head(rig, "Right" + bone)
+            self.assertAlmostEqual(left.y, right.y, places=4, msg=bone)
+            self.assertAlmostEqual(left.x - middle, middle - right.x, places=4, msg=bone)
 
 
 if __name__ == "__main__":

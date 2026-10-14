@@ -1056,7 +1056,6 @@ VI = {
         "Quần áo chép weight từ phần Body; hãy thêm phần Body trước",
     "%s: %d vertices took the nearest bone (automatic weights found no solution there)":
         "%s: %d đỉnh lấy theo xương gần nhất (weight tự động không tìm được nghiệm ở đó)",
-    "%s: no Body surface to copy weights from": "%s: không có bề mặt Body để chép weight",
     # bl_ui/dasktoon_rig.py
     "Anime Humanoid": "Khung người anime",
     "Add the DaskToon standard skeleton, fitted to the selected meshes, which become its parts":
@@ -1298,8 +1297,10 @@ VI = {
     "Where the character moves fast, smear it and show afterimages of the frames before and speed lines":
         "Chỗ nhân vật chuyển động nhanh thì kéo nhòe, hiện bóng lưu của các khung trước và vệt tốc độ",
     "Threshold": "Ngưỡng",
-    "Speed above which a part of the character gets the effects":
-        "Phần nào của nhân vật nhanh hơn tốc độ này thì có hiệu ứng",
+    "Speed above which a part of the character gets the effects, for a character 1.6 m tall: it scales with the "
+    "character's height":
+        "Phần nào của nhân vật nhanh hơn tốc độ này thì có hiệu ứng; tính cho nhân vật cao 1,6 m, tự nhân theo chiều cao "
+        "nhân vật",
     "Smear": "Kéo nhòe",
     "How far the trailing side of a fast part is pulled back toward the frame before":
         "Mặt sau của phần chuyển động nhanh bị kéo lùi về phía khung trước bao xa",

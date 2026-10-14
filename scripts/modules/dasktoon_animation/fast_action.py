@@ -20,15 +20,20 @@ FADE = "dasktoon_fade"  # afterimage opacity along the copies: 1, 2/3, 1/3; the 
 _TEMP = ("dasktoon_tmp_p1", "dasktoon_tmp_p2", "dasktoon_tmp_p3", "dasktoon_tmp_f1", "dasktoon_tmp_f2",
          "dasktoon_tmp_f3", "dasktoon_tmp_line")
 
+# The threshold (a speed) and the line width are set for a character this tall and scale with the character's height
+# (real model test: a character 2.95 m tall was covered in lines). The line length is a time: it scales by itself.
+REFERENCE_HEIGHT = 1.6
+LINE_WIDTH = 0.004
+
 # (name, socket type, default, min, max): the group's inputs after Geometry, set from the character's settings.
 INPUTS = (
     ("Threshold", 'NodeSocketFloat', 3.0, 0.0, 1000.0),
     ("Smear", 'NodeSocketFloat', 0.6, 0.0, 1.0),
     ("Afterimages", 'NodeSocketInt', 2, 0, 3),
     ("Afterimage Material", 'NodeSocketMaterial', None, None, None),
-    ("Line Density", 'NodeSocketFloat', 0.15, 0.0, 1.0),
+    ("Line Density", 'NodeSocketFloat', 0.08, 0.0, 1.0),
     ("Line Length", 'NodeSocketFloat', 0.04, 0.0, 10.0),
-    ("Line Width", 'NodeSocketFloat', 0.004, 0.0, 1.0),
+    ("Line Width", 'NodeSocketFloat', LINE_WIDTH, 0.0, 1.0),
     ("Line Material", 'NodeSocketMaterial', None, None, None),
 )
 
@@ -253,15 +258,24 @@ def input_value(modifier, name):
     return _input(modifier, name).value
 
 
-def _settings_inputs(armature):
+def size(objects):
+    """The character's height (its meshes at rest) over REFERENCE_HEIGHT; 1 when there is none."""
+    from dasktoon_rig import skeleton
+    box = skeleton.bounds(objects)
+    height = box[1].z - box[0].z if box is not None else 0.0
+    return height / REFERENCE_HEIGHT if height > 1e-6 else 1.0
+
+
+def _settings_inputs(armature, objects):
     settings = armature.data.dasktoon_fast_action
     afterimage, lines = _material(armature, "Afterimage"), _material(armature, "Lines")
     material_color(afterimage)[:3] = settings.afterimage_color
     afterimage.node_tree.nodes["Opacity"].inputs[1].default_value = settings.afterimage_opacity
     material_color(lines)[:3] = settings.line_color
-    return {"Threshold": settings.threshold, "Smear": settings.smear, "Afterimages": settings.afterimages,
+    scale = size(objects)
+    return {"Threshold": settings.threshold * scale, "Smear": settings.smear, "Afterimages": settings.afterimages,
             "Afterimage Material": afterimage, "Line Density": settings.line_density,
-            "Line Length": settings.line_length, "Line Material": lines}
+            "Line Length": settings.line_length, "Line Width": LINE_WIDTH * scale, "Line Material": lines}
 
 
 def meshes(armature, objects):
@@ -279,7 +293,7 @@ def sync(armature, objects):
                 modifier.show_viewport = modifier.show_render = False
         return
     tree = node_group()
-    inputs = _settings_inputs(armature)
+    inputs = _settings_inputs(armature, meshes(armature, objects))
     for obj in meshes(armature, objects):
         modifier = obj.modifiers.get(MODIFIER) or obj.modifiers.new(MODIFIER, 'NODES')
         if modifier.node_group != tree:

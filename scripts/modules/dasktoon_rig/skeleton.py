@@ -142,21 +142,35 @@ def editing(context, rig):
             bpy.ops.object.mode_set(mode=previous_mode)
 
 
-def set_joints(rig, matrix, create):
-    """Put the standard bones of `rig` (in Edit Mode) where the template maps through `matrix` (template to armature
-    space). `create` adds missing bones and sets parents and connections; otherwise only existing bones move."""
-    edit = rig.data.edit_bones
+def layout(matrix):
+    """{bone: (head, tail, z axis)} of the template mapped through `matrix`."""
     rotation = matrix.to_3x3()
+    return {name: (matrix @ Vector(head), matrix @ Vector(tail), rotation @ Vector(z_axis))
+            for name, _parent, head, tail, z_axis in bones()}
+
+
+def set_joints(rig, joints, create):
+    """Put the standard bones of `rig` (in Edit Mode) at `joints` ({bone: (head, tail, z axis)} in armature space).
+    `create` adds missing bones and sets parents and connections; otherwise only existing bones move. X-Axis Mirror is
+    off meanwhile: it would mirror each side onto the other about the armature's middle, not the character's."""
+    edit = rig.data.edit_bones
+    mirror, rig.data.use_mirror_x = rig.data.use_mirror_x, False
+    try:
+        _set_joints(edit, joints, create)
+    finally:
+        rig.data.use_mirror_x = mirror
+
+
+def _set_joints(edit, joints, create):
     tails = {}
-    for name, parent, head, tail, z_axis in bones():
+    for name, parent, head, tail, _z_axis in bones():
         bone = edit.get(name)
         if bone is None:
             if not create:
                 continue
             bone = edit.new(name)
-        bone.head = matrix @ Vector(head)
-        bone.tail = matrix @ Vector(tail)
-        bone.align_roll(rotation @ Vector(z_axis))
+        bone.head, bone.tail, z_axis = joints[name]
+        bone.align_roll(z_axis)
         if create:
             bone.parent = edit.get(parent) if parent else None
             bone.use_connect = parent is not None and (Vector(head) - tails[parent]).length < 1e-9
@@ -173,15 +187,25 @@ def create_humanoid(context, height=DEFAULT_HEIGHT, location=(0.0, 0.0, 0.0), na
     rig.show_in_front = True
     data.use_mirror_x = True
     with editing(context, rig):
-        set_joints(rig, Matrix.Scale(height, 4), create=True)
+        set_joints(rig, layout(Matrix.Scale(height, 4)), create=True)
     return rig
 
 
-def fit(context, rig, objects):
-    """Move the standard bones of `rig` to the bounding box of `objects` (the object itself stays, so meshes bound to it
-    do not move; bones the user deleted stay deleted). Returns the height used."""
+def fit(context, rig, objects, body=None):
+    """Move the standard bones of `rig` onto the character made of `objects` (the object itself stays, so meshes bound
+    to it do not move; bones the user deleted stay deleted): the height and feet of their bounding box; the middle of
+    the body, the arms, the legs and the heights of the hips and shoulders from the front silhouette of `body` (the Body
+    and Clothing parts; default `objects`), see body_shape. Returns the height used."""
+    from . import body_shape
     height, location = placement(objects, rig.matrix_world.translation)
-    matrix = rig.matrix_world.inverted() @ Matrix.Translation(location) @ Matrix.Scale(height, 4)
+    joints = None
+    if bounds(objects) is not None:
+        joints = body_shape.joints(context, body or objects, location, height)
+    if joints is None:
+        joints = layout(Matrix.Translation(location) @ Matrix.Scale(height, 4))
+    to_rig = rig.matrix_world.inverted()
+    rotation = to_rig.to_3x3()
     with editing(context, rig):
-        set_joints(rig, matrix, create=False)
+        set_joints(rig, {name: (to_rig @ head, to_rig @ tail, rotation @ z_axis)
+                         for name, (head, tail, z_axis) in joints.items()}, create=False)
     return height
