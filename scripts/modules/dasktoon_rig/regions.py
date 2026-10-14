@@ -35,7 +35,8 @@ SIDE_MARGIN = 0.01  # (x height) how far past the neck joint a vertex is on that
 LOCK_GAP = 0.005  # (x height) pieces this near are one lock
 MIDDLE_LOCK = 0.02  # (x height) a lock whose middle is this near the body's middle is on neither side
 BODY_ROLES = ('BODY', 'CLOTHING')
-BAND = 0.035  # (x height) along the mesh, a limb's bones keep a share fading from whole to nothing past the limb
+BAND = 0.09  # (x height) along the mesh, a limb's bones keep a share fading from whole to nothing past the limb (narrower,
+# the coarse buttocks of the real models tore across one edge when sitting)
 SHOULDER_KEEP = (0.6, 1.3)  # (x its length) the shoulder bone keeps all its weight this near itself, nothing past
 LOCK_SETTINGS = ("role", "bone", "bone_count", "chain_count", "stiffness", "gravity", "drag", "radius", "sway_in_unity")
 LOCK_KEEP = 0.5  # a new lock at least this much over an old one (share of its vertices) keeps the old one's settings

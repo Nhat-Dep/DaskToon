@@ -101,7 +101,9 @@ của nhiều lọn).
 - Với đỉnh thuộc phần Body, Clothing, sau weight tự động hoặc chép từ Body, xương của mỗi chi chỉ giữ weight × `keep`:
   - trong vùng của chi: `keep` = 1;
   - ra khỏi vùng, `keep` giảm mượt theo **khoảng cách dọc bề mặt lưới** tới vùng chi, từ 1 về 0 trên một dải rộng
-    3,5% chiều cao nhân vật (đường cong smoothstep);
+    9% chiều cao nhân vật (đường cong smoothstep). Thử 3,5%, 6% và 9% trên tdt, lr_shape: dải hẹp làm mông (lưới thưa,
+    cạnh dài 7 cm) rách qua một cạnh khi Ngồi (+23 và +31 cm); 9% còn tối đa +5 và +9 cm, không đỉnh nào cách chi hơn
+    10% chiều cao mà có weight chi;
   - mảnh không nối với vùng chi (tai, lọn tóc, dây đeo) và đỉnh vùng Đầu: 0.
   - *Sửa 2026-10-14 (độ chính xác)*: trước đây là `member` làm mềm 3 lượt (vài mm trên lưới dày) cộng một hình cầu
     pha quanh khớp gốc rộng 3 × nửa bề rộng chi đo từ hình chiếu. Lối cũ cắt gắt chỗ pha tự nhiên của Bone Heat giữa
