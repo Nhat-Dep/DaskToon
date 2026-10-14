@@ -12,9 +12,9 @@ sideways from the arm's own quaternion (its rotation channels: a Transform varia
 which waits for its parent, the shoulder: a cycle). An X axis of its own, not a fixed axis of an axis-angle rotation:
 putting the bones at rest (the test poses, Clear Rotation) set that axis back to Y and twisted the shoulder instead. The
 shoulder copies the helper's rotation in the helper's local space turned to the shoulder's orientation, before its own:
-keys on the shoulder still count. The constraint's influence is
-the rig's Shoulder Follows Arm. Clips bake the result, so Unity needs no constraint. An arm turned to an Euler
-rotation mode is not followed (the standard skeleton's bones use quaternions)."""
+keys on the shoulder still count. The constraint's influence is the rig's Shoulder Follows Arm. Clips bake the result,
+so Unity needs no constraint. An arm turned to an Euler rotation mode is not followed (the standard skeleton's bones use
+quaternions)."""
 
 import math
 
