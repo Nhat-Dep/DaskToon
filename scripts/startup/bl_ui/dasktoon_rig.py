@@ -237,7 +237,8 @@ def fit_to_parts(context, rig):
     parts = [part for part in rig.data.dasktoon_rig.parts if part.object is not None and part.object.type == 'MESH']
     meshes = list(dict.fromkeys(part.object for part in parts))
     body = list(dict.fromkeys(part.object for part in parts if part.role in {'BODY', 'CLOTHING'}))
-    skeleton.fit(context, rig, meshes, body=body or None)
+    skin = list(dict.fromkeys(part.object for part in parts if part.role == 'BODY'))
+    skeleton.fit(context, rig, meshes, body=body or None, skin=skin or None)
 
 
 def add_meshes(rig, meshes):
