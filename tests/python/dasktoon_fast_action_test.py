@@ -127,6 +127,16 @@ class FastActionTest(unittest.TestCase):
         for v in mesh.vertices:
             self.assertLess(max(abs(c) for c in v.co), HALF + 1e-4, tuple(v.co))
 
+    def test_settings_follow_after_an_object_is_deleted(self):
+        """Deleting an object leaves an empty entry in the view layer's objects until it updates: the modifiers no
+        longer followed the settings (seen deleting a camera in a test)."""
+        other = bpy.data.objects.new("Other", None)
+        bpy.context.scene.collection.objects.link(other)
+        bpy.context.view_layer.update()
+        bpy.data.objects.remove(other)
+        self.settings.enabled = True
+        self.assertIsNotNone(self.modifier())
+
     def test_settings_drive_the_modifier(self):
         self.settings.enabled = True
         self.settings.smear = 0.2

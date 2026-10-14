@@ -481,7 +481,7 @@ class DASKTOON_PT_onion_skin(Panel):
 def _fast_action_changed(self, _context):
     """A character's fast action settings changed: the modifiers of its meshes follow (anime timing spec 7)."""
     from dasktoon_animation import fast_action
-    objects = list(bpy.context.view_layer.objects)
+    objects = [obj for obj in bpy.context.view_layer.objects if obj is not None]  # a deleted one: None until updated
     for obj in objects:
         if obj.type == 'ARMATURE' and obj.data == self.id_data:
             fast_action.sync(obj, objects)
