@@ -113,6 +113,7 @@ Header timeline nhân vật, sau phần clip: nút **Timing** (popover), chữ t
 | Simulation Zone cần chạy tuần tự | Render và phát chạy tuần tự; tua ngược dùng bộ nhớ đệm của Blender |
 | Số đỉnh khác số đã nhớ (Subdivision render mịn hơn lúc xem, dùng chung bộ nhớ đệm với khung nhìn) | Không đỉnh nào nhanh ở khung đó, cả khi Blender lấy lại trạng thái đã nhớ (*sửa 2026-10-14*: cảnh đánh nhau thử trên lr_shape, áo chia 1 lần lúc xem, 2 lần lúc render, vệt và bóng mờ ghép nhầm đỉnh, xòe thành hình quạt từ khung đầu) |
 | Lắc tóc/váy vẫn on 1s khi thân on 2s | Ghi rõ; làm tùy chọn sau |
+| Viền DaskToon cũng tự xếp mình xuống cuối, mỗi lần mở file | *Sửa 2026-10-15* (cảnh đánh nhau 1 phút): viền đứng ngay trước Hành động nhanh. Đứng sau, viền mất ở các khung có bóng mờ (bóng mờ thêm vật liệu riêng vào lưới) |
 | Render khi chưa phát clip trong khung nhìn (render từ dòng lệnh, hay F12 ngay sau khi mở file) | Chưa xử lý (*thấy 2026-10-14* khi render cảnh đánh nhau thử): render dùng những gì khung nhìn đã nhớ, chỉ có khung đầu, nên mọi chỗ đã rời chỗ ở khung đầu đều thành nhanh, bóng mờ hiện ở chỗ cũ. Phát clip một lần (hay bake) rồi render thì đúng. Nên làm: tự phát hoặc bake trước khi render |
 
 ## 11. Nhật ký quyết định

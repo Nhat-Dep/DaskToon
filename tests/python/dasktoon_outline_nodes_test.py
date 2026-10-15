@@ -77,6 +77,15 @@ class OutlineNodesTest(unittest.TestCase):
         self.assertEqual(len(obj.material_slots), 2)
         self.assertEqual(obj.modifiers[-1].name, gn.MODIFIER_NAME)
 
+    def test_fast_action_stays_after_the_outline(self):
+        """Both put themselves last. Fast Action remembers vertices by their numbers and adds copies with materials of
+        their own; after it, the outline lost its hull on fast frames, and it put itself after Fast Action whenever the
+        file was opened (the one-minute fight test)."""
+        obj = self._plane()
+        obj.modifiers.new("DaskToon Fast Action", 'NODES')
+        self._apply(obj)
+        self.assertEqual([m.name for m in obj.modifiers][-2:], [gn.MODIFIER_NAME, "DaskToon Fast Action"])
+
     def test_offset_is_world_space_with_non_uniform_scale(self):
         obj = self._plane(scale=(1.0, 1.0, 2.0))
         count = len(obj.data.vertices)
