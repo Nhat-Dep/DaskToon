@@ -114,3 +114,25 @@ Mỗi dòng là: quyết định — cái giá nếu sai.
 - Tự rà soát cả nhánh sau đó (không dùng người rà soát khác) tìm thêm hai lỗi, đã sửa, mỗi lỗi có kiểm tra hỏng trước:
   thân dựng một nửa rồi dùng Mirror bị báo nhầm các khớp bên kia "nằm ngoài thân" (phép thử khớp nay tính cả nửa do
   Mirror sinh ra); nút Đổi vai trò với một phần đã mất mesh xóa hết lọn. Chạy lại các kiểm tra rig: đều qua.
+
+## 7. Vai nâng theo tay (thêm sau, nhánh `dasktoon-shoulder-follow`)
+
+Bạn hỏi vì sao vai trông "gãy" khi giơ tay. Câu trả lời là do rig, không phải do mô hình. Chỉ cánh tay trên xoay quanh
+khớp vai, còn xương vai đứng yên, nên đỉnh vai bẹp và nách gập thành góc. Thiết kế:
+`docs/superpowers/specs/2026-10-14-dasktoon-shoulder-follow-design.md`.
+
+- Dựng rig nay cho xương vai tự nâng khi cánh tay giơ ngang:
+  - bắt đầu khi tay ở 30° dưới đường ngang;
+  - tới 35° khi tay thẳng đứng, nhịp khoảng 1 : 3,4 như vai người.
+- Thanh trượt **Vai nâng theo tay** (0–1) nằm ở Rig anime › Khớp nối.
+- Khóa hình vai bạn tự đặt vẫn có tác dụng; phần nâng được cộng thêm.
+- Clip xuất ra FBX đã có sẵn góc nâng, nên Unity không cần gì thêm. Đã kiểm chứng bằng cách xuất rồi nhập lại, và chạy
+  kiểm tra rig, clip trong Unity.
+- Trên tdt (bản sao), tư thế Vẫy tay nâng vai 20,6°. So ở cùng độ cao cánh tay: đỉnh vai không còn bẹp, khấc ở nách
+  nhỏ và mềm hơn rõ, nhưng nách vẫn còn một góc nhẹ. Phần đó thuộc về weight quanh đỉnh vai, có thể làm sau.
+  Ảnh ở `real-model/10_shoulder_follow_off_on.png`, chỉ trên máy, không vào git.
+- Tự rig trên tdt và lr_shape vẫn không thấy chỗ nào cần sửa.
+- Hai lỗi gặp khi làm, đã sửa:
+  - driver kiểu "Transform" gây vòng lặp phụ thuộc, nên driver đọc thẳng quaternion của cánh tay;
+  - trục kiểu trục–góc bị trả về mặc định khi đưa xương về nghỉ, làm vai xoắn thay vì nâng.
+

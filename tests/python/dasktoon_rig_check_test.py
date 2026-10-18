@@ -39,7 +39,7 @@ class PoseTest(unittest.TestCase):
         check.apply_pose(bpy.context, self.rig, 'ARMS_UP')
         for side in ("Left", "Right"):
             self.assertGreater(world_head(self.rig, side + "Hand").z, world_head(self.rig, side + "UpperArm").z + 0.2)
-        self.assertIsNone(self.rig.animation_data)  # nothing keyed
+        self.assertIsNone(getattr(self.rig.animation_data, "action", None))  # nothing keyed (drivers live there too)
 
     def test_sit_and_turn_head(self):
         check.apply_pose(bpy.context, self.rig, 'SIT')
@@ -65,7 +65,7 @@ class PoseTest(unittest.TestCase):
             self.assertAlmostEqual(arm.rotation_euler.x, 0.3, places=5)  # the animation is back on a frame change
             self.assertEqual(len(self.rig.animation_data.action.layers[0].strips[0].channelbags[0].fcurves), 3)
         finally:
-            self.rig.animation_data_clear()
+            self.rig.animation_data.action = None  # the shoulder drivers stay
             arm.rotation_euler = (0.0, 0.0, 0.0)
 
     def test_mesh_moved_through_its_weights(self):

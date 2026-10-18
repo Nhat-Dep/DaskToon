@@ -1212,6 +1212,9 @@ VI = {
         "Những gì mục Kiểm tra tìm ra: khớp nằm ngoài thân, chỗ bị kéo giãn, vai trò có vẻ sai",
     "Checked": "Đã kiểm tra",
     "The Check has run since the rig was built": "Mục Kiểm tra đã chạy sau lần dựng rig gần nhất",
+    "Shoulder Follows Arm": "Vai nâng theo tay",
+    "How much the shoulders lift when the arms rise above them: 1 as a person's, 0 not at all":
+        "Vai nâng lên bao nhiêu khi tay giơ cao quá vai: 1 như người thật, 0 là không nâng",
     # The auto rig and the Check (auto rig spec 2, 5)
     "The skeleton is added and fitted, but the rig could not be built: %s":
         "Đã thêm và khớp khung xương, nhưng chưa dựng được rig: %s",

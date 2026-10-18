@@ -398,8 +398,9 @@ def build(context, rig, parts):
             elif part.role == 'SKIRT':
                 _plan_skirt(rig, i, part, vertices, plan)
         actual, removed = _make_bones(context, rig, plan)
-        from . import eyes, look, mouth
+        from . import eyes, look, mouth, shoulders
         look.ensure(context, rig)
+        shoulders.apply(context, rig)
         mouth.apply(context, rig, parts, result)
         _paint(context, rig, parts, owners, plan, actual, result)
         _drop_stale_groups(owners, removed, set(actual.values()))
