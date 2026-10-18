@@ -397,6 +397,63 @@ def evaluated(obj):
     return co.reshape(-1, 3) @ matrix[:3, :3].T + matrix[:3, 3]
 
 
+def asymmetry(rig, obj):
+    """The largest difference between the weights of a vertex and of its mirror image (sides swapped) over the
+    vertices of obj that have one, and the share of vertices that do."""
+    from mathutils.kdtree import KDTree
+    names = deform_names(rig)
+    swap = [names.index(build._other_side(n)) if build._other_side(n) in names else i for i, n in enumerate(names)]
+    world, _edges = parts.mesh_arrays(obj)
+    middle = (rig.matrix_world @ rig.data.bones["Hips"].head_local).x
+    tree = KDTree(len(world))
+    for i, co in enumerate(world.tolist()):
+        tree.insert(co, i)
+    tree.balance()
+    pairs = []
+    for i, (x, y, z) in enumerate(world.tolist()):
+        _co, j, distance = tree.find((2.0 * middle - x, y, z))
+        if distance < 1e-5:
+            pairs.append((i, j))
+    matrix = weights.read(obj, names)
+    a, b = np.array(pairs).T
+    return float(np.abs(matrix[a] - matrix[b][:, swap]).max()), len(pairs) / len(world)
+
+
+class SymmetryTest(unittest.TestCase):
+    def test_a_symmetric_mesh_gets_symmetric_weights(self):
+        """Bone Heat answers a little differently on the two sides of a mesh (tdt's collar: 0.9 of the upper chest on
+        one side, 0.56 of it and 0.44 of the neck on the other); the skeleton mirrors, so do the weights where the
+        mesh does."""
+        bpy.ops.wm.read_factory_settings(use_empty=True)
+        objs = fx.character()
+        rig = fx.rig_for()
+        build.build(bpy.context, rig, separate_parts(objs))
+        for name in ("Body", "Shirt"):
+            difference, share = asymmetry(rig, objs[name])
+            self.assertGreater(share, 0.9, name)
+            self.assertLess(difference, 1e-5, name)
+
+
+    def test_vertices_outside_the_parts_keep_their_weights(self):
+        """Build paints only the vertices of the parts (spec 6.2): weights painted by hand on the rest of a mesh stay as
+        they are, even where it is its own mirror image."""
+        bpy.ops.wm.read_factory_settings(use_empty=True)
+        objs = fx.character()
+        rig = fx.rig_for()
+        shirt = objs["Shirt"]
+        world, _edges = parts.mesh_arrays(shirt)
+        top = world[:, 2] > np.median(world[:, 2])
+        shirt.vertex_groups.new(name="DT_Top").add(np.nonzero(top)[0].tolist(), 1.0, 'REPLACE')
+        rest = np.nonzero(~top)[0]
+        painted = np.zeros((len(rest), 2))
+        painted[np.arange(len(rest)), (world[rest, 0] < 0.0).astype(int)] = 1.0  # the hips on the left, the spine right
+        weights.write(shirt, rest, ["Hips", "Spine"], painted)
+        build.build(bpy.context, rig, [parts.Part("Body", objs["Body"], 'BODY'),
+                                       parts.Part("Top", shirt, 'CLOTHING', scope='VERTEX_GROUP',
+                                                  vertex_group="DT_Top")])
+        np.testing.assert_allclose(weights.read(shirt, ["Hips", "Spine"])[rest], painted)
+
+
 class MirrorTest(unittest.TestCase):
     def test_a_mirrored_half_follows_its_own_side(self):
         """A sleeve modelled on the right arm only, the left one made by a Mirror modifier (as on lr_shape). Blender

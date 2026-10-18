@@ -1223,6 +1223,8 @@ VI = {
     "Rig built. The Check found nothing to fix; try the test poses in Anime Rig › Check":
         "Đã dựng rig. Mục Kiểm tra không thấy chỗ nào cần sửa; thử các tư thế thử trong Rig anime › Kiểm tra",
     "Spots to look at: %d": "Chỗ cần xem: %d",
+    "The character did not face the front (-Y): it was turned %d° on the spot, as the skeleton and Unity need":
+        "Nhân vật không quay mặt ra trước (-Y): đã xoay tại chỗ %d° cho đúng hướng mà khung xương và Unity cần",
     "%s: the Mirror modifier now flips the vertex groups, so the mirrored half follows its own side":
         "%s: modifier Mirror nay lật cả nhóm đỉnh, để nửa soi gương đi theo đúng bên của nó",
     "Nothing to fix found": "Không thấy chỗ nào cần sửa",

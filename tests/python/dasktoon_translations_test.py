@@ -57,6 +57,8 @@ TRANSLATED = [
     "scripts/modules/dasktoon_rig/regions.py",
     "scripts/modules/dasktoon_rig/check.py",
     "scripts/modules/dasktoon_rig/shoulders.py",
+    "scripts/modules/dasktoon_rig/sections.py",
+    "scripts/modules/dasktoon_rig/facing.py",
     "scripts/modules/dasktoon_rig/chains.py",
     "scripts/modules/dasktoon_rig/parts.py",
     "scripts/modules/dasktoon_rig/weights.py",

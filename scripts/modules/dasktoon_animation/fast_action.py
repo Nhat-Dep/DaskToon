@@ -15,7 +15,7 @@ from . import character
 
 GROUP = "DaskToon Fast Action"
 MODIFIER = "DaskToon Fast Action"
-VERSION = 1
+VERSION = 2  # 2: where the mesh's vertices are not those remembered, nothing is fast
 FADE = "dasktoon_fade"  # afterimage opacity along the copies: 1, 2/3, 1/3; the afterimage material reads it
 _TEMP = ("dasktoon_tmp_p1", "dasktoon_tmp_p2", "dasktoon_tmp_p3", "dasktoon_tmp_f1", "dasktoon_tmp_f2",
          "dasktoon_tmp_f3", "dasktoon_tmp_line")
@@ -121,14 +121,27 @@ def _build(tree):
     sim_out.state_items[0].name = "Geometry"  # made with a translated name when the interface translates new data
     sim_out.state_items.new('FLOAT', "Step").name = "Step"
     tree.links.new(start, sim_in.inputs["Geometry"])
-    before = sim_in.outputs["Geometry"]
+    # Other vertices than remembered (Subdivision rendered finer than shown, sharing what the viewport remembered):
+    # matched by number, the motion would be that of other vertices. Start afresh instead: nothing moved.
+    remembered = t.node("GeometryNodeAttributeDomainSize", {"Geometry": sim_in.outputs["Geometry"]},
+                        component='POINTCLOUD').outputs["Point Count"]
+    vertices = t.node("GeometryNodeAttributeDomainSize", {"Geometry": mesh}, component='MESH').outputs["Point Count"]
+    same = t.node("FunctionNodeCompare", {"A": remembered, "B": vertices}, data_type='INT',
+                  operation='EQUAL').outputs[0]
+    before = t.node("GeometryNodeSwitch", {"Switch": same, "False": start, "True": sim_in.outputs["Geometry"]},
+                    input_type='GEOMETRY').outputs[0]
     state = points()
     state = t.store(state, _TEMP[0], t.sample(before, position, index))
     state = t.store(state, _TEMP[1], t.sample(before, t.attribute(_TEMP[0]), index))
     state = t.store(state, _TEMP[2], t.sample(before, t.attribute(_TEMP[1]), index))
     tree.links.new(state, sim_out.inputs["Geometry"])
     tree.links.new(sim_in.outputs["Delta Time"], sim_out.inputs["Step"])
-    now = sim_out.outputs["Geometry"]
+    # A frame played before shows the state remembered then, for the vertices of then: other vertices, nothing moved.
+    shown = t.node("GeometryNodeAttributeDomainSize", {"Geometry": sim_out.outputs["Geometry"]},
+                   component='POINTCLOUD').outputs["Point Count"]
+    fits = t.node("FunctionNodeCompare", {"A": shown, "B": vertices}, data_type='INT', operation='EQUAL').outputs[0]
+    now = t.node("GeometryNodeSwitch", {"Switch": fits, "False": start, "True": sim_out.outputs["Geometry"]},
+                 input_type='GEOMETRY').outputs[0]
     step = sim_out.outputs["Step"]
 
     # On the mesh: where each vertex was (local), whether it moved fast into each of the last 3 frames, and its line.

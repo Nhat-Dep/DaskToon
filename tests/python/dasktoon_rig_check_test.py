@@ -127,6 +127,15 @@ class CheckTest(unittest.TestCase):
         self.assertEqual([(obj.name, pose) for obj, pose, _region, _spot in found], [("Ear", 'ARMS_UP')])
         self.assertTrue(all(bone.matrix_basis == bone.matrix_basis.Identity(4) for bone in self.rig.pose.bones))
 
+    def test_a_wide_tear_between_bones_next_to_each_other(self):
+        """A thigh whose middle third follows the shin: sitting tears it open by far more than a joint bending stretches
+        its skin, though the thigh and the shin are next to each other (sitting tore the hips of tdt and lr_shape 19 and
+        26 times, by 11 to 16 cm, and the Check found nothing)."""
+        part = self.probe("Thigh", tuple(world_head(self.rig, "LeftUpperLeg")),
+                          tuple(world_head(self.rig, "LeftLowerLeg")), ["LeftUpperLeg", "LeftLowerLeg", "LeftUpperLeg"])
+        found = check.stretch_issues(bpy.context, self.rig, [part])
+        self.assertEqual({(obj.name, pose) for obj, pose, _region, _spot in found}, {("Thigh", 'SIT')})  # both ends
+
     def test_a_wrist_outside_the_arm(self):
         from dasktoon_rig import skeleton
         parts = list(self.rig.data.dasktoon_rig.parts)

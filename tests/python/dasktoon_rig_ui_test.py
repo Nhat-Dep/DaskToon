@@ -5,6 +5,7 @@
 """Anime rig interface: Add › Armature › Anime Humanoid, the Anime Rig panels and their commands (spec 7); the auto rig
 and the Check panel (docs/superpowers/specs/2026-10-14-dasktoon-auto-rig-design.md)."""
 
+import math
 import os
 import sys
 import types
@@ -21,6 +22,18 @@ import dasktoon_test_utils as tu  # noqa: E402
 from bl_ui import dasktoon_rig as ui  # noqa: E402
 from bl_ui import dasktoon_translations as dt  # noqa: E402
 from dasktoon_rig import skeleton  # noqa: E402
+
+
+def facing_the_back():
+    """A chibi Body modelled facing +Y, as lr_shape (one of the real models) was: its feet reach to +Y."""
+    st = rt.st
+    return st.polyline_chibi(st.CentreLineTest.ARM, st.CentreLineTest.LEG, extra=[st.FacingTest.BACK])
+
+
+def assert_turned_round(body):
+    st = rt.st
+    np.testing.assert_allclose(np.array(body.matrix_world), np.array(st.turned(math.pi, st.FacingTest.MIDDLE)),
+                               atol=1e-5)
 
 
 def select_only(objects, active):
@@ -55,6 +68,19 @@ def add_skirt_and_hair(rig):
     ui.add_part(rig, skirt, 'CLOTHING')
     ui.add_part(rig, hair, 'CLOTHING')
     return skirt, hair
+
+
+def tear_left_arm(rig, objs):
+    """Weights tearing the chibi's left arm when it rises: a ring halfway down it on the hips (the tests of the Check
+    do not hang on what the auto rig leaves torn)."""
+    from dasktoon_rig import parts as rig_parts, weights
+    body = objs["Body"]
+    arm = rt.piece_at(body, rt.ARM_END)
+    world, _edges = rig_parts.mesh_arrays(body)
+    axis = np.array(rt.ARM_END - rt.ARM_START)
+    ring = arm[np.abs((world[arm] - np.array(rt.ARM_START)) @ axis / (axis @ axis) - 0.5) < 0.05]
+    weights.clear(body, ring, [bone.name for bone in rig.data.bones if bone.use_deform])
+    weights.write(body, ring, ["Hips"], np.ones((len(ring), 1)))
 
 
 def move_left_wrist(rig, x):
@@ -110,6 +136,14 @@ class AddTest(unittest.TestCase):
         tip = rig.matrix_world @ rig.data.bones["LeftMiddleDistal"].tail_local
         self.assertLess((tip - marks["tip_left"]).length, 0.06)
 
+    def test_add_turns_a_character_facing_the_back(self):
+        """The skeleton faces -Y, as Unity wants: a character modelled facing +Y is turned round on the spot before
+        the skeleton is fitted, so its left gets the left bones and its knees bend the right way."""
+        body = facing_the_back()
+        select_only([body], body)
+        bpy.ops.dasktoon.rig_add_humanoid()
+        assert_turned_round(body)
+
     def test_add_rigs_the_selected_character(self):
         """Selected meshes: one press adds the skeleton fitted to them, recognizes the regions and locks, builds the rig
         and checks it (auto rig spec 2); the Properties editor shows the rig's data, where Anime Rig is."""
@@ -125,12 +159,14 @@ class AddTest(unittest.TestCase):
                          ["Lock L1", "Lock R1", "Lock R2"])
         self.assertTrue(any(m.type == 'ARMATURE' and m.object == rig for m in objs["Body"].modifiers))  # built
         self.assertTrue(data.checked)
-        # The chibi's arms are tubes pushed into its torso and Bone Heat gives their first rings to the chest: raising
-        # the arms tears an arm's root, which the Check rightly finds; nothing else. (Its weights are not quite
-        # symmetric: with the shoulders lifting with the arms, the right root stays under the 2.5 times.)
+        # The chibi's arms and legs are tubes pushed into its torso: Bone Heat blends their first rings with the chest
+        # and the hips, and raising the arms or sitting tears them there (by 7 and 20 cm), which the Check rightly
+        # finds; nothing else (not the strap on the shirt, which turned with the head under a head region reaching
+        # down over the chest).
         found = {(item.kind, item.pose, item.region) for item in data.issues}
         self.assertTrue(found)
-        self.assertLessEqual(found, {('STRETCH', 'ARMS_UP', 'ARM_L'), ('STRETCH', 'ARMS_UP', 'ARM_R')})
+        self.assertLessEqual(found, {('STRETCH', 'ARMS_UP', 'ARM_L'), ('STRETCH', 'ARMS_UP', 'ARM_R'),
+                                     ('STRETCH', 'SIT', 'LEG_L'), ('STRETCH', 'SIT', 'LEG_R')})
         self.assertTrue(properties_spaces())
         self.assertEqual({space.context for space in properties_spaces()}, {'DATA'})
         self.assertTrue(rig.select_get())
@@ -194,6 +230,13 @@ class PanelTest(unittest.TestCase):
         arm = self.rig.matrix_world @ self.rig.data.bones["LeftUpperArm"].head_local
         low, high = 0.05 * h, 0.86 * h  # the Body tube: the template's shoulders, no arm found
         self.assertAlmostEqual(arm.z, low + 0.78 * (high - low), delta=0.01 * h)
+
+    def test_fit_turns_a_character_facing_the_back(self):
+        body = facing_the_back()
+        ui.add_part(self.rig, body, 'BODY')
+        select_only([self.rig], self.rig)
+        self.assertEqual(bpy.ops.dasktoon.rig_fit(), {'FINISHED'})
+        assert_turned_round(body)
 
     def test_parts_list_names_the_object_only_when_it_differs(self):
         ui.add_part(self.rig, self.objs["Body"], 'BODY')
@@ -436,6 +479,7 @@ class CheckPanelTest(unittest.TestCase):
     def test_the_list_and_its_buttons(self):
         add_skirt_and_hair(self.rig)
         self.assertEqual(bpy.ops.dasktoon.rig_build(), {'FINISHED'})
+        tear_left_arm(self.rig, self.objs)
         move_left_wrist(self.rig, 0.2)
         self.assertEqual(bpy.ops.dasktoon.rig_check(), {'FINISHED'})
         log = self.draw()
@@ -459,6 +503,7 @@ class CheckPanelTest(unittest.TestCase):
         """The recording layout takes any icon name; Blender's does not (a wrong one stops the panel drawing)."""
         add_skirt_and_hair(self.rig)
         bpy.ops.dasktoon.rig_build()
+        tear_left_arm(self.rig, self.objs)
         move_left_wrist(self.rig, 0.2)
         bpy.ops.dasktoon.rig_check()
         self.assertEqual({'JOINT', 'STRETCH', 'ROLE'}, {item.kind for item in self.data.issues})
@@ -481,6 +526,7 @@ class CheckPanelTest(unittest.TestCase):
     def test_show_and_paint_a_spot_then_done(self):
         from dasktoon_rig import check, regions
         bpy.ops.dasktoon.rig_build()
+        tear_left_arm(self.rig, self.objs)
         bpy.ops.dasktoon.rig_check()
         index = self.first_stretch()
         issue = self.data.issues[index]
@@ -508,6 +554,7 @@ class CheckPanelTest(unittest.TestCase):
     def test_highlights_follow_the_pose(self):
         """The spot shows only while the rig is in its pose; the part, drawn at rest, only while the rig is at rest."""
         bpy.ops.dasktoon.rig_build()
+        tear_left_arm(self.rig, self.objs)
         bpy.ops.dasktoon.rig_check()
         self.assertTrue(ui.at_rest(self.rig))
         bpy.ops.dasktoon.rig_show_spot(index=self.first_stretch())

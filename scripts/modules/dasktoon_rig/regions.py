@@ -35,8 +35,10 @@ SIDE_MARGIN = 0.01  # (x height) how far past the neck joint a vertex is on that
 LOCK_GAP = 0.005  # (x height) pieces this near are one lock
 MIDDLE_LOCK = 0.02  # (x height) a lock whose middle is this near the body's middle is on neither side
 BODY_ROLES = ('BODY', 'CLOTHING')
-SMOOTH_ROUNDS = 3  # a region's edge is softened over this many rings of vertices
-BLEND = 3.0  # a limb's bones keep weight this many of its half widths around its root joint (the shoulder bone: itself)
+BAND = 0.09  # (x height) along the mesh, a limb's bones keep a share fading from whole to nothing past the limb (narrower,
+# the coarse buttocks of the real models tore across one edge when sitting)
+SHOULDER_KEEP = (0.6, 1.3)  # (x its length) the shoulder bone keeps all its weight this near itself, nothing past
+SIDE_SHARE = 0.1  # a piece with at most this share of its arm's or leg's vertices on the other side is of one side
 LOCK_SETTINGS = ("role", "bone", "bone_count", "chain_count", "stiffness", "gravity", "drag", "radius", "sway_in_unity")
 LOCK_KEEP = 0.5  # a new lock at least this much over an old one (share of its vertices) keeps the old one's settings
 
@@ -127,14 +129,40 @@ def surface_distance(rig, world, names, half):
                             for name in names], axis=1), axis=1)
 
 
+def head_distance(rig, world, half):
+    """Distance of each world point to the head's surface: round the Head bone as wide as the head, narrowing below its
+    root (the top of the neck) to nothing one half width down (as wide all the way down, the big head of a chibi took
+    the top of its chest and the strap on it)."""
+    start, end = rig_parts.bone_segment(rig, "Head")
+    axis = (end - start) / np.linalg.norm(end - start)
+    drop = np.clip((start - world) @ axis, 0.0, None)
+    return chains.segment_distance(world, start, end) - half["Head"] * np.clip(1.0 - drop / half["Head"], 0.0, None)
+
+
 def labels(rig, world, half, head=None):
-    """Region (index in REGIONS) of each world point: the one nearest from its surface; points of the mask `head` are
-    HEAD."""
+    """Region (index in REGIONS) of each world point: the one nearest from its surface (the head's: head_distance);
+    points of the mask `head` are HEAD."""
     bones = region_bones(rig)
-    distance = np.stack([surface_distance(rig, world, bones[region], half) for region in REGIONS], axis=1)
+    distance = np.stack([head_distance(rig, world, half) if region == 'HEAD' else
+                         surface_distance(rig, world, bones[region], half) for region in REGIONS], axis=1)
     out = distance.argmin(axis=1).astype(np.int8)
     if head is not None:
         out[head] = REGIONS.index('HEAD')
+    return out
+
+
+def one_side(labelled, vertices, edges):
+    """`labelled` with each loose piece (along `edges`, indices into `vertices`) of one side where it nearly is: its
+    vertices of the other arm or leg, at most SIDE_SHARE of the two, become the side's (lr_shape's left leg warmer
+    reached 8 mm past the middle: that vertex followed the right leg, tearing the warmer whenever the legs parted). A
+    piece on both (the body, shorts, a skirt) stays."""
+    out = labelled.copy()
+    for piece in chains.components(len(vertices), edges):
+        for left, right in (('ARM_L', 'ARM_R'), ('LEG_L', 'LEG_R')):
+            on_left, on_right = out[piece] == REGIONS.index(left), out[piece] == REGIONS.index(right)
+            few, many = sorted((on_left, on_right), key=lambda side: side.sum())
+            if few.any() and few.sum() <= SIDE_SHARE * (few.sum() + many.sum()):
+                out[piece[few]] = REGIONS.index(left if many is on_left else right)
     return out
 
 
@@ -251,7 +279,8 @@ def analyse(context, rig, parts, owners=None):
         head = np.zeros(len(world), bool)
         for piece in pieces:
             head[piece] = True
-        found.objects[obj] = (vertices, labels(rig, world[vertices], found.half, head[vertices]))
+        found.objects[obj] = (vertices, one_side(labels(rig, world[vertices], found.half, head[vertices]), vertices,
+                                                 rig_parts.local_edges(edges, vertices)))
         if pieces:
             named += [(_side_of(world, g, middle, height), float(world[g, 2].max()), (obj, g))
                       for g in _groups(pieces, world, LOCK_GAP * height)]
@@ -378,59 +407,70 @@ def recognize(context, rig):
     return found
 
 
-def _smooth(values, edges, rounds):
-    """`values` (one per vertex) averaged with their neighbours along `edges` (m x 2 indices into `values`), `rounds`
-    times."""
-    if len(edges) == 0:
-        return values
-    degree = np.bincount(edges.ravel(), minlength=len(values)).astype(float)
-    for _ in range(rounds):
-        sums = (np.bincount(edges[:, 0], weights=values[edges[:, 1]], minlength=len(values))
-                + np.bincount(edges[:, 1], weights=values[edges[:, 0]], minlength=len(values)))
-        values = (values + sums) / (1.0 + degree)
-    return values
+def _smoothstep(low, high, x):
+    t = np.clip((x - low) / (high - low), 0.0, 1.0)
+    return t * t * (3.0 - 2.0 * t)
 
 
-def keep_factors(rig, world, labelled, edges, half):
-    """{bone: share of its weight each point keeps} (spec 5): the bones of an arm or a leg keep their weight in the
-    limb's region (softened over `edges`) and around the limb's root joint, there only on pieces that have some of the
-    limb: the blend keeps skin and clothing whole at the shoulder and hip, a separate piece (an ear, a hair lock, a
-    strap) has nothing to keep whole there. An arm's shoulder bone keeps its weight around itself, out of the head."""
+def _along(world, edges, sources, reach):
+    """Distance along the mesh's edges from the vertices where `sources` is true to each vertex; infinity past `reach`
+    and on pieces without a source."""
+    distance = np.where(sources, 0.0, np.inf)
+    if len(edges) == 0 or not sources.any():
+        return distance
+    a, b = edges[:, 0], edges[:, 1]
+    length = np.linalg.norm(world[a] - world[b], axis=1)
+    while True:
+        before = distance.copy()
+        np.minimum.at(distance, b, distance[a] + length)
+        np.minimum.at(distance, a, distance[b] + length)
+        distance[distance > reach] = np.inf
+        if np.array_equal(before, distance):
+            return distance
+
+
+def keep_factors(rig, world, labelled, edges, band):
+    """{bone: share of its weight each point keeps} (spec 5). An arm's or a leg's bones keep all of it in the limb's
+    region and less and less along the mesh into the region next to it, nothing past `band` (a length): Bone Heat's own
+    blend between the limb and the torso stays smooth (cut short, the hips and shoulders tore in the test poses of the
+    real models), while a piece apart (an ear, a hair lock, a strap) and a vertex far along the mesh (a waist beside a
+    hanging forearm) keep none. Nothing on the head. An arm's shoulder bone keeps its weight within SHOULDER_KEEP of
+    its own length round itself, out of the head. The head's bone keeps its weight as a limb's does, about the head (a
+    strap on the chest, a piece of the shirt, saw the head bone alone through the collar and turned with the head)."""
     bones = region_bones(rig)
-    pieces = chains.components(len(world), edges)
+    head = labelled == REGIONS.index('HEAD')
     out = {}
     for region in LIMBS:
         if not bones[region]:
             continue
         mine = labelled == REGIONS.index(region)
-        member = _smooth(mine.astype(float), edges, SMOOTH_ROUNDS)
-        touching = np.zeros(len(world), bool)
-        for piece in pieces:
-            if mine[piece].any():
-                touching[piece] = True
-        radius = BLEND * half[ROOTS[region]]
-        joint = np.linalg.norm(world - rig_parts.bone_segment(rig, ROOTS[region])[0], axis=1)
-        blend = np.where(touching, np.clip(1.0 - joint / radius, 0.0, 1.0), 0.0)
-        out.update({name: np.maximum(member, blend) for name in bones[region]})
+        fade = np.where(head, 0.0, 1.0 - _smoothstep(0.0, band, _along(world, edges, mine, band)))
+        out.update({name: fade for name in bones[region]})
         shoulder = _side(region) + "Shoulder"
         if region.startswith("ARM") and rig.data.bones.get(shoulder) is not None:
-            near = chains.segment_distance(world, *rig_parts.bone_segment(rig, shoulder))
-            head = labelled == REGIONS.index('HEAD')
-            out[shoulder] = np.where(head, 0.0, np.clip(1.0 - near / radius, 0.0, 1.0))
+            start, end = rig_parts.bone_segment(rig, shoulder)
+            length = float(np.linalg.norm(end - start))
+            near = chains.segment_distance(world, start, end)
+            out[shoulder] = np.where(head, 0.0, 1.0 - _smoothstep(SHOULDER_KEEP[0] * length,
+                                                                  SHOULDER_KEEP[1] * length, near))
+    if rig.data.bones.get("Head") is not None:
+        out["Head"] = 1.0 - _smoothstep(0.0, band, _along(world, edges, head, band))
     return out
 
 
 def restrict(context, rig, parts, owners, found=None, roles=BODY_ROLES):
     """Keep the bones of each arm and leg to their region on the vertices of the parts with `roles` (spec 5): the
     regions as painted, the rest as recognized (`found`, from analyse; recognized now when None). What a vertex gives
-    up goes to its home bones, as they share it: on an arm or a leg that limb's bones, elsewhere those no limb holds
-    (the trunk, the head); to the nearest one when it has none (made to add up to 1, a waist that kept 3% of an arm
-    would follow the arm again). The rows sum to 1 (the jaw rings and the clothing build on these weights)."""
+    up goes to its home bones, as they share it: on an arm or a leg that limb's bones, on the torso the trunk's (not the
+    head: the back of a collar turned with the head), on the head those no limb holds; to the nearest one when it has
+    none (made to add up to 1, a waist that kept 3% of an arm would follow the arm again). The rows sum to 1 (the jaw
+    rings and the clothing build on these weights)."""
     from . import weights
     found = analyse(context, rig, parts, owners) if found is None else found
     ids = [i for i, part in enumerate(parts) if part.role in roles]
     deform = [bone.name for bone in rig.data.bones if bone.use_deform]
-    trunk = [name for name in TRUNK + ("Head",) if name in deform]
+    trunk = [name for name in TRUNK if name in deform]
+    heads = [name for name in TRUNK + ("Head",) if name in deform]
     limbs = {region: [name for name in names if name in deform] for region, names in region_bones(rig).items()
              if region in LIMBS}
     for obj, (vertices, recognized) in found.objects.items():
@@ -441,7 +481,8 @@ def restrict(context, rig, parts, owners, found=None, roles=BODY_ROLES):
         labelled = read(obj)[vertices]
         automatic = labelled == AUTO
         labelled[automatic] = recognized[automatic]
-        keep = keep_factors(rig, world[vertices], labelled, rig_parts.local_edges(edges, vertices), found.half)
+        keep = keep_factors(rig, world[vertices], labelled, rig_parts.local_edges(edges, vertices),
+                            BAND * found.height)
         mine, label = vertices[chosen], labelled[chosen]
         matrix = weights.read(obj, deform)[mine]
         before = matrix.sum(axis=1)
@@ -450,11 +491,17 @@ def restrict(context, rig, parts, owners, found=None, roles=BODY_ROLES):
             if name in deform:
                 matrix[:, deform.index(name)] *= factor[chosen]
                 home[:, deform.index(name)] = False
+        torso = label == REGIONS.index('TORSO')
+        for j, name in enumerate(deform):
+            if name not in trunk:
+                home[torso, j] = False
         for region in LIMBS:
             rows = label == REGIONS.index(region)
             home[rows] = False
             for name in limbs[region]:
                 home[rows, deform.index(name)] = True
+        if "Head" in deform:  # kept whole there
+            home[label == REGIONS.index('HEAD'), deform.index("Head")] = True
         lost = before - matrix.sum(axis=1)
         at_home = np.where(home, matrix, 0.0)
         share = at_home.sum(axis=1)
@@ -462,7 +509,7 @@ def restrict(context, rig, parts, owners, found=None, roles=BODY_ROLES):
         matrix[spread] += at_home[spread] * (lost[spread] / share[spread])[:, None]
         alone = ((lost > 1e-9) & (share <= 1e-9)) | (matrix.sum(axis=1) <= 1e-9)
         for region in set(label[alone].tolist()):
-            names = limbs.get(REGIONS[region]) or trunk
+            names = limbs.get(REGIONS[region]) or (trunk if REGIONS[region] == 'TORSO' else heads)
             rows = np.nonzero(alone & (label == region))[0]
             if not names:
                 continue

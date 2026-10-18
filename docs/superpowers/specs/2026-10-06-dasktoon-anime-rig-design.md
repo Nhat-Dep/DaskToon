@@ -99,6 +99,14 @@ là **khung chuẩn**, kể cả khi người dùng xóa ngón, mắt, hàm hay 
   đi qua cho đường tay/chân; khuôn tay, chân được xoay và co giãn lên đó; cột sống giãn giữa độ cao hông và vai tìm được
   (hợp nhân vật chibi đầu to). Không tìm được thì giữ khuôn như cũ; tìm được một bên thì bên kia lấy đối xứng. Khi ghi
   khớp, X-Axis Mirror tạm tắt (nó lật mỗi bên theo giữa armature, không theo giữa nhân vật).
+  *Sửa 2026-10-14 (độ chính xác, đo bằng `tools/dasktoon_rig_accuracy.py` trên tdt, lr_shape):* khớp tay chân nằm trên
+  đường giữa của chi, tìm từ mặt cắt ngang của chi (`sections.py`; hông trước đây lệch 4–7 cm, cổ chân 3–11 cm). Cột
+  sống và cổ, theo chiều trước sau, đi qua tâm mặt cắt thân ở giữa mỗi đốt Hips, Spine, Chest, UpperChest, Neck (chỉ
+  vòng cắt bao quanh đốt; bàn tay buông cạnh eo không tính), các điểm giữa nội suy theo độ cao; xương vai, đầu, mặt đi
+  theo. Trước đây cả cột sống ở một độ sâu là trung vị các đỉnh quanh thân, bị tóc dài sau lưng kéo: eo lệch 10–12 cm
+  khỏi giữa thân, nay 6–7 mm. Cổ để nghiêng theo đường nối giữa ngực với giữa cổ (lệch giữa cổ 3 cm): dựng cổ thẳng
+  đúng tâm thì Quay đầu làm tóc sau gáy rách 13–26 cạnh, cổ nghiêng thì không cạnh nào. Vòng cắt chỉ tính khi khép kín
+  (đoạn hở do cắt cụt từng cho tâm lệch 2,5 cm).
 
 ## 5. Phần và vai trò (R1)
 
@@ -178,7 +186,11 @@ từ thư viện.
 4. Vẽ weight theo vai trò (§5.2), ghi đè weight cũ của các đỉnh thuộc phần, theo các xương của rig. Vertex group không
    trùng tên xương (vd. vertex group làm phần) không bị đụng.
 5. Dọn weight trên mọi đỉnh đã vẽ: bỏ weight < 0,01, giữ 4 weight lớn nhất (Unity mặc định 4 xương mỗi đỉnh), chuẩn
-   hóa tổng = 1.
+   hóa tổng = 1. *Sửa 2026-10-14:* trước đó, đỉnh thuộc phần nào có ảnh gương (cũng thuộc phần) đúng vị trí (trong 1/100 000 chiều cao) qua giữa
+   khung thì nó và ảnh gương nhận trung bình weight của nhau, đổi bên, trên các xương chuẩn; đỉnh có xương khác (chuỗi
+   tóc, váy) giữ nguyên. Bone Heat cho hai bên hơi khác nhau (thân nhân vật thử lệch 0,32). Không ghép ảnh gương gần
+   đúng: ghép trong 3–6 mm làm vai áo tdt (mô hình lệch vài mm) rách 4,9–7,4 lần thay vì 3,2. Hai weight bằng nhau vắt
+   qua giới hạn 4 thì bỏ cả hai (giữa thân, giữ vai trái bỏ vai phải làm hai bên chạy khác nhau).
 6. Báo cáo: "Built N bones in M chains, weights on K objects", kèm cảnh báo (§12).
 
 Mọi tọa độ tính ở **tư thế nghỉ** (rest): tọa độ đỉnh gốc (không shape key, không modifier) nhân `matrix_world`, xương

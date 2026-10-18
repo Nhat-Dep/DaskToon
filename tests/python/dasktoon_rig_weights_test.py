@@ -58,6 +58,12 @@ class MatrixTest(unittest.TestCase):
         np.testing.assert_allclose(out[3], [0.5, 0.5, 0, 0, 0, 0])
         self.assertTrue(np.all((out > 0).sum(axis=1) <= 4))
 
+    def test_tidy_drops_a_tie_whole(self):
+        """Over the four, two weights alike go together: on the middle of a body, the left shoulder kept and the right
+        dropped would make the two sides move differently."""
+        out = weights.tidy(np.array([[0.6, 0.2, 0.1, 0.05, 0.05]]))
+        np.testing.assert_allclose(out[0], np.array([0.6, 0.2, 0.1, 0.0, 0.0]) / 0.9)
+
 
 class BindTest(unittest.TestCase):
     def setUp(self):

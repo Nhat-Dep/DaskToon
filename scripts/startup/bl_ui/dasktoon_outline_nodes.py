@@ -263,16 +263,28 @@ def build_object_group(obj, slots, sun, mask_name, uv_name):
     return tree
 
 
-def _move_last(obj, modifier):
-    index = obj.modifiers.find(modifier.name)
-    last = len(obj.modifiers) - 1
-    if index == last:
+# Modifiers that stay after the outline: Fast Action remembers vertices by their numbers and adds copies with
+# materials of their own; after it, the outline lost its hull on fast frames.
+KEEP_AFTER = ("DaskToon Fast Action",)
+
+
+def _move(obj, modifier, index):
+    if obj.modifiers.find(modifier.name) == index:
         return
     if hasattr(obj.modifiers, "move"):
-        obj.modifiers.move(index, last)
+        obj.modifiers.move(obj.modifiers.find(modifier.name), index)
     else:
         with bpy.context.temp_override(object=obj):
-            bpy.ops.object.modifier_move_to_index(modifier=modifier.name, index=last)
+            bpy.ops.object.modifier_move_to_index(modifier=modifier.name, index=index)
+
+
+def _move_last(obj, modifier):
+    """The outline last, but for KEEP_AFTER, after it."""
+    _move(obj, modifier, len(obj.modifiers) - 1)
+    for name in KEEP_AFTER:
+        other = obj.modifiers.get(name)
+        if other is not None:
+            _move(obj, other, len(obj.modifiers) - 1)
 
 
 def ensure_modifier(obj, tree):

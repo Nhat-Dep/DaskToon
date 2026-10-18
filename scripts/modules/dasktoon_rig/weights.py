@@ -13,6 +13,7 @@ from . import chains, parts
 
 LIMIT = 4
 MINIMUM = 0.01
+TIE = 1e-6  # weights this near are alike (stored as 32-bit floats)
 # A Clothing point up to this far from the Body (x the Body's height) copies the Body; twice as far or more it takes
 # automatic weights of its own; in between, a blend (real model test: a dress over no skin copied shoulders 30 cm away).
 CLOTH_GAP = 0.02
@@ -64,11 +65,15 @@ def write(obj, vertices, names, matrix):
 
 def tidy(matrix, limit=LIMIT, minimum=MINIMUM):
     """Rows of `matrix` for Unity (spec 6.2 step 5): weights under `minimum` dropped, at most `limit` per row, summing
-    to 1. A row whose weights are all under `minimum` keeps its largest one; an empty row stays empty."""
+    to 1; weights alike across the limit all go (on the middle of a body, a left bone kept and its right one dropped
+    would move the two sides differently). A row whose weights are all under `minimum` keeps its largest one; an empty
+    row stays empty."""
     out = np.where(matrix >= minimum, matrix, 0.0)
     if out.shape[1] > limit:
-        drop = np.argsort(-out, axis=1, kind="stable")[:, limit:]
-        np.put_along_axis(out, drop, 0.0, axis=1)
+        order = np.argsort(-out, axis=1, kind="stable")
+        cut = np.take_along_axis(out, order[:, limit:limit + 1], axis=1)  # the largest dropped
+        np.put_along_axis(out, order[:, limit:], 0.0, axis=1)
+        out[(cut > 0.0) & (np.abs(out - cut) <= TIE)] = 0.0
     lost = (out.sum(axis=1) <= 0.0) & (matrix.max(axis=1, initial=0.0) > 0.0)
     rows = np.nonzero(lost)[0]
     out[rows, matrix[rows].argmax(axis=1)] = 1.0

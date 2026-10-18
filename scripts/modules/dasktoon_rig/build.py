@@ -19,6 +19,8 @@ COLLIDER_BONES = ("Head", "Neck", "UpperChest", "Chest", "Spine", "Hips", "LeftU
 COLLIDER_SHARE = 0.9
 COLLIDER_FALLBACK = 0.03  # of the skeleton's height, for a bone no Body vertex follows
 INWARD_RATIO = -0.5  # signed over unsigned volume of a Body below this: its faces point inward (about -1)
+MIRROR_GAP = 1e-5  # (x height) a vertex this near the mirror image of another is its mirror image (taking those 3 or
+# 6 mm off as well, as on tdt's collar, mixed weights of vertices placed differently: its shoulders tore 7 times)
 JAW_RINGS = (2.0 / 3.0, 1.0 / 3.0)  # share of the Jaw bone in the rings of Body vertices around a Jaw part (spec 10.3)
 
 
@@ -314,6 +316,46 @@ def _other_side(name):
     return None
 
 
+def _symmetric(rig, owners):
+    """The same weights on both sides of a mesh where it is its own mirror image across the skeleton's middle: each
+    vertex with a mirror image gets the mean of theirs, sides swapped, among the standard bones (Bone Heat answers a
+    little differently on the two sides of a mesh: tdt's collar had 0.9 of the upper chest on one side, 0.56 of it and
+    0.44 of the neck on the other). Only the vertices of the parts (the rest keeps what was painted by hand); a vertex
+    without a mirror image (where the mesh is not modelled the same on both sides), or weighed by any other bone (a lock
+    of hair, a skirt), keeps its weights."""
+    from mathutils.kdtree import KDTree
+    names = [b.name for b in rig.data.bones if b.use_deform]
+    standard = np.array([name in skeleton.BONE_NAMES for name in names])
+    swap = [names.index(_other_side(n)) if _other_side(n) in names else i for i, n in enumerate(names)]
+    box = skeleton.bounds(list(owners))
+    if box is None:
+        return
+    gap = MIRROR_GAP * (box[1].z - box[0].z)
+    middle = (rig.matrix_world @ rig.data.bones["Hips"].head_local).x
+    for obj, owner in owners.items():
+        world, _edges = rig_parts.mesh_arrays(obj)
+        if len(world) == 0:
+            continue
+        tree = KDTree(len(world))
+        for i, co in enumerate(world.tolist()):
+            tree.insert(co, i)
+        tree.balance()
+        mirror = np.full(len(world), -1)
+        for i, (x, y, z) in enumerate(world.tolist()):
+            _co, j, distance = tree.find((2.0 * middle - x, y, z))
+            if distance < gap:
+                mirror[i] = j
+        matrix = weights.read(obj, names)
+        own = (owner >= 0) & (matrix[:, ~standard] <= 0.0).all(axis=1)
+        rows = np.nonzero((mirror >= 0) & own)[0]
+        rows = rows[own[mirror[rows]]]
+        if len(rows) == 0:
+            continue
+        mean = (matrix[rows] + matrix[mirror[rows]][:, swap]) / 2.0
+        weights.clear(obj, rows, names)
+        weights.write(obj, rows, names, mean)
+
+
 def _mirror_groups(rig, owners, result):
     """A mesh modelled in half, the other half made by a Mirror modifier across X before the Armature modifier (bind
     puts it there): Blender gives the mirrored half the Left group of a Right one only when the object has that group
@@ -404,6 +446,7 @@ def build(context, rig, parts):
         mouth.apply(context, rig, parts, result)
         _paint(context, rig, parts, owners, plan, actual, result)
         _drop_stale_groups(owners, removed, set(actual.values()))
+        _symmetric(rig, owners)
         _tidy(rig, owners)
         _mirror_groups(rig, owners, result)
         eyes.apply(rig, parts)
