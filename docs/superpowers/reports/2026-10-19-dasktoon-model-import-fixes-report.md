@@ -66,3 +66,18 @@ che mất: ống tay áo kiểu kimono bị ép dẹt khi giơ tay, cổ nằm n
 
 Toàn bộ bộ thử của nhánh: 67 file, 674 bài, đều đạt (hai bài shading/upgrade đạt sau khi khôi phục dữ liệu thử mà bài
 shading baseline ghi đè — chuyện đã biết). Bảy bài thử Unity đều đạt (sau khi xoá thư mục Library hỏng của dự án thử).
+
+## 6. Nhận diện rig phần 3: ngón tay (commit 6ce8459)
+
+Thiết kế: `docs/superpowers/specs/2026-10-19-dasktoon-rig-fingers-design.md`. Bàn tay của lưới Thân được trải lên mặt
+phẳng lòng bàn tay. Năm điểm xa cổ tay nhất là đầu ngón; đi ngược từ mỗi đầu ngón tới chỗ phình ra là gốc ngón; ngón phía
+trước là ngón cái. Ba đốt nằm trên đường từ gốc tới đầu ngón (45% / 75%), hai tay lấy trung bình đối xứng. Không thấy đủ
+5 ngón thì giữ ngón của khung mẫu.
+
+- Nhận được ngón: tdt, lr_shape, filie, RG2, Luna. pl1 giữ khung mẫu.
+- Thử gập mỗi đốt 40° trên filie và lr_shape: lưới đi theo đúng từng ngón, không rách.
+- Số chỗ cần xem của 6 model không đổi. Bài thử rig, xuất file và rig Unity đều đạt.
+- Đã đăng ký thêm vào CMake 5 bài thử trước đây chưa có: check, regions, shoulder, fingers, material convert.
+
+Quyết định cần bạn xác nhận: chỉ đọc lưới Thân (găng tay đi theo xương tìm được trên da); ngón cái là ngón phía trước
+nhân vật, nên tay ngửa lòng bàn tay sẽ nhận sai; tỷ lệ đốt 45% / 30% / 25%; tìm không ra thì giữ khung mẫu và không báo.
