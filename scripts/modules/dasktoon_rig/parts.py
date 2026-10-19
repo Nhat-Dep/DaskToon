@@ -27,12 +27,13 @@ WORDS = (
     ('HAIR', {"hair", "bang", "bangs", "fringe", "ponytail", "twintail", "twintails", "tail", "tails", "ahoge",
               "braid", "toc", "kami"}),
     ('SKIRT', {"skirt", "vay"}),
-    ('ACCESSORY', {"eye", "eyes", "eyeball", "glass", "glasses", "ribbon", "hairpin", "clip", "earring", "hat",
+    ('ACCESSORY', {"eye", "eyes", "eyeball", "mat", "glass", "glasses", "ribbon", "hairpin", "clip", "earring", "hat",
                    "cap", "bow"}),
     ('CLOTHING', {"cloth", "clothes", "shirt", "tshirt", "jacket", "coat", "dress", "pant", "pants", "shoe",
                   "shoes", "sock", "socks", "glove", "gloves", "uniform"}),
     ('BODY', {"body", "skin", "face", "head"}),
 )
+EYE_WORDS = {"eye", "eyes", "eyeball", "mat"}  # an Accessory so named is the eyes ("mat": Vietnamese "eye")
 MARKS = (('HAIR', "\u9aea"), ('SKIRT', "\u30b9\u30ab\u30fc\u30c8"), ('ACCESSORY', "\u76ee"), ('CLOTHING', "\u670d"),
          ('BODY', "\u4f53"))
 
@@ -90,6 +91,11 @@ def guess_role(name):
         if mark in name:
             return role
     return None
+
+
+def is_eye(name):
+    """True when a part's name says it is eyes (an Accessory: each loose piece follows the eye on its side)."""
+    return bool(set(words(name)) & EYE_WORDS)
 
 
 def _height(obj):

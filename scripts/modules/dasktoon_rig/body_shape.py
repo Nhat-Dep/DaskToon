@@ -313,7 +313,7 @@ def _similar(a_from, b_from, a_to, b_to):
     return (lambda p: a_to + rotation @ ((p - a_from) * scale)), rotation
 
 
-def joints(context, objects, feet, height, skin=None):
+def joints(context, objects, feet, height, skin=None, eyes=None):
     """{bone: (head, tail, z axis)} in world space of the standard skeleton fitted to the silhouette of `objects`, for
     a character `height` tall with its feet at `feet`; None when they have no faces. What is not found (arms, legs)
     stays as in the template, at the heights found. The joints of the arms and legs then lie on the middle lines of the
@@ -396,7 +396,34 @@ def joints(context, objects, feet, height, skin=None):
     if groups[0]:
         from . import fingers
         fingers.fit(out, groups[0], middle)
+    if eyes:
+        _place_eyes(out, [evaluated(context, item)[0] if hasattr(item, "type") else np.asarray(item, float)
+                          for item in eyes], middle)
     return out
+
+
+def _place_eyes(out, points, middle):
+    """Move LeftEye and RightEye of `out` (keeping their length and direction) to the middles of `points` (arrays of
+    world points of the eyes) on each side of x = `middle`; both sides the same, mirrored."""
+    points = np.concatenate([p for p in points if len(p)]) if any(len(p) for p in points) else np.zeros((0, 3))
+    centres = {}
+    for side, sign in (("Left", 1.0), ("Right", -1.0)):
+        mine = points[sign * (points[:, 0] - middle) > 0.0]
+        if len(mine):
+            centres[side] = (mine.min(axis=0) + mine.max(axis=0)) / 2.0
+    if not centres:
+        return
+    flip = np.array([-1.0, 1.0, 1.0])
+
+    def mirrored(point):
+        return np.array((2.0 * middle - point[0], point[1], point[2]))
+
+    left = centres.get("Left")
+    right = centres.get("Right")
+    left = mirrored(right) if left is None else left if right is None else (left + mirrored(right)) / 2.0
+    for side, centre in (("Left", left), ("Right", mirrored(left))):
+        head, tail, axis = out[side + "Eye"]
+        out[side + "Eye"] = (Vector(centre), Vector(centre) + (tail - head), axis)
 
 
 def _arm_bones(side):

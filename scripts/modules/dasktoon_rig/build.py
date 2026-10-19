@@ -264,6 +264,8 @@ def _paint(context, rig, parts, owners, plan, actual, result):
         elif part.role in rig_parts.FACE_ROLES:
             # A flat eye or 2D mouth not on the Body (an iris plane, a mouth card) sits on the head.
             weights.write(obj, vertices, [part.bone or "Head"], np.ones((len(vertices), 1)))
+        elif not part.bone and rig_parts.is_eye(part.name) and {"LeftEye", "RightEye"} <= set(deform):
+            _paint_eyes(rig, obj, vertices)
         else:
             world, _edges = rig_parts.mesh_arrays(obj)
             bone = part.bone or rig_parts.nearest_bone(rig, world[vertices].mean(axis=0), fixed_bones)
@@ -273,6 +275,16 @@ def _paint(context, rig, parts, owners, plan, actual, result):
         obj = parts[index].object
         weights.clear(obj, vertices, deform)
         weights.write(obj, vertices, [actual.get(n, n) for n in names], matrix)
+
+
+def _paint_eyes(rig, obj, vertices):
+    """Eyes in one mesh (Luna's and filie's eyeballs, real models): each loose piece follows the eye bone on its side;
+    rigid on the bone nearest their middle, both followed the head and never looked about."""
+    world, edges = rig_parts.mesh_arrays(obj)
+    middle = (rig_parts.bone_segment(rig, "LeftEye")[0][0] + rig_parts.bone_segment(rig, "RightEye")[0][0]) / 2.0
+    for piece in rig_parts.pieces(edges, vertices):
+        bone = "LeftEye" if world[piece, 0].mean() > middle else "RightEye"
+        weights.write(obj, piece, [bone], np.ones((len(piece), 1)))
 
 
 def _paint_jaw(obj, vertices, owner, body_ids, deform):

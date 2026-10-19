@@ -30,6 +30,7 @@ class NameTest(unittest.TestCase):
             "Hair.001": 'HAIR', "T\u00f3c": 'HAIR', "Ponytail": 'HAIR', "\u9aea": 'HAIR', "CatTail": 'HAIR',
             "Skirt": 'SKIRT', "V\u00e1y": 'SKIRT', "Eye_L": 'ACCESSORY', "Hat": 'ACCESSORY', "Shirt": 'CLOTHING',
             "Body": 'BODY', "Face": 'BODY', "Chatty": None, "Mesh": None,
+            "mat": 'ACCESSORY', "Mắt": 'ACCESSORY',  # Vietnamese: eyes (Luna's and filie's)
         }
         for name, role in cases.items():
             self.assertEqual(parts.guess_role(name), role, name)

@@ -248,13 +248,21 @@ def fit_to_parts(context, rig):
     """Fit the skeleton of `rig` to the meshes of its parts, reading the body's shape from the Body and Clothing parts
     (hair, a skirt or a held staff is no limb). A character whose feet face another way than the skeleton's front (-Y)
     is turned round on the spot first. Returns that turn (radians about +Z, 0 when none)."""
-    from dasktoon_rig import facing, skeleton
+    from dasktoon_rig import facing, parts as rig_parts, skeleton
     parts = [part for part in rig.data.dasktoon_rig.parts if part.object is not None and part.object.type == 'MESH']
     meshes = list(dict.fromkeys(part.object for part in parts))
     body = list(dict.fromkeys(part.object for part in parts if part.role in {'BODY', 'CLOTHING'}))
     skin = list(dict.fromkeys(part.object for part in parts if part.role == 'BODY'))
     turn = facing.face_front(context, meshes, body=body or None)
-    skeleton.fit(context, rig, meshes, body=body or None, skin=skin or None)
+    eyes = []  # the eyeballs (Accessories named as eyes) and flat eyes: the eye joints go to their middles
+    for part in parts:
+        if part.role == 'FLAT_EYE' or (part.role == 'ACCESSORY' and rig_parts.is_eye(part.name)):
+            try:
+                world, _edges = rig_parts.mesh_arrays(part.object)
+                eyes.append(world[rig_parts.part_vertices(part)])
+            except rig_parts.PartError:
+                continue
+    skeleton.fit(context, rig, meshes, body=body or None, skin=skin or None, eyes=eyes or None)
     return turn
 
 

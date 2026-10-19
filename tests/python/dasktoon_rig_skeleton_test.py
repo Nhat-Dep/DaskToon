@@ -488,6 +488,26 @@ class NeckTest(unittest.TestCase):
         skeleton.fit(bpy.context, rig, [body, head], body=[body, head], skin=[head])
         self.assertGreater(world_head(rig, "Head").z, 1.46 + 0.05)  # the template's, not the bottom of the sphere
 
+    def test_the_eyes_at_the_eye_parts(self):
+        """Eyeballs (or flat eyes) given: the eye joints are at their middles, one on each side."""
+        body = polyline_chibi(CentreLineTest.ARM, CentreLineTest.LEG, neck=0.12)
+        pieces = [tube(Vector((3.0 + s * 0.11, 0.2, 1.8)), Vector((3.0 + s * 0.11, 0.24, 1.8)), 0.04)
+                  for s in (1.0, -1.0)]
+        verts, faces = [], []
+        for piece_verts, piece_faces in pieces:
+            faces += [tuple(i + len(verts) for i in face) for face in piece_faces]
+            verts += piece_verts
+        mesh = bpy.data.meshes.new("Eyes")
+        mesh.from_pydata(verts, [], faces)
+        eyes = bpy.data.objects.new("Eyes", mesh)
+        bpy.context.scene.collection.objects.link(eyes)
+        rig = skeleton.create_humanoid(bpy.context, 1.0, (0.0, 0.0, 0.0))
+        skeleton.fit(bpy.context, rig, [body, eyes], body=[body], skin=[body], eyes=[eyes])
+        for side, sign in (("Left", 1.0), ("Right", -1.0)):
+            eye = world_head(rig, side + "Eye")
+            self.assertLess((eye - Vector((3.0 + sign * 0.11, 0.22, 1.8))).length, 0.01, side)
+            self.assertLess(world_tail(rig, side + "Eye").y, eye.y)  # looking forward (-Y)
+
     def test_a_head_without_a_neck_keeps_the_template(self):
         rig = skeleton.create_humanoid(bpy.context, 1.0, (0.0, 0.0, 0.0))
         body = polyline_chibi(CentreLineTest.ARM, CentreLineTest.LEG)

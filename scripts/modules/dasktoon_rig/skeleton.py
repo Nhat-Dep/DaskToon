@@ -191,17 +191,18 @@ def create_humanoid(context, height=DEFAULT_HEIGHT, location=(0.0, 0.0, 0.0), na
     return rig
 
 
-def fit(context, rig, objects, body=None, skin=None):
+def fit(context, rig, objects, body=None, skin=None, eyes=None):
     """Move the standard bones of `rig` onto the character made of `objects` (the object itself stays, so meshes bound
     to it do not move; bones the user deleted stay deleted): the height and feet of their bounding box; the middle of
     the body, the arms, the legs and the heights of the hips and shoulders from the front silhouette of `body` (the Body
     and Clothing parts; default `objects`), the depth of the elbows and knees from `skin` (the Body parts) where it has
-    the limb, see body_shape. Returns the height used."""
+    the limb, see body_shape; the eyes at the middles of `eyes` (objects, or arrays of world points, of the eyes) on
+    each side. Returns the height used."""
     from . import body_shape
     height, location = placement(objects, rig.matrix_world.translation)
     joints = None
     if bounds(objects) is not None:
-        joints = body_shape.joints(context, body or objects, location, height, skin=skin)
+        joints = body_shape.joints(context, body or objects, location, height, skin=skin, eyes=eyes)
     if joints is None:
         joints = layout(Matrix.Translation(location) @ Matrix.Scale(height, 4))
     to_rig = rig.matrix_world.inverted()
