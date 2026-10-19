@@ -62,15 +62,23 @@ def from_to(a, b):
     return np.eye(3) + k + k @ k / (1.0 + cosine)
 
 
-def reset(pose):
-    """The state of a chain hanging in its pose, without sway."""
+def reset(pose, params=None, colliders=()):
+    """The state of a chain hanging in its pose, without sway, out of the `colliders` ((head, tail, radius) capsules in
+    world space; the bones' own radius from `params`) as a step leaves it: a skirt starting again on the scene's first
+    frame, or in a test pose, stood through the thighs (RG2, a real model)."""
     tails = []
+    radius = params.radius if params is not None else 0.0
     head, parent = pose.root_head, pose.parent_rotation
     for local, length in zip(pose.local_rotations, pose.lengths):
-        rotation = parent @ local
-        head = head + rotation[:, 1] * length
-        tails.append(head)
-        parent = rotation
+        posed = parent @ local
+        rest = posed[:, 1]
+        tail = head + rest * length
+        for a, b, capsule_radius in colliders:
+            tail = _push_out(tail, np.asarray(a, float), np.asarray(b, float), capsule_radius + radius)
+            tail = head + _unit(tail - head) * length
+        tails.append(tail)
+        parent = from_to(rest, _unit(tail - head)) @ posed
+        head = tail
     return State(tails)
 
 

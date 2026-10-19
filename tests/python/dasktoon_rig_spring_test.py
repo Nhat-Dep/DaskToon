@@ -86,6 +86,20 @@ class SpringTest(unittest.TestCase):
         self.assertGreaterEqual(distance, 0.04 - 1e-6)
         self.assertAlmostEqual(np.linalg.norm(tail), 0.1, places=9)
 
+    def test_reset_is_out_of_the_colliders(self):
+        """A chain starting again (the scene's first frame, a changed pose) hangs out of the colliders as a step leaves
+        it: a skirt sat into stood through the thighs in the Check's Sit pose (RG2, a real model)."""
+        pose = chain(2)
+        capsule = (np.array((0.15, -1.0, 0.0)), np.array((0.15, 1.0, 0.0)), 0.03)  # across the chain, along Y
+        params = spring.Params(radius=0.01)
+        state = spring.reset(pose, params, [capsule])
+        for k, tail in enumerate(state.current):
+            head = np.zeros(3) if k == 0 else state.current[k - 1]
+            self.assertAlmostEqual(np.linalg.norm(tail - head), 0.1, places=9)
+            self.assertGreaterEqual(math.hypot(tail[0] - 0.15, tail[2]), 0.04 - 1e-6, k)
+        np.testing.assert_allclose(state.previous, state.current)
+        np.testing.assert_allclose(spring.reset(pose).current, [(0.1, 0, 0), (0.2, 0, 0)], atol=1e-12)  # no colliders
+
     def test_same_input_same_output(self):
         def run():
             pose = chain(3, direction=np.eye(3))

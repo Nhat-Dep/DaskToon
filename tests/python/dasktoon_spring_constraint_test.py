@@ -128,7 +128,7 @@ def python_tails(rig, frames, params, colliders, count=3):
         caps = [(np.array(rig.matrix_world @ rig.pose.bones[b].head), np.array(rig.matrix_world @ rig.pose.bones[b].tail), r)
                 for b, r in colliders]
         if state is None or frame == bpy.context.scene.frame_start:
-            state = spring.reset(pose)
+            state = spring.reset(pose, params, caps)
         else:
             spring.step(state, pose, params, caps, 1.0 / bpy.context.scene.render.fps)
         out[frame] = [t.copy() for t in state.current]
@@ -237,6 +237,28 @@ class EvaluateTest(unittest.TestCase):
         tail = np.array(self.rig.matrix_world @ self.rig.pose.bones["Spine"].tail)
         t = np.clip((tip - head) @ (tail - head) / ((tail - head) @ (tail - head)), 0.0, 1.0)
         self.assertGreaterEqual(np.linalg.norm(tip - (head + t * (tail - head))), 2.0 * (0.05 + 0.03) - 1e-4)
+
+    def test_start_frame_is_out_of_the_colliders(self):
+        """On the scene's first frame, and when the pose changes on a frame, the chain starts again out of the
+        colliders, as a step leaves it: a skirt stood through the thighs in the Check's Sit pose (RG2, a real model)."""
+        from dasktoon_rig import spring
+        rig = self.rig
+        bpy.ops.object.mode_set(mode='EDIT')
+        block = rig.data.edit_bones.new("Block")  # across the chain, through Tail_2's tail
+        block.head, block.tail = (-0.5, 0.2, 1.0), (0.5, 0.2, 1.0)
+        bpy.ops.object.mode_set(mode='OBJECT')
+        for con in self.cons:
+            item = con.colliders.new()
+            item.target, item.subtarget, item.radius = rig, "Block", 0.05
+        bpy.context.scene.frame_set(1)
+        bpy.context.view_layer.update()
+        head = np.array(rig.matrix_world @ rig.pose.bones["Tail_1"].head)
+        expected = python_tails(rig, [1], spring.Params(), [("Spine", 0.05), ("Block", 0.05)])[1]
+        got = tails(rig)
+        np.testing.assert_allclose(np.array(got), np.array(expected), atol=1e-4)
+        for k, tail in enumerate(got):
+            self.assertGreaterEqual(math.hypot(tail[1] - 0.2, tail[2] - 1.0), 0.05 + 0.03 - 1e-4, k)
+        self.assertAlmostEqual(float(np.linalg.norm(got[0] - head)), 0.1, places=4)
 
     def test_python_handlers_are_gone(self):
         names = [h.__name__ for h in bpy.app.handlers.frame_change_post + bpy.app.handlers.frame_change_pre]
