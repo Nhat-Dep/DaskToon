@@ -128,6 +128,19 @@ def _copy(action, slot, clip, idb):
         copy.update()
 
 
+def _animates(idb):
+    """True when the action of `idb` keys something `idb` has: RG2's meshes (a real model) kept the actions of a rig
+    they once had, keyed on its bones, which animate nothing on a mesh."""
+    bag = anim_utils.action_get_channelbag_for_slot(idb.animation_data.action, idb.animation_data.action_slot)
+    for fcurve in bag.fcurves if bag is not None else ():
+        try:
+            idb.path_resolve(fcurve.data_path)
+        except ValueError:
+            continue
+        return True
+    return False
+
+
 def adopt(armature, objects):
     """When the character has no clip yet but its parts are animated (each with its own action, as Key Pose made
     them), gather that animation into a first clip "Clip" and play it. The old actions stay. Returns the clip, or
@@ -135,7 +148,7 @@ def adopt(armature, objects):
     if clips_of(armature):
         return None
     animated = [idb for idb in parts(armature, objects)
-                if idb.animation_data is not None and idb.animation_data.action is not None]
+                if idb.animation_data is not None and idb.animation_data.action is not None and _animates(idb)]
     if not animated:
         return None
     clip = _make(armature, "Clip")

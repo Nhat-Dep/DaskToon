@@ -127,6 +127,14 @@ class FbxTest(unittest.TestCase):
         fsn.ensure_modifier(obj)
         self.assertEqual(model_fbx.modifier_notes([obj]), [])
 
+    def test_modifier_notes_skip_the_fast_action(self):
+        """The fast action is DaskToon's own (its popover says it does not go into the FBX): the report listed it on
+        every mesh as a modifier to apply (the whole workflow tried on RG2, a real model)."""
+        from dasktoon_animation import fast_action
+        obj = outlined_character()
+        obj.modifiers.new(fast_action.MODIFIER, 'NODES')
+        self.assertEqual(model_fbx.modifier_notes([obj]), [])
+
 
 if __name__ == "__main__":
     tu.run_tests()

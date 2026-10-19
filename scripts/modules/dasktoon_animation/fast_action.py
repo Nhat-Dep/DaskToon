@@ -326,14 +326,15 @@ def sync(armature, objects):
 # last worked out: a frame not played through rendered stale effects (the combat test). Baked, every frame is read from
 # the bake, played or not, in a render from the command line too. DaskToon's Render (F12, Ctrl F12, the Render menu)
 # bakes first where the bake is missing or old (the user's choice, 2026-10-19).
-BAKED = "dasktoon_fast_action_baked"  # on the armature's data: [first frame, last frame, 1 when changed since]
-BAKED_MOTION = "dasktoon_fast_action_motion"  # on the armature's data: motion() when baked
+# The bake's state is in the character's settings (baked, bake_first, bake_last, bake_old, bake_motion); a first
+# version kept it as custom properties of the armature, which the FBX took (LEGACY: dropped on baking or freeing).
+LEGACY = ("dasktoon_fast_action_baked", "dasktoon_fast_action_motion")
 
 
 def baked(armature):
     """(first frame, last frame, True when a setting changed since) of the character's bake, or None."""
-    value = armature.data.get(BAKED)
-    return None if value is None else (int(value[0]), int(value[1]), bool(value[2]))
+    settings = armature.data.dasktoon_fast_action
+    return (settings.bake_first, settings.bake_last, settings.bake_old) if settings.baked else None
 
 
 def _actions(armature, objects):
@@ -377,7 +378,8 @@ def needs_bake(context, armature, objects):
     if not armature.data.dasktoon_fast_action.enabled:
         return False
     state = baked(armature)
-    return state is None or state[2] or armature.data.get(BAKED_MOTION) != motion(context, armature, objects)
+    return (state is None or state[2]
+            or armature.data.dasktoon_fast_action.bake_motion != motion(context, armature, objects))
 
 
 def characters(context):
@@ -399,9 +401,9 @@ def bake_for_render(context):
 
 def changed(armature):
     """A setting changed: a bake shows the effects as they were."""
-    value = armature.data.get(BAKED)
-    if value is not None:
-        armature.data[BAKED] = [int(value[0]), int(value[1]), 1]
+    settings = armature.data.dasktoon_fast_action
+    if settings.baked:
+        settings.bake_old = True
 
 
 def _each_bake(context, armature, objects, operator):
@@ -425,13 +427,22 @@ def bake(context, armature, objects):
     """Bake the effects of the character's meshes over the scene's frames."""
     sync(armature, objects)
     _each_bake(context, armature, objects, "geometry_node_bake_single")
-    armature.data[BAKED] = [context.scene.frame_start, context.scene.frame_end, 0]
-    armature.data[BAKED_MOTION] = motion(context, armature, objects)
+    settings = armature.data.dasktoon_fast_action
+    settings.baked, settings.bake_old = True, False
+    settings.bake_first, settings.bake_last = context.scene.frame_start, context.scene.frame_end
+    settings.bake_motion = motion(context, armature, objects)
+    _drop_legacy(armature)
 
 
 def free(context, armature, objects):
     """Drop the bake: the effects are worked out as playback goes again."""
     _each_bake(context, armature, objects, "geometry_node_bake_delete_single")
-    for key in (BAKED, BAKED_MOTION):
+    settings = armature.data.dasktoon_fast_action
+    settings.baked, settings.bake_old, settings.bake_motion = False, False, ""
+    _drop_legacy(armature)
+
+
+def _drop_legacy(armature):
+    for key in LEGACY:
         if key in armature.data:
             del armature.data[key]
