@@ -99,6 +99,10 @@ class SculptTest(unittest.TestCase):
                          ["blink", "blink_L", "blink_R", "joy", "surprised"])
         self.assertEqual({tuple(meshes) for _name, meshes in self.made}, {("Eyes",)})
         self.assertIsNone(self.objs["Body"].data.shape_keys)  # no eye piece there
+        # Off until used: a new shape key starts at 1 in DaskToon 5.2, which showed every expression at once (seen in
+        # a real-window shot) and would have sent them all at 100 to Unity.
+        self.assertEqual({b.name: b.value for b in self.eyes.data.shape_keys.key_blocks if b.name != "Basis"},
+                         {name: 0.0 for name, _meshes in self.made})
 
     def test_blink_closes_each_eye_on_a_line(self):
         co = rest(self.eyes) + offsets(self.eyes, "blink")

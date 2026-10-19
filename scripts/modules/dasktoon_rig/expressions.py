@@ -141,6 +141,7 @@ def fill(obj):
                 if made is None:
                     continue
             key.key_blocks[name].data.foreach_set("co", (rest + made).ravel())
+            key.key_blocks[name].value = 0.0  # it was empty, so off until used (a new shape key starts at 1)
             offsets[name] = made
             moves.add(name)
             filled.append((name, how))

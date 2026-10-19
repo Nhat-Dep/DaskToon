@@ -413,5 +413,6 @@ def sculpt(rig, meshes):
                 moved += _smile(rest, mouth, _head(rig)[0][1])
             to_arm = np.array((rig.matrix_world.inverted() @ obj.matrix_world).to_3x3())
             block.data.foreach_set("co", (base + moved @ np.linalg.inv(to_arm).T).ravel())
+            block.value = 0.0  # off until used: a new shape key starts at 1
             made.setdefault(block.name, []).append(obj.name)
     return list(made.items())

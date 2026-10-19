@@ -98,5 +98,11 @@ Cả bộ kiểm tra DaskToon đạt (chạy lại shading/upgrade sau khi khôi
 face, clips, model và correctives đều đạt. Bài kiểm tra mới: `dasktoon_rig_correctives_test`,
 `dasktoon_unity_correctives_test`, `dasktoon_expressions_fill_test`, `dasktoon_expressions_eyes_test`.
 
-Chưa làm: chụp giao diện trong cửa sổ thật (ô **Sửa chỗ gập**, hai nút mới). Màn hình đã tắt trong đêm. Đây chỉ là một
-ô và hai nút đặt vào các bảng có sẵn, bài kiểm tra bố cục đã chạy qua.
+Giao diện chụp trong cửa sổ thật (tiếng Việt, nhân vật mẫu; công cụ `tools/dasktoon_auto_shape_keys_screenshots.py`):
+
+- `auto-shape-keys/vi/100_bend_fixes.png`: Rig anime › Khớp nối với ô **Sửa chỗ gập**, gối trái đang gập.
+- `auto-shape-keys/vi/101_expression_sets.png`: Hình mẫu › Bộ biểu cảm với **Lấp biểu cảm còn trống** và **Nặn
+  biểu cảm mắt**; joy đang bật.
+
+Lần chụp này bắt được một lỗi mà chạy nền không thấy: trong DaskToon 5.2, shape key mới tạo có giá trị 1, nên sau
+khi nặn mọi biểu cảm đều bật cùng lúc (và sang Unity sẽ ở mức 100). Đã sửa: shape key do hai nút tạo hoặc lấp đều về 0.

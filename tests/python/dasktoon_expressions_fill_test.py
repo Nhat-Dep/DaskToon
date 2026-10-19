@@ -63,8 +63,12 @@ class FillTest(unittest.TestCase):
         a = moving(0.0, 0.5, (0.0, 0.0, -0.2))
         i = moving(0.0, 0.5, (0.1, 0.0, 0.05))
         obj = face({"a": a, "i": i, "e": None, "neutral": None})
+        obj.data.shape_keys.key_blocks["e"].value = 1.0  # an empty key at 1 (new keys start at 1 in DaskToon 5.2)
+        obj.data.shape_keys.key_blocks["a"].value = 1.0
         filled = expressions.fill(obj)
         self.assertEqual([name for name, _how in filled], ["e"])
+        self.assertEqual(obj.data.shape_keys.key_blocks["e"].value, 0.0)  # filled: off until used
+        self.assertEqual(obj.data.shape_keys.key_blocks["a"].value, 1.0)  # a key that moved is left as it was
         np.testing.assert_allclose(offsets(obj, "e"), 0.5 * a + 0.5 * i, atol=1e-6)
         np.testing.assert_allclose(offsets(obj, "neutral"), 0.0, atol=1e-9)  # the rest face stays empty
         np.testing.assert_allclose(offsets(obj, "a"), a, atol=1e-6)  # sources are left alone
