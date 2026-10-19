@@ -30,6 +30,7 @@ SLEEVE = (1.5, 0.2)  # past where an arm widens, a band keeping within this rati
 #                     narrower than this (x height), is a wide sleeve round the arm (RGforGame's slim hands out of wide
 #                     sleeves); the band through the body spreads wider (only for arms: walking up from the legs, a
 #                     torso standing straight keeps the width of a sleeve)
+STANDS = 0.05  # (x height) a leg of the Body whose sole is this near the floor stands on it
 HIP_ABOVE = 0.1  # the hip joint is this part of the leg's length above where the leg meets the body
 ARM_UP = 0.57  # an arm is modelled hanging or level: a limb pointing up more than this (sine, 35 deg) is an ear or a
 #                twin tail reaching out wider than the hand (RGforGame), and the hand is looked for lower down
@@ -236,6 +237,18 @@ class Shape:
         return None if self.mask[self.pixel((middle, halfway[1]))] else limb
 
 
+def _legs(context, shape, skin, feet, height, middle):
+    """{side: leg or None}: the legs of the Body meshes `skin` when one of them stands on the floor (a dress flaring
+    over the thighs hides where the legs meet the body: the walk up the silhouette met the hem), else of `shape`."""
+    if skin:
+        bare = Shape(context, skin, feet, height)
+        if bare.mask is not None:
+            found = {side: bare.leg(side, middle) for side in (1, -1)}
+            if any(leg is not None and leg.end[1] < feet.z + STANDS * height for leg in found.values()):
+                return found
+    return {side: shape.leg(side, middle) for side in (1, -1)}
+
+
 def _mirrored(found, middle):
     """{side: limb}: a side not found mirrors the other one."""
     def mirror(limb):
@@ -269,7 +282,7 @@ def joints(context, objects, feet, height, skin=None):
         return None
     middle = float(np.median(shape.vertices[:, 0]))
     arms = _mirrored({side: shape.arm(side, middle) for side in (1, -1)}, middle)
-    legs = _mirrored({side: shape.leg(side, middle) for side in (1, -1)}, middle)
+    legs = _mirrored(_legs(context, shape, skin, feet, height, middle), middle)
     top = feet.z + height
     hip_z, shoulder_z = feet.z + HIP_Z * height, feet.z + SHOULDER_Z * height
     shoulders = {side: arm.base - arm.axis * arm.width / 2.0 for side, arm in arms.items() if arm is not None}

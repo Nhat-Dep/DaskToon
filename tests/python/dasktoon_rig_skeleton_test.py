@@ -344,6 +344,19 @@ class CentreLineTest(unittest.TestCase):
             hip = world_head(rig, side + "UpperLeg")
             self.assertAlmostEqual(hip.y, depth_on(thigh, hip.z), delta=0.015, msg=side)
 
+    def test_legs_under_a_flared_dress(self):
+        """A dress flaring out over the thighs hides where the legs meet the body: the walk up the silhouette met the
+        hem, and the hips of RGforGame, RG2 and Luna (real models) sat at the hem or mid-thigh. The legs of the Body,
+        standing on the floor, tell."""
+        body = polyline_chibi(self.ARM, self.LEG)
+        bpy.ops.mesh.primitive_cone_add(vertices=24, radius1=0.42, radius2=0.2, depth=0.6, end_fill_type='NOTHING',
+                                        location=(3.0, 0.5, 0.85))
+        dress = bpy.context.object
+        rig = skeleton.create_humanoid(bpy.context, 1.0, (0.0, 0.0, 0.0))
+        skeleton.fit(bpy.context, rig, [body, dress], body=[body, dress], skin=[body])
+        for side in ("Left", "Right"):
+            self.assertGreater(world_head(rig, side + "UpperLeg").z, 0.85, msg=side)  # the legs meet the body at 0.88
+
     def test_the_ankles_follow_the_shins(self):
         shin = [(0.085, 0.0, 0.5), (0.09, 0.05, 0.06)]  # the ankle 5 cm back
         foot = ((0.09, 0.07, 0.04), (0.09, -0.16, 0.04), 0.04)  # reaching forward
