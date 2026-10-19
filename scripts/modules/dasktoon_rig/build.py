@@ -452,9 +452,10 @@ def build(context, rig, parts):
             elif part.role == 'SKIRT':
                 _plan_skirt(rig, i, part, vertices, plan)
         actual, removed = _make_bones(context, rig, plan)
-        from . import eyes, look, mouth, shoulders
+        from . import eyes, look, mouth, shoulders, skirt_follow
         look.ensure(context, rig)
         shoulders.apply(context, rig)
+        skirt_follow.apply(rig, parts)  # before sway.sync gives the new chain bones their Spring constraints
         mouth.apply(context, rig, parts, result)
         _paint(context, rig, parts, owners, plan, actual, result)
         _drop_stale_groups(owners, removed, set(actual.values()))
