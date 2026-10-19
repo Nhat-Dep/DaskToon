@@ -349,6 +349,9 @@ def joints(context, objects, feet, height, skin=None):
     groups = [[evaluated(context, obj) for obj in group if obj.type == 'MESH'] for group in (skin or [], objects)]
     sections.centre_limbs(out, [group for group in groups if group], height)
     sections.centre_trunk(out, [group for group in groups if group], height)
+    if groups[0]:
+        from . import fingers
+        fingers.fit(out, groups[0], middle)
     return out
 
 
