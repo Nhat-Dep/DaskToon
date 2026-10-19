@@ -46,7 +46,8 @@ def turn(rig, child, axis, angle):
     at_rest(rig)
     bone = rig.data.bones[child]
     frame = bone.matrix_local.to_3x3()
-    rig.pose.bones[child].rotation_quaternion = (frame.inverted() @ Matrix.Rotation(angle, 3, axis) @ frame).to_quaternion()
+    turned = frame.inverted() @ Matrix.Rotation(angle, 3, axis) @ frame
+    rig.pose.bones[child].rotation_quaternion = turned.to_quaternion()
     bpy.context.view_layer.update()
 
 

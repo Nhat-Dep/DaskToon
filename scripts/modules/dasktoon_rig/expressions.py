@@ -7,8 +7,10 @@ key that moves nothing, or barely moves next to the mesh's other expressions, is
 
 Keys are known by their usual names (VRM 0.x, VRM 1.0, VRoid, ARKit), case aside, gathered in slots: a key of a slot
 is filled from another key of the same slot first ("happy" from "joy"), else by the slot's recipes, the first whose
-sources all move. A recipe adds sources times weights, each limited to a part: the character's left (+X) or right half,
-blended across the middle as Split Left / Right does, or the vertices a source moves up (or down). Slots fill in order,
+sources all move. A recipe adds sources times weights, each limited to a part: the character's left or right half,
+blended across the middle as Split Left / Right does, or the vertices a source moves up (or down). The character's left
+is +X of the armature of a humanoid rig deforming the mesh, its middle at the Hips (filie faces +Y in the scene, so her
+mesh's own +X is her right); a mesh without one uses its own X. Slots fill in order,
 so a key filled early can feed a later one. The rest face ("neutral") is never filled: VRM keeps it empty."""
 
 import re
@@ -71,13 +73,24 @@ def _offsets(key, block):
     return (co - base).reshape(-1, 3)
 
 
-def _part(offsets, rest, part):
+def _across(obj, rest):
+    """Per vertex, how far it is to the character's left of the middle (module docstring)."""
+    for modifier in obj.modifiers:
+        rig = modifier.object if modifier.type == 'ARMATURE' else None
+        hips = rig.data.bones.get("Hips") if rig is not None and rig.type == 'ARMATURE' else None
+        if hips is not None:
+            to_arm = rig.matrix_world.inverted() @ obj.matrix_world
+            return rest @ np.array(to_arm.to_3x3())[0] + to_arm.translation.x - hips.head_local.x
+    return rest[:, 0]
+
+
+def _part(offsets, across, part):
     if part == 'ALL':
         return offsets
     if part in ('UP', 'DOWN'):
         keep = offsets[:, 2] > NOTHING if part == 'UP' else offsets[:, 2] < -NOTHING
         return offsets * keep[:, None]
-    t = np.clip((rest[:, 0] + MIDDLE) / (2.0 * MIDDLE), 0.0, 1.0)
+    t = np.clip((across + MIDDLE) / (2.0 * MIDDLE), 0.0, 1.0)
     left = t * t * (3.0 - 2.0 * t)
     return offsets * (left if part == 'LEFT' else 1.0 - left)[:, None]
 
@@ -90,6 +103,7 @@ def fill(obj):
     rest = np.empty(len(key.reference_key.data) * 3)
     key.reference_key.data.foreach_get("co", rest)
     rest = rest.reshape(-1, 3)
+    across = _across(obj, rest)
     offsets = {b.name: _offsets(key, b) for b in key.key_blocks if b != key.reference_key}
     largest = {name: float(np.linalg.norm(o, axis=1).max()) if len(o) else 0.0 for name, o in offsets.items()}
     usual = [value for value in largest.values() if value > NOTHING]
@@ -118,7 +132,7 @@ def fill(obj):
                     names = [source(part_slot) for part_slot, _weight, _part_name in recipe]
                     if None in names:
                         continue
-                    made = sum(weight * _part(offsets[n], rest, part) for n, (_s, weight, part) in zip(names, recipe))
+                    made = sum(weight * _part(offsets[n], across, part) for n, (_s, weight, part) in zip(names, recipe))
                     how = " + ".join("%g %s%s" % (weight, n, "" if part == 'ALL' else " (%s)" % part.lower())
                                      for n, (_s, weight, part) in zip(names, recipe))
                     if np.linalg.norm(made, axis=1).max() >= floor:

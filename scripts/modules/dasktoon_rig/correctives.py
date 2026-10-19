@@ -75,7 +75,8 @@ def fixes(rig):
 
 def body_frame(rig):
     """(left, up, front) of the character at rest, unit vectors in armature space, from its upper legs, Hips and Head
-    (bones every engine gets); None without them. Unity's frame is mirrored: there front = up x left (here left x up)."""
+    (bones every engine gets); None without them. Unity's frame is mirrored: there front = up x left (here left x
+    up)."""
     bones = rig.data.bones
     if any(bones.get(name) is None for name in ("Hips", "Head", "LeftUpperLeg", "RightUpperLeg")):
         return None

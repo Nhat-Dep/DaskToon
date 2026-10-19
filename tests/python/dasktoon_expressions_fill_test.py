@@ -106,6 +106,26 @@ class FillTest(unittest.TestCase):
         np.testing.assert_allclose(offsets(obj, "a"), aa, atol=1e-6)
         self.assertIn("joy", filled["happy"])
 
+    def test_the_characters_left_comes_from_its_rig(self):
+        """filie (a real model) faces +Y in the scene: its mesh's own +X is the character's right. A mesh the rig
+        deforms takes the sides from the rig (the character's left at +X of the armature, the middle at its Hips)."""
+        import dasktoon_rig_regions_test as rt
+        blink = moving(1.2, 1.5, (0.0, 0.0, -0.1))
+        obj = face({})
+        rig, _objs = rt.rigged(reset=False)
+        for name, offsets_ in (("blink", blink), ("blink_L", None), ("blink_R", None)):
+            block = obj.shape_key_add(name=name, from_mix=False)
+            if offsets_ is not None:
+                block.data.foreach_set("co", (xs() + offsets_).ravel())
+        obj.rotation_euler.z = np.pi  # turned to face +Y, as filie
+        obj.location.x = rig.data.bones["Hips"].head_local.x
+        obj.modifiers.new("Armature", 'ARMATURE').object = rig
+        bpy.context.view_layer.update()
+        expressions.fill(obj)
+        x = xs()[:, 0]  # the mesh's own X: the character's right
+        np.testing.assert_allclose(offsets(obj, "blink_L")[x < -0.1], blink[x < -0.1], atol=1e-6)
+        np.testing.assert_allclose(offsets(obj, "blink_L")[x > 0.1], 0.0, atol=1e-6)
+
     def test_nothing_to_fill(self):
         obj = face({"a": moving(0.0, 0.5, (0, 0, -0.2)), "e": None})
         self.assertEqual(expressions.fill(obj), [])  # "e" needs "i" too

@@ -16,10 +16,10 @@ Eye whites painted on the face (pl1) would stay open, so the skin under each eye
 Body parts' meshes in front of the head inside the eye's outline (across and up) move as the eye does, fading back to
 rest MARGIN of the eye's size out of it. Hair and clothes never move.
 
-Keys, on each mesh holding eye pieces or skin under them: blink (both eyes onto the close line, a third of the way up, keeping KEEP of
-their height), blink_L and blink_R, joy (closed as an arc, its middle raised by ARCH of the eye's height) and surprised
-(WIDEN times bigger about the eye's centre, across and up). A key of the same expression (expressions.SLOTS) that moves
-is kept, an empty one filled, a missing one added under its VRM 0.x name."""
+Keys, on each mesh holding eye pieces or skin under them: blink (both eyes onto the close line, a third of the way up,
+keeping KEEP of their height), blink_L and blink_R, joy (closed as an arc, its middle raised by ARCH of the eye's
+height) and surprised (WIDEN times bigger about the eye's centre, across and up). A key of the same expression
+(expressions.SLOTS) that moves is kept, an empty one filled, a missing one added under its VRM 0.x name."""
 
 from typing import NamedTuple
 
