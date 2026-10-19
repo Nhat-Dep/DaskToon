@@ -366,6 +366,27 @@ class CentreLineTest(unittest.TestCase):
             ankle = world_head(rig, side + "Foot")
             self.assertAlmostEqual(ankle.y, depth_on(shin, ankle.z), delta=0.015, msg=side)
 
+    def test_the_ankles_above_long_shoes(self):
+        """Long shoes reaching far forward, many vertices along them: read beside the ankle, the depth was the shoe's
+        and the ankle sat over the middle of the foot, too far off the shin for the shin's line to bring it back (filie,
+        a real model: 23 cm forward)."""
+        body = polyline_chibi(self.ARM, self.LEG)
+        pieces = [tube(Vector((3.0 + s * 0.09, 0.55, 0.07)), Vector((3.0 + s * 0.09, 0.05, 0.07)), 0.07, rings=40)
+                  for s in (1.0, -1.0)]
+        verts, faces = [], []
+        for piece_verts, piece_faces in pieces:
+            faces += [tuple(i + len(verts) for i in face) for face in piece_faces]
+            verts += piece_verts
+        mesh = bpy.data.meshes.new("Shoes")
+        mesh.from_pydata(verts, [], faces)
+        shoes = bpy.data.objects.new("Shoes", mesh)
+        bpy.context.scene.collection.objects.link(shoes)
+        rig = skeleton.create_humanoid(bpy.context, 1.0, (0.0, 0.0, 0.0))
+        skeleton.fit(bpy.context, rig, [body, shoes], body=[body, shoes], skin=[body])
+        for side in ("Left", "Right"):
+            ankle = world_head(rig, side + "Foot")
+            self.assertAlmostEqual(ankle.y, 0.5, delta=0.03, msg=side)  # over the shin (y 0.5), not the shoe
+
     def test_the_wrists_follow_the_forearms(self):
         forearm = [(0.28, 0.0, 1.23), (0.46, 0.04, 1.02)]  # the wrist 4 cm back, the hand bending forward
         rig = self.fit(polyline_chibi([(0.12, 0.0, 1.42)] + forearm + [(0.53, -0.04, 0.94)], self.LEG))

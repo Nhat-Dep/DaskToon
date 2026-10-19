@@ -31,6 +31,8 @@ SLEEVE = (1.5, 0.2)  # past where an arm widens, a band keeping within this rati
 #                     sleeves); the band through the body spreads wider (only for arms: walking up from the legs, a
 #                     torso standing straight keeps the width of a sleeve)
 STANDS = 0.05  # (x height) a leg of the Body whose sole is this near the floor stands on it
+SHIN_UP = 0.15  # (x the leg's length) the ankle's depth is read on the shin this far above it: beside the ankle, a long
+#                 shoe's vertices outnumber the leg's (filie, a real model: the ankle sat 23 cm forward, over the foot)
 HIP_ABOVE = 0.1  # the hip joint is this part of the leg's length above where the leg meets the body
 ARM_UP = 0.57  # an arm is modelled hanging or level: a limb pointing up more than this (sine, 35 deg) is an ear or a
 #                twin tail reaching out wider than the hand (RGforGame), and the hand is looked for lower down
@@ -314,9 +316,10 @@ def joints(context, objects, feet, height, skin=None):
         if leg is not None:
             radius = max(leg.width / 2.0, 2.0 * shape.step)
             ankle_z = feet.z + (hip_z - feet.z) * template["LeftFoot"][0].z / HIP_Z
-            points = [leg.base + leg.axis * (z - leg.base[1]) / leg.axis[1] for z in (hip_z, ankle_z)]
-            ends["Leg", side] = tuple(Vector((point[0], shape.depth(point, radius, middle_y), point[1]))
-                                      for point in points)
+            hip, ankle, shin = (leg.base + leg.axis * (z - leg.base[1]) / leg.axis[1]
+                                for z in (hip_z, ankle_z, ankle_z + SHIN_UP * (hip_z - feet.z)))
+            ends["Leg", side] = (Vector((hip[0], shape.depth(hip, radius, middle_y), hip[1])),
+                                 Vector((ankle[0], shape.depth(shin, radius, middle_y), ankle[1])))
     for limb in ("Arm", "Leg"):  # both sides found: the average of each and the other mirrored, so the rig mirrors
         if (limb, 1) in ends and (limb, -1) in ends:
             left = tuple((a + _flip(b, middle)) / 2.0 for a, b in zip(ends[limb, 1], ends[limb, -1]))
