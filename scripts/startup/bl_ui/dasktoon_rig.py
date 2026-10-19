@@ -282,8 +282,8 @@ def skirt_below_waist(rig, part):
 
 
 def skirts_below_waist(rig):
-    """The auto rig makes the part below the waist of each Clothing mesh whose lower part looks like a skirt a skirt (the
-    user chose this, 2026-10-19, over the Check asking). Returns the names of those parts."""
+    """The auto rig makes a skirt of the part below the waist of each Clothing mesh whose lower part looks like one
+    (the user chose this, 2026-10-19, over the Check asking). Returns the names of those parts."""
     from dasktoon_rig import check
     parts = [part for part in rig.data.dasktoon_rig.parts if part.object is not None]
     names = [name for name, role, lower in check.role_issues(rig, parts) if role == 'SKIRT' and lower]
