@@ -50,6 +50,13 @@ eye's size out of it. Hair and clothes never move. Keys, on each mesh holding ey
 - joy: closed as an arc, its middle raised by 35% of the eye's height (the "^^" of a smiling anime face);
 - surprised: the eye 12% bigger about its centre.
 
+A mouth drawn on the face makes joy smile: the Body's face texture is read through its UVs below the eyes, on the
+mesh as shown with the rig at rest (pl1's Subdivision moves the drawing away from where its cage puts it), keeping only
+what shows from the front (pl1 has a pink inside of the mouth behind its face); the largest patch unlike the skin near
+the middle that is a wide line is the mouth, and the skin at its corners lifts by 18% of its width (nothing in the
+middle). On pl1 it finds the 0.13-wide line and smiles; filie's materials have no image, so no mouth is read. An open
+mouth ("a") is not made: stretching a drawn line hides it rather than opening it (tried on pl1).
+
 A key of the same expression that already moves is left alone; an empty one is filled; a missing one is added under its
 VRM 0.x name. The report names the keys made and the meshes.
 
@@ -64,9 +71,9 @@ VRM 0.x name. The report names the keys made and the meshes.
 
 ## Rulings (autonomous)
 
-1. Eyes only for the sculpt: the user's three characters without keys show no mouth geometry to move (pl1 draws it,
-   filie's is small cards). DaskToon's 2D mouth (atlas) already covers drawn mouths. Cost if wrong: mouth shapes still
-   to make by hand.
+1. Eyes, plus a smile for joy when the mouth is drawn on the face: the user's three characters without keys show no
+   mouth geometry to open (pl1 draws it, filie's is small cards), and stretching a drawn line hid it. DaskToon's 2D
+   mouth (atlas) covers A I U E O for drawn mouths. Cost if wrong: mouth shapes still to make by hand.
 2. Squashing the eye pieces and the skin under them to a line, not moving lids: these characters have no lids to
    move. Cost if wrong: the face around a closed eye is slightly flattened (seen in plain studio light, not in toon
    shading); a model whose iris shows above the lash line keeps a sliver of it.

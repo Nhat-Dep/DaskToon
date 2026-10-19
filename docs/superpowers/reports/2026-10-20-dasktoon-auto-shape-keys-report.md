@@ -55,8 +55,12 @@ trước mặt (lòng trắng, tròng, mi). Nút tìm hai nhóm mảnh đó và 
 Da mặt ngay dưới mắt cũng co theo, vì pl1 vẽ lòng trắng lên da. Tóc và quần áo không bị động tới. Mặt có hốc mắt (kiểu
 tdt) thì để nguyên.
 
-Kết quả trên bản sao: cả ba nhắm thành vạch gọn, nháy một bên đúng bên, "^^" rõ ở pl1 và filie. Miệng chưa làm: pl1
-vẽ miệng, filie miệng là mảnh nhỏ. Với miệng vẽ phẳng, dùng **miệng 2D** sẵn có.
+Kết quả trên bản sao: cả ba nhắm thành vạch gọn, nháy một bên đúng bên, "^^" rõ ở pl1 và filie.
+
+Miệng vẽ trên da (pl1): nút đọc ảnh da mặt qua UV để tìm vệt miệng, rồi cho **joy** nhếch hai khoé lên thành nụ
+cười. Phải đọc trên lưới đã chia nhỏ (Subdivision) và chỉ lấy phần nhìn thấy từ phía trước, vì pl1 có khoang miệng màu
+hồng nằm khuất sau mặt. Miệng há ("a") không làm được với miệng vẽ: kéo giãn vệt vẽ chỉ làm nó biến mất (đã thử). Với
+miệng vẽ, dùng **miệng 2D** sẵn có cho A I U E O.
 
 ## 4. Bản build bằng Visual Studio 2026
 
@@ -86,7 +90,7 @@ Nhờ vậy nhánh để riêng `dasktoon-spring-collide-on-reset` (lò xo đẩ
 | "Gần như trống" (dưới 15%) cũng tính là trống | Shape key cố ý làm nhẹ có thể bị thay; nút hoàn tác được và có báo tên |
 | Nặn mắt bằng ép dẹt, kéo cả da dưới mắt | Quanh mắt nhắm hơi phẳng đi (thấy dưới đèn studio, không thấy với đổ bóng toon) |
 | Lấp và nặn là nút bấm, không tự chạy khi gắn khung | Phải bấm tay một lần |
-| Chỉ mắt, chưa làm miệng | Miệng vẫn cần nặn tay hoặc dùng miệng 2D |
+| Miệng: chỉ nụ cười cho joy khi miệng vẽ trên da; không làm miệng há | A I U E O vẫn cần nặn tay hoặc dùng miệng 2D |
 
 ## Kiểm tra
 

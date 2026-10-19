@@ -170,6 +170,107 @@ class SkinTest(unittest.TestCase):
         self.assertLess(np.abs(offsets(body, "blink")[far]).max(), 1e-7)  # the back of the head, the body below
 
 
+def painted_face(rig, mouth=True):
+    """A Body part: a face sheet in front of the head, UV-mapped over its whole image, the image skin-coloured with a
+    dark mouth line (pl1, a real model, paints its mouth) 0.4 head below the head's centre, 0.2 head wide."""
+    from bl_ui import dasktoon_rig as ui
+    centre, size = head_frame(rig)
+    n = 25
+    us = np.linspace(0.0, 1.0, n)
+    verts = [(centre.x + size * (u - 0.5) * 0.8, centre.y - 0.6 * size, centre.z + size * (-0.7 + 0.6 * v))
+             for v in us for u in us]
+    faces = [(r * n + c, r * n + c + 1, (r + 1) * n + c + 1, (r + 1) * n + c) for r in range(n - 1)
+             for c in range(n - 1)]
+    mesh = bpy.data.meshes.new("Face")
+    mesh.from_pydata(verts, [], faces)
+    layer = mesh.uv_layers.new(name="UVMap")
+    for loop in mesh.loops:
+        i = loop.vertex_index
+        layer.data[loop.index].uv = (us[i % n], us[i // n])
+    res = 128
+    image = bpy.data.images.new("FaceTex", res, res)
+    px = np.empty((res, res, 4), np.float32)
+    px[:] = (0.98, 0.9, 0.83, 1.0)
+    if mouth:  # z = -0.4 head: v = 0.5; x within 0.2 head: u from 0.375 to 0.625
+        px[62:66, 48:80] = (0.85, 0.35, 0.5, 1.0)  # rows are v, from the bottom
+    image.pixels.foreach_set(px.ravel())
+    mat = bpy.data.materials.new("Skin")
+    mat.use_nodes = True
+    tex = mat.node_tree.nodes.new('ShaderNodeTexImage')
+    tex.image = image
+    mesh.materials.append(mat)
+    obj = bpy.data.objects.new("Face", mesh)
+    bpy.context.scene.collection.objects.link(obj)
+    obj.modifiers.new("Armature", 'ARMATURE').object = rig
+    ui.add_part(rig, obj, 'BODY')
+    return obj
+
+
+class DrawnMouthTest(unittest.TestCase):
+    """joy smiles with a mouth drawn on the face: the skin at its corners lifts, its middle stays."""
+
+    def test_joy_lifts_the_corners(self):
+        rig, _objs, eyes = character()
+        face = painted_face(rig)
+        mouth = eye_shapes.drawn_mouth(rig, [face, eyes], eye_shapes.find_eyes(rig, [eyes]))
+        centre, size = head_frame(rig)
+        self.assertIsNotNone(mouth)
+        middle, half = mouth
+        self.assertAlmostEqual(middle[0], centre.x, delta=0.03 * size)
+        self.assertAlmostEqual(middle[2], centre.z - 0.4 * size, delta=0.03 * size)
+        self.assertAlmostEqual(half, 0.1 * size, delta=0.03 * size)
+        eye_shapes.sculpt(rig, [eyes, face])
+        rest_arm = np.array([v.co for v in face.data.vertices])  # no transforms here
+        moved = offsets(face, "joy")
+        rel_x = (rest_arm[:, 0] - middle[0]) / half
+        on_line = np.abs(rest_arm[:, 2] - middle[2]) < 0.03 * size
+        corners = on_line & (np.abs(np.abs(rel_x) - 1.0) < 0.2)
+        centre_line = on_line & (np.abs(rel_x) < 0.1)
+        self.assertGreater(moved[corners, 2].min(), 0.02 * half)
+        self.assertLess(np.abs(moved[centre_line, 2]).max(), 0.02 * half + 1e-7)
+        np.testing.assert_allclose(moved[:, :2], 0.0, atol=1e-7)  # only up
+        self.assertLess(np.abs(offsets(face, "blink")[corners]).max(), 1e-7)  # the blink leaves the mouth
+
+    def test_a_hidden_mouth_inside_is_not_the_drawing(self):
+        """pl1 (a real model) has a pink inside of the mouth behind its face: only what shows from the front counts."""
+        rig, _objs, eyes = character()
+        face = painted_face(rig)
+        centre, size = head_frame(rig)
+        n = 6
+        us = np.linspace(-0.3, 0.3, n)
+        verts = [(centre.x + size * u, centre.y - 0.5 * size, centre.z + size * (-0.4 + 0.2 * v))
+                 for v in us for u in us]
+        faces = [(r * n + c, r * n + c + 1, (r + 1) * n + c + 1, (r + 1) * n + c) for r in range(n - 1)
+                 for c in range(n - 1)]
+        inside = bpy.data.meshes.new("Inside")
+        inside.from_pydata(verts, [], faces)
+        inside.uv_layers.new(name="UVMap")  # every UV at 0: a pink corner of its own image
+        pink = bpy.data.images.new("Pink", 4, 4)
+        pink.pixels.foreach_set(np.tile((0.85, 0.35, 0.5, 1.0), 16).astype(np.float32))
+        mat = bpy.data.materials.new("Inside")
+        mat.use_nodes = True
+        mat.node_tree.nodes.new('ShaderNodeTexImage').image = pink
+        inside.materials.append(mat)
+        face.data.update()
+        import bmesh
+        bm = bmesh.new()
+        bm.from_mesh(face.data)
+        bm.from_mesh(inside)  # in the Body's mesh, behind its face
+        bm.to_mesh(face.data)
+        bm.free()
+        face.data.materials.append(mat)
+        for poly in face.data.polygons[-len(faces):]:
+            poly.material_index = 1
+        mouth = eye_shapes.drawn_mouth(rig, [face, eyes], eye_shapes.find_eyes(rig, [eyes]))
+        self.assertIsNotNone(mouth)
+        self.assertAlmostEqual(mouth[1], 0.1 * size, delta=0.03 * size)
+
+    def test_no_drawing_no_smile(self):
+        rig, _objs, eyes = character()
+        face = painted_face(rig, mouth=False)
+        self.assertIsNone(eye_shapes.drawn_mouth(rig, [face, eyes], eye_shapes.find_eyes(rig, [eyes])))
+
+
 class ExistingKeysTest(unittest.TestCase):
     def test_keys_that_move_are_kept_and_empty_ones_filled(self):
         rig, objs, eyes = character()
