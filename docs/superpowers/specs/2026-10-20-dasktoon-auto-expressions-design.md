@@ -34,9 +34,11 @@ lip).
 A button in Shape Keys › Expression Sets, for a character with a DaskToon rig (Head bone). It finds each eye as the
 loose pieces in front of the head: in the head's frame (centre of the Head bone, its length as the unit, the character
 facing -Y), a piece whose centre is in front (y < -0.15), to the side (0.06 < |x| < 0.5), at eye height
-(-0.5 < z < 0.2) and smaller than 0.45 across; the pieces on one side make that eye. Both eyes are needed. A face
-with an eye socket (the eye pieces sit inside a hole of a bigger piece) is left alone: closing a socket needs its lids
-moved, which this does not do.
+(-0.5 < z < 0.2), smaller than 0.45 across and of 3 vertices or more; the pieces on one side make that eye. Both
+eyes are needed. Hair parts are left out (a lock of filie's hair hangs in front of an eye). A face with an eye socket
+(open edges of another piece all around an eye, leaving no gap wider than 1.5 radians) is left alone: closing a
+socket needs its lids moved, which this does not do. The edge of the hair along the forehead crosses the eyes (pl1)
+but does not go around them, so it is no socket.
 
 For each eye, the close line is a third of the way up from its lowest point. Keys, on each mesh holding eye pieces:
 
@@ -47,6 +49,15 @@ For each eye, the close line is a third of the way up from its lowest point. Key
 
 A key of the same expression that already moves is left alone; an empty one is filled; a missing one is added under its
 VRM 0.x name. The report names the keys made and the meshes.
+
+## On the user's characters (copies, 2026-10-20)
+
+- filie: both eyes found (eye "mat" and lashes "mi"); closed, the eyes leave the lash line on her skin; joy arcs;
+  surprised widens. Works.
+- pl1: both eyes found (three pieces each in the body mesh); iris and lashes close to a line, but the eye whites are
+  painted on the face texture under them and stay visible. Needs the whites as a piece (or painted over) to look shut.
+- RGforGame: both eyes found; one eye closes to a line, the other shows a white layer that sat behind a skin-coloured
+  piece of the eye. Its eyes are built unusually (at rest they already differ).
 
 ## Rulings (autonomous)
 

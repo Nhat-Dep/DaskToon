@@ -344,6 +344,12 @@ VI = {
     "Filled %d shape keys: %s": "Đã lấp %d hình mẫu: %s",
     "No empty expression could be built from the others":
         "Không có biểu cảm trống nào dựng được từ các biểu cảm khác",
+    "Sculpt Eye Expressions": "Nặn biểu cảm mắt",
+    "Make blink, blink_L, blink_R, joy and surprised for eyes built from loose pieces in front of the face":
+        "Tạo nhắm mắt, nhắm mắt trái, nhắm mắt phải, vui và ngạc nhiên cho mắt làm bằng các mảnh rời đặt trước mặt",
+    "Sculpted %s on %s": "Đã nặn %s trên %s",
+    "No eyes made of loose pieces in front of the face, or their keys already move: nothing sculpted":
+        "Không thấy mắt làm bằng mảnh rời trước mặt, hoặc các hình mẫu đó đã có sẵn: không nặn gì",
     "Convert Naming": "Đổi chuẩn tên",
     "Rename shape keys from one naming standard to another (VRoid, VRM 0.x, VRM 1.0)":
         "Đổi tên hình mẫu từ chuẩn tên này sang chuẩn tên khác (VRoid, VRM 0.x, VRM 1.0)",

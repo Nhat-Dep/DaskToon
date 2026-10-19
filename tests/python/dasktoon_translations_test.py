@@ -65,6 +65,7 @@ TRANSLATED = [
     "scripts/modules/dasktoon_rig/skirt_follow.py",
     "scripts/modules/dasktoon_rig/correctives.py",
     "scripts/modules/dasktoon_rig/expressions.py",
+    "scripts/modules/dasktoon_rig/eye_shapes.py",
     "scripts/modules/dasktoon_rig/chains.py",
     "scripts/modules/dasktoon_rig/parts.py",
     "scripts/modules/dasktoon_rig/weights.py",
