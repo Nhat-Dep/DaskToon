@@ -34,6 +34,7 @@ TRANSLATED = [
     "scripts/modules/dasktoon_export/bake.py",
     "scripts/modules/dasktoon_export/face_shading.py",
     "scripts/modules/dasktoon_export/graph.py",
+    "scripts/modules/dasktoon_export/merge.py",
     "scripts/modules/dasktoon_export/model_fbx.py",
     "scripts/modules/dasktoon_export/node_maps.py",
     "scripts/modules/dasktoon_export/report.py",

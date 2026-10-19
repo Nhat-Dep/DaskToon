@@ -135,3 +135,16 @@ Phần váy theo đùi ở trên đã giải quyết việc váy khi ngồi mà 
 **Còn thấy, chưa làm:** RG2 có bộ làm mượt "Auto Smooth" trên từng lưới, không vào FBX (báo cáo xuất có ghi).
 
 Kiểm tra cuối: bộ thử đầy đủ 694 bài đạt (shading/upgrade đạt sau khi khôi phục dữ liệu thử), Unity 7/7 đạt.
+
+## 10. Tự gộp lưới khi xuất (2026-10-20)
+
+Bạn chọn: gộp các lưới của nhân vật thành một khi xuất, mỗi vật liệu giữ riêng, có ô tick **"Gộp lưới nhân vật thành
+một"** trong Engine Export (mặc định bật). File đang làm giữ nguyên, chỉ bản xuất được gộp.
+
+- Gộp các lưới do khung xương nhân vật làm biến dạng. Vật không có trọng số khung xương (ví dụ kiếm gắn vào xương tay)
+  vẫn để riêng; model không có khung xương thì không gộp.
+- Lưới gộp mang tên lưới Thân. Lớp UV dùng để vẽ của mỗi lưới được đặt chung tên "UVMap" trước khi gộp (nếu không,
+  Unity đọc sai UV và ảnh hỏng). Shape key gộp theo tên và đi theo lưới gốc, nên clip vẫn có biểu cảm.
+- Mắt dẹt và miệng 2D: `rig.json` trỏ vào lưới gộp; Unity tìm vật liệu theo tên nên vẫn chạy (bài thử Unity của mặt đạt).
+- RG2: gộp 5 lưới thành một, 5 vật liệu, UV đúng; Unity nhận khung người hợp lệ, clip Wave đúng.
+- Báo cáo xuất ghi: "Đã gộp N lưới của nhân vật thành một: <tên>".

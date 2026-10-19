@@ -46,6 +46,9 @@ class EXPORT_SCENE_OT_dasktoon_engine(Operator):
         default='FBX')
     use_selection: BoolProperty(name="Selected Objects Only", default=True)
     include_animation: BoolProperty(name="Include Animation", default=True)
+    merge_meshes: BoolProperty(
+        name="Merge the Character's Meshes", default=True,
+        description="One mesh for the character in Unity, each material kept; the file you work on stays as it is")
     export_materials: BoolProperty(name="Export Materials and Shaders", default=True)
     bake_size: IntProperty(name="Bake Size", default=1024, min=64, max=8192, subtype='PIXEL')
     bake_samples: IntProperty(name="Bake Samples", default=16, min=1, max=4096)
@@ -67,6 +70,9 @@ class EXPORT_SCENE_OT_dasktoon_engine(Operator):
         row = layout.row()
         row.enabled = self.model_format == 'FBX'
         row.prop(self, "include_animation")
+        row = layout.row()
+        row.enabled = self.model_format == 'FBX'
+        row.prop(self, "merge_meshes")
         layout.prop(self, "export_materials")
         col = layout.column(align=True)
         col.enabled = self.export_materials
@@ -99,7 +105,8 @@ class EXPORT_SCENE_OT_dasktoon_engine(Operator):
         target = targets.make_target(directory, targets.blend_name(bpy.data.filepath), self.engine)
         options = dasktoon_export.ExportOptions(
             model_format=self.model_format, include_animation=self.include_animation,
-            export_materials=self.export_materials, bake_size=self.bake_size, bake_samples=self.bake_samples)
+            export_materials=self.export_materials, bake_size=self.bake_size, bake_samples=self.bake_samples,
+            merge_meshes=self.merge_meshes)
         rep = dasktoon_export.export_model(context, target, objects, options)
         targets.remember_target(context.scene, self.directory, self.engine)
         report.show_popup(rep)

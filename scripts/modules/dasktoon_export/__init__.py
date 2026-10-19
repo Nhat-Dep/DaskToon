@@ -22,6 +22,7 @@ class ExportOptions:
     export_materials: bool = True
     bake_size: int = 1024
     bake_samples: int = 16
+    merge_meshes: bool = True  # the character's meshes into one (merge.py)
 
 
 def safe_name(name):
@@ -203,12 +204,13 @@ def _keyed_runtime_parts(rig):
     return out
 
 
-def _write_rig(target, writer, model_dir, objects, rep):
-    """<Model>.rig.json beside the FBX and the Unity scripts, for an armature with chains (anime rig spec 9.5).
-    Returns the armature, or None when there is nothing to write."""
+def _write_rig(target, writer, model_dir, objects, rep, renamed=None):
+    """<Model>.rig.json beside the FBX and the Unity scripts, for an armature with chains (anime rig spec 9.5); its
+    face parts name the meshes as `renamed` ({original name: name in the FBX}) says. Returns the armature, or None
+    when there is nothing to write."""
     from . import assets, rig_json, scripts_install, unity_yaml
     rig = rig_json.find_rig(objects)
-    data = rig_json.rig_data(rig) if rig is not None else None
+    data = rig_json.rig_data(rig, renamed) if rig is not None else None
     if data is None:
         return None
     rel = "%s/%s.rig.json" % (model_dir, safe_name(target.name))
@@ -302,38 +304,51 @@ def _write_model(context, target, objects, meshes, options, rep):
         meta = unity_yaml.model_meta(guid, mat_guids, animation, blend_shape_normals=not rep.face_meshes,
                                      humanoid=_humanoid(objects))
         left_out = []
-
-        def write_fbx(path):
-            left_out.extend(model_fbx.write_fbx(context, objects, path, animation))
-
-        # The rig file goes first, so Unity finds it when it imports the FBX.
-        rig = _write_rig(target, writer, model_dir, objects, rep)
-        if rig is None and (clip_rig is not None or _humanoid(objects)):
-            # DaskToon's importer makes the Humanoid avatar and lets the clips copy it.
-            from . import scripts_install
-            rep.scripts = 'INSTALLED' if scripts_install.install_scripts(target, rep.warnings) else 'UP_TO_DATE'
-        if rig is not None:
-            from dasktoon_rig import sway
-            from . import rig_json
-            quiet = sway.suppressed(rig, rig_json.runtime_parts(rig))  # Unity sways these chains itself
-        else:
-            quiet = contextlib.nullcontext()
-        with quiet:
-            with contextlib.ExitStack() as rest:
-                if not animation:
-                    # The model holds the eyes at rest (Unity measures flat eyes from it); clips keep their gaze.
-                    from dasktoon_rig import look
-                    for obj in objects:
-                        if obj.type == 'ARMATURE':
-                            rest.enter_context(look.resting(obj))
-                if assets.write_asset(target.root, rel, guid, meta, rep.warnings, writer=write_fbx):
-                    rep.model = rel
-            if clip_rig is not None:
-                _write_clips(context, target, writer, model_dir, objects, clip_rig, guid, rep)
+        from . import merge
+        merging = merge.merged(context, objects) if options.merge_meshes else contextlib.nullcontext((objects, {}))
+        with merging as (objects, renamed):
+            if renamed:
+                rep.merged = (len(renamed), next(iter(renamed.values())))
+            _write_fbx_files(context, target, writer, model_dir, objects, rep, rel, guid, meta, animation, clip_rig,
+                             left_out, renamed)
         if left_out:
             rep.warnings.append(rpt_("Not in the FBX: %s (not in the current view layer, for example in an excluded "
                                      "collection)") % ", ".join(left_out))
     return writer
+
+
+def _write_fbx_files(context, target, writer, model_dir, objects, rep, rel, guid, meta, animation, clip_rig, left_out,
+                     renamed):
+    """The rig file, the model's FBX and the clips' (`objects` with the character's meshes merged, when they are)."""
+    from . import assets, model_fbx
+
+    def write_fbx(path):
+        left_out.extend(model_fbx.write_fbx(context, objects, path, animation))
+
+    # The rig file goes first, so Unity finds it when it imports the FBX.
+    rig = _write_rig(target, writer, model_dir, objects, rep, renamed)
+    if rig is None and (clip_rig is not None or _humanoid(objects)):
+        # DaskToon's importer makes the Humanoid avatar and lets the clips copy it.
+        from . import scripts_install
+        rep.scripts = 'INSTALLED' if scripts_install.install_scripts(target, rep.warnings) else 'UP_TO_DATE'
+    if rig is not None:
+        from dasktoon_rig import sway
+        from . import rig_json
+        quiet = sway.suppressed(rig, rig_json.runtime_parts(rig))  # Unity sways these chains itself
+    else:
+        quiet = contextlib.nullcontext()
+    with quiet:
+        with contextlib.ExitStack() as rest:
+            if not animation:
+                # The model holds the eyes at rest (Unity measures flat eyes from it); clips keep their gaze.
+                from dasktoon_rig import look
+                for obj in objects:
+                    if obj.type == 'ARMATURE':
+                        rest.enter_context(look.resting(obj))
+            if assets.write_asset(target.root, rel, guid, meta, rep.warnings, writer=write_fbx):
+                rep.model = rel
+        if clip_rig is not None:
+            _write_clips(context, target, writer, model_dir, objects, clip_rig, guid, rep)
 
 
 def export_model(context, target, objects, options):

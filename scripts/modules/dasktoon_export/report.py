@@ -36,6 +36,7 @@ class Report:
     rig: str = ""
     scripts: str = 'SKIPPED'
     clips: list = field(default_factory=list)  # [(name, loop)] written as <Model>@<Clip>.fbx
+    merged: tuple = ()  # (how many meshes, the name of the one they became)
     materials: list = field(default_factory=list)
     skipped: list = field(default_factory=list)
     baked: list = field(default_factory=list)
@@ -56,6 +57,8 @@ class Report:
         out = [rpt_("Destination: %s (%s)") % (self.root, where), rpt_(SHADER_STATE[self.shaders])]
         if self.model:
             out.append(rpt_("Model: %s") % self.model)
+        if self.merged:
+            out.append(rpt_("Merged %d meshes of the character into one: %s") % self.merged)
         if self.rig:
             out.append(rpt_("Rig: %s (DaskToon spring bones sway the hair and skirts in Unity)") % self.rig)
         if self.scripts != 'SKIPPED':

@@ -17,8 +17,8 @@ def _length(rig, bone):
     return (world @ bone.tail_local - world @ bone.head_local).length
 
 
-def _face(rig):
-    """(flat eyes, mouths) of the rig file."""
+def _face(rig, renamed=None):
+    """(flat eyes, mouths) of the rig file; `renamed` ({original name: name in the FBX}) names the meshes merged."""
     from dasktoon_rig import eyes, mouth, parts as rig_parts
     flat_eyes, mouths = [], []
     data = getattr(rig.data, "dasktoon_rig", None)
@@ -27,7 +27,8 @@ def _face(rig):
             continue
         vertices = rig_parts.part_vertices(part)
         slot, mat = (rig_parts.part_materials(part, vertices) or [(0, None)])[0]
-        entry = {"object": part.object.name, "material": mat.name if mat is not None else "", "slot": slot}
+        name = (renamed or {}).get(part.object.name, part.object.name)
+        entry = {"object": name, "material": mat.name if mat is not None else "", "slot": slot}
         if part.role == 'FLAT_EYE':
             entry.update(side=eyes.side_of(rig, part, vertices), range=round(part.eye_range, 6))
             flat_eyes.append(entry)
@@ -37,11 +38,12 @@ def _face(rig):
     return flat_eyes, mouths
 
 
-def rig_data(rig):
-    """The json-ready dict of an armature with chains Build Rig made, flat eyes or 2D mouths; None without any."""
+def rig_data(rig, renamed=None):
+    """The json-ready dict of an armature with chains Build Rig made, flat eyes or 2D mouths; None without any.
+    `renamed` ({original name: name in the FBX}) names the meshes Engine Export merged."""
     from dasktoon_rig import spring, sway
     found = sway.chains(rig)
-    flat_eyes, mouths = _face(rig)
+    flat_eyes, mouths = _face(rig, renamed)
     if not found and not flat_eyes and not mouths:
         return None
     data = rig.data.dasktoon_rig

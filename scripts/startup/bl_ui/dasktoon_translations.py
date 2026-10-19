@@ -29,6 +29,10 @@ VI = {
     "No Model": "Không xuất model",
     "Export only the materials and shaders": "Chỉ xuất material và shader",
     "Include Animation": "Kèm animation",
+    "Merge the Character's Meshes": "Gộp lưới nhân vật thành một",
+    "One mesh for the character in Unity, each material kept; the file you work on stays as it is":
+        "Unity nhận một lưới cho nhân vật, mỗi material giữ riêng; file đang làm giữ nguyên",
+    "Merged %d meshes of the character into one: %s": "Đã gộp %d lưới của nhân vật thành một: %s",
     "Export Materials and Shaders": "Xuất material và shader",
     "Bake Size": "Cỡ ảnh bake",
     "Writes straight into the Unity project": "Ghi thẳng vào project Unity",
