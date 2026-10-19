@@ -38,6 +38,8 @@ BODY_ROLES = ('BODY', 'CLOTHING')
 BAND = 0.09  # (x height) along the mesh, a limb's bones keep a share fading from whole to nothing past the limb (narrower,
 # the coarse buttocks of the real models tore across one edge when sitting)
 SHOULDER_KEEP = (0.6, 1.3)  # (x its length) the shoulder bone keeps all its weight this near itself, nothing past
+ARM_TIPS = 0.2  # a loose piece lying wholly above the shoulders with at most this share of its vertices on an arm is on
+#                the head (RG2's hair, ears and twin tails are one piece; the tips of the twin tails hung by the hands)
 SIDE_SHARE = 0.1  # a piece with at most this share of its arm's or leg's vertices on the other side is of one side
 LOCK_SETTINGS = ("role", "bone", "bone_count", "chain_count", "stiffness", "gravity", "drag", "radius", "sway_in_unity")
 LOCK_KEEP = 0.5  # a new lock at least this much over an old one (share of its vertices) keeps the old one's settings
@@ -166,6 +168,18 @@ def one_side(labelled, vertices, edges):
     return out
 
 
+def head_tips(labelled, world, edges, shoulder_z):
+    """`labelled` (regions of the points `world`) with the arm points of each loose piece (along `edges`, indices into
+    `world`) lying wholly above `shoulder_z` made the head's, when they are at most ARM_TIPS of the piece."""
+    out = labelled.copy()
+    arm = np.isin(out, [REGIONS.index('ARM_L'), REGIONS.index('ARM_R')])
+    for piece in chains.components(len(world), edges):
+        tips = piece[arm[piece]]
+        if len(tips) and world[piece, 2].min() > shoulder_z and len(tips) <= ARM_TIPS * len(piece):
+            out[tips] = REGIONS.index('HEAD')
+    return out
+
+
 def head_pieces(rig, world, edges, vertices, height):
     """The loose pieces of `vertices` (mesh indices) hanging from the head: their top above the neck joint, their
     bottom above the hip joint, and not surrounding the neck (the skin of the face and neck does)."""
@@ -272,6 +286,7 @@ def analyse(context, rig, parts, owners=None):
     found.height = height
     found.half = half_widths(context, rig, objects, height, feet)
     middle = float(rig_parts.bone_segment(rig, "Hips")[0][0])
+    shoulder_z = max(float(rig_parts.bone_segment(rig, side + "UpperArm")[0][2]) for side in ("Left", "Right"))
     named = []
     for obj, vertices in vertices_of.items():
         world, edges = rig_parts.mesh_arrays(obj)
@@ -279,8 +294,9 @@ def analyse(context, rig, parts, owners=None):
         head = np.zeros(len(world), bool)
         for piece in pieces:
             head[piece] = True
-        found.objects[obj] = (vertices, one_side(labels(rig, world[vertices], found.half, head[vertices]), vertices,
-                                                 rig_parts.local_edges(edges, vertices)))
+        local = rig_parts.local_edges(edges, vertices)
+        labelled = one_side(labels(rig, world[vertices], found.half, head[vertices]), vertices, local)
+        found.objects[obj] = (vertices, head_tips(labelled, world[vertices], local, shoulder_z))
         if pieces:
             named += [(_side_of(world, g, middle, height), float(world[g, 2].max()), (obj, g))
                       for g in _groups(pieces, world, LOCK_GAP * height)]
