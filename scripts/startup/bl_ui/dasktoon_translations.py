@@ -92,6 +92,19 @@ VI = {
         "Mesh chưa có khối trứng: bấm Tạo bóng mặt anime hoặc Căn lại khối trứng",
     "Proxy %s is not in the open view layer": "Khối trứng %s không nằm trong view layer đang mở",
 
+    # bl_ui/dasktoon_material_convert.py
+    "Use DaskToon Shader": "Dùng shader DaskToon",
+    "Use DaskToon Shader on All Selected": "Dùng shader DaskToon cho mọi object đang chọn",
+    "Give materials DaskToon's Anime BSDF with an outline, keeping their colour or texture; the old nodes stay":
+        "Cho material dùng Anime BSDF của DaskToon có viền, giữ màu hoặc texture cũ; các node cũ vẫn giữ lại",
+    "Which materials to change": "Material nào cần đổi",
+    "This Material": "Material này",
+    "The active material only": "Chỉ material đang chọn",
+    "All of the Selected Objects": "Mọi object đang chọn",
+    "Every material of the selected objects": "Mọi material của các object đang chọn",
+    "No materials to change": "Không có material nào để đổi",
+    "DaskToon shader on %d materials, %d left as they were": "Đã dùng shader DaskToon cho %d material, giữ nguyên %d",
+
     # bl_ui/dasktoon_material_combiner.py
     "Combine Materials": "Gộp material",
     "Bake all material slots into one atlas texture and one Anime BSDF material, so the viewport draws faster":

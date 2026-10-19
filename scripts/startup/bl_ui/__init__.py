@@ -73,6 +73,7 @@ _modules = [
     "dasktoon_anime_fx",
     "dasktoon_face_shading",
     "dasktoon_material_combiner",
+    "dasktoon_material_convert",
     "dasktoon_shape_key_manager",
     "dasktoon_rig",
     "dasktoon_animation",
