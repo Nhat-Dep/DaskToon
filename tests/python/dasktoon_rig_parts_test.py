@@ -31,6 +31,7 @@ class NameTest(unittest.TestCase):
             "Skirt": 'SKIRT', "V\u00e1y": 'SKIRT', "Eye_L": 'ACCESSORY', "Hat": 'ACCESSORY', "Shirt": 'CLOTHING',
             "Body": 'BODY', "Face": 'BODY', "Chatty": None, "Mesh": None,
             "mat": 'ACCESSORY', "Mắt": 'ACCESSORY',  # Vietnamese: eyes (Luna's and filie's)
+            "Mặt": None,  # Vietnamese: the face, "mat" too once its accents go
         }
         for name, role in cases.items():
             self.assertEqual(parts.guess_role(name), role, name)

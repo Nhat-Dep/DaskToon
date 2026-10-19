@@ -34,6 +34,7 @@ WORDS = (
     ('BODY', {"body", "skin", "face", "head"}),
 )
 EYE_WORDS = {"eye", "eyes", "eyeball", "mat"}  # an Accessory so named is the eyes ("mat": Vietnamese "eye")
+FACE_MARKS = (chr(0x1EB7), chr(0x1EB6))  # "a" with a dot below and a breve: the face, "mat" too unaccented; no eyes
 MARKS = (('HAIR', "\u9aea"), ('SKIRT', "\u30b9\u30ab\u30fc\u30c8"), ('ACCESSORY', "\u76ee"), ('CLOTHING', "\u670d"),
          ('BODY', "\u4f53"))
 
@@ -81,9 +82,17 @@ def ascii_name(name):
     return re.sub(r"[^A-Za-z0-9]+", "", _plain(name)) or "Part"
 
 
+def _name_words(name):
+    """The words of a name for guessing its role: "mat" only when it is not the face (with its accents)."""
+    found = set(words(name))
+    if any(mark in name for mark in FACE_MARKS):
+        found.discard("mat")
+    return found
+
+
 def guess_role(name):
     """The role a name suggests (spec 5.3), or None; the first role of WORDS that matches wins."""
-    found = set(words(name))
+    found = _name_words(name)
     for role, keys in WORDS:
         if found & keys:
             return role
@@ -95,7 +104,26 @@ def guess_role(name):
 
 def is_eye(name):
     """True when a part's name says it is eyes (an Accessory: each loose piece follows the eye on its side)."""
-    return bool(set(words(name)) & EYE_WORDS)
+    return bool(_name_words(name) & EYE_WORDS)
+
+
+def eye_by_mat_only(name):
+    """True when only "mat" (Vietnamese eyes, unaccented) says the part is eyes: the user chose (2026-10-19) that it is
+    eyes only when it lies on the head (on_head_in_small_pieces)."""
+    return _name_words(name) & EYE_WORDS == {"mat"}
+
+
+def on_head_in_small_pieces(rig, obj):
+    """True when the mesh of `obj` lies on the head of `rig` (fitted) in pieces small beside the head, as eyes do; a
+    face or a patch elsewhere does not."""
+    world, edges = mesh_arrays(obj)
+    if not len(world):
+        return False
+    base, top = bone_segment(rig, "Head")
+    size = top[2] - base[2]
+    if size <= 0.0 or world[:, 2].min() < base[2] - 0.1 * size:
+        return False
+    return all(np.ptp(world[piece], axis=0).max() <= size / 3.0 for piece in pieces(edges, np.arange(len(world))))
 
 
 def _height(obj):

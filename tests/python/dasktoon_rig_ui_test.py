@@ -13,6 +13,7 @@ import unittest
 
 import bpy
 import numpy as np
+from mathutils import Vector
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import dasktoon_i18n_utils as iu  # noqa: E402
@@ -21,7 +22,7 @@ import dasktoon_rig_regions_test as rt  # noqa: E402
 import dasktoon_test_utils as tu  # noqa: E402
 from bl_ui import dasktoon_rig as ui  # noqa: E402
 from bl_ui import dasktoon_translations as dt  # noqa: E402
-from dasktoon_rig import skeleton  # noqa: E402
+from dasktoon_rig import parts as rig_parts, skeleton  # noqa: E402
 
 
 def facing_the_back():
@@ -170,6 +171,38 @@ class AddTest(unittest.TestCase):
         self.assertTrue(properties_spaces())
         self.assertEqual({space.context for space in properties_spaces()}, {'DATA'})
         self.assertTrue(rig.select_get())
+
+    def test_add_makes_a_skirt_of_a_dress_below_the_waist(self):
+        """The user chose (2026-10-19) that the auto rig makes the part of a dress below the waist a skirt itself,
+        instead of the Check asking."""
+        objs = chibi_meshes()
+        dress = rt.merged("Circle.011", [rt.st.tube((0, 0, 1.4), (0, 0, 1.0), 0.21),
+                                         rt.st.tube((0, 0, 1.0), (0, 0, 0.62), 0.22)])
+        for v in dress.data.vertices:
+            if v.co.z < 0.8:
+                v.co.x *= 1.4
+                v.co.y *= 1.4
+        select_only(list(objs.values()) + [dress], objs["Body"])
+        self.assertEqual(bpy.ops.dasktoon.rig_add_humanoid(), {'FINISHED'})
+        data = bpy.context.view_layer.objects.active.data
+        skirt = next(part for part in data.dasktoon_rig.parts if part.role == 'SKIRT')
+        self.assertEqual((skirt.name, skirt.object, skirt.scope), ("Circle.011 Skirt", dress, 'VERTEX_GROUP'))
+        self.assertIn(rig_parts.ascii_name("Circle.011 Skirt") + "1_1", data.bones)
+        self.assertEqual([item.part for item in data.dasktoon_rig.issues if item.kind == 'ROLE'], [])
+
+    def test_add_takes_mat_for_eyes_only_on_the_head(self):
+        """"mat" (Vietnamese eyes, unaccented) is an eye Accessory only when it lies on the head in small pieces (the
+        user's choice, 2026-10-19): a patch on the belly so named is Clothing."""
+        objs = chibi_meshes()
+        eyes = rt.merged("mat", [rt.st.tube((s * 0.1, -0.3, 1.72), (s * 0.1, -0.33, 1.72), 0.035) for s in (1, -1)])
+        patch = rt.merged("mat.001", [rt.st.tube((0.0, -0.2, 1.1), (0.0, -0.23, 1.1), 0.05)])
+        select_only(list(objs.values()) + [eyes, patch], objs["Body"])
+        self.assertEqual(bpy.ops.dasktoon.rig_add_humanoid(), {'FINISHED'})
+        rig = bpy.context.view_layer.objects.active
+        roles = {part.object.name: part.role for part in rig.data.dasktoon_rig.parts if part.scope == 'OBJECT'}
+        self.assertEqual((roles["mat"], roles["mat.001"]), ('ACCESSORY', 'CLOTHING'))
+        eye = rig.matrix_world @ rig.data.bones["LeftEye"].head_local
+        self.assertLess((eye - Vector((0.1, -0.315, 1.72))).length, 0.02)
 
     def test_add_keeps_the_skeleton_when_the_rig_cannot_be_built(self):
         objs = fx.character()

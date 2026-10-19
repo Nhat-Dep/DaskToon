@@ -266,6 +266,49 @@ def fit_to_parts(context, rig):
     return turn
 
 
+def skirt_below_waist(rig, part):
+    """Make the part of `part`'s mesh below the waist a Skirt part of its own (the vertex group "<part> Skirt"); returns
+    the new part, or None when nothing of it is below the waist."""
+    from dasktoon_rig import check
+    obj = part.object
+    vertices = [int(v) for v in check.below_waist(rig, obj)]
+    if not vertices:
+        return None
+    name = "%s Skirt" % part.name
+    group = obj.vertex_groups.get(name) or obj.vertex_groups.new(name=name)
+    group.remove(list(range(len(obj.data.vertices))))
+    group.add(vertices, 1.0, 'REPLACE')
+    return add_part(rig, obj, 'SKIRT', name=name, scope='VERTEX_GROUP', vertex_group=group.name)
+
+
+def skirts_below_waist(rig):
+    """The auto rig makes the part below the waist of each Clothing mesh whose lower part looks like a skirt a skirt (the
+    user chose this, 2026-10-19, over the Check asking). Returns the names of those parts."""
+    from dasktoon_rig import check
+    parts = [part for part in rig.data.dasktoon_rig.parts if part.object is not None]
+    names = [name for name, role, lower in check.role_issues(rig, parts) if role == 'SKIRT' and lower]
+    made = []
+    for name in names:  # looked up again: adding a part may move the parts in memory
+        part = next(part for part in rig.data.dasktoon_rig.parts if part.name == name)
+        if skirt_below_waist(rig, part) is not None:
+            made.append(name)
+    return made
+
+
+def eyes_off_the_head(rig):
+    """An Accessory that only "mat" (Vietnamese eyes, unaccented) says is eyes, and which is not on the head in small
+    pieces, is Clothing (the user's choice, 2026-10-19). Returns the names of those parts."""
+    from dasktoon_rig import parts as rig_parts
+    out = []
+    for part in rig.data.dasktoon_rig.parts:
+        if (part.role == 'ACCESSORY' and part.scope == 'OBJECT' and part.object is not None
+                and part.object.type == 'MESH' and rig_parts.eye_by_mat_only(part.name)
+                and not rig_parts.on_head_in_small_pieces(rig, part.object)):
+            part.role = 'CLOTHING'
+            out.append(part.name)
+    return out
+
+
 def report_turn(operator, turn):
     if turn:
         operator.report({'WARNING'}, rpt_("The character did not face the front (-Y): it was turned %d° on the spot, "
@@ -356,6 +399,11 @@ class DASKTOON_OT_rig_add_humanoid(Operator):
         try:
             add_meshes(rig, meshes)
             report_turn(self, fit_to_parts(context, rig))
+            for name in eyes_off_the_head(rig):
+                self.report({'INFO'}, rpt_("%s is not on the head: Clothing, not eyes") % name)
+            made = skirts_below_waist(rig)
+            if made:
+                self.report({'INFO'}, rpt_("The part below the waist became a skirt: %s") % ", ".join(made))
             for obj in context.view_layer.objects:
                 obj.select_set(obj == rig)
             context.view_layer.objects.active = rig
@@ -1184,16 +1232,9 @@ class DASKTOON_OT_rig_skirt_below_waist(Operator):
         if part is None or part.object is None or part.object.type != 'MESH':
             self.report({'ERROR'}, rpt_("There is no part %s") % self.part)
             return {'CANCELLED'}
-        obj = part.object
-        vertices = [int(v) for v in check.below_waist(rig, obj)]
-        if not vertices:
+        if skirt_below_waist(rig, part) is None:
             self.report({'ERROR'}, rpt_("Nothing of %s is below the waist") % part.name)
             return {'CANCELLED'}
-        name = "%s Skirt" % part.name
-        group = obj.vertex_groups.get(name) or obj.vertex_groups.new(name=name)
-        group.remove(list(range(len(obj.data.vertices))))
-        group.add(vertices, 1.0, 'REPLACE')
-        add_part(rig, obj, 'SKIRT', name=name, scope='VERTEX_GROUP', vertex_group=group.name)
         try:
             result, _recognized = build_rig(context, rig)
         except build.BuildError as ex:

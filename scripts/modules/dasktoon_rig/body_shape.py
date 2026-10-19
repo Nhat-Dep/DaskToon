@@ -397,8 +397,9 @@ def joints(context, objects, feet, height, skin=None, eyes=None):
         from . import fingers
         fingers.fit(out, groups[0], middle)
     if eyes:
-        _place_eyes(out, [evaluated(context, item)[0] if hasattr(item, "type") else np.asarray(item, float)
-                          for item in eyes], middle)
+        base, top = out["Head"][0].z, out["Head"][1].z  # only eyes on the head ("mat" elsewhere is no eye)
+        points = [evaluated(context, item)[0] if hasattr(item, "type") else np.asarray(item, float) for item in eyes]
+        _place_eyes(out, [p for p in points if len(p) and p[:, 2].min() >= base - 0.1 * (top - base)], middle)
     return out
 
 

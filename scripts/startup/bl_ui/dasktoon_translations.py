@@ -1317,6 +1317,8 @@ VI = {
         "Tách phần dưới eo của lưới này thành một chiếc váy riêng, rồi dựng lại rig và kiểm tra lại",
     "The part whose lower part becomes a skirt": "Phần có nửa dưới sẽ thành váy",
     "Nothing of %s is below the waist": "%s không có gì nằm dưới eo",
+    "The part below the waist became a skirt: %s": "Phần dưới eo đã thành váy: %s",
+    "%s is not on the head: Clothing, not eyes": "%s không nằm trên đầu: là quần áo, không phải mắt",
     "Make it Hair": "Đổi thành Tóc",
     "Check Again": "Kiểm tra lại",
     "Done": "Xong",
