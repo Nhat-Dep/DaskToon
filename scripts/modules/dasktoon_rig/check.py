@@ -31,6 +31,7 @@ SKIRT_SHARE = 0.8  # of a skirt's vertices, at least this share between the knee
 SKIRT_FLARE = 1.1  # a skirt is this much wider at its hem than at its top
 BAND = 0.05  # (x height) the height of the bands looked at
 MARGIN = 0.01  # (x height) how far past a point a vertex is on that side of it
+BELOW_WAIST = 12  # a part below the waist looking like a skirt has at least this many vertices
 HEM_RING = 0.5  # a skirt's hem is a ring round the hips: its nearest point is at least this share of its mean radius
 # (bone, world axis, degrees): each bone turned about its head, in order, from the rest pose (spec §3). The character
 # faces -Y with its left at +X: about +Y a positive angle lifts the right arm, about X a negative one swings a thigh
@@ -256,13 +257,27 @@ def _looks_like_skirt(world, hip, knee_z, waist_z, height):
     return float(hem_radius.mean()) > SKIRT_FLARE * float(top_radius.mean())
 
 
+def waist(rig):
+    """The height of the waist of `rig`: the head of its Spine."""
+    return float(rig_parts.bone_segment(rig, "Spine")[0][2])
+
+
+def below_waist(rig, obj):
+    """Indices of the vertices of `obj` below the waist of `rig`."""
+    world, _edges = rig_parts.mesh_arrays(obj)
+    return np.nonzero(world[:, 2] < waist(rig))[0]
+
+
 def role_issues(rig, parts):
-    """[(part name, role)] of the whole-object Clothing parts that look like hair or a skirt (spec 4.3)."""
+    """[(part name, role, below the waist)] of the whole-object Clothing parts that look like hair or a skirt, or whose
+    part below the waist looks like a skirt (a dress, a long coat: real models) when it is no skirt part yet (spec
+    4.3)."""
     neck = rig_parts.bone_segment(rig, "Head")[0]
     hip = rig_parts.bone_segment(rig, "Hips")[0]
-    waist_z = float(rig_parts.bone_segment(rig, "Spine")[0][2])
+    waist_z = waist(rig)
     knee_z = float(np.mean([rig_parts.bone_segment(rig, side + "LowerLeg")[0][2] for side in ("Left", "Right")]))
     height = _height(parts)
+    skirted = {part.object for part in parts if part.role == 'SKIRT'}
     out = []
     for part in parts:
         obj = part.object
@@ -271,10 +286,14 @@ def role_issues(rig, parts):
         world, _edges = rig_parts.mesh_arrays(obj)
         if not len(world):
             continue
+        low = world[world[:, 2] < waist_z]
         if _looks_like_hair(world, neck, hip, height):
-            out.append((part.name, 'HAIR'))
+            out.append((part.name, 'HAIR', False))
         elif _looks_like_skirt(world, hip, knee_z, waist_z, height):
-            out.append((part.name, 'SKIRT'))
+            out.append((part.name, 'SKIRT', False))
+        elif (obj not in skirted and len(low) >= BELOW_WAIST
+              and _looks_like_skirt(low, hip, knee_z, waist_z, height)):
+            out.append((part.name, 'SKIRT', True))
     return out
 
 
@@ -298,8 +317,8 @@ def run(context, rig):
         item = data.issues.add()
         item.kind, item.object, item.part, item.pose, item.region = 'STRETCH', obj, owner.get(obj, ""), pose, region
         item["vertices"] = [int(v) for v in spot]
-    for name, role in role_issues(rig, parts):
+    for name, role, lower in role_issues(rig, parts):
         item = data.issues.add()
-        item.kind, item.part, item.role = 'ROLE', name, role
+        item.kind, item.part, item.role, item.below_waist = 'ROLE', name, role, lower
     data.checked = True
     return len(data.issues)

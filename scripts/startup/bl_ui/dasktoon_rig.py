@@ -176,6 +176,7 @@ class DaskRigIssue(PropertyGroup):
     pose: StringProperty()
     region: StringProperty()
     role: StringProperty()
+    below_waist: BoolProperty()  # a ROLE spot: only the part below the waist looks like it
 
 
 class DaskRig(PropertyGroup):
@@ -1156,6 +1157,46 @@ class DASKTOON_OT_rig_change_role(Operator):
         return {'FINISHED'}
 
 
+class DASKTOON_OT_rig_skirt_below_waist(Operator):
+    """Make the part of this mesh below the waist a skirt of its own, then build the rig and check it again"""
+    bl_idname = "dasktoon.rig_skirt_below_waist"
+    bl_label = "Make the Part Below the Waist a Skirt"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    part: StringProperty(name="Part", description="The part whose lower part becomes a skirt")
+
+    @classmethod
+    def poll(cls, context):
+        return _check_poll(context)
+
+    def execute(self, context):
+        from dasktoon_rig import build, check
+        rig = rig_of(context)
+        part = next((part for part in rig.data.dasktoon_rig.parts if part.name == self.part), None)
+        if part is None or part.object is None or part.object.type != 'MESH':
+            self.report({'ERROR'}, rpt_("There is no part %s") % self.part)
+            return {'CANCELLED'}
+        obj = part.object
+        vertices = [int(v) for v in check.below_waist(rig, obj)]
+        if not vertices:
+            self.report({'ERROR'}, rpt_("Nothing of %s is below the waist") % part.name)
+            return {'CANCELLED'}
+        name = "%s Skirt" % part.name
+        group = obj.vertex_groups.get(name) or obj.vertex_groups.new(name=name)
+        group.remove(list(range(len(obj.data.vertices))))
+        group.add(vertices, 1.0, 'REPLACE')
+        add_part(rig, obj, 'SKIRT', name=name, scope='VERTEX_GROUP', vertex_group=group.name)
+        try:
+            result, _recognized = build_rig(context, rig)
+        except build.BuildError as ex:
+            self.report({'ERROR'}, str(ex))
+            return {'FINISHED'}  # the skirt part is added
+        for warning in result.warnings:
+            self.report({'WARNING'}, warning)
+        self.report({'INFO'}, check_summary(run_check(context, rig)))
+        return {'FINISHED'}
+
+
 class DASKTOON_OT_rig_turn_character(Operator):
     """Turn the character on the spot by a quarter, then fit the skeleton, build the rig and check it again"""
     bl_idname = "dasktoon.rig_turn_character"
@@ -1199,6 +1240,8 @@ def issue_sentence(issue):
         region = next((name for identifier, name, *_rest in REGION_ITEMS if identifier == issue.region), issue.region)
         pose = next((name for identifier, name, _tip in POSE_ITEMS if identifier == issue.pose), issue.pose)
         return rpt_("%s stretched in the %s pose (%s)") % (iface_(region), iface_(pose, "DaskToon"), issue.part)
+    if issue.role == 'SKIRT' and issue.below_waist:
+        return rpt_("The part of %s below the waist looks like a skirt") % issue.part
     if issue.role == 'SKIRT':
         return rpt_("%s looks like a skirt") % issue.part
     return rpt_("%s looks like hair") % issue.part
@@ -1220,6 +1263,9 @@ def draw_issue(layout, rig, index, issue):
                      depress=shown).index = index
         if issue.object in [part.object for part in _region_parts(rig)]:
             row.operator("dasktoon.rig_paint_spot", text="Paint Regions", icon='BRUSH_DATA').index = index
+    elif issue.below_waist:
+        row.operator("dasktoon.rig_skirt_below_waist", text="Make That Part a Skirt",
+                     icon=ROLE_ICONS.get(issue.role, 'NONE')).part = issue.part
     else:
         op = row.operator("dasktoon.rig_change_role", icon=ROLE_ICONS.get(issue.role, 'NONE'),
                           text="Make it a Skirt" if issue.role == 'SKIRT' else "Make it Hair")
@@ -1500,6 +1546,7 @@ classes = (
     DASKTOON_OT_rig_show_spot,
     DASKTOON_OT_rig_paint_spot,
     DASKTOON_OT_rig_change_role,
+    DASKTOON_OT_rig_skirt_below_waist,
     DASKTOON_OT_rig_turn_character,
     DASKTOON_UL_rig_parts,
     DATA_PT_dasktoon_rig,

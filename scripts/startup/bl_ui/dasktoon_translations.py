@@ -1310,6 +1310,13 @@ VI = {
     "%s looks like hair": "%s trông như tóc",
     "Fix": "Sửa",
     "Make it a Skirt": "Đổi thành Váy",
+    "The part of %s below the waist looks like a skirt": "Phần dưới eo của %s trông như váy",
+    "Make That Part a Skirt": "Đổi phần đó thành Váy",
+    "Make the Part Below the Waist a Skirt": "Đổi phần dưới eo thành Váy",
+    "Make the part of this mesh below the waist a skirt of its own, then build the rig and check it again":
+        "Tách phần dưới eo của lưới này thành một chiếc váy riêng, rồi dựng lại rig và kiểm tra lại",
+    "The part whose lower part becomes a skirt": "Phần có nửa dưới sẽ thành váy",
+    "Nothing of %s is below the waist": "%s không có gì nằm dưới eo",
     "Make it Hair": "Đổi thành Tóc",
     "Check Again": "Kiểm tra lại",
     "Done": "Xong",

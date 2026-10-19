@@ -603,6 +603,36 @@ class CheckPanelTest(unittest.TestCase):
             bpy.ops.dasktoon.rig_change_role(part="Nothing", role='SKIRT')
         self.assertIn("There is no part Nothing", str(caught.exception))
 
+    def test_the_part_below_the_waist_made_a_skirt(self):
+        """A dress whose part below the waist looks like a skirt: the spot says so and its button makes that part a
+        skirt of its own (a vertex group part), builds and checks again."""
+        from dasktoon_rig import check, parts as rig_parts
+        dress = rt.merged("Circle.011", [rt.st.tube((0, 0, 1.4), (0, 0, 1.0), 0.21),
+                                         rt.st.tube((0, 0, 1.0), (0, 0, 0.62), 0.22)])
+        for v in dress.data.vertices:
+            if v.co.z < 0.8:
+                v.co.x *= 1.4
+                v.co.y *= 1.4
+        ui.add_part(self.rig, dress, 'CLOTHING')
+        bpy.ops.dasktoon.rig_build()
+        bpy.ops.dasktoon.rig_check()
+        log = self.draw()
+        self.assertIn("The part of Circle.011 below the waist looks like a skirt", tu.labels(log))
+        self.assertEqual([(text, props.part) for text, props in logged(log, "dasktoon.rig_skirt_below_waist")],
+                         [("Make That Part a Skirt", "Circle.011")])
+        self.assertEqual(bpy.ops.dasktoon.rig_skirt_below_waist(part="Circle.011"), {'FINISHED'})
+        skirt = next(part for part in self.data.parts if part.role == 'SKIRT')
+        self.assertEqual((skirt.name, skirt.object, skirt.scope, skirt.vertex_group),
+                         ("Circle.011 Skirt", dress, 'VERTEX_GROUP', "Circle.011 Skirt"))
+        group = dress.vertex_groups["Circle.011 Skirt"]
+        inside = sorted(v.index for v in dress.data.vertices if any(g.group == group.index for g in v.groups))
+        self.assertEqual(inside, check.below_waist(self.rig, dress).tolist())
+        self.assertIn(rig_parts.ascii_name("Circle.011 Skirt") + "1_1", self.rig.data.bones)  # built again
+        self.assertEqual([item for item in self.data.issues if item.kind == 'ROLE'], [])  # not again
+        with self.assertRaises(RuntimeError) as caught:
+            bpy.ops.dasktoon.rig_skirt_below_waist(part="Nothing")
+        self.assertIn("There is no part Nothing", str(caught.exception))
+
     def test_change_role_of_a_part_without_a_mesh_keeps_the_locks(self):
         """A part whose mesh is gone cannot be built; the locks of the other meshes stay (no mesh is not every mesh)."""
         bpy.ops.dasktoon.rig_build()
@@ -652,7 +682,7 @@ class TextTest(unittest.TestCase):
         strings = {ui.DaskRigPart.bl_rna.description, ui.DaskRig.bl_rna.description,
                    ui.DaskRigCollider.bl_rna.description}
         operators = [cls for cls in ui.classes if issubclass(cls, bpy.types.Operator)]
-        self.assertEqual(len(operators), 21)
+        self.assertEqual(len(operators), 22)
         for struct in operators:
             strings.update((struct.bl_label, struct.__doc__))
         for struct in [ui.DaskRigPart, ui.DaskRigCollider, ui.DaskRig] + operators:
