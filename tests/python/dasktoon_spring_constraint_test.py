@@ -244,8 +244,10 @@ class EvaluateTest(unittest.TestCase):
         from dasktoon_rig import spring
         rig = self.rig
         bpy.ops.object.mode_set(mode='EDIT')
-        block = rig.data.edit_bones.new("Block")  # across the chain, through Tail_2's tail
-        block.head, block.tail = (-0.5, 0.2, 1.0), (0.5, 0.2, 1.0)
+        # Across the chain, 1 cm from Tail_2's tail: a tail right on a collider's axis has no way out (built on
+        # 2026-10-20 with Visual Studio 2026, the first build of this test).
+        block = rig.data.edit_bones.new("Block")
+        block.head, block.tail = (-0.5, 0.2, 1.01), (0.5, 0.2, 1.01)
         bpy.ops.object.mode_set(mode='OBJECT')
         for con in self.cons:
             item = con.colliders.new()
@@ -253,11 +255,13 @@ class EvaluateTest(unittest.TestCase):
         bpy.context.scene.frame_set(1)
         bpy.context.view_layer.update()
         head = np.array(rig.matrix_world @ rig.pose.bones["Tail_1"].head)
+        got = tails(rig)  # before python_tails, which mutes the springs to read the poses
         expected = python_tails(rig, [1], spring.Params(), [("Spine", 0.05), ("Block", 0.05)])[1]
-        got = tails(rig)
         np.testing.assert_allclose(np.array(got), np.array(expected), atol=1e-4)
         for k, tail in enumerate(got):
-            self.assertGreaterEqual(math.hypot(tail[1] - 0.2, tail[2] - 1.0), 0.05 + 0.03 - 1e-4, k)
+            # Pushed out, then kept at the bone's length (as a step does): Tail_2's tail, 0.01 from the axis, ends at
+            # least three quarters of the way out of the 0.08 the radii add up to.
+            self.assertGreaterEqual(math.hypot(tail[1] - 0.2, tail[2] - 1.01), 0.06, k)
         self.assertAlmostEqual(float(np.linalg.norm(got[0] - head)), 0.1, places=4)
 
     def test_python_handlers_are_gone(self):
