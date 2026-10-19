@@ -81,3 +81,20 @@ trước là ngón cái. Ba đốt nằm trên đường từ gốc tới đầu
 
 Quyết định cần bạn xác nhận: chỉ đọc lưới Thân (găng tay đi theo xương tìm được trên da); ngón cái là ngón phía trước
 nhân vật, nên tay ngửa lòng bàn tay sẽ nhận sai; tỷ lệ đốt 45% / 30% / 25%; tìm không ra thì giữ khung mẫu và không báo.
+
+## 7. Nhận diện rig phần 4: đầu, cổ, mắt
+
+| Commit | Lỗi trên model thật | Sửa |
+|---|---|---|
+| f6faf70 | Khớp đầu theo tỷ lệ khung mẫu: nằm giữa cái đầu to của chibi (RG2, RGforGame), mắt lên tận trán, cổ ra trước cổ họng ("Cổ nằm ngoài thân"). | Từ vai trở lên, chỗ hẹp nhất của hình nhìn trước của lưới Thân là cổ, nếu phía trên (đầu) và phía dưới (vai) đều phình ra gấp 1,5 lần, và đầu rộng ít nhất 2,5 lần cổ. Chân cổ và đáy đầu thành hai mốc mới để kéo giãn khung mẫu, nên mắt, hàm và đỉnh đầu tự chia theo tỷ lệ trong cái đầu thật. Da không có thân (tdt) hoặc đầu dính vai thì giữ như cũ. |
+| 0a45ece | Lưới hai con mắt ("mat" ở Luna và filie) bị coi là quần áo, hoặc gắn cứng vào xương đầu, nên không đảo mắt được. | "mat" (mắt) được nhận là phụ kiện mắt. Khớp mắt đặt vào tâm phụ kiện mắt hoặc mắt dẹt ở mỗi bên. Khi dựng, mỗi mảnh của phụ kiện mắt đi theo xương mắt cùng bên. Thử thật: cả hai mắt đảo theo điểm nhìn; mắt filie xoay quanh đúng tâm (lệch 1–2 mm). |
+
+Kết quả đầu/cổ: hết "Cổ nằm ngoài thân" ở RG2 và RGforGame. Khi quay đầu, RG2 xoay quanh cổ thay vì quanh giữa đầu. filie
+có thêm mục "Cylinder.002 trông như tóc"; mục này đúng, vì đó là các lọn tóc xoăn hai bên má (trước đây khớp đầu cao nên
+không nhận ra).
+
+Quyết định cần bạn xác nhận: các ngưỡng cổ (hẹp hơn 40% đầu, phình 1,5 lần, tìm trong 35% đầu tiên tính từ vai lên);
+từ "mat" luôn hiểu là mắt (theo cách bạn đặt tên: toc, vay, ao, giay, tat); lông mi ("mi") vẫn là quần áo, đi theo đầu.
+Miệng: đã có từ R3 (hàm, miệng 2D); khớp hàm giờ đi theo đầu mới, chưa làm gì thêm.
+
+Kiểm tra sau phần 3–4: bộ thử đầy đủ 681 bài, đều đạt (shading/upgrade đạt sau khi khôi phục dữ liệu thử). Unity 7/7 đạt.
