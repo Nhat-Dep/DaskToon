@@ -709,6 +709,25 @@ class SwayPanelTest(unittest.TestCase):
         self.assertFalse(rig.data.dasktoon_rig.live_sway)
 
 
+class WrapTest(unittest.TestCase):
+    """In a real window the Check's sentences were cut off at the panel's edge ("...ay v\u1ec1 ph\u00eda tr\u01b0\u1edbc
+    (-Y)"): long ones wrap to the editor's width."""
+    TEXT = "Nh\u00e2n v\u1eadt \u0111ang quay ngang, kh\u00f4ng quay v\u1ec1 ph\u00eda tr\u01b0\u1edbc (-Y)"
+
+    def test_a_long_sentence_wraps_to_the_width(self):
+        log = tu.RecordingLayout()
+        ui.wrapped_label(log, self.TEXT, icon='ORIENTATION_GLOBAL', width=250)
+        labels = [(entry[2], entry[3]) for entry in log.log if entry[0] == "label"]
+        self.assertGreater(len(labels), 1)
+        self.assertEqual(" ".join(text for text, _icon in labels), self.TEXT)
+        self.assertEqual([icon for _text, icon in labels], ['ORIENTATION_GLOBAL'] + ['BLANK1'] * (len(labels) - 1))
+
+    def test_without_a_window_it_stays_one_line(self):
+        log = tu.RecordingLayout()
+        ui.wrapped_label(log, self.TEXT, icon='INFO')  # the region's width: none in the background
+        self.assertEqual([(entry[2], entry[3]) for entry in log.log if entry[0] == "label"], [(self.TEXT, 'INFO')])
+
+
 class TextTest(unittest.TestCase):
     def test_properties_and_enums_are_translated(self):
         # Registered property groups are not in bpy.types: take the classes from the module.

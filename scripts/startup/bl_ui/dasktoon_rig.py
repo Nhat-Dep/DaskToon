@@ -1296,10 +1296,25 @@ def issue_sentence(issue):
     return rpt_("%s looks like hair") % issue.part
 
 
+def wrapped_label(layout, text, icon='NONE', width=None):
+    """`text` (translated already) as labels broken to fit `width` pixels (default: the region's), the icon on the first
+    line: a real window cut the Check's longer sentences off at the panel's edge. One label where nothing tells the
+    width (the background)."""
+    import textwrap
+    context = bpy.context
+    scale = context.preferences.system.ui_scale or 1.0  # 0 without a window
+    if width is None:
+        width = context.region.width if context.region is not None else 0
+    chars = int((width - 40 * scale) / (7 * scale))
+    lines = textwrap.wrap(text, chars) if chars >= 16 else []
+    column = layout.column(align=True)
+    for k, line in enumerate(lines or [text]):
+        column.label(text=line, icon=icon if k == 0 else 'BLANK1', translate=False)
+
+
 def draw_issue(layout, rig, index, issue):
     box = layout.box()
-    box.label(text=issue_sentence(issue), icon=ISSUE_ICONS.get(issue.kind) or ROLE_ICONS.get(issue.role, 'ERROR'),
-              translate=False)
+    wrapped_label(box, issue_sentence(issue), icon=ISSUE_ICONS.get(issue.kind) or ROLE_ICONS.get(issue.role, 'ERROR'))
     row = box.row(align=True)
     if issue.kind == 'FACING':
         row.operator("dasktoon.rig_turn_character", text="Turn 90° Left", icon='LOOP_BACK').degrees = 90

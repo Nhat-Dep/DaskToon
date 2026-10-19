@@ -183,6 +183,8 @@ class FastActionTest(unittest.TestCase):
 
     def test_popover(self):
         from bl_ui import dasktoon_animation as ui
+        # Wide enough for its Vietnamese labels and notes (cut off at the default width in a real window).
+        self.assertGreaterEqual(ui.DASKTOON_PT_fast_action.bl_ui_units_x, 18)
         self.rig.select_set(True)
         log = tu.draw(ui.DASKTOON_PT_fast_action)
         self.assertEqual([entry[1] for entry in log if entry[0] == "prop"],

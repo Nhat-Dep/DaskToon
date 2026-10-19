@@ -94,7 +94,7 @@ VI = {
 
     # bl_ui/dasktoon_material_convert.py
     "Use DaskToon Shader": "Dùng shader DaskToon",
-    "Use DaskToon Shader on All Selected": "Dùng shader DaskToon cho mọi object đang chọn",
+    "Use DaskToon Shader on All Selected": "Dùng shader DaskToon cho mọi đối tượng đang chọn",
     "Give materials DaskToon's Anime BSDF with an outline, keeping their colour or texture; the old nodes stay":
         "Cho material dùng Anime BSDF của DaskToon có viền, giữ màu hoặc texture cũ; các node cũ vẫn giữ lại",
     "Which materials to change": "Material nào cần đổi",

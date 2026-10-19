@@ -526,6 +526,7 @@ class DASKTOON_PT_fast_action(Panel):
     bl_space_type = 'DOPESHEET_EDITOR'
     bl_region_type = 'HEADER'
     bl_label = "Fast Action"
+    bl_ui_units_x = 18  # its Vietnamese labels and notes were cut off at the default width
 
     def draw(self, context):
         layout = self.layout
@@ -539,21 +540,25 @@ class DASKTOON_PT_fast_action(Panel):
                      "line_length", "line_color"):
             layout.prop(settings, name)
         from dasktoon_animation import fast_action
+        from .dasktoon_rig import wrapped_label
+        scale = context.preferences.system.ui_scale or 1.0
+        width = DASKTOON_PT_fast_action.bl_ui_units_x * 20 * scale if context.window else None
         state = fast_action.baked(armature)
         layout.use_property_split = False
         row = layout.row(align=True)
         if state is None:
-            layout.label(text="Not baked: Render bakes it first", icon='INFO')
+            wrapped_label(layout, iface_("Not baked: Render bakes it first"), 'INFO', width)
             row.operator(DASKTOON_OT_fast_action_bake.bl_idname, icon='FILE_CACHE')
         else:
             first, last, _old = state
             if fast_action.needs_bake(context, armature, list(context.view_layer.objects)):
-                layout.label(text="Changed since the bake: Render bakes it again", icon='INFO')
+                wrapped_label(layout, iface_("Changed since the bake: Render bakes it again"), 'INFO', width)
             else:
-                layout.label(text=rpt_("Baked for frames %d to %d") % (first, last), icon='CHECKMARK', translate=False)
+                wrapped_label(layout, rpt_("Baked for frames %d to %d") % (first, last), 'CHECKMARK', width)
             row.operator(DASKTOON_OT_fast_action_bake.bl_idname, text="Bake Again", icon='FILE_REFRESH')
             row.operator(DASKTOON_OT_fast_action_free.bl_idname, icon='TRASH')
-        layout.label(text="Shows in DaskToon's viewport and render; it does not go into the FBX", icon='INFO')
+        wrapped_label(layout, iface_("Shows in DaskToon's viewport and render; it does not go into the FBX"), 'INFO',
+                      width)
 
 
 class DASKTOON_OT_fast_action_bake(Operator):

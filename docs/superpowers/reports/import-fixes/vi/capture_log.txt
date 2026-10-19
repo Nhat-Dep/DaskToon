@@ -1,0 +1,25 @@
+add {'FINISHED'}
+90 found [('FACING', '', '', False), ('JOINT', '', '', False), ('JOINT', '', '', False), ('JOINT', '', '', False), ('JOINT', '', '', False), ('JOINT', '', '', False), ('JOINT', '', '', False), ('STRETCH', 'Body', '', False), ('STRETCH', 'Body', '', False)]
+saved 90_facing (1921, 781)
+turn {'FINISHED'}
+91 found [('STRETCH', 'Body', '', False), ('STRETCH', 'Body', '', False)]
+saved 91_turned (1921, 781)
+saved 92_material_menu (599, 781)
+shader {'FINISHED'}
+93 surface ShaderNodeAnimeCharacter
+saved 93_material_after (339, 781)
+saved 94_fast_action (1574, 426)
+94 baked None
+render {'FINISHED'}
+95 baked (1, 12, False) needs False
+95 render result True
+saved 95_render
+saved 96_fast_action_baked (1574, 426)
+build {'FINISHED'}
+check {'FINISHED'}
+97 found [('STRETCH', 'Body', '', False), ('STRETCH', 'Body', '', False), ('STRETCH', 'Circle.011', '', False), ('STRETCH', 'Circle.011', '', False), ('STRETCH', 'Circle.011', '', False), ('STRETCH', 'Circle.011', '', False), ('ROLE', 'Circle.011', 'SKIRT', True)]
+saved 97_skirt_check (1921, 781)
+skirt {'FINISHED'}
+98 found [('STRETCH', 'Body', '', False), ('STRETCH', 'Body', '', False)] [('Body', 'BODY', 'OBJECT'), ('Shirt', 'CLOTHING', 'OBJECT'), ('Boots', 'CLOTHING', 'OBJECT'), ('Circle.011', 'CLOTHING', 'OBJECT'), ('Lock L1', 'ACCESSORY', 'VERTEX_GROUP'), ('Lock R1', 'ACCESSORY', 'VERTEX_GROUP'), ('Lock R2', 'ACCESSORY', 'VERTEX_GROUP'), ('Circle.011 Skirt', 'SKIRT', 'VERTEX_GROUP')]
+saved 98_skirt_made (1921, 781)
+done
