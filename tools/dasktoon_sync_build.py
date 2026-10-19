@@ -3,7 +3,8 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-"""Make an installed DaskToon match this repository: scripts/startup, scripts/modules and the translations.
+"""Make an installed DaskToon match this repository: scripts/startup, scripts/modules, the keymaps and the
+translations.
 
     python tools/dasktoon_sync_build.py D:/build_windows_x64_vc17_Release/bin/Release/5.2 [--dry-run]
 
@@ -17,7 +18,7 @@ import shutil
 import sys
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-MIRRORED = ("scripts/startup", "scripts/modules")
+MIRRORED = ("scripts/startup", "scripts/modules", "scripts/presets/keyconfig")  # the keymaps: F12 is DaskToon's Render
 SKIP = {"__pycache__"}
 
 
@@ -92,9 +93,8 @@ def sync_locale(repo, install, dry_run=False):
 def sync(install, dry_run=False, repo=REPO):
     actions = []
     for sub in MIRRORED:
-        name = os.path.basename(sub)
-        actions += [(verb, "scripts/%s/%s" % (name, path)) for verb, path in
-                    mirror_tree(os.path.join(repo, *sub.split("/")), os.path.join(install, "scripts", name), dry_run)]
+        actions += [(verb, "%s/%s" % (sub, path)) for verb, path in
+                    mirror_tree(os.path.join(repo, *sub.split("/")), os.path.join(install, *sub.split("/")), dry_run)]
     actions += sync_locale(repo, install, dry_run)
     return actions
 

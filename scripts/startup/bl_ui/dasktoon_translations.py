@@ -1481,9 +1481,11 @@ VI = {
     "Line Material": "Material vệt",
     "Shows in DaskToon's viewport and render; it does not go into the FBX":
         "Hiện trong khung nhìn và bản render của DaskToon; không vào FBX",
-    "Renders show what playback last worked out: bake before rendering":
-        "Render chỉ hiện những gì lần phát lại gần nhất đã tính: hãy ghi sẵn trước khi render",
-    "Baked before the last change: bake again": "Đã ghi sẵn trước lần đổi gần nhất: hãy ghi sẵn lại",
+    "Not baked: Render bakes it first": "Chưa ghi sẵn: bấm Render sẽ tự ghi sẵn trước",
+    "Changed since the bake: Render bakes it again": "Đã đổi sau lần ghi sẵn: bấm Render sẽ tự ghi sẵn lại",
+    "Render, baking the fast action effects first where their bake is missing or old":
+        "Render, tự ghi sẵn hiệu ứng hành động nhanh trước nếu chưa ghi hoặc bản ghi đã cũ",
+    "Fast action baked first: %s": "Đã tự ghi sẵn hành động nhanh trước: %s",
     "Baked for frames %d to %d": "Đã ghi sẵn cho khung %d đến %d",
     "Bake for Render": "Ghi sẵn để render",
     "Bake Again": "Ghi sẵn lại",

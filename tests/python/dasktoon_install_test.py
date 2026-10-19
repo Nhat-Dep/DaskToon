@@ -83,7 +83,7 @@ class InstalledBuildTest(unittest.TestCase):
         installed = bpy.utils.system_resource('SCRIPTS')
         for sub in sync.MIRRORED:
             src = os.path.join(REPO, *sub.split("/"))
-            dst = os.path.join(installed, os.path.basename(sub))
+            dst = os.path.join(installed, *sub.split("/")[1:])  # under the installed scripts folder
             self.assertEqual(sync.mirror_tree(src, dst, dry_run=True), [], sub)
 
 

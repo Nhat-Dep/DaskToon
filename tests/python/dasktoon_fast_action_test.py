@@ -189,7 +189,7 @@ class FastActionTest(unittest.TestCase):
                          ["threshold", "smear", "afterimages", "afterimage_opacity", "afterimage_color",
                           "line_density", "line_length", "line_color"])
         self.assertEqual([entry[1] for entry in log if entry[0] == "operator"], ["dasktoon.fast_action_bake"])
-        self.assertIn("Renders show what playback last worked out: bake before rendering", tu.labels(log))
+        self.assertIn("Not baked: Render bakes it first", tu.labels(log))
         self.settings.enabled = True
         bpy.ops.dasktoon.fast_action_bake()
         log = tu.draw(ui.DASKTOON_PT_fast_action)
@@ -197,7 +197,7 @@ class FastActionTest(unittest.TestCase):
                          ["dasktoon.fast_action_bake", "dasktoon.fast_action_free"])
         self.assertIn("Baked for frames 1 to 24", tu.labels(log))
         self.settings.smear = 0.3
-        self.assertIn("Baked before the last change: bake again", tu.labels(tu.draw(ui.DASKTOON_PT_fast_action)))
+        self.assertIn("Changed since the bake: Render bakes it again", tu.labels(tu.draw(ui.DASKTOON_PT_fast_action)))
 
     def test_baked_effects_show_without_playing(self):
         """A render reads what playback last worked out, so a frame not played through showed stale effects (the
@@ -213,6 +213,64 @@ class FastActionTest(unittest.TestCase):
             mesh = self.body.evaluated_get(bpy.context.evaluated_depsgraph_get()).data
             self.assertEqual(len(mesh.vertices), expected, msg=frame)
         self.assertNotEqual(stale, 24)
+
+    def test_what_needs_a_bake(self):
+        """Rendering bakes first where the bake is missing or old: a setting changed (marked as it changes), the
+        frames to render changed, or the motion changed since: keys moved or the timing table changed, which nothing
+        marks."""
+        from dasktoon_animation import timing
+        objects = list(bpy.context.scene.objects)
+        self.assertFalse(fast_action.needs_bake(bpy.context, self.rig, objects))  # off: nothing to bake
+        self.settings.enabled = True
+        self.assertTrue(fast_action.needs_bake(bpy.context, self.rig, objects))
+        fast_action.bake(bpy.context, self.rig, objects)
+        self.assertFalse(fast_action.needs_bake(bpy.context, self.rig, objects))
+        action = self.rig.animation_data.action
+        action.layers[0].strips[0].channelbags[0].fcurves[0].keyframe_points[1].co.y = 5.0
+        self.assertTrue(fast_action.needs_bake(bpy.context, self.rig, objects))
+        fast_action.bake(bpy.context, self.rig, objects)
+        timing.set_step(action, 1, 2)
+        self.assertTrue(fast_action.needs_bake(bpy.context, self.rig, objects))
+        fast_action.bake(bpy.context, self.rig, objects)
+        bpy.context.scene.frame_end = 30
+        self.assertTrue(fast_action.needs_bake(bpy.context, self.rig, objects))
+        fast_action.bake(bpy.context, self.rig, objects)
+        self.settings.smear = 0.3
+        self.assertTrue(fast_action.needs_bake(bpy.context, self.rig, objects))
+
+    def test_render_bakes_first(self):
+        """The user chose (2026-10-19) that rendering bakes what it needs first, then renders; a fresh bake is kept."""
+        from unittest import mock
+        scene = bpy.context.scene
+        scene.render.engine = 'BLENDER_WORKBENCH'
+        scene.render.resolution_x = scene.render.resolution_y = 16
+        camera = bpy.data.objects.new("Camera", bpy.data.cameras.new("Camera"))
+        scene.collection.objects.link(camera)
+        scene.camera = camera
+        self.settings.enabled = True
+        with mock.patch.object(fast_action, "bake", wraps=fast_action.bake) as bake:
+            self.assertEqual(bpy.ops.dasktoon.render(), {'FINISHED'})
+            self.assertEqual(bake.call_count, 1)
+            self.assertFalse(fast_action.needs_bake(bpy.context, self.rig, list(scene.objects)))
+            self.assertEqual(bpy.ops.dasktoon.render(), {'FINISHED'})
+            self.assertEqual(bake.call_count, 1)  # still fresh: not baked again
+        self.assertIn("Render Result", bpy.data.images)
+
+    def test_render_menu_and_keys_bake_first(self):
+        import importlib.util
+        ops = [entry[1] for entry in tu.draw(bpy.types.TOPBAR_MT_render) if entry[0] == "operator"]
+        self.assertIn("dasktoon.render", ops)
+        self.assertNotIn("render.render", ops)
+        for module in ("blender_default", "industry_compatible_data"):
+            path = os.path.join(bpy.utils.system_resource('SCRIPTS'), "presets", "keyconfig", "keymap_data",
+                                module + ".py")
+            spec = importlib.util.spec_from_file_location("dt_keymap_" + module, path)
+            data = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(data)
+            idnames = [idname for _name, _where, keymap in data.generate_keymaps(data.Params())
+                       for idname, _event, _options in keymap["items"]]
+            self.assertIn("dasktoon.render", idnames, module)
+            self.assertNotIn("render.render", idnames, module)
 
     def test_a_change_after_baking_makes_the_bake_old_and_free_drops_it(self):
         self.settings.enabled = True

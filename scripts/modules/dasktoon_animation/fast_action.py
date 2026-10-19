@@ -10,6 +10,7 @@ poses (anime timing) do not move, so the effects show on the frames where the dr
 apply modifiers, so none of this reaches the FBX."""
 
 import bpy
+import numpy as np
 
 from . import character
 
@@ -323,14 +324,77 @@ def sync(armature, objects):
 # --- baking for renders ---------------------------------------------------------------------------------------------
 # The Simulation Zone works each frame out from the frame before as playback goes, and a render reads what playback
 # last worked out: a frame not played through rendered stale effects (the combat test). Baked, every frame is read from
-# the bake, played or not, in a render from the command line too.
+# the bake, played or not, in a render from the command line too. DaskToon's Render (F12, Ctrl F12, the Render menu)
+# bakes first where the bake is missing or old (the user's choice, 2026-10-19).
 BAKED = "dasktoon_fast_action_baked"  # on the armature's data: [first frame, last frame, 1 when changed since]
+BAKED_MOTION = "dasktoon_fast_action_motion"  # on the armature's data: motion() when baked
 
 
 def baked(armature):
     """(first frame, last frame, True when a setting changed since) of the character's bake, or None."""
     value = armature.data.get(BAKED)
     return None if value is None else (int(value[0]), int(value[1]), bool(value[2]))
+
+
+def _actions(armature, objects):
+    """The actions moving the character: its armature's, its meshes' and their shape keys'."""
+    out = []
+    for item in [armature] + meshes(armature, objects):
+        for owner in (item, getattr(item.data, "shape_keys", None)):
+            data = getattr(owner, "animation_data", None)
+            if data is not None and data.action is not None and data.action not in out:
+                out.append(data.action)
+    return out
+
+
+def motion(context, armature, objects):
+    """A fingerprint of what the effects are worked out from besides their settings: the frames to render, the frame
+    rate, and the keys and timing tables of the actions moving the character (none of these mark the bake old)."""
+    import hashlib
+    scene = context.scene
+    digest = hashlib.sha1(repr((scene.frame_start, scene.frame_end, scene.render.fps, scene.render.fps_base)).encode())
+    for action in _actions(armature, objects):
+        digest.update(action.name.encode())
+        for layer in action.layers:
+            for strip in layer.strips:
+                for bag in strip.channelbags:
+                    for fcurve in bag.fcurves:
+                        points = fcurve.keyframe_points
+                        values = np.empty(len(points) * 6, np.float32)
+                        for k, name in enumerate(("co", "handle_left", "handle_right")):
+                            points.foreach_get(name, values[len(points) * 2 * k:len(points) * 2 * (k + 1)])
+                        digest.update(repr((fcurve.data_path, fcurve.array_index, fcurve.mute,
+                                            [point.interpolation for point in points])).encode())
+                        digest.update(values.round(6).tobytes())
+        rows = [(row.frame, row.step) for row in getattr(action, "dasktoon_timing", ())]
+        digest.update(repr(rows).encode())
+    return digest.hexdigest()
+
+
+def needs_bake(context, armature, objects):
+    """True when the character's fast action is on and its bake is missing or old: a setting changed since (marked), or
+    the frames to render or the character's motion did (motion())."""
+    if not armature.data.dasktoon_fast_action.enabled:
+        return False
+    state = baked(armature)
+    return state is None or state[2] or armature.data.get(BAKED_MOTION) != motion(context, armature, objects)
+
+
+def characters(context):
+    """The armatures of the scene with the fast action on."""
+    return [obj for obj in context.scene.objects
+            if obj.type == 'ARMATURE' and obj.data.dasktoon_fast_action.enabled]
+
+
+def bake_for_render(context):
+    """Bake the characters of the scene whose bake is missing or old; returns their names."""
+    objects = list(context.view_layer.objects)
+    out = []
+    for armature in characters(context):
+        if needs_bake(context, armature, objects):
+            bake(context, armature, objects)
+            out.append(armature.name)
+    return out
 
 
 def changed(armature):
@@ -362,10 +426,12 @@ def bake(context, armature, objects):
     sync(armature, objects)
     _each_bake(context, armature, objects, "geometry_node_bake_single")
     armature.data[BAKED] = [context.scene.frame_start, context.scene.frame_end, 0]
+    armature.data[BAKED_MOTION] = motion(context, armature, objects)
 
 
 def free(context, armature, objects):
     """Drop the bake: the effects are worked out as playback goes again."""
     _each_bake(context, armature, objects, "geometry_node_bake_delete_single")
-    if BAKED in armature.data:
-        del armature.data[BAKED]
+    for key in (BAKED, BAKED_MOTION):
+        if key in armature.data:
+            del armature.data[key]

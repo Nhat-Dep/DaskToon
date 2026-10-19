@@ -413,19 +413,19 @@ class TOPBAR_MT_render(Menu):
 
         can_render_seq = seq_scene and seq_scene.render.use_sequencer and strips
 
-        layout.operator("render.render", text="Render Image", icon='RENDER_STILL').use_viewport = True
-        props = layout.operator("render.render", text="Render Animation", icon='RENDER_ANIMATION')
+        layout.operator("dasktoon.render", text="Render Image", icon='RENDER_STILL').use_viewport = True
+        props = layout.operator("dasktoon.render", text="Render Animation", icon='RENDER_ANIMATION')
         props.animation = True
         props.use_viewport = True
 
         layout.separator()
 
         if can_render_seq and (seq_scene != scene):
-            props = layout.operator("render.render", text="Render Sequencer Image", icon='RENDER_STILL')
+            props = layout.operator("dasktoon.render", text="Render Sequencer Image", icon='RENDER_STILL')
             props.use_viewport = True
             props.use_sequencer_scene = True
 
-            props = layout.operator("render.render", text="Render Sequencer Animation", icon='RENDER_ANIMATION')
+            props = layout.operator("dasktoon.render", text="Render Sequencer Animation", icon='RENDER_ANIMATION')
             props.animation = True
             props.use_viewport = True
             props.use_sequencer_scene = True

@@ -98,3 +98,16 @@ từ "mat" luôn hiểu là mắt (theo cách bạn đặt tên: toc, vay, ao, g
 Miệng: đã có từ R3 (hàm, miệng 2D); khớp hàm giờ đi theo đầu mới, chưa làm gì thêm.
 
 Kiểm tra sau phần 3–4: bộ thử đầy đủ 681 bài, đều đạt (shading/upgrade đạt sau khi khôi phục dữ liệu thử). Unity 7/7 đạt.
+
+## 8. Trả lời của bạn về các quyết định (2026-10-19)
+
+| Quyết định | Trả lời |
+|---|---|
+| Hành động nhanh khi render | **Đổi**: tự ghi sẵn khi bấm render |
+| Chỗ đặt nút Dùng shader DaskToon | Giữ: menu ⌄ của ô vật liệu |
+| Màu bóng của shader | Giữ: tối hơn, hơi lạnh |
+| Nhân vật quay ngang, không rõ trái/phải | Giữ: chỉ báo, kèm nút xoay |
+| Phần dưới eo trông như váy | **Đổi**: tự đổi thành Váy khi gắn khung |
+| Không nhận được đủ 5 ngón | Giữ: ngón khung mẫu, không báo |
+| Ngón cái | Giữ: ngón phía trước là ngón cái |
+| Lưới tên "mat" | **Đổi**: chỉ là mắt khi nằm trên đầu |

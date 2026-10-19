@@ -291,14 +291,14 @@ def km_screen_editing(params):
         ("screen.area_move", {"type": 'LEFTMOUSE', "value": 'PRESS', "ctrl": True},
          {"properties": [("snap", True)]}),
         ("screen.area_options", {"type": 'RIGHTMOUSE', "value": 'PRESS'}, None),
-        # Render
-        ("render.render", {"type": 'RET', "value": 'PRESS', "ctrl": True},
+        # Render (DaskToon's bakes the fast action effects first)
+        ("dasktoon.render", {"type": 'RET', "value": 'PRESS', "ctrl": True},
          {"properties": [("use_viewport", True)]}),
-        ("render.render", {"type": 'RET', "value": 'PRESS', "ctrl": True, "alt": True},
+        ("dasktoon.render", {"type": 'RET', "value": 'PRESS', "ctrl": True, "alt": True},
          {"properties": [("animation", True), ("use_viewport", True)]}),
-        ("render.render", {"type": 'F12', "value": 'PRESS', "alt": True},
+        ("dasktoon.render", {"type": 'F12', "value": 'PRESS', "alt": True},
          {"properties": [("use_sequencer_scene", True), ("use_viewport", True)]}),
-        ("render.render", {"type": 'F12', "value": 'PRESS', "ctrl": True, "alt": True},
+        ("dasktoon.render", {"type": 'F12', "value": 'PRESS', "ctrl": True, "alt": True},
          {"properties": [("animation", True), ("use_sequencer_scene", True), ("use_viewport", True)]}),
         ("render.view_cancel", {"type": 'ESC', "value": 'PRESS'}, None),
     ])

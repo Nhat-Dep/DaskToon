@@ -543,12 +543,12 @@ class DASKTOON_PT_fast_action(Panel):
         layout.use_property_split = False
         row = layout.row(align=True)
         if state is None:
-            layout.label(text="Renders show what playback last worked out: bake before rendering", icon='ERROR')
+            layout.label(text="Not baked: Render bakes it first", icon='INFO')
             row.operator(DASKTOON_OT_fast_action_bake.bl_idname, icon='FILE_CACHE')
         else:
-            first, last, old = state
-            if old:
-                layout.label(text="Baked before the last change: bake again", icon='ERROR')
+            first, last, _old = state
+            if fast_action.needs_bake(context, armature, list(context.view_layer.objects)):
+                layout.label(text="Changed since the bake: Render bakes it again", icon='INFO')
             else:
                 layout.label(text=rpt_("Baked for frames %d to %d") % (first, last), icon='CHECKMARK', translate=False)
             row.operator(DASKTOON_OT_fast_action_bake.bl_idname, text="Bake Again", icon='FILE_REFRESH')
@@ -574,6 +574,33 @@ class DASKTOON_OT_fast_action_bake(Operator):
         first, last, _old = fast_action.baked(armature)
         self.report({'INFO'}, rpt_("Fast action baked for frames %d to %d") % (first, last))
         return {'FINISHED'}
+
+
+class DASKTOON_OT_render(Operator):
+    """Render, baking the fast action effects first where their bake is missing or old"""
+    bl_idname = "dasktoon.render"
+    bl_label = "Render"
+
+    animation: BoolProperty(name="Animation", description="Render files from the animation range of this scene")
+    use_viewport: BoolProperty(name="Use 3D Viewport",
+                               description="When inside a 3D viewport, use layers and camera of the viewport")
+    use_sequencer_scene: BoolProperty(name="Use Sequencer Scene",
+                                      description="Render the sequencer scene instead of the active scene")
+
+    def _render(self, context, how):
+        from dasktoon_animation import fast_action
+        baked = fast_action.bake_for_render(context)
+        if baked:
+            self.report({'INFO'}, rpt_("Fast action baked first: %s") % ", ".join(baked))
+        result = bpy.ops.render.render(how, animation=self.animation, use_viewport=self.use_viewport,
+                                       use_sequencer_scene=self.use_sequencer_scene)
+        return {'CANCELLED'} if 'CANCELLED' in result else {'FINISHED'}
+
+    def invoke(self, context, _event):
+        return self._render(context, 'INVOKE_DEFAULT')
+
+    def execute(self, context):
+        return self._render(context, 'EXEC_DEFAULT')
 
 
 class DASKTOON_OT_fast_action_free(Operator):
@@ -663,6 +690,7 @@ classes = (
     DASKTOON_PT_fast_action,
     DASKTOON_OT_fast_action_bake,
     DASKTOON_OT_fast_action_free,
+    DASKTOON_OT_render,
     DASKTOON_KS_character,
     DASKTOON_OT_key_pose,
     DASKTOON_MT_character_clips,
