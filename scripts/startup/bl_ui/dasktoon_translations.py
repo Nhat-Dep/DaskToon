@@ -1232,6 +1232,11 @@ VI = {
     "Shoulder Follows Arm": "Vai nâng theo tay",
     "How much the shoulders lift when the arms rise above them: 1 as a person's, 0 not at all":
         "Vai nâng lên bao nhiêu khi tay giơ cao quá vai: 1 như người thật, 0 là không nâng",
+    "Bend Fixes": "Sửa chỗ gập",
+    "Build Rig makes a shape key for each knee, elbow, hip and shoulder that keeps the joint round as it bends, in "
+    "DaskToon and in Unity":
+        "Dựng rig tạo một shape key cho mỗi đầu gối, khuỷu tay, hông và vai, giữ khớp tròn đầy khi gập, trong DaskToon "
+        "và trong Unity",
     # The auto rig and the Check (auto rig spec 2, 5)
     "The skeleton is added and fitted, but the rig could not be built: %s":
         "Đã thêm và khớp khung xương, nhưng chưa dựng được rig: %s",
@@ -1345,8 +1350,8 @@ VI = {
     "Scripts: the project already has a recent enough version, not written again":
         "Script: project đã có bản đủ mới, không ghi lại",
     "Scripts: not needed (no hair or skirt chains)": "Script: không cần (không có chuỗi tóc hay váy)",
-    "Rig: %s (DaskToon spring bones sway the hair and skirts in Unity)":
-        "Rig: %s (spring bone của DaskToon cho tóc và váy lắc trong Unity)",
+    "Rig: %s (DaskToon's Unity scripts read it: swaying hair and skirts, eyes, mouth, bend fixes)":
+        "Rig: %s (script Unity của DaskToon đọc tệp này: tóc và váy lắc, mắt, miệng, sửa chỗ gập)",
     "Part %s sways in Unity, but its bones have sway keys: Unity would sway it twice. Set Sway in Unity to Baked, or remove the keys":
         "Phần %s lắc trong Unity nhưng xương của nó có key lắc: Unity sẽ lắc hai lần. Đặt Lắc trong Unity thành Đã bake, hoặc xóa các key đó",
     # dasktoon_export/report.py (scripts once per project)

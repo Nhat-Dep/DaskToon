@@ -279,6 +279,7 @@ foreach(dasktoon_test
     dasktoon_rig_check_test
     dasktoon_rig_shoulder_test
     dasktoon_rig_fingers_test
+    dasktoon_rig_correctives_test
     dasktoon_material_convert_test
     dasktoon_export_rig_test
     dasktoon_spring_constraint_test

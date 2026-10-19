@@ -60,7 +60,7 @@ class Report:
         if self.merged:
             out.append(rpt_("Merged %d meshes of the character into one: %s") % self.merged)
         if self.rig:
-            out.append(rpt_("Rig: %s (DaskToon spring bones sway the hair and skirts in Unity)") % self.rig)
+            out.append(rpt_("Rig: %s (DaskToon's Unity scripts read it: swaying hair and skirts, eyes, mouth, bend fixes)") % self.rig)
         if self.scripts != 'SKIPPED':
             out.append(rpt_(SCRIPT_STATE[self.scripts]))
         if self.clips:

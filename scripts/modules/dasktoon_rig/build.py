@@ -428,6 +428,17 @@ def _write_colliders(rig, radii, scale):
         item["radius"] = radius / scale  # no update: Build syncs the Spring constraints once, at the end
 
 
+def _bend_fixes(rig, parts):
+    """The bend fixes on the parts' meshes, or none when the rig's Bend Fixes is off (correctives.py)."""
+    from . import correctives
+    meshes = list(dict.fromkeys(part.object for part in parts if part.object is not None))
+    data = getattr(rig.data, "dasktoon_rig", None)
+    if data is None or data.bend_fixes:
+        correctives.apply(rig, meshes)
+    else:
+        correctives.remove(meshes)
+
+
 def build(context, rig, parts):
     """Build the rig from `parts` (spec 6.2); BuildError, before any change, when it cannot be built. The active object
     and its mode come back afterwards."""
@@ -463,6 +474,7 @@ def build(context, rig, parts):
         _tidy(rig, owners)
         _mirror_groups(rig, owners, result)
         eyes.apply(rig, parts)
+        _bend_fixes(rig, parts)
         from . import sway  # sway imports build
         result.colliders = collider_radii(rig, parts, owners)
         _write_colliders(rig, result.colliders, sway.rig_scale(rig))

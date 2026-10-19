@@ -49,13 +49,15 @@ class CharacterKeying(WholeCharacterMixin):
                 keyingsets_utils.RKS_GEN_scaling(self, context, ks, obj)
 
     def generate_face(self, ks, obj):
-        """The shape keys (but the Basis) and the expression controllers of a mesh of the character."""
+        """The shape keys (but the Basis and those a driver sets, such as the bend fixes) and the expression
+        controllers of a mesh of the character."""
         key = obj.data.shape_keys if obj.type == 'MESH' else None
         if key is not None:
+            drivers = key.animation_data.drivers if key.animation_data is not None else None
             for block in key.key_blocks:
-                if block != key.reference_key:
-                    ks.paths.add(key, 'key_blocks["%s"].value' % bpy.utils.escape_identifier(block.name),
-                                 group_method='NAMED', group_name=obj.name)
+                path = 'key_blocks["%s"].value' % bpy.utils.escape_identifier(block.name)
+                if block != key.reference_key and (drivers is None or drivers.find(path) is None):
+                    ks.paths.add(key, path, group_method='NAMED', group_name=obj.name)
         root = getattr(obj, "dask_shape_controllers", None)
         for i in range(len(root.groups) if root is not None else 0):
             for axis in ("handle_x", "handle_y"):

@@ -202,6 +202,9 @@ class DaskRig(PropertyGroup):
     shoulder_follow: FloatProperty(name="Shoulder Follows Arm", default=1.0, min=0.0, max=1.0, subtype='FACTOR',
                                    description="How much the shoulders lift when the arms rise above them: 1 as a "
                                    "person's, 0 not at all", update=_shoulder_changed)
+    bend_fixes: BoolProperty(name="Bend Fixes", default=True,
+                             description="Build Rig makes a shape key for each knee, elbow, hip and shoulder that keeps "
+                             "the joint round as it bends, in DaskToon and in Unity")
 
 
 def rig_of(context):
@@ -1413,6 +1416,7 @@ class DATA_PT_dasktoon_rig_joints(DaskRigPanel, Panel):
         row.operator("dasktoon.rig_edit_joints", icon='EDITMODE_HLT')
         row.operator("dasktoon.rig_fit", icon='FULLSCREEN_ENTER')
         layout.prop(rig_of(context).data.dasktoon_rig, "shoulder_follow", slider=True)
+        layout.prop(rig_of(context).data.dasktoon_rig, "bend_fixes")
 
 
 class DATA_PT_dasktoon_rig_parts(DaskRigPanel, Panel):
