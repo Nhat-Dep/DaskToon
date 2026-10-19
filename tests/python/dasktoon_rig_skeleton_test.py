@@ -288,13 +288,15 @@ class CreateTest(unittest.TestCase):
         self.assert_bends_followed(rig)
 
 
-def polyline_chibi(arm, leg, extra=()):
+def polyline_chibi(arm, leg, extra=(), neck=0.0):
     """A chibi Body mesh: the torso and head of chibi(), arms and legs along the polylines `arm` and `leg` (left side,
     points relative to the character's middle at (3, 0.5, 0); the right side mirrors), and `extra` tubes (start, end,
-    radius) on the left, mirrored too."""
+    radius) on the left, mirrored too. With `neck`, a neck that long lifts the head."""
     o = Vector((3.0, 0.5, 0.0))
     pieces = [tube(o + Vector((0, 0, 0.88)), o + Vector((0, 0, 1.46)), 0.18),
-              tube(o + Vector((0, 0, 1.46)), o + Vector((0, 0, 2.0)), 0.3)]
+              tube(o + Vector((0, 0, 1.46 + neck)), o + Vector((0, 0, 2.0 + neck)), 0.3)]
+    if neck:
+        pieces.append(tube(o + Vector((0, 0, 1.44)), o + Vector((0, 0, 1.48 + neck)), 0.06))
     for s in (1.0, -1.0):
         flip = Vector((s, 1.0, 1.0))
         for line, radius in ((arm, 0.05), (leg, 0.07)):
@@ -455,6 +457,42 @@ class EarsTest(unittest.TestCase):
         self.assertIsNotNone(arm)
         self.assertLess(arm.base[0], 3.0 + 0.35)  # where it meets the body, not at the cuff
         self.assertGreater(arm.end[0], 3.0 + 0.85)
+
+
+class NeckTest(unittest.TestCase):
+    """The head sits on the neck (RG2 and RGforGame, real models: the Head joint followed the template's heights, in
+    the middle of the big chibi head, and the neck stood in front of the throat). The neck is the narrowest of the Body
+    above the shoulders; the head starts where it widens again, and the face's joints share the head from there."""
+
+    def setUp(self):
+        bpy.ops.wm.read_factory_settings(use_empty=True)
+
+    def test_a_head_on_a_neck(self):
+        neck = 0.12
+        body = polyline_chibi(CentreLineTest.ARM, CentreLineTest.LEG, neck=neck)
+        rig = skeleton.create_humanoid(bpy.context, 1.0, (0.0, 0.0, 0.0))
+        skeleton.fit(bpy.context, rig, [body], body=[body], skin=[body])
+        base, top = 1.46 + neck, 2.0 + neck
+        self.assertAlmostEqual(world_head(rig, "Head").z, base, delta=0.03)
+        self.assertAlmostEqual(world_head(rig, "Neck").z, 1.46, delta=0.04)
+        eye = (0.915 - 0.85) / (1.0 - 0.85)  # the template's eyes, that share of the head up
+        self.assertAlmostEqual(world_head(rig, "LeftEye").z, base + eye * (top - base), delta=0.03)
+
+    def test_a_skin_starting_at_the_head_shows_no_neck(self):
+        """tdt (a real model): its skin has no torso, only a head and limbs; the thin rim where the skin starts is no
+        neck. The Body here is the head alone, rounded at its bottom: the template stays."""
+        body = polyline_chibi(CentreLineTest.ARM, CentreLineTest.LEG)
+        bpy.ops.mesh.primitive_uv_sphere_add(radius=0.3, location=(3.0, 0.5, 1.72))
+        head = bpy.context.object
+        rig = skeleton.create_humanoid(bpy.context, 1.0, (0.0, 0.0, 0.0))
+        skeleton.fit(bpy.context, rig, [body, head], body=[body, head], skin=[head])
+        self.assertGreater(world_head(rig, "Head").z, 1.46 + 0.05)  # the template's, not the bottom of the sphere
+
+    def test_a_head_without_a_neck_keeps_the_template(self):
+        rig = skeleton.create_humanoid(bpy.context, 1.0, (0.0, 0.0, 0.0))
+        body = polyline_chibi(CentreLineTest.ARM, CentreLineTest.LEG)
+        skeleton.fit(bpy.context, rig, [body], body=[body], skin=[body])
+        self.assertGreater(world_head(rig, "Head").z, 1.46 + 0.05)  # the template's, up in the head
 
 
 class OutlineTest(unittest.TestCase):

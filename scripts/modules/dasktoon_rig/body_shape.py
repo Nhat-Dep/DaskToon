@@ -39,6 +39,10 @@ ARM_UP = 0.57  # an arm is modelled hanging or level: a limb pointing up more th
 ARM_TRIES = 3
 # Template heights (x height) of the hip and shoulder joints: the spine is stretched between the heights found.
 HIP_Z, SHOULDER_Z = 0.52, 0.78
+NECK_Z, HEAD_Z = 0.80, 0.85  # the template's bottom of the neck and of the head
+NECK_UP = 0.35  # the neck is looked for this share of the way from the shoulders up to the top of the Body ...
+NECK_THIN = 0.4  # ... narrower than this share of the head's widest; above and below it the Body widens to
+WIDENS = 1.5  # this many times the neck's width: the head and the shoulders
 
 Limb = namedtuple("Limb", "base end axis width")  # front view (x, z): where it meets the body, its tip or sole
 
@@ -239,6 +243,43 @@ class Shape:
         return None if self.mask[self.pixel((middle, halfway[1]))] else limb
 
 
+def _head(context, skin, feet, height, shoulder_z, middle):
+    """(bottom of the neck, bottom of the head, top of the head) heights read from the front silhouette of the Body
+    meshes `skin` up from `shoulder_z`, or None when it shows no neck (a head on the shoulders, hair round the neck)."""
+    shape = Shape(context, skin, feet, height)
+    if shape.mask is None:
+        return None
+    top = float(shape.vertices[:, 2].max())
+    col = shape.pixel((middle, shoulder_z))[1]
+    rows, widths = [], []
+    for row in range(shape.pixel((middle, shoulder_z))[0], shape.pixel((middle, top))[0] + 1):
+        line = shape.mask[row]
+        if not line[col]:
+            continue  # nothing of the Body in the middle there
+        left = col - int(np.argmin(line[col::-1])) if not line[:col + 1].all() else -1
+        right = col + int(np.argmin(line[col:])) if not line[col:].all() else len(line)
+        rows.append(row)
+        widths.append(right - left - 1)
+    if len(rows) < 3:
+        return None
+    rows, widths = np.array(rows), np.array(widths)
+    z = np.array([shape.point(row, col)[1] for row in rows])
+    search = z <= shoulder_z + NECK_UP * (top - shoulder_z)
+    if not search.any():
+        return None
+    neck = int(np.argmin(np.where(search, widths, np.iinfo(int).max)))
+    thin = widths[neck]
+    above = np.nonzero((np.arange(len(rows)) > neck) & (widths >= WIDENS * thin))[0]
+    if not len(above) or thin >= NECK_THIN * widths[above[0]:].max():
+        return None
+    below = np.nonzero((np.arange(len(rows)) < neck) & (widths >= WIDENS * thin))[0]
+    if not len(below):
+        return None  # nothing wider under it: the rim where a skin without a torso starts (tdt), no neck
+    head_z = float(z[above[0]])
+    neck_z = max(float(z[below[-1]]), shoulder_z + 0.1 * (head_z - shoulder_z))
+    return (neck_z, head_z, top) if shoulder_z < neck_z < head_z < top else None
+
+
 def _legs(context, shape, skin, feet, height, middle):
     """{side: leg or None}: the legs of the Body meshes `skin` when one of them stands on the floor (a dress flaring
     over the thighs hides where the legs meet the body: the walk up the silhouette met the hem), else of `shape`."""
@@ -300,6 +341,9 @@ def joints(context, objects, feet, height, skin=None):
     torso = (z >= hip_z) & (z <= hip_z + 0.75 * (shoulder_z - hip_z))  # below the hair that may hang behind
     middle_y = float(np.median(shape.vertices[torso if torso.any() else slice(None), 1]))
     knots = ((0.0, HIP_Z, SHOULDER_Z, 1.0), (feet.z, hip_z, shoulder_z, top))
+    head = _head(context, skin, feet, height, shoulder_z, middle) if skin else None
+    if head is not None:  # the face's joints share the head from its bottom to the Body's top
+        knots = ((0.0, HIP_Z, SHOULDER_Z, NECK_Z, HEAD_Z, 1.0), (feet.z, hip_z, shoulder_z) + head)
 
     def spine(p):
         return Vector((middle + p.x * height, middle_y + p.y * height, float(np.interp(p.z, *knots))))
