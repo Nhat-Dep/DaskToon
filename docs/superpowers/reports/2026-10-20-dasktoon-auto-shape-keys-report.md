@@ -61,7 +61,19 @@ vẽ miệng, filie miệng là mảnh nhỏ. Với miệng vẽ phẳng, dùng 
 ## 4. Bản build bằng Visual Studio 2026
 
 Build lại toàn bộ DaskToon bằng VS 2026 vào thư mục mới `D:\build_windows_x64_vc18_Release`, mất khoảng 1 tiếng,
-không lỗi. Bản này chạy được các bài kiểm tra (gồm cả constraint lò xo C++). Thư mục cũ (vc17) giữ nguyên.
+không lỗi. Thư mục cũ (vc17) giữ nguyên.
+
+Nhờ vậy nhánh để riêng `dasktoon-spring-collide-on-reset` (lò xo đẩy ra khỏi vùng va chạm ngay ở khung đầu) lần đầu
+được build và thử:
+
+- RG2 (bản sao) ngồi ở khung đầu: bản cũ có 4 điểm của váy nằm trong đùi (sâu nhất 4,9 cm), bản mới không còn điểm
+  nào; váy phủ lên đùi thay vì xuyên qua.
+- Bài kiểm tra viết sẵn trên nhánh hóa ra sai: khối va chạm đi đúng qua trục, kết quả C++ bị đọc sau khi lò xo đã tạm
+  tắt, và đòi ra hẳn trong khi đẩy xong còn giữ độ dài xương. Mã C++ thì đúng.
+- Đã sửa bài kiểm tra: bản cũ trượt, bản mới đạt. Bài "váy sau gần như đứng yên" nay chỉ xét dải trong khoảng ±30°
+  quanh chính sau lưng.
+- Đã gộp master vào nhánh, cả bộ kiểm tra đạt trên bản VS 2026, đã đẩy lên GitHub (0807fb6).
+- **Chưa gộp vào master**: chờ bạn quyết. Bản cài VS 2026 hiện đang chứa bản sửa này; bản vc17 không có.
 
 ## Các quyết định đã tự chọn
 
