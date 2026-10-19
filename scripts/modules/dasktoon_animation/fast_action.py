@@ -318,3 +318,54 @@ def sync(armature, objects):
             _input(modifier, name).value = value
         modifier.show_viewport = modifier.show_render = True
         modifier.node_group = tree  # Python writes to the inputs do not evaluate the object again; this does
+
+
+# --- baking for renders ---------------------------------------------------------------------------------------------
+# The Simulation Zone works each frame out from the frame before as playback goes, and a render reads what playback
+# last worked out: a frame not played through rendered stale effects (the combat test). Baked, every frame is read from
+# the bake, played or not, in a render from the command line too.
+BAKED = "dasktoon_fast_action_baked"  # on the armature's data: [first frame, last frame, 1 when changed since]
+
+
+def baked(armature):
+    """(first frame, last frame, True when a setting changed since) of the character's bake, or None."""
+    value = armature.data.get(BAKED)
+    return None if value is None else (int(value[0]), int(value[1]), bool(value[2]))
+
+
+def changed(armature):
+    """A setting changed: a bake shows the effects as they were."""
+    value = armature.data.get(BAKED)
+    if value is not None:
+        armature.data[BAKED] = [int(value[0]), int(value[1]), 1]
+
+
+def _each_bake(context, armature, objects, operator):
+    for obj in meshes(armature, objects):
+        modifier = obj.modifiers.get(MODIFIER)
+        if modifier is None:
+            continue
+        if operator == "geometry_node_bake_single":  # beside a saved file on disk, else inside the file
+            if bpy.data.filepath:
+                modifier.bake_target = 'DISK'
+                modifier.bake_directory = "//fast_action_bake/" + bpy.path.clean_name(obj.name)
+            else:
+                modifier.bake_target = 'PACKED'
+        for item in modifier.bakes:
+            with context.temp_override(object=obj, active_object=obj):
+                getattr(bpy.ops.object, operator)(session_uid=obj.session_uid, modifier_name=modifier.name,
+                                                  bake_id=item.bake_id)
+
+
+def bake(context, armature, objects):
+    """Bake the effects of the character's meshes over the scene's frames."""
+    sync(armature, objects)
+    _each_bake(context, armature, objects, "geometry_node_bake_single")
+    armature.data[BAKED] = [context.scene.frame_start, context.scene.frame_end, 0]
+
+
+def free(context, armature, objects):
+    """Drop the bake: the effects are worked out as playback goes again."""
+    _each_bake(context, armature, objects, "geometry_node_bake_delete_single")
+    if BAKED in armature.data:
+        del armature.data[BAKED]

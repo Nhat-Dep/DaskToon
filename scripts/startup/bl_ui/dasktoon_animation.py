@@ -485,6 +485,7 @@ def _fast_action_changed(self, _context):
     for obj in objects:
         if obj.type == 'ARMATURE' and obj.data == self.id_data:
             fast_action.sync(obj, objects)
+            fast_action.changed(obj)
 
 
 class DaskFastAction(PropertyGroup):
@@ -537,7 +538,60 @@ class DASKTOON_PT_fast_action(Panel):
         for name in ("threshold", "smear", "afterimages", "afterimage_opacity", "afterimage_color", "line_density",
                      "line_length", "line_color"):
             layout.prop(settings, name)
+        from dasktoon_animation import fast_action
+        state = fast_action.baked(armature)
+        layout.use_property_split = False
+        row = layout.row(align=True)
+        if state is None:
+            layout.label(text="Renders show what playback last worked out: bake before rendering", icon='ERROR')
+            row.operator(DASKTOON_OT_fast_action_bake.bl_idname, icon='FILE_CACHE')
+        else:
+            first, last, old = state
+            if old:
+                layout.label(text="Baked before the last change: bake again", icon='ERROR')
+            else:
+                layout.label(text=rpt_("Baked for frames %d to %d") % (first, last), icon='CHECKMARK', translate=False)
+            row.operator(DASKTOON_OT_fast_action_bake.bl_idname, text="Bake Again", icon='FILE_REFRESH')
+            row.operator(DASKTOON_OT_fast_action_free.bl_idname, icon='TRASH')
         layout.label(text="Shows in DaskToon's viewport and render; it does not go into the FBX", icon='INFO')
+
+
+class DASKTOON_OT_fast_action_bake(Operator):
+    """Work the fast action effects out for every frame of the scene and keep them, so renders show them right"""
+    bl_idname = "dasktoon.fast_action_bake"
+    bl_label = "Bake for Render"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        armature = header_armature(context)
+        return armature is not None and armature.data.dasktoon_fast_action.enabled
+
+    def execute(self, context):
+        from dasktoon_animation import fast_action
+        armature = header_armature(context)
+        fast_action.bake(context, armature, list(context.view_layer.objects))
+        first, last, _old = fast_action.baked(armature)
+        self.report({'INFO'}, rpt_("Fast action baked for frames %d to %d") % (first, last))
+        return {'FINISHED'}
+
+
+class DASKTOON_OT_fast_action_free(Operator):
+    """Drop the baked effects: they are worked out as playback goes again"""
+    bl_idname = "dasktoon.fast_action_free"
+    bl_label = "Free Bake"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        from dasktoon_animation import fast_action
+        armature = header_armature(context)
+        return armature is not None and fast_action.baked(armature) is not None
+
+    def execute(self, context):
+        from dasktoon_animation import fast_action
+        fast_action.free(context, header_armature(context), list(context.view_layer.objects))
+        return {'FINISHED'}
 
 
 def draw_character_header(layout, context):
@@ -607,6 +661,8 @@ classes = (
     DASKTOON_PT_onion_skin,
     DaskFastAction,
     DASKTOON_PT_fast_action,
+    DASKTOON_OT_fast_action_bake,
+    DASKTOON_OT_fast_action_free,
     DASKTOON_KS_character,
     DASKTOON_OT_key_pose,
     DASKTOON_MT_character_clips,

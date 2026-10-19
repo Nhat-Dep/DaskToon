@@ -85,12 +85,11 @@ nhau, tôi phải tự cho phát qua từng đoạn trước khi render. Render 
   - tính hiệu ứng cho cả dải khung của cảnh và ghi ra đĩa cạnh tệp .blend, dùng cơ chế ghi sẵn có sẵn của Simulation Zone;
   - render và mở lại tệp đều đọc phần đã ghi, nên luôn đúng, kể cả render từ dòng lệnh;
   - khi sửa chuyển động sau đó, bảng báo "Hiệu ứng đã ghi sẵn có thể cũ" và có nút ghi lại.
-- Khi bấm render mà chưa ghi sẵn và hiệu ứng chưa được tính cho các khung sẽ render, DaskToon **tự cho phát qua** các khung
-  cần thiết trước khi render:
-  - render một khung: 8 khung trước nó;
-  - render cả đoạn: từ 8 khung trước khung đầu.
-
-  Đồng thời báo trên thanh trạng thái để người dùng biết vì sao render chậm hơn một chút.
+- Bảng Hành động nhanh luôn cho biết tình trạng: chưa ghi sẵn ("Render chỉ hiện những gì lần phát lại gần nhất đã tính:
+  hãy ghi sẵn trước khi render"), đã ghi sẵn cho khung nào đến khung nào, hoặc đã cũ vì đổi cài đặt sau khi ghi.
+- **Đã đổi so với bản nháp (2026-10-19, khi làm tự động):** không tự phát qua các khung lúc bấm render. Đổi khung bên
+  trong lúc Blender bắt đầu render dễ treo hoặc hỏng, nên chỉ có nút Ghi sẵn và lời nhắc. Ghi sẵn nằm cạnh tệp .blend
+  (thư mục `fast_action_bake`), hoặc trong tệp khi tệp chưa lưu.
 
 ### Câu hỏi cho người dùng
 

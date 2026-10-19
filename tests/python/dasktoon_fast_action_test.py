@@ -188,6 +188,39 @@ class FastActionTest(unittest.TestCase):
         self.assertEqual([entry[1] for entry in log if entry[0] == "prop"],
                          ["threshold", "smear", "afterimages", "afterimage_opacity", "afterimage_color",
                           "line_density", "line_length", "line_color"])
+        self.assertEqual([entry[1] for entry in log if entry[0] == "operator"], ["dasktoon.fast_action_bake"])
+        self.assertIn("Renders show what playback last worked out: bake before rendering", tu.labels(log))
+        self.settings.enabled = True
+        bpy.ops.dasktoon.fast_action_bake()
+        log = tu.draw(ui.DASKTOON_PT_fast_action)
+        self.assertEqual([entry[1] for entry in log if entry[0] == "operator"],
+                         ["dasktoon.fast_action_bake", "dasktoon.fast_action_free"])
+        self.assertIn("Baked for frames 1 to 24", tu.labels(log))
+        self.settings.smear = 0.3
+        self.assertIn("Baked before the last change: bake again", tu.labels(tu.draw(ui.DASKTOON_PT_fast_action)))
+
+    def test_baked_effects_show_without_playing(self):
+        """A render reads what playback last worked out, so a frame not played through showed stale effects (the
+        combat test); baked, any frame is right at once, played or not."""
+        self.settings.enabled = True
+        bpy.context.scene.frame_set(4)  # straight there: the frames before were never worked out
+        stale = len(self.body.evaluated_get(bpy.context.evaluated_depsgraph_get()).data.vertices)
+        self.assertEqual(fast_action.baked(self.rig), None)
+        fast_action.bake(bpy.context, self.rig, list(bpy.context.scene.objects))
+        self.assertEqual(fast_action.baked(self.rig), (1, 24, False))
+        for frame, expected in ((4, 24), (12, 8), (4, 24)):  # the cube and two afterimages, then the cube alone
+            bpy.context.scene.frame_set(frame)
+            mesh = self.body.evaluated_get(bpy.context.evaluated_depsgraph_get()).data
+            self.assertEqual(len(mesh.vertices), expected, msg=frame)
+        self.assertNotEqual(stale, 24)
+
+    def test_a_change_after_baking_makes_the_bake_old_and_free_drops_it(self):
+        self.settings.enabled = True
+        fast_action.bake(bpy.context, self.rig, list(bpy.context.scene.objects))
+        self.settings.threshold = 5.0
+        self.assertEqual(fast_action.baked(self.rig), (1, 24, True))
+        fast_action.free(bpy.context, self.rig, list(bpy.context.scene.objects))
+        self.assertIsNone(fast_action.baked(self.rig))
 
 
 if __name__ == "__main__":

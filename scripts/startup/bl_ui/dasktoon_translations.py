@@ -1474,6 +1474,18 @@ VI = {
     "Line Material": "Material vệt",
     "Shows in DaskToon's viewport and render; it does not go into the FBX":
         "Hiện trong khung nhìn và bản render của DaskToon; không vào FBX",
+    "Renders show what playback last worked out: bake before rendering":
+        "Render chỉ hiện những gì lần phát lại gần nhất đã tính: hãy ghi sẵn trước khi render",
+    "Baked before the last change: bake again": "Đã ghi sẵn trước lần đổi gần nhất: hãy ghi sẵn lại",
+    "Baked for frames %d to %d": "Đã ghi sẵn cho khung %d đến %d",
+    "Bake for Render": "Ghi sẵn để render",
+    "Bake Again": "Ghi sẵn lại",
+    "Free Bake": "Bỏ bản ghi sẵn",
+    "Work the fast action effects out for every frame of the scene and keep them, so renders show them right":
+        "Tính hiệu ứng hành động nhanh cho mọi khung của cảnh và giữ lại, để render hiện đúng",
+    "Drop the baked effects: they are worked out as playback goes again":
+        "Bỏ hiệu ứng đã ghi sẵn: chúng lại được tính dần khi phát",
+    "Fast action baked for frames %d to %d": "Đã ghi sẵn hành động nhanh cho khung %d đến %d",
     "Fast action filter of the character (DaskToon)": "Bộ lọc hành động nhanh của nhân vật (DaskToon)",
     "Fast action filter of a character (anime timing spec 7)": "Bộ lọc hành động nhanh của nhân vật",
     # Illustration finish (illustration finish spec)
