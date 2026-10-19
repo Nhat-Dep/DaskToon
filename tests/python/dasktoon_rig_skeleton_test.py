@@ -361,6 +361,68 @@ class CentreLineTest(unittest.TestCase):
             self.assertAlmostEqual(wrist.y, depth_on(forearm, wrist.z), delta=0.015, msg=side)
 
 
+class EarsTest(unittest.TestCase):
+    """Ears or twin tails reaching out wider than the hands are no arms (RGforGame, a real model: its bunny ears reached
+    past its T-pose hands, and the arms were fitted onto the ears, the hands 1.2 m above the real ones)."""
+
+    def setUp(self):
+        bpy.ops.wm.read_factory_settings(use_empty=True)
+
+    def test_ears_wider_than_the_hands(self):
+        ears = ((0.12, 0.0, 1.95), (0.68, 0.0, 2.35), 0.07)  # up and out from the head, past the hands
+        body = polyline_chibi(CentreLineTest.ARM, CentreLineTest.LEG, extra=[ears])
+        rig = skeleton.create_humanoid(bpy.context, 1.0, (0.0, 0.0, 0.0))
+        skeleton.fit(bpy.context, rig, [body], body=[body])
+        for side, sign in (("Left", 1.0), ("Right", -1.0)):
+            hand = world_head(rig, side + "Hand")
+            self.assertLess(hand.z, 1.2, msg=side)  # the wrist of the arm (0.95 to 1.23 high), not up at the ears
+            self.assertGreater(sign * (hand.x - 3.0), 0.3, msg=side)
+
+    def test_twin_tails_hanging_onto_the_arms(self):
+        """Twin tails of their own mesh, hanging down onto the arms (RGforGame and RG2, real models: the walk from the
+        hand went up the twin tail, the arms were not found and stayed at the template's height, by the ears). A mesh
+        lying wholly above the hand is no part of the arm."""
+        from types import SimpleNamespace
+        from dasktoon_rig import body_shape
+
+        def arm(objects):
+            shape = body_shape.Shape(bpy.context, objects, SimpleNamespace(z=-0.07), 2.07)
+            return shape.arm(1, 3.0)
+
+        level = [(0.12, 0.0, 1.42), (0.36, 0.0, 1.40), (0.62, 0.0, 1.38)]  # T-pose arms
+        body = polyline_chibi(level, CentreLineTest.LEG)
+        pieces = [tube(Vector((3.0 + s * 0.42, 0.55, 1.95)), Vector((3.0 + s * 0.48, 0.5, 1.43)), 0.07)
+                  for s in (1.0, -1.0)]
+        verts, faces = [], []
+        for piece_verts, piece_faces in pieces:
+            faces += [tuple(i + len(verts) for i in face) for face in piece_faces]
+            verts += piece_verts
+        mesh = bpy.data.meshes.new("Tails")
+        mesh.from_pydata(verts, [], faces)
+        tails = bpy.data.objects.new("Tails", mesh)
+        bpy.context.scene.collection.objects.link(tails)
+        bpy.context.view_layer.update()
+        alone, with_tails = arm([body]), arm([body, tails])
+        self.assertIsNotNone(with_tails)
+        np.testing.assert_allclose(with_tails.base, alone.base, atol=0.03)
+        np.testing.assert_allclose(with_tails.end, alone.end, atol=0.03)
+
+
+    def test_a_slim_hand_out_of_a_wide_sleeve(self):
+        """A slim hand out of a wide sleeve (RGforGame, a real model): the band widens at the cuff, the hand alone is
+        too short for an arm, and the walk goes on to the body."""
+        level = [(0.12, 0.0, 1.2), (0.5, 0.0, 1.2), (0.9, 0.0, 1.2)]  # long T-pose arms, below the head
+        sleeve = ((0.12, 0.0, 1.2), (0.72, 0.0, 1.2), 0.17)
+        body = polyline_chibi(level, CentreLineTest.LEG, extra=[sleeve])
+        from types import SimpleNamespace
+        from dasktoon_rig import body_shape
+        shape = body_shape.Shape(bpy.context, [body], SimpleNamespace(z=-0.07), 2.07)
+        arm = shape.arm(1, 3.0)
+        self.assertIsNotNone(arm)
+        self.assertLess(arm.base[0], 3.0 + 0.35)  # where it meets the body, not at the cuff
+        self.assertGreater(arm.end[0], 3.0 + 0.85)
+
+
 class OutlineTest(unittest.TestCase):
     def test_an_outline_cut_short_is_left_out(self):
         """Triangles far from the point are not looked at: what is left of an outline there is no outline (the torso
@@ -443,6 +505,15 @@ class FacingTest(unittest.TestCase):
         self.assertAlmostEqual(facing.face_front(bpy.context, [body]), -math.pi / 2.0, places=6)
         self.assert_matrix(body.matrix_world.to_3x3(), Matrix.Identity(3))  # (the boots' tops nudge the spot it turns on)
         self.assertLess(self.toes(body)[1], -0.02)
+
+    def test_boots_reaching_back_too_tell_by_their_toes(self):
+        """Boots with a heel reaching back past the shins, the toes a little farther forward: on the whole the soles sit
+        under the shins (RGforGame, a real model facing +X, was left sideways), the toes still tell."""
+        boot = ((0.09, 0.06, 0.0), (0.09, -0.12, 0.0), 0.07)
+        body = polyline_chibi(self.ARM, self.LEG, extra=[boot])
+        body.matrix_world = turned(math.pi / 2.0, self.MIDDLE)  # facing +X
+        self.assertAlmostEqual(facing.face_front(bpy.context, [body]), -math.pi / 2.0, places=6)
+        self.assertFalse(facing.sideways(bpy.context, [body]))
 
     def test_a_side_facing_character_without_feet_is_noticed(self):
         """No foot tells which way it faces (the shins end flat), but its legs stand side by side along Y: it faces a

@@ -26,7 +26,14 @@ LIMB_LENGTH = (0.08, 0.7)  # a limb is this long (x height)
 WIDEN = 1.6  # where a limb meets the body, the band is this many times the limb's width ...
 SPREAD = 3.0  # ... and this many times wider SPREAD_AT (x height) further on: the body, not a wider sleeve
 SPREAD_AT = 0.06
+SLEEVE = (1.5, 0.2)  # past where an arm widens, a band keeping within this ratio over a limb's least length, and
+#                     narrower than this (x height), is a wide sleeve round the arm (RGforGame's slim hands out of wide
+#                     sleeves); the band through the body spreads wider (only for arms: walking up from the legs, a
+#                     torso standing straight keeps the width of a sleeve)
 HIP_ABOVE = 0.1  # the hip joint is this part of the leg's length above where the leg meets the body
+ARM_UP = 0.57  # an arm is modelled hanging or level: a limb pointing up more than this (sine, 35 deg) is an ear or a
+#                twin tail reaching out wider than the hand (RGforGame), and the hand is looked for lower down
+ARM_TRIES = 3
 # Template heights (x height) of the hip and shoulder joints: the spine is stretched between the heights found.
 HIP_Z, SHOULDER_Z = 0.52, 0.78
 
@@ -121,14 +128,21 @@ class Shape:
         if not meshes:
             return
         self.vertices = np.concatenate([v for v, _t in meshes])
+        self.lowest = [float(v[:, 2].min()) for v, _t in meshes]
         rng = np.random.default_rng(0)  # the same fit every time
-        points = np.concatenate([_surface(v, t, self.step, rng) for v, t in meshes])
+        self.points = [_surface(v, t, self.step, rng) for v, t in meshes]
+        points = np.concatenate(self.points)
         self.origin = np.array([points[:, 0].min(), min(points[:, 1].min(), feet.z)]) - self.step
-        cols, rows = ((points.max(axis=0) - self.origin) / self.step).astype(int) + 2
-        cells = ((points - self.origin) / self.step).astype(int)
-        mask = np.zeros((rows, cols), bool)
-        mask[cells[:, 1], cells[:, 0]] = True
-        self.mask = _largest(mask)
+        self.size = tuple(((points.max(axis=0) - self.origin) / self.step).astype(int)[::-1] + 2)
+        self.mask = self._silhouette(range(len(meshes)))
+
+    def _silhouette(self, which):
+        """The largest piece of the silhouette of the meshes numbered `which`."""
+        mask = np.zeros(self.size, bool)
+        for k in which:
+            cells = ((self.points[k] - self.origin) / self.step).astype(int)
+            mask[cells[:, 1], cells[:, 0]] = True
+        return _largest(mask)
 
     def point(self, rows, cols):
         """Front (x, z) of the middle of pixels."""
@@ -143,18 +157,25 @@ class Shape:
         near = np.hypot(self.vertices[:, 0] - xz[0], self.vertices[:, 2] - xz[1]) < radius
         return float(np.median(self.vertices[near, 1])) if near.sum() >= 3 else fallback
 
-    def limb(self, start):
-        """The limb walked from pixel `start` (a hand tip or a sole) up to where it meets the body, or None."""
-        steps = walk(self.mask, start)
+    def limb(self, start, mask=None, sleeves=False):
+        """The limb walked from pixel `start` (a hand tip or a sole) over `mask` (default the silhouette) up to where it
+        meets the body, or None; with `sleeves`, past wide sleeves round it."""
+        steps = walk(self.mask if mask is None else mask, start)
         band = np.bincount(steps[steps >= 0].ravel())
         ahead = max(int(round(SPREAD_AT * GRID)), 3)
         first = max(int(round(LIMB_LENGTH[0] * GRID)), 4)
         for meet in range(first, len(band) - ahead):
             width = np.median(band[meet // 2:meet])
             if all(band[meet + k] > WIDEN * width for k in range(3)) and band[meet + ahead] > SPREAD * width:
-                break
-        else:
-            return None
+                sleeve = band[meet + ahead:meet + ahead + first]
+                if (sleeves and len(sleeve) == first and sleeve.max() <= SLEEVE[0] * sleeve.min()
+                        and sleeve.max() * self.step < SLEEVE[1] * self.height):
+                    continue
+                return self._limb_to(steps, start, meet)
+        return None
+
+    def _limb_to(self, steps, start, meet):
+        """The limb of the pixels walked from `start` in fewer than `meet` steps."""
         points = self.point(*np.nonzero((steps >= 0) & (steps < meet)))
         centre, axis = _line(points)
         if (self.point(*start) - centre) @ axis < 0.0:
@@ -170,17 +191,36 @@ class Shape:
         return LIMB_LENGTH[0] <= length <= LIMB_LENGTH[1]
 
     def arm(self, side, middle):
-        """The arm on `side` (1: the character's left, +X; -1: right) of the middle x, or None."""
+        """The arm on `side` (1: the character's left, +X; -1: right) of the middle x, or None. The hand tip is the
+        pixel farthest out on that side; a limb from there pointing up (an ear, a twin tail) is passed over and the
+        tip looked for below it."""
         rows, cols = np.nonzero(self.mask)
         xz = self.point(rows, cols)
-        out = np.where(xz[:, 1] > self.origin[1] + 0.2 * self.height, side * (xz[:, 0] - middle), -np.inf)
-        tip = int(np.argmax(out))
-        if out[tip] < ARM_REACH * self.height:
-            return None
-        limb = self.limb((rows[tip], cols[tip]))
-        if limb is None or side * limb.axis[0] <= 0.0 or not self._length_ok(limb):
-            return None
-        return limb
+        below = np.inf
+        for _try in range(ARM_TRIES):
+            low_enough = (xz[:, 1] > self.origin[1] + 0.2 * self.height) & (xz[:, 1] < below)
+            out = np.where(low_enough, side * (xz[:, 0] - middle), -np.inf)
+            tip = int(np.argmax(out))
+            if out[tip] < ARM_REACH * self.height:
+                return None
+            limb = self.limb((rows[tip], cols[tip]), self._reaching_down_to(xz[tip, 1], (rows[tip], cols[tip])),
+                             sleeves=True)
+            if limb is not None and limb.axis[1] > ARM_UP:
+                below = min(limb.base[1], limb.end[1])  # up and out: not the arm
+                continue
+            if limb is None or side * limb.axis[0] <= 0.0 or not self._length_ok(limb):
+                return None
+            return limb
+        return None
+
+    def _reaching_down_to(self, z, tip):
+        """The silhouette without the meshes lying wholly above height `z` (twin tails hanging onto the arm: no part of
+        it), when pixel `tip` stays in it; else the whole silhouette."""
+        below = [k for k, lowest in enumerate(self.lowest) if lowest <= z]
+        if len(below) == len(self.lowest):
+            return self.mask
+        mask = self._silhouette(below)
+        return mask if mask[tip] else self.mask
 
     def leg(self, side, middle):
         """The leg on `side` of the middle x, or None: a limb that stands, apart from the other leg."""

@@ -6,9 +6,9 @@
 front are (lr_shape, one of the real models, faced +Y: the auto rig put its left on its right and bent its knees
 forward).
 
-Its feet tell: a foot reaches forward past the lower leg above it. The lower legs are found just above the floor, split
-across the way they spread; each foot is the soles nearest its leg, all of them near it (the hem of a long dress or a
-stand under the feet is no foot)."""
+Its feet tell: a foot reaches forward past the lower leg above it, or at least its toes reach farther than its heel. The
+lower legs are found just above the floor, split across the way they spread; each foot is the soles nearest its leg, all
+of them near it (the hem of a long dress or a stand under the feet is no foot)."""
 
 import math
 
@@ -18,6 +18,8 @@ from mathutils import Matrix
 SOLES = 0.03  # (x height) the soles: this near the floor
 LEGS = (0.06, 0.12)  # (x height) the lower legs: this high
 REACH = 0.01  # (x height) a foot reaching less far past its leg tells nothing
+TOE = 0.015  # (x height) or its toes reach this much farther forward than its heel back (RGforGame's boots: soles
+#              under the shins on the whole, the toes 2.9% farther than the heels)
 FOOT = 0.16  # (x height) a foot lies this near its leg (pl1's chunky boots reach 0.124; a long dress's hem is farther)
 AGREE = math.radians(45.0)  # the two feet reach the same way within this
 AXIS = math.radians(30.0)  # a character facing within this of an axis faces it; between two, it is not turned
@@ -43,14 +45,30 @@ def feet(world, height, floor):
         mine = soles[nearest == k]
         if len(mine) == 0 or np.linalg.norm(mine - centres[k], axis=1).max() > FOOT * height:
             return None
-        reach = mine.mean(axis=0) - centres[k]
-        if np.linalg.norm(reach) < REACH * height:
+        reach = _reach(mine - centres[k], height)
+        if reach is None:
             return None
-        reaches.append(reach / np.linalg.norm(reach))
+        reaches.append(reach)
     if reaches[0] @ reaches[1] < math.cos(AGREE):
         return None
     direction = reaches[0] + reaches[1]
     return centres.mean(axis=0), direction / np.linalg.norm(direction)
+
+
+def _reach(sole, height):
+    """The horizontal unit direction a foot of soles `sole` (n x 2, from its leg) reaches; None when it does not
+    tell."""
+    reach = sole.mean(axis=0)
+    if np.linalg.norm(reach) >= REACH * height:
+        return reach / np.linalg.norm(reach)
+    if len(sole) < 2:
+        return None
+    length = np.linalg.svd(sole - reach, full_matrices=False)[2][0]  # the way the foot lies
+    along = sole @ length
+    ahead = along.max() + along.min()  # how much farther one end reaches than the other
+    if abs(ahead) < TOE * height:
+        return None
+    return length if ahead > 0.0 else -length
 
 
 def _wrapped(angle):
