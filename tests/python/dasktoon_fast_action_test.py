@@ -274,6 +274,18 @@ class FastActionTest(unittest.TestCase):
             self.assertIn("dasktoon.render", idnames, module)
             self.assertNotIn("render.render", idnames, module)
 
+    def test_a_baked_character_exports_to_fbx(self):
+        """Engine Export of a baked character failed (the whole workflow tried on RG2, a real model): the bake's state,
+        three whole numbers kept on the armature as a custom property, went into the FBX as a vector, which takes
+        decimals. It lives in the registered settings now, which the FBX leaves out."""
+        import tempfile
+        self.settings.enabled = True
+        fast_action.bake(bpy.context, self.rig, list(bpy.context.scene.objects))
+        path = os.path.join(tempfile.mkdtemp(prefix="dt_fast_fbx_"), "baked.fbx")
+        self.assertEqual(bpy.ops.export_scene.fbx(filepath=path, use_custom_props=True), {'FINISHED'})
+        self.assertEqual([key for key in self.rig.data.keys() if key.startswith("dasktoon_fast_action_")], [])
+        self.assertEqual(fast_action.baked(self.rig), (1, 24, False))
+
     def test_a_change_after_baking_makes_the_bake_old_and_free_drops_it(self):
         self.settings.enabled = True
         fast_action.bake(bpy.context, self.rig, list(bpy.context.scene.objects))

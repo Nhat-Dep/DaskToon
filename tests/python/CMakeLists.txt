@@ -246,6 +246,7 @@ foreach(dasktoon_test
     dasktoon_export_graph_test
     dasktoon_export_textures_test
     dasktoon_export_fbx_test
+    dasktoon_export_merge_test
     dasktoon_export_layout_test
     dasktoon_engine_export_ui_test
     dasktoon_project_test
@@ -278,6 +279,9 @@ foreach(dasktoon_test
     dasktoon_rig_check_test
     dasktoon_rig_shoulder_test
     dasktoon_rig_fingers_test
+    dasktoon_rig_correctives_test
+    dasktoon_expressions_fill_test
+    dasktoon_expressions_eyes_test
     dasktoon_material_convert_test
     dasktoon_export_rig_test
     dasktoon_spring_constraint_test

@@ -65,6 +65,37 @@ class CharacterTest(unittest.TestCase):
         self.assertEqual(keys_at(bpy.data.objects["Hat"]), set())
         self.assertEqual(keys_at(bpy.data.objects["Rig2"]), set())
 
+    def test_key_pose_leaves_the_sway_chains_and_helpers(self):
+        """Key Pose keyed the bones Build Rig makes for hair and skirts, which their springs sway (Engine Export then
+        warned that Unity would sway them twice), and the hidden helpers lifting the shoulders, which drivers turn (a
+        key there does nothing). Found trying the whole workflow on RG2, a real model."""
+        from dasktoon_rig import build, shoulders
+        rig = bpy.data.objects["Rig"]
+        select({"Rig"})
+        bpy.ops.object.mode_set(mode='EDIT')
+        for name in ("Hair_1", "LeftShoulderLift"):
+            bone = rig.data.edit_bones.new(name)
+            bone.head, bone.tail = (0.0, 0.0, 2.0), (0.0, 0.0, 2.2)
+        bpy.ops.object.mode_set(mode='OBJECT')
+        rig.data.bones["Hair_1"][build.MARK] = "Hair"
+        rig.data.bones["LeftShoulderLift"][shoulders.MARK] = "Left"
+        select({"Face"})
+        self.assertEqual(bpy.ops.dasktoon.key_pose(), {'FINISHED'})
+        bones = {path.split('"')[1] for path in keys_at(rig) if path.startswith("pose.bones")}
+        self.assertIn("Root", bones)
+        self.assertNotIn("Hair_1", bones)
+        self.assertNotIn("LeftShoulderLift", bones)
+
+    def test_key_pose_leaves_driven_shape_keys(self):
+        """A bend fix (DT_Fix_..., docs/superpowers/specs/2026-10-20-dasktoon-bend-fixes-design.md) follows its joint
+        by a driver: a key on it does nothing."""
+        key = self.face.data.shape_keys
+        self.face.shape_key_add(name="DT_Fix_LeftKnee", from_mix=False)
+        key.driver_add('key_blocks["DT_Fix_LeftKnee"].value').driver.expression = "0"
+        select({"Face"})
+        self.assertEqual(bpy.ops.dasktoon.key_pose(), {'FINISHED'})
+        self.assertEqual(keys_at(key), {'key_blocks["Smile"].value[0]'})
+
     def test_the_keying_set_keys_through_blender(self):
         # I with this keying set active: Blender runs the registered keying set (here from a 3D Viewport).
         select({"Face"})

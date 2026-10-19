@@ -48,7 +48,8 @@ class UnityFaceTest(unittest.TestCase):
             "cellTime": 2.0 / fps})  # frame 3 of a clip starting at frame 1
         self.assertTrue(result["ok"], result.get("error"))
         self.assertTrue(result["flatEye"])
-        self.assertEqual((result["flatEye.eye"], result["flatEye.target"]), ("LeftEye", "Iris"))
+        # Engine Export merges the meshes by default: the iris and the mouth card are in the Body, found by material.
+        self.assertEqual((result["flatEye.eye"], result["flatEye.target"]), ("LeftEye", "Body"))
         self.assertAlmostEqual(result["flatEye.range"], 0.1, places=5)
         self.assertLess(result["flatEye.rest"], 1e-4)
         self.assertAlmostEqual(result["flatEye.left"], -0.1 * math.sin(math.radians(20.0)), delta=2e-3)
@@ -56,7 +57,7 @@ class UnityFaceTest(unittest.TestCase):
         self.assertAlmostEqual(result["flatEye.up"], -0.1 * math.sin(math.radians(10.0)), delta=2e-3)
         self.assertAlmostEqual(result["flatEye.upX"], 0.0, delta=2e-3)
         self.assertTrue(result["mouth"])
-        self.assertEqual((result["mouth.bone"], result["mouth.target"]), (mouth.CELL_BONE, "MouthCard"))
+        self.assertEqual((result["mouth.bone"], result["mouth.target"]), (mouth.CELL_BONE, "Body"))
         self.assertEqual((result["mouth.rows"], result["mouth.columns"]), (2, 4))
         self.assertEqual((result["mouth.rest"], result["mouth.cell"]), (0, 3))
         for got, expected in zip(result["mouth.uv"], (0.25, 0.5, 0.75, 0.5)):

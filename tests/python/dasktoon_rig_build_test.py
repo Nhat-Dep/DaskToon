@@ -43,6 +43,48 @@ def separate_parts(objs):
     ]
 
 
+class SkirtFollowTest(unittest.TestCase):
+    """A skirt spreads with the thighs, played or not (the user's choice, 2026-10-19): its springs pushed it out of the
+    legs only as frames were played, and the thighs stood through RG2's skirt in the Check's Sit pose."""
+
+    def setUp(self):
+        bpy.ops.wm.read_factory_settings(use_empty=True)
+        self.objs = fx.character()
+        self.rig = fx.rig_for()
+        build.build(bpy.context, self.rig, separate_parts(self.objs))
+
+    def tips(self):
+        """{strip number: world tail of its last bone}."""
+        world = self.rig.matrix_world
+        return {c: np.array(world @ self.rig.pose.bones["Skirt%d_3" % c].tail) for c in range(1, 9)}
+
+    def test_the_front_follows_the_thighs_the_back_hardly(self):
+        from dasktoon_rig import check
+        rest = self.tips()
+        check.apply_pose(bpy.context, self.rig, 'SIT')
+        sat = self.tips()
+        check.apply_pose(bpy.context, self.rig, 'REST')
+        forward = {c: rest[c][1] - sat[c][1] for c in rest}  # the character faces -Y
+        front = [c for c in rest if rest[c][1] < -0.05]
+        back = [c for c in rest if rest[c][1] > 0.05]
+        self.assertTrue(front and back)
+        length = sum(self.rig.data.bones["Skirt1_%d" % k].length for k in range(1, 4))
+        for c in front:
+            self.assertGreater(forward[c], 0.5 * length, c)
+        for c in back:
+            self.assertLess(forward[c], 0.5 * min(forward[f] for f in front), c)
+
+    def test_the_follow_comes_before_the_spring(self):
+        for c in range(1, 9):
+            kinds = [con.type for con in self.rig.pose.bones["Skirt%d_1" % c].constraints]
+            self.assertEqual(kinds, ['COPY_ROTATION', 'SPRING'], c)
+            follow = self.rig.pose.bones["Skirt%d_1" % c].constraints[0]
+            self.assertIn(follow.subtarget, ("LeftUpperLeg", "RightUpperLeg"))
+            side = "Left" if self.rig.data.bones["Skirt%d_1" % c].head_local.x > 0 else "Right"
+            self.assertEqual(follow.subtarget, side + "UpperLeg")
+        self.assertEqual([con.type for con in self.rig.pose.bones["Skirt1_2"].constraints], ['SPRING'])
+
+
 class EyesTest(unittest.TestCase):
     def test_both_eyes_in_one_mesh_follow_their_eye_bones(self):
         """Luna's and filie's eyes (real models) are one mesh of two eyeballs: rigid on the bone nearest their middle,

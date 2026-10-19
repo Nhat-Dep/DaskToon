@@ -29,6 +29,10 @@ VI = {
     "No Model": "Không xuất model",
     "Export only the materials and shaders": "Chỉ xuất material và shader",
     "Include Animation": "Kèm animation",
+    "Merge the Character's Meshes": "Gộp lưới nhân vật thành một",
+    "One mesh for the character in Unity, each material kept; the file you work on stays as it is":
+        "Unity nhận một lưới cho nhân vật, mỗi material giữ riêng; file đang làm giữ nguyên",
+    "Merged %d meshes of the character into one: %s": "Đã gộp %d lưới của nhân vật thành một: %s",
     "Export Materials and Shaders": "Xuất material và shader",
     "Bake Size": "Cỡ ảnh bake",
     "Writes straight into the Unity project": "Ghi thẳng vào project Unity",
@@ -332,6 +336,20 @@ VI = {
     "Remove Empty Shape Keys": "Xóa hình mẫu trống",
     "Remove the shape keys that move no vertex": "Xóa các hình mẫu không làm dịch chuyển đỉnh nào",
     "Removed %d empty shape keys": "Đã xóa %d hình mẫu trống",
+    "Fill Empty Expressions": "Lấp biểu cảm còn trống",
+    "Build empty expression shape keys from the others: \"e\" from \"a\" and \"i\", blink sides, the upper lip, "
+    "VRM names":
+        "Dựng các hình mẫu biểu cảm còn trống từ những cái khác: \"e\" từ \"a\" và \"i\", hai bên nháy mắt, môi "
+        "trên, tên VRM",
+    "Filled %d shape keys: %s": "Đã lấp %d hình mẫu: %s",
+    "No empty expression could be built from the others":
+        "Không có biểu cảm trống nào dựng được từ các biểu cảm khác",
+    "Sculpt Eye Expressions": "Nặn biểu cảm mắt",
+    "Make blink, blink_L, blink_R, joy and surprised for eyes built from loose pieces in front of the face":
+        "Tạo nhắm mắt, nhắm mắt trái, nhắm mắt phải, vui và ngạc nhiên cho mắt làm bằng các mảnh rời đặt trước mặt",
+    "Sculpted %s on %s": "Đã nặn %s trên %s",
+    "No eyes made of loose pieces in front of the face, or their keys already move: nothing sculpted":
+        "Không thấy mắt làm bằng mảnh rời trước mặt, hoặc các hình mẫu đó đã có sẵn: không nặn gì",
     "Convert Naming": "Đổi chuẩn tên",
     "Rename shape keys from one naming standard to another (VRoid, VRM 0.x, VRM 1.0)":
         "Đổi tên hình mẫu từ chuẩn tên này sang chuẩn tên khác (VRoid, VRM 0.x, VRM 1.0)",
@@ -1228,6 +1246,11 @@ VI = {
     "Shoulder Follows Arm": "Vai nâng theo tay",
     "How much the shoulders lift when the arms rise above them: 1 as a person's, 0 not at all":
         "Vai nâng lên bao nhiêu khi tay giơ cao quá vai: 1 như người thật, 0 là không nâng",
+    "Bend Fixes": "Sửa chỗ gập",
+    "Build Rig makes a shape key for each knee, elbow, hip and shoulder that keeps the joint round as it bends, in "
+    "DaskToon and in Unity":
+        "Dựng rig tạo một shape key cho mỗi đầu gối, khuỷu tay, hông và vai, giữ khớp tròn đầy khi gập, trong DaskToon "
+        "và trong Unity",
     # The auto rig and the Check (auto rig spec 2, 5)
     "The skeleton is added and fitted, but the rig could not be built: %s":
         "Đã thêm và khớp khung xương, nhưng chưa dựng được rig: %s",
@@ -1341,8 +1364,8 @@ VI = {
     "Scripts: the project already has a recent enough version, not written again":
         "Script: project đã có bản đủ mới, không ghi lại",
     "Scripts: not needed (no hair or skirt chains)": "Script: không cần (không có chuỗi tóc hay váy)",
-    "Rig: %s (DaskToon spring bones sway the hair and skirts in Unity)":
-        "Rig: %s (spring bone của DaskToon cho tóc và váy lắc trong Unity)",
+    "Rig: %s (DaskToon's Unity scripts read it: swaying hair and skirts, eyes, mouth, bend fixes)":
+        "Rig: %s (script Unity của DaskToon đọc tệp này: tóc và váy lắc, mắt, miệng, sửa chỗ gập)",
     "Part %s sways in Unity, but its bones have sway keys: Unity would sway it twice. Set Sway in Unity to Baked, or remove the keys":
         "Phần %s lắc trong Unity nhưng xương của nó có key lắc: Unity sẽ lắc hai lần. Đặt Lắc trong Unity thành Đã bake, hoặc xóa các key đó",
     # dasktoon_export/report.py (scripts once per project)

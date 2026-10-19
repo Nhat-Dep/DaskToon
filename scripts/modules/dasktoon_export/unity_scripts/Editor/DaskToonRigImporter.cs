@@ -12,7 +12,8 @@ namespace DaskToon.Editor
 {
     /// <summary>When Unity imports a model with a DaskToon <model>.rig.json beside it, adds a DaskToonSpringBone for
     /// each chain that sways at run time and a DaskToonSpringCollider on each collider bone (anime rig spec 9.5), a
-    /// DaskToonFlatEye for each flat eye and a DaskToonMouthAtlas for each 2D mouth (spec 10, rig file version 2).
+    /// DaskToonFlatEye for each flat eye and a DaskToonMouthAtlas for each 2D mouth (spec 10, rig file version 2), and
+    /// one DaskToonCorrective with the bend fixes (docs/superpowers/specs/2026-10-20-dasktoon-bend-fixes-design.md).
     /// </summary>
     public class DaskToonRigImporter : AssetPostprocessor
     {
@@ -59,6 +60,16 @@ namespace DaskToon.Editor
         }
 
         [Serializable]
+        class CorrectiveData
+        {
+            public string shape;
+            public string parent;
+            public string child;
+            public float[] target;  // in the character's frame: left, up, front
+            public float angle;
+        }
+
+        [Serializable]
         class RigData
         {
             public int version;
@@ -66,6 +77,7 @@ namespace DaskToon.Editor
             public ColliderData[] colliders;
             public FlatEyeData[] flatEyes;
             public MouthData[] mouths;
+            public CorrectiveData[] correctives;
         }
 
         /// <summary>The slot of `renderer` whose material is named `material`, else `slot` (kept within the slots).
@@ -141,6 +153,54 @@ namespace DaskToon.Editor
                 spring.colliders = colliders.ToArray();
             }
             AddFace(root, data, byName);
+            AddCorrectives(root, data, byName);
+        }
+
+        /// <summary>One DaskToonCorrective with the fixes whose blend shape a SkinnedMeshRenderer of the model has. The
+        /// target comes in the character's frame, built from the same bones as in DaskToon; Unity's axes are mirrored
+        /// from Blender's, so the front is up x left here (left x up there).</summary>
+        static void AddCorrectives(GameObject root, RigData data, Dictionary<string, Transform> byName)
+        {
+            if (data.correctives == null || data.correctives.Length == 0) return;
+            if (!byName.TryGetValue("Hips", out var hips) || !byName.TryGetValue("Head", out var head)
+                || !byName.TryGetValue("LeftUpperLeg", out var leftLeg)
+                || !byName.TryGetValue("RightUpperLeg", out var rightLeg))
+                return;
+            var up = (head.position - hips.position).normalized;
+            var left = Vector3.ProjectOnPlane(leftLeg.position - rightLeg.position, up).normalized;
+            var front = Vector3.Cross(up, left);
+            var renderers = root.GetComponentsInChildren<SkinnedMeshRenderer>(true);
+            var fixes = new List<DaskToonCorrective.Fix>();
+            foreach (var c in data.correctives)
+            {
+                if (c.target == null || c.target.Length != 3) continue;
+                if (!byName.TryGetValue(c.parent ?? "", out var parent) || !byName.TryGetValue(c.child ?? "", out var child))
+                    continue;
+                var world = (c.target[0] * left + c.target[1] * up + c.target[2] * front).normalized;
+                var target = parent.InverseTransformDirection(world);
+                var rest = parent.InverseTransformDirection(child.up).normalized;  // the model imports at rest
+                var along = Vector3.Cross(rest, target);
+                if (along.sqrMagnitude < 1e-12f) continue;
+                along.Normalize();
+                var found = new List<SkinnedMeshRenderer>();
+                var indices = new List<int>();
+                foreach (var renderer in renderers)
+                {
+                    var index = renderer.sharedMesh != null ? renderer.sharedMesh.GetBlendShapeIndex(c.shape) : -1;
+                    if (index < 0) continue;
+                    found.Add(renderer);
+                    indices.Add(index);
+                }
+                if (found.Count == 0) continue;
+                fixes.Add(new DaskToonCorrective.Fix
+                {
+                    shape = c.shape, parent = parent, child = child, rest = rest, along = along,
+                    across = Vector3.Cross(rest, along), angle = Vector3.Angle(rest, target) * Mathf.Deg2Rad,
+                    renderers = found.ToArray(), indices = indices.ToArray(),
+                });
+            }
+            if (fixes.Count == 0) return;
+            root.AddComponent<DaskToonCorrective>().fixes = fixes.ToArray();
         }
 
         static void AddFace(GameObject root, RigData data, Dictionary<string, Transform> byName)

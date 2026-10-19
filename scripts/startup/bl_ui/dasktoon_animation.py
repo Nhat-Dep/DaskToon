@@ -21,6 +21,14 @@ from bpy.types import KeyingSetInfo, Menu, Operator, Panel, PropertyGroup
 from keyingsets_builtins import WholeCharacterMixin
 
 
+def _sways_or_is_driven(pose_bone):
+    """A bone Build Rig made for a chain of hair or a skirt, which its spring sways, or a hidden helper lifting a
+    shoulder, which a driver turns: Key Pose leaves them (keyed, Engine Export warned that Unity would sway every chain
+    twice; a key on a helper does nothing). Found trying the whole workflow on RG2, a real model."""
+    from dasktoon_rig import build, shoulders
+    return pose_bone.bone.get(build.MARK) is not None or pose_bone.bone.get(shoulders.MARK) is not None
+
+
 class CharacterKeying(WholeCharacterMixin):
     """What the "DaskToon Character" keying set keys (spec 5). Key Pose keys the same paths itself, so it works from any
     editor."""
@@ -30,7 +38,8 @@ class CharacterKeying(WholeCharacterMixin):
         objects = list(context.view_layer.objects)
         for armature in character.selected_characters(context):
             for bone in armature.pose.bones:
-                self.generate(context, ks, bone)
+                if not _sways_or_is_driven(bone):
+                    self.generate(context, ks, bone)
             for obj in character.members(armature, objects):
                 self.generate_face(ks, obj)
         for obj in context.selected_objects:
@@ -40,13 +49,15 @@ class CharacterKeying(WholeCharacterMixin):
                 keyingsets_utils.RKS_GEN_scaling(self, context, ks, obj)
 
     def generate_face(self, ks, obj):
-        """The shape keys (but the Basis) and the expression controllers of a mesh of the character."""
+        """The shape keys (but the Basis and those a driver sets, such as the bend fixes) and the expression
+        controllers of a mesh of the character."""
         key = obj.data.shape_keys if obj.type == 'MESH' else None
         if key is not None:
+            drivers = key.animation_data.drivers if key.animation_data is not None else None
             for block in key.key_blocks:
-                if block != key.reference_key:
-                    ks.paths.add(key, 'key_blocks["%s"].value' % bpy.utils.escape_identifier(block.name),
-                                 group_method='NAMED', group_name=obj.name)
+                path = 'key_blocks["%s"].value' % bpy.utils.escape_identifier(block.name)
+                if block != key.reference_key and (drivers is None or drivers.find(path) is None):
+                    ks.paths.add(key, path, group_method='NAMED', group_name=obj.name)
         root = getattr(obj, "dask_shape_controllers", None)
         for i in range(len(root.groups) if root is not None else 0):
             for axis in ("handle_x", "handle_y"):
@@ -520,6 +531,13 @@ class DaskFastAction(PropertyGroup):
     line_color: FloatVectorProperty(
         name="Line Color", subtype='COLOR', size=3, default=(1.0, 1.0, 1.0), min=0.0, max=1.0,
         update=_fast_action_changed)
+    # The bake's state (fast_action.baked): registered, so the FBX leaves it out (kept as a custom property, three whole
+    # numbers went into the FBX as a vector, which takes decimals, and Engine Export failed).
+    baked: BoolProperty(options={'HIDDEN'})
+    bake_first: IntProperty(options={'HIDDEN'})
+    bake_last: IntProperty(options={'HIDDEN'})
+    bake_old: BoolProperty(options={'HIDDEN'})
+    bake_motion: StringProperty(options={'HIDDEN'})
 
 
 class DASKTOON_PT_fast_action(Panel):

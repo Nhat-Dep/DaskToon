@@ -40,7 +40,10 @@ def character():
 
 
 def angle(a, b):
-    return math.degrees(math.acos(max(-1.0, min(1.0, float(np.dot(a, b))))))
+    """Degrees between two directions; 0 for the same one (acos of a single-precision unit vector's square, 0.99999994,
+    gave 0.02 degrees)."""
+    a, b = np.asarray(a, float), np.asarray(b, float)
+    return math.degrees(math.atan2(float(np.linalg.norm(np.cross(a, b))), float(np.dot(a, b))))
 
 
 def play(rig, last, name=BONE):

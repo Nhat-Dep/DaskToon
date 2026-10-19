@@ -45,6 +45,20 @@ class ClipTest(unittest.TestCase):
         self.assertIs(clips.current(self.rig), walk)
         self.assertTrue(first.use_fake_user and walk.use_fake_user)  # a clip not in use is kept in the file
 
+    def test_animation_left_from_an_old_rig_is_no_clip(self):
+        """RG2's meshes (a real model) kept the actions of a rig they once had, keyed on its bones, which animate
+        nothing on a mesh: the first clip gathered them into a stray "Clip" that Engine Export wrote out."""
+        for idb in (self.rig, self.hat, self.key):
+            idb.animation_data_clear()
+        left = bpy.data.actions.new("jump")
+        self.face.animation_data_create()
+        self.face.animation_data.action = left
+        curve = left.fcurve_ensure_for_datablock(self.face, 'pose.bones["Chest"].location', index=0)
+        curve.keyframe_points.insert(1.0, 0.0)
+        curve.keyframe_points.insert(10.0, 0.3)
+        clips.new(self.rig, self.objects, "Walk")
+        self.assertEqual([clip.name for clip in clips.clips_of(self.rig)], ["Walk"])
+
     def test_new_clip_is_assigned_to_every_part(self):
         walk = clips.new(self.rig, self.objects, "Walk")
         for idb in (self.rig, self.face, self.key, self.hat):

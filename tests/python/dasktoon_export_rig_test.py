@@ -5,6 +5,7 @@
 """<Model>.rig.json and the Unity scripts of the anime rig (spec 9.5), and how Engine Export writes them."""
 
 import json
+import math
 import os
 import sys
 import tempfile
@@ -20,10 +21,11 @@ from dasktoon_export import rig_json  # noqa: E402
 from dasktoon_rig import build  # noqa: E402
 
 
-def built(roles=(("Body", 'BODY'), ("Hair", 'HAIR'), ("Skirt", 'SKIRT'))):
+def built(roles=(("Body", 'BODY'), ("Hair", 'HAIR'), ("Skirt", 'SKIRT')), bend_fixes=True):
     bpy.ops.wm.read_factory_settings(use_empty=True)
     objs = fx.character()
     rig = fx.rig_for()
+    rig.data.dasktoon_rig.bend_fixes = bend_fixes
     for name, role in roles:
         ui.add_part(rig, objs[name], role)
     build.build(bpy.context, rig, list(rig.data.dasktoon_rig.parts))
@@ -66,9 +68,39 @@ class RigJsonTest(unittest.TestCase):
         self.assertAlmostEqual(head["radius"], 2.0 * local.radius, places=5)
 
     def test_no_chains(self):
-        rig, objs = built(roles=(("Body", 'BODY'),))
+        rig, objs = built(roles=(("Body", 'BODY'),), bend_fixes=False)
         self.assertIsNone(rig_json.rig_data(rig))
         self.assertIsNone(rig_json.find_rig([rig, objs["Body"]]))
+
+
+class CorrectivesJsonTest(unittest.TestCase):
+    """The bend fixes (docs/superpowers/specs/2026-10-20-dasktoon-bend-fixes-design.md) in the rig file: shape key,
+    parent, child, the angle and the target in the body's frame (the character's left, up, front), which Unity's frame
+    mirrors."""
+
+    def test_the_bend_fixes_in_the_rig_file(self):
+        import dasktoon_rig_regions_test as regions
+        rig, _objs = regions.rigged()
+        build.build(bpy.context, rig, list(rig.data.dasktoon_rig.parts))
+        data = rig_json.rig_data(rig)  # no chains, no face: the fixes alone make a rig file
+        fixes = {c["shape"]: c for c in data["correctives"]}
+        self.assertEqual(set(fixes), {"DT_Fix_" + side + joint for side in ("Left", "Right")
+                                      for joint in ("Knee", "Elbow", "Hip", "Shoulder")})
+        knee = fixes["DT_Fix_LeftKnee"]
+        self.assertEqual((knee["parent"], knee["child"]), ("LeftUpperLeg", "LeftLowerLeg"))
+        self.assertAlmostEqual(knee["angle"], math.pi / 2, places=3)
+        self.assertLess(knee["target"][2], -0.9)  # the lower leg goes back
+        self.assertGreater(fixes["DT_Fix_RightHip"]["target"][2], 0.9)  # the thigh comes forward
+        self.assertGreater(fixes["DT_Fix_LeftElbow"]["target"][2], 0.9)  # the forearm comes forward
+        shoulder = fixes["DT_Fix_RightShoulder"]
+        self.assertEqual((shoulder["parent"], shoulder["child"]), ("RightShoulder", "RightUpperArm"))
+        self.assertLess(shoulder["target"][1], -0.99)  # the arm down
+        self.assertAlmostEqual(sum(c * c for c in shoulder["target"]), 1.0, places=4)
+
+    def test_no_fixes_without_their_keys(self):
+        rig, _objs = built(roles=(("Body", 'BODY'),), bend_fixes=False)
+        rig.data.dasktoon_rig.bend_fixes = True  # turned on, but not built since
+        self.assertIsNone(rig_json.rig_data(rig))
 
 
 class ScriptsInstallTest(unittest.TestCase):
@@ -97,8 +129,11 @@ class ScriptsInstallTest(unittest.TestCase):
         self.assertIn("Vector3.down", code)
         self.assertIn("if (dt <= 0f) return;", code)
         with open(os.path.join(root, si.SCRIPT_DIR, "Editor", "DaskToonRigImporter.cs"), encoding="utf-8") as f:
-            self.assertIn("static void OnPostprocessAllAssets(", f.read())
-        self.assertEqual(si.SCRIPTS_VERSION, 5)
+            importer = f.read()
+        self.assertIn("static void OnPostprocessAllAssets(", importer)
+        self.assertIn("AddCorrectives(root, data, byName);", importer)
+        self.assertIn("DaskToonCorrective.cs", si.FILE_GUIDS)  # the bend fixes (2026-10-20)
+        self.assertEqual(si.SCRIPTS_VERSION, 6)
 
     def test_older_scripts_are_replaced(self):
         from dasktoon_export import scripts_install as si
@@ -192,13 +227,13 @@ class ExportRigTest(unittest.TestCase):
         with open(os.path.join(target.root, "README.txt"), encoding="utf-8") as f:
             readme = f.read()
         self.assertIn("Scripts folder may be in a Unity project only once", readme)
-        rig, objs = built(roles=(("Body", 'BODY'),))
+        rig, objs = built(roles=(("Body", 'BODY'),), bend_fixes=False)
         target, _rep = export(rig, {"Body": objs["Body"]})
         with open(os.path.join(target.root, "README.txt"), encoding="utf-8") as f:
             self.assertNotIn("Scripts folder", f.read())
 
     def test_no_chains_no_rig_files(self):
-        rig, objs = built(roles=(("Body", 'BODY'),))
+        rig, objs = built(roles=(("Body", 'BODY'),), bend_fixes=False)
         target, rep = export(rig, {"Body": objs["Body"]})
         self.assertEqual(rep.rig, "")
         self.assertFalse(os.path.exists(os.path.join(target.root, "Hero", "Model", "Hero.rig.json")))

@@ -10,7 +10,7 @@ import os
 
 from . import assets, shaders_install, unity_yaml
 
-SCRIPTS_VERSION = 5
+SCRIPTS_VERSION = 6
 SCRIPT_DIR = "Scripts"
 VERSION_FILE = "DaskToonScripts.version"
 SOURCE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "unity_scripts")
@@ -21,6 +21,7 @@ FILE_GUIDS = {
     "DaskToonSpringCollider.cs": "f611202d6bd34f7fb27569a468d4789b",
     "DaskToonFlatEye.cs": "8c3f2b6a1d4e4f5a9b7c0e2d4f6a8b1c",
     "DaskToonMouthAtlas.cs": "3e5a7c9b1d2f4a6c8e0b2d4f6a8c0e1f",
+    "DaskToonCorrective.cs": "36060bd4f34c4a728cf1fc9e2b50710d",
     "Editor/DaskToonRigImporter.cs": "5e0acb864e5c435983c70bd57f042a01",
     "Editor/DaskToonClipImporter.cs": "2ebc2f333a074ae9a716231793d3eef5",
     "Editor/DaskToonAvatarImporter.cs": "d707013be1e44f07adaae520f4f588eb",

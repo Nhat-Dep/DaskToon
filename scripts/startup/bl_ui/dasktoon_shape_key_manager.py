@@ -1498,6 +1498,64 @@ class DASKTOON_OT_vrm_remove_empty_shapes(Operator):
         return {'FINISHED'}
 
 
+class DASKTOON_OT_fill_empty_expressions(Operator):
+    """Build empty expression shape keys from the others: "e" from "a" and "i", blink sides, the upper lip, VRM names"""
+    bl_idname = "dasktoon.fill_empty_expressions"
+    bl_label = "Fill Empty Expressions"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        obj = context.object
+        return obj is not None and obj.type == 'MESH' and obj.data.shape_keys is not None
+
+    def execute(self, context):
+        from dasktoon_rig import expressions
+        filled = expressions.fill(context.object)
+        if filled:
+            self.report({'INFO'}, rpt_("Filled %d shape keys: %s") % (
+                len(filled), ", ".join("%s (%s)" % (name, how) for name, how in filled)))
+        else:
+            self.report({'INFO'}, rpt_("No empty expression could be built from the others"))
+        return {'FINISHED'}
+
+
+def _character_rig(obj):
+    """The humanoid rig of `obj`: itself, or the armature an Armature modifier of the mesh uses; None without one."""
+    if obj is None:
+        return None
+    if obj.type == 'ARMATURE':
+        return obj if obj.data.bones.get("Head") is not None else None
+    for modifier in obj.modifiers if obj.type == 'MESH' else ():
+        if modifier.type == 'ARMATURE' and modifier.object is not None and modifier.object.data.bones.get("Head"):
+            return modifier.object
+    return None
+
+
+class DASKTOON_OT_sculpt_eye_expressions(Operator):
+    """Make blink, blink_L, blink_R, joy and surprised for eyes built from loose pieces in front of the face"""
+    bl_idname = "dasktoon.sculpt_eye_expressions"
+    bl_label = "Sculpt Eye Expressions"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        return _character_rig(context.object) is not None
+
+    def execute(self, context):
+        from dasktoon_rig import eye_shapes
+        rig = _character_rig(context.object)
+        made = eye_shapes.sculpt(rig, list(context.view_layer.objects))
+        if made:
+            self.report({'INFO'}, rpt_("Sculpted %s on %s") % (
+                ", ".join(name for name, _meshes in made),
+                ", ".join(sorted({mesh for _name, meshes in made for mesh in meshes}))))
+        else:
+            self.report({'WARNING'}, rpt_("No eyes made of loose pieces in front of the face, or their keys already "
+                                          "move: nothing sculpted"))
+        return {'FINISHED'}
+
+
 class DASKTOON_OT_vrm_convert_naming(Operator):
     """Rename shape keys from one naming standard to another (VRoid, VRM 0.x, VRM 1.0)"""
     bl_idname = "dasktoon.vrm_convert_naming"
@@ -1973,6 +2031,8 @@ class DATA_PT_dasktoon_expression_sets(DaskExpressionPanel, Panel):
         row.operator("dasktoon.vrm_init_standard", text="VRM 1.0 Set", icon='ADD').standard_type = 'VRM_1'
         col = layout.column(align=True)
         col.operator("dasktoon.vrm_synthesize_arkit52", icon='SOLO_ON')
+        col.operator("dasktoon.fill_empty_expressions", icon='SHAPEKEY_DATA')
+        col.operator("dasktoon.sculpt_eye_expressions", icon='HIDE_OFF')
         col.operator("dasktoon.arkit_init_placeholders", icon='ADD')
         col.operator("dasktoon.vrm_convert_naming", icon='SYNTAX_OFF')
         keys = context.object.data.shape_keys
@@ -2199,6 +2259,8 @@ classes = (
     DASKTOON_OT_vrm_bake_expression,
     DASKTOON_OT_vrm_synthesize_arkit52,
     DASKTOON_OT_vrm_remove_empty_shapes,
+    DASKTOON_OT_fill_empty_expressions,
+    DASKTOON_OT_sculpt_eye_expressions,
     DASKTOON_OT_vrm_convert_naming,
     DASKTOON_OT_vrm_live_preview,
     DASKTOON_OT_vrm_guide_solo_preview,

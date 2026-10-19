@@ -111,3 +111,40 @@ Kiểm tra sau phần 3–4: bộ thử đầy đủ 681 bài, đều đạt (sh
 | Không nhận được đủ 5 ngón | Giữ: ngón khung mẫu, không báo |
 | Ngón cái | Giữ: ngón phía trước là ngón cái |
 | Lưới tên "mat" | **Đổi**: chỉ là mắt khi nằm trên đầu |
+
+## 9. Lượt làm tiếp theo (đêm 2026-10-19 → 20)
+
+Làm thẳng trên nhánh chính, mỗi việc xong và chạy thử đạt thì đẩy lên GitHub.
+
+| Commit | Việc |
+|---|---|
+| 848a708 | **Render tự ghi sẵn Hành động nhanh** (F12, Ctrl F12, menu Render). Bản ghi bị coi là cũ khi đổi cài đặt, đổi khoảng khung, hoặc **sửa hoạt cảnh sau khi ghi** (lưu "dấu vân tay" của các khoá và bảng nhịp). Render từ dòng lệnh vẫn cần bấm Ghi sẵn trước. |
+| 2071454 | **Tự gắn khung tự đổi phần dưới eo giống váy thành Váy**. **"mat" chỉ là mắt khi nằm trên đầu** và gồm các mảnh nhỏ; viết có dấu "mặt" (khuôn mặt) thì không bao giờ là mắt. |
+| 5929b74 | **Thử trong cửa sổ thật** (ảnh ở `import-fixes/vi`): mọi nút chạy đúng. Sửa chữ bị cắt: câu dài trong bản Kiểm tra tự xuống dòng, bảng Hành động nhanh rộng hơn. "object" → "đối tượng". |
+| 8abe03b | **Váy xoè theo đùi khi ngồi** kể cả khi không phát: mỗi dải váy chép xoay của đùi cùng bên (trước 0,8, bên 0,45, sau 0,1), đặt trước ràng buộc lò xo. RG2, RGforGame, Luna ngồi: váy phủ lên đùi. |
+| f65427d | **Thử trọn quy trình trên RG2** (tự gắn khung → Kiểm tra → Dùng shader DaskToon → clip Wave bằng Khoá tư thế, nhịp hai khung, Hành động nhanh → Render → Engine Export → Unity). Tìm và sửa 4 lỗi: xuất FBX hỏng khi đã ghi sẵn; Khoá tư thế khoá cả xương tóc/váy (Unity sẽ đung đưa hai lần) và xương phụ của vai; hoạt cảnh rác của bộ khung cũ thành clip "Clip" thừa; báo cáo xuất liệt kê Hành động nhanh như bộ sửa cần áp. Unity: khung người hợp lệ, clip Wave lặp 1 giây, nhịp hai khung. |
+
+Việc "tay áo rộng bị dẹt": không cần sửa thêm. Tấm dẹt đó chính là đuôi bím tóc bị kéo theo tay, đã sửa ở ceee29d.
+
+**Chưa xong, cần bạn quyết:** sửa C++ cho xương lò xo (lúc bắt đầu lại cũng đẩy ra khỏi chân) nằm ở nhánh
+`dasktoon-spring-collide-on-reset`, chưa gộp. Lý do: máy không còn Visual Studio 2022, chỉ còn bản 18 (2026). Dựng
+riêng một thư viện bằng bộ biên dịch mới rồi trộn với thư viện cũ thì DaskToon bị sập, nên tôi đã khôi phục bản cũ.
+Muốn dựng thì phải cài lại Visual Studio 2022 Build Tools, hoặc dựng lại toàn bộ bằng Visual Studio 2026 (vài giờ).
+Phần váy theo đùi ở trên đã giải quyết việc váy khi ngồi mà không cần dựng lại.
+
+**Còn thấy, chưa làm:** RG2 có bộ làm mượt "Auto Smooth" trên từng lưới, không vào FBX (báo cáo xuất có ghi).
+
+Kiểm tra cuối: bộ thử đầy đủ 694 bài đạt (shading/upgrade đạt sau khi khôi phục dữ liệu thử), Unity 7/7 đạt.
+
+## 10. Tự gộp lưới khi xuất (2026-10-20)
+
+Bạn chọn: gộp các lưới của nhân vật thành một khi xuất, mỗi vật liệu giữ riêng, có ô tick **"Gộp lưới nhân vật thành
+một"** trong Engine Export (mặc định bật). File đang làm giữ nguyên, chỉ bản xuất được gộp.
+
+- Gộp các lưới do khung xương nhân vật làm biến dạng. Vật không có trọng số khung xương (ví dụ kiếm gắn vào xương tay)
+  vẫn để riêng; model không có khung xương thì không gộp.
+- Lưới gộp mang tên lưới Thân. Lớp UV dùng để vẽ của mỗi lưới được đặt chung tên "UVMap" trước khi gộp (nếu không,
+  Unity đọc sai UV và ảnh hỏng). Shape key gộp theo tên và đi theo lưới gốc, nên clip vẫn có biểu cảm.
+- Mắt dẹt và miệng 2D: `rig.json` trỏ vào lưới gộp; Unity tìm vật liệu theo tên nên vẫn chạy (bài thử Unity của mặt đạt).
+- RG2: gộp 5 lưới thành một, 5 vật liệu, UV đúng; Unity nhận khung người hợp lệ, clip Wave đúng.
+- Báo cáo xuất ghi: "Đã gộp N lưới của nhân vật thành một: <tên>".
