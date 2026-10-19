@@ -1498,6 +1498,28 @@ class DASKTOON_OT_vrm_remove_empty_shapes(Operator):
         return {'FINISHED'}
 
 
+class DASKTOON_OT_fill_empty_expressions(Operator):
+    """Build empty expression shape keys from the others: "e" from "a" and "i", blink sides, the upper lip, VRM names"""
+    bl_idname = "dasktoon.fill_empty_expressions"
+    bl_label = "Fill Empty Expressions"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        obj = context.object
+        return obj is not None and obj.type == 'MESH' and obj.data.shape_keys is not None
+
+    def execute(self, context):
+        from dasktoon_rig import expressions
+        filled = expressions.fill(context.object)
+        if filled:
+            self.report({'INFO'}, rpt_("Filled %d shape keys: %s") % (
+                len(filled), ", ".join("%s (%s)" % (name, how) for name, how in filled)))
+        else:
+            self.report({'INFO'}, rpt_("No empty expression could be built from the others"))
+        return {'FINISHED'}
+
+
 class DASKTOON_OT_vrm_convert_naming(Operator):
     """Rename shape keys from one naming standard to another (VRoid, VRM 0.x, VRM 1.0)"""
     bl_idname = "dasktoon.vrm_convert_naming"
@@ -1973,6 +1995,7 @@ class DATA_PT_dasktoon_expression_sets(DaskExpressionPanel, Panel):
         row.operator("dasktoon.vrm_init_standard", text="VRM 1.0 Set", icon='ADD').standard_type = 'VRM_1'
         col = layout.column(align=True)
         col.operator("dasktoon.vrm_synthesize_arkit52", icon='SOLO_ON')
+        col.operator("dasktoon.fill_empty_expressions", icon='SHAPEKEY_DATA')
         col.operator("dasktoon.arkit_init_placeholders", icon='ADD')
         col.operator("dasktoon.vrm_convert_naming", icon='SYNTAX_OFF')
         keys = context.object.data.shape_keys
@@ -2199,6 +2222,7 @@ classes = (
     DASKTOON_OT_vrm_bake_expression,
     DASKTOON_OT_vrm_synthesize_arkit52,
     DASKTOON_OT_vrm_remove_empty_shapes,
+    DASKTOON_OT_fill_empty_expressions,
     DASKTOON_OT_vrm_convert_naming,
     DASKTOON_OT_vrm_live_preview,
     DASKTOON_OT_vrm_guide_solo_preview,

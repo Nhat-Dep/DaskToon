@@ -336,6 +336,14 @@ VI = {
     "Remove Empty Shape Keys": "Xóa hình mẫu trống",
     "Remove the shape keys that move no vertex": "Xóa các hình mẫu không làm dịch chuyển đỉnh nào",
     "Removed %d empty shape keys": "Đã xóa %d hình mẫu trống",
+    "Fill Empty Expressions": "Lấp biểu cảm còn trống",
+    "Build empty expression shape keys from the others: \"e\" from \"a\" and \"i\", blink sides, the upper lip, "
+    "VRM names":
+        "Dựng các hình mẫu biểu cảm còn trống từ những cái khác: \"e\" từ \"a\" và \"i\", hai bên nháy mắt, môi "
+        "trên, tên VRM",
+    "Filled %d shape keys: %s": "Đã lấp %d hình mẫu: %s",
+    "No empty expression could be built from the others":
+        "Không có biểu cảm trống nào dựng được từ các biểu cảm khác",
     "Convert Naming": "Đổi chuẩn tên",
     "Rename shape keys from one naming standard to another (VRoid, VRM 0.x, VRM 1.0)":
         "Đổi tên hình mẫu từ chuẩn tên này sang chuẩn tên khác (VRoid, VRM 0.x, VRM 1.0)",
