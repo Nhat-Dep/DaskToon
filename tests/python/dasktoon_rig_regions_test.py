@@ -312,6 +312,33 @@ class SideTest(unittest.TestCase):
         _vertices, labels = found.objects[warmer]
         self.assertEqual({regions.REGIONS[k] for k in labels.tolist()}, {"LEG_L"})
 
+    def test_twin_tails_of_one_piece_with_the_hair_stay_on_the_head(self):
+        """RG2 and RGforGame (real models, T-pose): the hair, the ears and the twin tails are one piece; the tips of
+        the twin tails hung near the hands and went to the arms, so lifting an arm dragged them along. A piece lying
+        wholly above the shoulders with only a few vertices of an arm is the head's."""
+        bpy.ops.wm.read_factory_settings(use_empty=True)
+        level = [(0.12, 0.0, 1.4), (0.36, 0.0, 1.4), (0.62, 0.0, 1.4)]
+        body = st.polyline_chibi(level, st.CentreLineTest.LEG)
+        pieces = [st.tube((3.0, 0.5, 1.5), (3.0, 0.5, 2.05), 0.32)]  # the cap, round the head
+        pieces += [st.tube((3.0 + s * 0.33, 0.55, 1.95), (3.0 + s * 0.5, 0.55, 1.5), 0.04) for s in (1.0, -1.0)]
+        verts, faces, firsts = [], [], []
+        for piece_verts, piece_faces in pieces:
+            firsts.append(len(verts))
+            faces += [tuple(i + len(verts) for i in face) for face in piece_faces]
+            verts += piece_verts
+        mesh = bpy.data.meshes.new("Hair")
+        mesh.from_pydata(verts, [(firsts[0], firsts[1]), (firsts[0], firsts[2])], faces)  # one piece
+        hair = bpy.data.objects.new("Hair", mesh)
+        bpy.context.scene.collection.objects.link(hair)
+        rig = skeleton.create_humanoid(bpy.context, 1.0, (0.0, 0.0, 0.0))
+        skeleton.fit(bpy.context, rig, [body, hair], body=[body, hair], skin=[body])
+        found = regions.analyse(bpy.context, rig, [rig_parts.Part("Body", body, 'BODY'),
+                                                   rig_parts.Part("Hair", hair, 'CLOTHING')])
+        _vertices, labels = found.objects[hair]
+        self.assertEqual({regions.REGIONS[k] for k in labels.tolist()}, {"HEAD"})
+        _vertices, labels = found.objects[body]
+        self.assertIn(regions.REGIONS.index('ARM_L'), labels)  # the arms stay arms
+
     def test_a_piece_on_both_legs_keeps_both(self):
         _vertices, labels = regions.analyse(bpy.context, *character()[::2]).objects[bpy.data.objects["Body"]]
         self.assertIn(regions.REGIONS.index('LEG_L'), labels)

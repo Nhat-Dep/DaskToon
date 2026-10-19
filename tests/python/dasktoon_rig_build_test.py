@@ -43,6 +43,20 @@ def separate_parts(objs):
     ]
 
 
+class EyesTest(unittest.TestCase):
+    def test_both_eyes_in_one_mesh_follow_their_eye_bones(self):
+        """Luna's and filie's eyes (real models) are one mesh of two eyeballs: rigid on the bone nearest their middle,
+        both followed the head and never looked about. Each piece of an eye Accessory follows the eye on its side."""
+        bpy.ops.wm.read_factory_settings(use_empty=True)
+        objs = fx.character()
+        eyes = fx.combine("Eyes", [(*fx.cube((s * 0.03, -0.06, 0.915), 0.01), "Eyes") for s in (1.0, -1.0)])
+        rig = fx.rig_for()
+        build.build(bpy.context, rig, separate_parts(objs)[:4] + [parts.Part("Eyes", eyes, 'ACCESSORY')])
+        world, _edges = parts.mesh_arrays(eyes)
+        for v in range(len(world)):
+            self.assertEqual(dominant(eyes, rig, v), ("LeftEye" if world[v][0] > 0.0 else "RightEye", 1.0), v)
+
+
 class CheckedWeightsMixin:
     def assert_unity_weights(self, obj, rig):
         matrix = weights.read(obj, deform_names(rig))

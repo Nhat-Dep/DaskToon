@@ -66,7 +66,7 @@ JOINT_NAMES = {
     "LeftFoot": "Left ankle", "RightFoot": "Right ankle",
     "Neck": "Base of the neck", "Head": "Head joint",
 }
-ISSUE_ICONS = {'JOINT': 'BONE_DATA', 'STRETCH': 'MOD_SIMPLEDEFORM'}
+ISSUE_ICONS = {'JOINT': 'BONE_DATA', 'STRETCH': 'MOD_SIMPLEDEFORM', 'FACING': 'ORIENTATION_GLOBAL'}
 
 
 def _is_mesh(_self, obj):
@@ -168,13 +168,15 @@ def _look_changed(self, _context):
 # vertices in the item's "vertices" property.
 class DaskRigIssue(PropertyGroup):
     """A spot the Check of the auto rig found"""
-    kind: EnumProperty(items=[('JOINT', "", ""), ('STRETCH', "", ""), ('ROLE', "", "")], default='JOINT')
+    kind: EnumProperty(items=[('JOINT', "", ""), ('STRETCH', "", ""), ('ROLE', "", ""), ('FACING', "", "")],
+                       default='JOINT')
     bone: StringProperty()
     part: StringProperty()
     object: PointerProperty(type=bpy.types.Object)
     pose: StringProperty()
     region: StringProperty()
     role: StringProperty()
+    below_waist: BoolProperty()  # a ROLE spot: only the part below the waist looks like it
 
 
 class DaskRig(PropertyGroup):
@@ -246,13 +248,21 @@ def fit_to_parts(context, rig):
     """Fit the skeleton of `rig` to the meshes of its parts, reading the body's shape from the Body and Clothing parts
     (hair, a skirt or a held staff is no limb). A character whose feet face another way than the skeleton's front (-Y)
     is turned round on the spot first. Returns that turn (radians about +Z, 0 when none)."""
-    from dasktoon_rig import facing, skeleton
+    from dasktoon_rig import facing, parts as rig_parts, skeleton
     parts = [part for part in rig.data.dasktoon_rig.parts if part.object is not None and part.object.type == 'MESH']
     meshes = list(dict.fromkeys(part.object for part in parts))
     body = list(dict.fromkeys(part.object for part in parts if part.role in {'BODY', 'CLOTHING'}))
     skin = list(dict.fromkeys(part.object for part in parts if part.role == 'BODY'))
     turn = facing.face_front(context, meshes, body=body or None)
-    skeleton.fit(context, rig, meshes, body=body or None, skin=skin or None)
+    eyes = []  # the eyeballs (Accessories named as eyes) and flat eyes: the eye joints go to their middles
+    for part in parts:
+        if part.role == 'FLAT_EYE' or (part.role == 'ACCESSORY' and rig_parts.is_eye(part.name)):
+            try:
+                world, _edges = rig_parts.mesh_arrays(part.object)
+                eyes.append(world[rig_parts.part_vertices(part)])
+            except rig_parts.PartError:
+                continue
+    skeleton.fit(context, rig, meshes, body=body or None, skin=skin or None, eyes=eyes or None)
     return turn
 
 
@@ -1155,14 +1165,91 @@ class DASKTOON_OT_rig_change_role(Operator):
         return {'FINISHED'}
 
 
+class DASKTOON_OT_rig_skirt_below_waist(Operator):
+    """Make the part of this mesh below the waist a skirt of its own, then build the rig and check it again"""
+    bl_idname = "dasktoon.rig_skirt_below_waist"
+    bl_label = "Make the Part Below the Waist a Skirt"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    part: StringProperty(name="Part", description="The part whose lower part becomes a skirt")
+
+    @classmethod
+    def poll(cls, context):
+        return _check_poll(context)
+
+    def execute(self, context):
+        from dasktoon_rig import build, check
+        rig = rig_of(context)
+        part = next((part for part in rig.data.dasktoon_rig.parts if part.name == self.part), None)
+        if part is None or part.object is None or part.object.type != 'MESH':
+            self.report({'ERROR'}, rpt_("There is no part %s") % self.part)
+            return {'CANCELLED'}
+        obj = part.object
+        vertices = [int(v) for v in check.below_waist(rig, obj)]
+        if not vertices:
+            self.report({'ERROR'}, rpt_("Nothing of %s is below the waist") % part.name)
+            return {'CANCELLED'}
+        name = "%s Skirt" % part.name
+        group = obj.vertex_groups.get(name) or obj.vertex_groups.new(name=name)
+        group.remove(list(range(len(obj.data.vertices))))
+        group.add(vertices, 1.0, 'REPLACE')
+        add_part(rig, obj, 'SKIRT', name=name, scope='VERTEX_GROUP', vertex_group=group.name)
+        try:
+            result, _recognized = build_rig(context, rig)
+        except build.BuildError as ex:
+            self.report({'ERROR'}, str(ex))
+            return {'FINISHED'}  # the skirt part is added
+        for warning in result.warnings:
+            self.report({'WARNING'}, warning)
+        self.report({'INFO'}, check_summary(run_check(context, rig)))
+        return {'FINISHED'}
+
+
+class DASKTOON_OT_rig_turn_character(Operator):
+    """Turn the character on the spot by a quarter, then fit the skeleton, build the rig and check it again"""
+    bl_idname = "dasktoon.rig_turn_character"
+    bl_label = "Turn the Character"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    degrees: IntProperty(name="Degrees", description="How far to turn, to the left (positive) or the right",
+                         default=90, min=-180, max=180)
+
+    @classmethod
+    def poll(cls, context):
+        return _check_poll(context)
+
+    def execute(self, context):
+        from dasktoon_rig import build, facing, regions
+        rig = rig_of(context)
+        parts = [part for part in rig.data.dasktoon_rig.parts if part.object is not None]
+        meshes = list(dict.fromkeys(part.object for part in parts if part.object.type == 'MESH'))
+        body = list(dict.fromkeys(part.object for part in parts
+                                  if part.object.type == 'MESH' and part.role in regions.BODY_ROLES))
+        facing.turn(context, meshes, math.radians(self.degrees), body=body or None)
+        report_turn(self, fit_to_parts(context, rig))
+        try:
+            result, _recognized = build_rig(context, rig)
+        except build.BuildError as ex:
+            self.report({'ERROR'}, str(ex))
+            return {'FINISHED'}  # it is turned and fitted
+        for warning in result.warnings:
+            self.report({'WARNING'}, warning)
+        self.report({'INFO'}, check_summary(run_check(context, rig)))
+        return {'FINISHED'}
+
+
 def issue_sentence(issue):
     """What a spot of the Check's list says, in the interface's language."""
+    if issue.kind == 'FACING':
+        return rpt_("The character faces a side, not the front (-Y)")
     if issue.kind == 'JOINT':
         return rpt_("%s is outside the body") % iface_(JOINT_NAMES.get(issue.bone, issue.bone))
     if issue.kind == 'STRETCH':
         region = next((name for identifier, name, *_rest in REGION_ITEMS if identifier == issue.region), issue.region)
         pose = next((name for identifier, name, _tip in POSE_ITEMS if identifier == issue.pose), issue.pose)
         return rpt_("%s stretched in the %s pose (%s)") % (iface_(region), iface_(pose, "DaskToon"), issue.part)
+    if issue.role == 'SKIRT' and issue.below_waist:
+        return rpt_("The part of %s below the waist looks like a skirt") % issue.part
     if issue.role == 'SKIRT':
         return rpt_("%s looks like a skirt") % issue.part
     return rpt_("%s looks like hair") % issue.part
@@ -1173,7 +1260,10 @@ def draw_issue(layout, rig, index, issue):
     box.label(text=issue_sentence(issue), icon=ISSUE_ICONS.get(issue.kind) or ROLE_ICONS.get(issue.role, 'ERROR'),
               translate=False)
     row = box.row(align=True)
-    if issue.kind == 'JOINT':
+    if issue.kind == 'FACING':
+        row.operator("dasktoon.rig_turn_character", text="Turn 90° Left", icon='LOOP_BACK').degrees = 90
+        row.operator("dasktoon.rig_turn_character", text="Turn 90° Right", icon='LOOP_FORWARDS').degrees = -90
+    elif issue.kind == 'JOINT':
         row.operator("dasktoon.rig_fix_joint", text="Fix", icon='EDITMODE_HLT').bone = issue.bone
     elif issue.kind == 'STRETCH':
         shown = _spot["rig"] == rig.name and _spot["index"] == index and spot_shown() is not None
@@ -1181,6 +1271,9 @@ def draw_issue(layout, rig, index, issue):
                      depress=shown).index = index
         if issue.object in [part.object for part in _region_parts(rig)]:
             row.operator("dasktoon.rig_paint_spot", text="Paint Regions", icon='BRUSH_DATA').index = index
+    elif issue.below_waist:
+        row.operator("dasktoon.rig_skirt_below_waist", text="Make That Part a Skirt",
+                     icon=ROLE_ICONS.get(issue.role, 'NONE')).part = issue.part
     else:
         op = row.operator("dasktoon.rig_change_role", icon=ROLE_ICONS.get(issue.role, 'NONE'),
                           text="Make it a Skirt" if issue.role == 'SKIRT' else "Make it Hair")
@@ -1461,6 +1554,8 @@ classes = (
     DASKTOON_OT_rig_show_spot,
     DASKTOON_OT_rig_paint_spot,
     DASKTOON_OT_rig_change_role,
+    DASKTOON_OT_rig_skirt_below_waist,
+    DASKTOON_OT_rig_turn_character,
     DASKTOON_UL_rig_parts,
     DATA_PT_dasktoon_rig,
     DATA_PT_dasktoon_rig_check,

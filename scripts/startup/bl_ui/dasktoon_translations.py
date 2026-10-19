@@ -92,6 +92,19 @@ VI = {
         "Mesh chưa có khối trứng: bấm Tạo bóng mặt anime hoặc Căn lại khối trứng",
     "Proxy %s is not in the open view layer": "Khối trứng %s không nằm trong view layer đang mở",
 
+    # bl_ui/dasktoon_material_convert.py
+    "Use DaskToon Shader": "Dùng shader DaskToon",
+    "Use DaskToon Shader on All Selected": "Dùng shader DaskToon cho mọi object đang chọn",
+    "Give materials DaskToon's Anime BSDF with an outline, keeping their colour or texture; the old nodes stay":
+        "Cho material dùng Anime BSDF của DaskToon có viền, giữ màu hoặc texture cũ; các node cũ vẫn giữ lại",
+    "Which materials to change": "Material nào cần đổi",
+    "This Material": "Material này",
+    "The active material only": "Chỉ material đang chọn",
+    "All of the Selected Objects": "Mọi object đang chọn",
+    "Every material of the selected objects": "Mọi material của các object đang chọn",
+    "No materials to change": "Không có material nào để đổi",
+    "DaskToon shader on %d materials, %d left as they were": "Đã dùng shader DaskToon cho %d material, giữ nguyên %d",
+
     # bl_ui/dasktoon_material_combiner.py
     "Combine Materials": "Gộp material",
     "Bake all material slots into one atlas texture and one Anime BSDF material, so the viewport draws faster":
@@ -1284,11 +1297,26 @@ VI = {
     "The new role": "Vai trò mới",
     "There is no part %s": "Không có phần %s",
     "%s is outside the body": "%s nằm ngoài thân",
+    "The character faces a side, not the front (-Y)": "Nhân vật đang quay ngang, không quay về phía trước (-Y)",
+    "Turn 90° Left": "Xoay trái 90°",
+    "Turn 90° Right": "Xoay phải 90°",
+    "Turn the Character": "Xoay nhân vật",
+    "Turn the character on the spot by a quarter, then fit the skeleton, build the rig and check it again":
+        "Xoay nhân vật tại chỗ một phần tư vòng, rồi khớp khung xương, dựng rig và kiểm tra lại",
+    "Degrees": "Số độ",
+    "How far to turn, to the left (positive) or the right": "Xoay bao nhiêu độ, sang trái (số dương) hoặc sang phải",
     "%s stretched in the %s pose (%s)": "%s bị kéo giãn ở tư thế %s (%s)",
     "%s looks like a skirt": "%s trông như váy",
     "%s looks like hair": "%s trông như tóc",
     "Fix": "Sửa",
     "Make it a Skirt": "Đổi thành Váy",
+    "The part of %s below the waist looks like a skirt": "Phần dưới eo của %s trông như váy",
+    "Make That Part a Skirt": "Đổi phần đó thành Váy",
+    "Make the Part Below the Waist a Skirt": "Đổi phần dưới eo thành Váy",
+    "Make the part of this mesh below the waist a skirt of its own, then build the rig and check it again":
+        "Tách phần dưới eo của lưới này thành một chiếc váy riêng, rồi dựng lại rig và kiểm tra lại",
+    "The part whose lower part becomes a skirt": "Phần có nửa dưới sẽ thành váy",
+    "Nothing of %s is below the waist": "%s không có gì nằm dưới eo",
     "Make it Hair": "Đổi thành Tóc",
     "Check Again": "Kiểm tra lại",
     "Done": "Xong",
@@ -1453,6 +1481,18 @@ VI = {
     "Line Material": "Material vệt",
     "Shows in DaskToon's viewport and render; it does not go into the FBX":
         "Hiện trong khung nhìn và bản render của DaskToon; không vào FBX",
+    "Renders show what playback last worked out: bake before rendering":
+        "Render chỉ hiện những gì lần phát lại gần nhất đã tính: hãy ghi sẵn trước khi render",
+    "Baked before the last change: bake again": "Đã ghi sẵn trước lần đổi gần nhất: hãy ghi sẵn lại",
+    "Baked for frames %d to %d": "Đã ghi sẵn cho khung %d đến %d",
+    "Bake for Render": "Ghi sẵn để render",
+    "Bake Again": "Ghi sẵn lại",
+    "Free Bake": "Bỏ bản ghi sẵn",
+    "Work the fast action effects out for every frame of the scene and keep them, so renders show them right":
+        "Tính hiệu ứng hành động nhanh cho mọi khung của cảnh và giữ lại, để render hiện đúng",
+    "Drop the baked effects: they are worked out as playback goes again":
+        "Bỏ hiệu ứng đã ghi sẵn: chúng lại được tính dần khi phát",
+    "Fast action baked for frames %d to %d": "Đã ghi sẵn hành động nhanh cho khung %d đến %d",
     "Fast action filter of the character (DaskToon)": "Bộ lọc hành động nhanh của nhân vật (DaskToon)",
     "Fast action filter of a character (anime timing spec 7)": "Bộ lọc hành động nhanh của nhân vật",
     # Illustration finish (illustration finish spec)

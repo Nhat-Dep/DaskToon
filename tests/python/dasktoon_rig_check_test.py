@@ -5,6 +5,7 @@
 """The Check of the one-button auto rig (docs/superpowers/specs/2026-10-14-dasktoon-auto-rig-design.md): test poses, the
 mesh moved through its weights, joints outside the body, stretched spots and roles that look wrong."""
 
+import math
 import os
 import sys
 import unittest
@@ -171,6 +172,16 @@ class CheckTest(unittest.TestCase):
         self.assertTrue(len(ear[0]["vertices"]) >= 3)
         self.assertTrue(all(bone.matrix_basis == bone.matrix_basis.Identity(4) for bone in self.rig.pose.bones))
 
+    def test_a_character_facing_a_side(self):
+        """Its legs side by side along Y and no foot telling which way: the first spot of the list asks to turn it."""
+        from dasktoon_rig import facing
+        check.run(bpy.context, self.rig)
+        self.assertNotIn('FACING', [item.kind for item in self.rig.data.dasktoon_rig.issues])
+        meshes = list(dict.fromkeys(part.object for part in self.rig.data.dasktoon_rig.parts if part.object))
+        facing.turn(bpy.context, meshes, math.pi / 2.0, body=[self.objs["Body"]])
+        check.run(bpy.context, self.rig)
+        self.assertEqual(self.rig.data.dasktoon_rig.issues[0].kind, 'FACING')
+
     def test_roles_that_look_wrong(self):
         from bl_ui import dasktoon_rig as ui
         st = rt.st
@@ -189,6 +200,25 @@ class CheckTest(unittest.TestCase):
         check.run(bpy.context, self.rig)
         roles = sorted((entry[2], entry[5]) for entry in issues(self.rig) if entry[0] == 'ROLE')
         self.assertEqual(roles, [("Circle.007", 'SKIRT'), ("Circle.008", 'HAIR')])  # not the pants, not the hat
+        self.assertFalse(any(item.below_waist for item in self.rig.data.dasktoon_rig.issues))
+
+    def test_a_dress_whose_lower_part_looks_like_a_skirt(self):
+        """A dress in one mesh, its part below the waist flaring round the thighs (RG2, RGforGame's coat, Luna's
+        outer shirt: real models). The whole of it is no skirt; its part below the waist is."""
+        from bl_ui import dasktoon_rig as ui
+        st = rt.st
+        dress = rt.merged("Circle.011", [st.tube((0, 0, 1.4), (0, 0, 1.0), 0.21),
+                                         st.tube((0, 0, 1.0), (0, 0, 0.62), 0.22)])
+        for v in dress.data.vertices:
+            if v.co.z < 0.8:
+                v.co.x *= 1.4
+                v.co.y *= 1.4
+        ui.add_part(self.rig, dress, 'CLOTHING')
+        build.build(bpy.context, self.rig, list(self.rig.data.dasktoon_rig.parts))
+        check.run(bpy.context, self.rig)
+        found = [(item.part, item.role, item.below_waist) for item in self.rig.data.dasktoon_rig.issues
+                 if item.kind == 'ROLE']
+        self.assertEqual(found, [("Circle.011", 'SKIRT', True)])
 
 
 if __name__ == "__main__":

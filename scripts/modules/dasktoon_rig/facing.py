@@ -6,9 +6,9 @@
 front are (lr_shape, one of the real models, faced +Y: the auto rig put its left on its right and bent its knees
 forward).
 
-Its feet tell: a foot reaches forward past the lower leg above it. The lower legs are found just above the floor, split
-across the way they spread; each foot is the soles nearest its leg, all of them near it (the hem of a long dress or a
-stand under the feet is no foot)."""
+Its feet tell: a foot reaches forward past the lower leg above it, or at least its toes reach farther than its heel. The
+lower legs are found just above the floor, split across the way they spread; each foot is the soles nearest its leg, all
+of them near it (the hem of a long dress or a stand under the feet is no foot)."""
 
 import math
 
@@ -18,7 +18,9 @@ from mathutils import Matrix
 SOLES = 0.03  # (x height) the soles: this near the floor
 LEGS = (0.06, 0.12)  # (x height) the lower legs: this high
 REACH = 0.01  # (x height) a foot reaching less far past its leg tells nothing
-FOOT = 0.12  # (x height) a foot lies this near its leg
+TOE = 0.015  # (x height) or its toes reach this much farther forward than its heel back (RGforGame's boots: soles
+#              under the shins on the whole, the toes 2.9% farther than the heels)
+FOOT = 0.16  # (x height) a foot lies this near its leg (pl1's chunky boots reach 0.124; a long dress's hem is farther)
 AGREE = math.radians(45.0)  # the two feet reach the same way within this
 AXIS = math.radians(30.0)  # a character facing within this of an axis faces it; between two, it is not turned
 
@@ -43,14 +45,30 @@ def feet(world, height, floor):
         mine = soles[nearest == k]
         if len(mine) == 0 or np.linalg.norm(mine - centres[k], axis=1).max() > FOOT * height:
             return None
-        reach = mine.mean(axis=0) - centres[k]
-        if np.linalg.norm(reach) < REACH * height:
+        reach = _reach(mine - centres[k], height)
+        if reach is None:
             return None
-        reaches.append(reach / np.linalg.norm(reach))
+        reaches.append(reach)
     if reaches[0] @ reaches[1] < math.cos(AGREE):
         return None
     direction = reaches[0] + reaches[1]
     return centres.mean(axis=0), direction / np.linalg.norm(direction)
+
+
+def _reach(sole, height):
+    """The horizontal unit direction a foot of soles `sole` (n x 2, from its leg) reaches; None when it does not
+    tell."""
+    reach = sole.mean(axis=0)
+    if np.linalg.norm(reach) >= REACH * height:
+        return reach / np.linalg.norm(reach)
+    if len(sole) < 2:
+        return None
+    length = np.linalg.svd(sole - reach, full_matrices=False)[2][0]  # the way the foot lies
+    along = sole @ length
+    ahead = along.max() + along.min()  # how much farther one end reaches than the other
+    if abs(ahead) < TOE * height:
+        return None
+    return length if ahead > 0.0 else -length
 
 
 def _wrapped(angle):
@@ -74,27 +92,72 @@ def _ancestors(obj):
         parent = parent.parent
 
 
-def face_front(context, objects, body=None):
-    """Turn `objects` (and what hangs from them) round the vertical through where the character stands, to face -Y,
-    when the feet of `body` (meshes; default `objects`) tell it faces another way. Returns the turn (radians about +Z;
-    0 when none)."""
+def _shown(context, objects):
+    """(world vertices of the meshes among `objects` as shown, the floor, the height); None without any."""
     from .body_shape import evaluated
-    shown = [evaluated(context, obj)[0] for obj in (body or objects) if obj.type == 'MESH']
+    shown = [evaluated(context, obj)[0] for obj in objects if obj.type == 'MESH']
     world = np.concatenate(shown) if shown else np.zeros((0, 3))
-    if len(world) == 0:
-        return 0.0
-    floor, height = world[:, 2].min(), np.ptp(world[:, 2])
-    found = feet(world, height, floor) if height > 0.0 else None
+    if len(world) == 0 or np.ptp(world[:, 2]) <= 0.0:
+        return None
+    return world, world[:, 2].min(), np.ptp(world[:, 2])
+
+
+def _lower_legs(world, height, floor):
+    z = (world[:, 2] - floor) / height
+    return world[(z > LEGS[0]) & (z < LEGS[1]), :2]
+
+
+def sideways(context, objects):
+    """True when the character made of the meshes among `objects` faces a side (+X or -X) and its feet do not tell
+    which: its lower legs stand side by side along Y. It is not turned (left or right is not known); the Check asks."""
+    found = _shown(context, objects)
     if found is None:
-        return 0.0
-    (x, y), direction = found
-    turn = turn_to_front(direction)
-    if turn == 0.0:
-        return 0.0
-    rotation = Matrix.Translation((x, y, 0.0)) @ Matrix.Rotation(turn, 4, 'Z') @ Matrix.Translation((-x, -y, 0.0))
+        return False
+    world, floor, height = found
+    if feet(world, height, floor) is not None:
+        return False
+    legs = _lower_legs(world, height, floor)
+    if len(legs) < 2:
+        return False
+    across = np.linalg.svd(legs - legs.mean(axis=0), full_matrices=False)[2][0]
+    return abs(across[1]) >= math.cos(AXIS)
+
+
+def _turn(context, objects, angle, about):
+    rotation = (Matrix.Translation((about[0], about[1], 0.0)) @ Matrix.Rotation(angle, 4, 'Z')
+                @ Matrix.Translation((-about[0], -about[1], 0.0)))
     moving = set(objects)
     for obj in objects:
         if not any(parent in moving for parent in _ancestors(obj)):
             obj.matrix_world = rotation @ obj.matrix_world
     context.view_layer.update()
-    return turn
+
+
+def turn(context, objects, angle, body=None):
+    """Turn `objects` (and what hangs from them) by `angle` (radians about +Z) round the vertical through where the
+    character of `body` (meshes; default `objects`) stands: between its lower legs."""
+    found = _shown(context, body or objects)
+    if found is None:
+        return
+    world, floor, height = found
+    legs = _lower_legs(world, height, floor)
+    about = legs.mean(axis=0) if len(legs) else world[:, :2].mean(axis=0)
+    _turn(context, objects, angle, about)
+
+
+def face_front(context, objects, body=None):
+    """Turn `objects` (and what hangs from them) round the vertical through where the character stands, to face -Y,
+    when the feet of `body` (meshes; default `objects`) tell it faces another way. Returns the turn (radians about +Z;
+    0 when none)."""
+    found = _shown(context, body or objects)
+    if found is None:
+        return 0.0
+    world, floor, height = found
+    standing = feet(world, height, floor)
+    if standing is None:
+        return 0.0
+    about, direction = standing
+    angle = turn_to_front(direction)
+    if angle != 0.0:
+        _turn(context, objects, angle, about)
+    return angle

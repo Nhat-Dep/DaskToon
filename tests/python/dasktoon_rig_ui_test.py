@@ -565,6 +565,25 @@ class CheckPanelTest(unittest.TestCase):
         bpy.ops.dasktoon.rig_check()  # a new list: what was shown is not in it
         self.assertIsNone(ui._spot["rig"])
 
+    def test_a_character_facing_a_side_is_turned_by_a_button(self):
+        """The Check cannot tell left from right when no foot shows the front: it asks, with a button each way; the
+        button turns the character on the spot, fits, builds and checks again."""
+        from dasktoon_rig import facing
+        meshes = list(dict.fromkeys(part.object for part in self.data.parts if part.object))
+        facing.turn(bpy.context, meshes, math.pi / 2.0, body=[self.objs["Body"]])
+        bpy.ops.dasktoon.rig_check()
+        self.assertEqual(self.data.issues[0].kind, 'FACING')
+        log = self.draw()
+        self.assertEqual(sorted(props.degrees for _text, props in logged(log, "dasktoon.rig_turn_character")),
+                         [-90, 90])
+        with iu.language('vi_VN'):
+            self.assertEqual(ui.issue_sentence(self.data.issues[0]),
+                             "Nhân vật đang quay ngang, không quay về phía trước (-Y)")
+        self.assertEqual(bpy.ops.dasktoon.rig_turn_character(degrees=-90), {'FINISHED'})
+        self.assertTrue(self.data.checked)
+        self.assertNotIn('FACING', [item.kind for item in self.data.issues])
+        self.assertFalse(facing.sideways(bpy.context, [self.objs["Body"]]))
+
     def test_change_role_builds_and_checks_again(self):
         from dasktoon_rig import parts as rig_parts
         _skirt, hair = add_skirt_and_hair(self.rig)
@@ -582,6 +601,36 @@ class CheckPanelTest(unittest.TestCase):
                          [("Circle.007", 'SKIRT')])
         with self.assertRaises(RuntimeError) as caught:
             bpy.ops.dasktoon.rig_change_role(part="Nothing", role='SKIRT')
+        self.assertIn("There is no part Nothing", str(caught.exception))
+
+    def test_the_part_below_the_waist_made_a_skirt(self):
+        """A dress whose part below the waist looks like a skirt: the spot says so and its button makes that part a
+        skirt of its own (a vertex group part), builds and checks again."""
+        from dasktoon_rig import check, parts as rig_parts
+        dress = rt.merged("Circle.011", [rt.st.tube((0, 0, 1.4), (0, 0, 1.0), 0.21),
+                                         rt.st.tube((0, 0, 1.0), (0, 0, 0.62), 0.22)])
+        for v in dress.data.vertices:
+            if v.co.z < 0.8:
+                v.co.x *= 1.4
+                v.co.y *= 1.4
+        ui.add_part(self.rig, dress, 'CLOTHING')
+        bpy.ops.dasktoon.rig_build()
+        bpy.ops.dasktoon.rig_check()
+        log = self.draw()
+        self.assertIn("The part of Circle.011 below the waist looks like a skirt", tu.labels(log))
+        self.assertEqual([(text, props.part) for text, props in logged(log, "dasktoon.rig_skirt_below_waist")],
+                         [("Make That Part a Skirt", "Circle.011")])
+        self.assertEqual(bpy.ops.dasktoon.rig_skirt_below_waist(part="Circle.011"), {'FINISHED'})
+        skirt = next(part for part in self.data.parts if part.role == 'SKIRT')
+        self.assertEqual((skirt.name, skirt.object, skirt.scope, skirt.vertex_group),
+                         ("Circle.011 Skirt", dress, 'VERTEX_GROUP', "Circle.011 Skirt"))
+        group = dress.vertex_groups["Circle.011 Skirt"]
+        inside = sorted(v.index for v in dress.data.vertices if any(g.group == group.index for g in v.groups))
+        self.assertEqual(inside, check.below_waist(self.rig, dress).tolist())
+        self.assertIn(rig_parts.ascii_name("Circle.011 Skirt") + "1_1", self.rig.data.bones)  # built again
+        self.assertEqual([item for item in self.data.issues if item.kind == 'ROLE'], [])  # not again
+        with self.assertRaises(RuntimeError) as caught:
+            bpy.ops.dasktoon.rig_skirt_below_waist(part="Nothing")
         self.assertIn("There is no part Nothing", str(caught.exception))
 
     def test_change_role_of_a_part_without_a_mesh_keeps_the_locks(self):
@@ -633,7 +682,7 @@ class TextTest(unittest.TestCase):
         strings = {ui.DaskRigPart.bl_rna.description, ui.DaskRig.bl_rna.description,
                    ui.DaskRigCollider.bl_rna.description}
         operators = [cls for cls in ui.classes if issubclass(cls, bpy.types.Operator)]
-        self.assertEqual(len(operators), 20)
+        self.assertEqual(len(operators), 22)
         for struct in operators:
             strings.update((struct.bl_label, struct.__doc__))
         for struct in [ui.DaskRigPart, ui.DaskRigCollider, ui.DaskRig] + operators:

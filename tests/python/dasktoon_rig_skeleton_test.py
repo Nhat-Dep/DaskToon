@@ -288,13 +288,15 @@ class CreateTest(unittest.TestCase):
         self.assert_bends_followed(rig)
 
 
-def polyline_chibi(arm, leg, extra=()):
+def polyline_chibi(arm, leg, extra=(), neck=0.0):
     """A chibi Body mesh: the torso and head of chibi(), arms and legs along the polylines `arm` and `leg` (left side,
     points relative to the character's middle at (3, 0.5, 0); the right side mirrors), and `extra` tubes (start, end,
-    radius) on the left, mirrored too."""
+    radius) on the left, mirrored too. With `neck`, a neck that long lifts the head."""
     o = Vector((3.0, 0.5, 0.0))
     pieces = [tube(o + Vector((0, 0, 0.88)), o + Vector((0, 0, 1.46)), 0.18),
-              tube(o + Vector((0, 0, 1.46)), o + Vector((0, 0, 2.0)), 0.3)]
+              tube(o + Vector((0, 0, 1.46 + neck)), o + Vector((0, 0, 2.0 + neck)), 0.3)]
+    if neck:
+        pieces.append(tube(o + Vector((0, 0, 1.44)), o + Vector((0, 0, 1.48 + neck)), 0.06))
     for s in (1.0, -1.0):
         flip = Vector((s, 1.0, 1.0))
         for line, radius in ((arm, 0.05), (leg, 0.07)):
@@ -344,6 +346,19 @@ class CentreLineTest(unittest.TestCase):
             hip = world_head(rig, side + "UpperLeg")
             self.assertAlmostEqual(hip.y, depth_on(thigh, hip.z), delta=0.015, msg=side)
 
+    def test_legs_under_a_flared_dress(self):
+        """A dress flaring out over the thighs hides where the legs meet the body: the walk up the silhouette met the
+        hem, and the hips of RGforGame, RG2 and Luna (real models) sat at the hem or mid-thigh. The legs of the Body,
+        standing on the floor, tell."""
+        body = polyline_chibi(self.ARM, self.LEG)
+        bpy.ops.mesh.primitive_cone_add(vertices=24, radius1=0.42, radius2=0.2, depth=0.6, end_fill_type='NOTHING',
+                                        location=(3.0, 0.5, 0.85))
+        dress = bpy.context.object
+        rig = skeleton.create_humanoid(bpy.context, 1.0, (0.0, 0.0, 0.0))
+        skeleton.fit(bpy.context, rig, [body, dress], body=[body, dress], skin=[body])
+        for side in ("Left", "Right"):
+            self.assertGreater(world_head(rig, side + "UpperLeg").z, 0.85, msg=side)  # the legs meet the body at 0.88
+
     def test_the_ankles_follow_the_shins(self):
         shin = [(0.085, 0.0, 0.5), (0.09, 0.05, 0.06)]  # the ankle 5 cm back
         foot = ((0.09, 0.07, 0.04), (0.09, -0.16, 0.04), 0.04)  # reaching forward
@@ -353,12 +368,151 @@ class CentreLineTest(unittest.TestCase):
             ankle = world_head(rig, side + "Foot")
             self.assertAlmostEqual(ankle.y, depth_on(shin, ankle.z), delta=0.015, msg=side)
 
+    def test_the_ankles_above_long_shoes(self):
+        """Long shoes reaching far forward, many vertices along them: read beside the ankle, the depth was the shoe's
+        and the ankle sat over the middle of the foot, too far off the shin for the shin's line to bring it back (filie,
+        a real model: 23 cm forward)."""
+        body = polyline_chibi(self.ARM, self.LEG)
+        pieces = [tube(Vector((3.0 + s * 0.09, 0.55, 0.07)), Vector((3.0 + s * 0.09, 0.05, 0.07)), 0.07, rings=40)
+                  for s in (1.0, -1.0)]
+        verts, faces = [], []
+        for piece_verts, piece_faces in pieces:
+            faces += [tuple(i + len(verts) for i in face) for face in piece_faces]
+            verts += piece_verts
+        mesh = bpy.data.meshes.new("Shoes")
+        mesh.from_pydata(verts, [], faces)
+        shoes = bpy.data.objects.new("Shoes", mesh)
+        bpy.context.scene.collection.objects.link(shoes)
+        rig = skeleton.create_humanoid(bpy.context, 1.0, (0.0, 0.0, 0.0))
+        skeleton.fit(bpy.context, rig, [body, shoes], body=[body, shoes], skin=[body])
+        for side in ("Left", "Right"):
+            ankle = world_head(rig, side + "Foot")
+            self.assertAlmostEqual(ankle.y, 0.5, delta=0.03, msg=side)  # over the shin (y 0.5), not the shoe
+
     def test_the_wrists_follow_the_forearms(self):
         forearm = [(0.28, 0.0, 1.23), (0.46, 0.04, 1.02)]  # the wrist 4 cm back, the hand bending forward
         rig = self.fit(polyline_chibi([(0.12, 0.0, 1.42)] + forearm + [(0.53, -0.04, 0.94)], self.LEG))
         for side in ("Left", "Right"):
             wrist = world_head(rig, side + "Hand")
             self.assertAlmostEqual(wrist.y, depth_on(forearm, wrist.z), delta=0.015, msg=side)
+
+
+class EarsTest(unittest.TestCase):
+    """Ears or twin tails reaching out wider than the hands are no arms (RGforGame, a real model: its bunny ears reached
+    past its T-pose hands, and the arms were fitted onto the ears, the hands 1.2 m above the real ones)."""
+
+    def setUp(self):
+        bpy.ops.wm.read_factory_settings(use_empty=True)
+
+    def test_ears_wider_than_the_hands(self):
+        ears = ((0.12, 0.0, 1.95), (0.68, 0.0, 2.35), 0.07)  # up and out from the head, past the hands
+        body = polyline_chibi(CentreLineTest.ARM, CentreLineTest.LEG, extra=[ears])
+        rig = skeleton.create_humanoid(bpy.context, 1.0, (0.0, 0.0, 0.0))
+        skeleton.fit(bpy.context, rig, [body], body=[body])
+        for side, sign in (("Left", 1.0), ("Right", -1.0)):
+            hand = world_head(rig, side + "Hand")
+            self.assertLess(hand.z, 1.2, msg=side)  # the wrist of the arm (0.95 to 1.23 high), not up at the ears
+            self.assertGreater(sign * (hand.x - 3.0), 0.3, msg=side)
+
+    def test_twin_tails_hanging_onto_the_arms(self):
+        """Twin tails of their own mesh, hanging down onto the arms (RGforGame and RG2, real models: the walk from the
+        hand went up the twin tail, the arms were not found and stayed at the template's height, by the ears). A mesh
+        lying wholly above the hand is no part of the arm."""
+        from types import SimpleNamespace
+        from dasktoon_rig import body_shape
+
+        def arm(objects):
+            shape = body_shape.Shape(bpy.context, objects, SimpleNamespace(z=-0.07), 2.07)
+            return shape.arm(1, 3.0)
+
+        level = [(0.12, 0.0, 1.42), (0.36, 0.0, 1.40), (0.62, 0.0, 1.38)]  # T-pose arms
+        body = polyline_chibi(level, CentreLineTest.LEG)
+        pieces = [tube(Vector((3.0 + s * 0.42, 0.55, 1.95)), Vector((3.0 + s * 0.48, 0.5, 1.43)), 0.07)
+                  for s in (1.0, -1.0)]
+        verts, faces = [], []
+        for piece_verts, piece_faces in pieces:
+            faces += [tuple(i + len(verts) for i in face) for face in piece_faces]
+            verts += piece_verts
+        mesh = bpy.data.meshes.new("Tails")
+        mesh.from_pydata(verts, [], faces)
+        tails = bpy.data.objects.new("Tails", mesh)
+        bpy.context.scene.collection.objects.link(tails)
+        bpy.context.view_layer.update()
+        alone, with_tails = arm([body]), arm([body, tails])
+        self.assertIsNotNone(with_tails)
+        np.testing.assert_allclose(with_tails.base, alone.base, atol=0.03)
+        np.testing.assert_allclose(with_tails.end, alone.end, atol=0.03)
+
+
+    def test_a_slim_hand_out_of_a_wide_sleeve(self):
+        """A slim hand out of a wide sleeve (RGforGame, a real model): the band widens at the cuff, the hand alone is
+        too short for an arm, and the walk goes on to the body."""
+        level = [(0.12, 0.0, 1.2), (0.5, 0.0, 1.2), (0.9, 0.0, 1.2)]  # long T-pose arms, below the head
+        sleeve = ((0.12, 0.0, 1.2), (0.72, 0.0, 1.2), 0.17)
+        body = polyline_chibi(level, CentreLineTest.LEG, extra=[sleeve])
+        from types import SimpleNamespace
+        from dasktoon_rig import body_shape
+        shape = body_shape.Shape(bpy.context, [body], SimpleNamespace(z=-0.07), 2.07)
+        arm = shape.arm(1, 3.0)
+        self.assertIsNotNone(arm)
+        self.assertLess(arm.base[0], 3.0 + 0.35)  # where it meets the body, not at the cuff
+        self.assertGreater(arm.end[0], 3.0 + 0.85)
+
+
+class NeckTest(unittest.TestCase):
+    """The head sits on the neck (RG2 and RGforGame, real models: the Head joint followed the template's heights, in
+    the middle of the big chibi head, and the neck stood in front of the throat). The neck is the narrowest of the Body
+    above the shoulders; the head starts where it widens again, and the face's joints share the head from there."""
+
+    def setUp(self):
+        bpy.ops.wm.read_factory_settings(use_empty=True)
+
+    def test_a_head_on_a_neck(self):
+        neck = 0.12
+        body = polyline_chibi(CentreLineTest.ARM, CentreLineTest.LEG, neck=neck)
+        rig = skeleton.create_humanoid(bpy.context, 1.0, (0.0, 0.0, 0.0))
+        skeleton.fit(bpy.context, rig, [body], body=[body], skin=[body])
+        base, top = 1.46 + neck, 2.0 + neck
+        self.assertAlmostEqual(world_head(rig, "Head").z, base, delta=0.03)
+        self.assertAlmostEqual(world_head(rig, "Neck").z, 1.46, delta=0.04)
+        eye = (0.915 - 0.85) / (1.0 - 0.85)  # the template's eyes, that share of the head up
+        self.assertAlmostEqual(world_head(rig, "LeftEye").z, base + eye * (top - base), delta=0.03)
+
+    def test_a_skin_starting_at_the_head_shows_no_neck(self):
+        """tdt (a real model): its skin has no torso, only a head and limbs; the thin rim where the skin starts is no
+        neck. The Body here is the head alone, rounded at its bottom: the template stays."""
+        body = polyline_chibi(CentreLineTest.ARM, CentreLineTest.LEG)
+        bpy.ops.mesh.primitive_uv_sphere_add(radius=0.3, location=(3.0, 0.5, 1.72))
+        head = bpy.context.object
+        rig = skeleton.create_humanoid(bpy.context, 1.0, (0.0, 0.0, 0.0))
+        skeleton.fit(bpy.context, rig, [body, head], body=[body, head], skin=[head])
+        self.assertGreater(world_head(rig, "Head").z, 1.46 + 0.05)  # the template's, not the bottom of the sphere
+
+    def test_the_eyes_at_the_eye_parts(self):
+        """Eyeballs (or flat eyes) given: the eye joints are at their middles, one on each side."""
+        body = polyline_chibi(CentreLineTest.ARM, CentreLineTest.LEG, neck=0.12)
+        pieces = [tube(Vector((3.0 + s * 0.11, 0.2, 1.8)), Vector((3.0 + s * 0.11, 0.24, 1.8)), 0.04)
+                  for s in (1.0, -1.0)]
+        verts, faces = [], []
+        for piece_verts, piece_faces in pieces:
+            faces += [tuple(i + len(verts) for i in face) for face in piece_faces]
+            verts += piece_verts
+        mesh = bpy.data.meshes.new("Eyes")
+        mesh.from_pydata(verts, [], faces)
+        eyes = bpy.data.objects.new("Eyes", mesh)
+        bpy.context.scene.collection.objects.link(eyes)
+        rig = skeleton.create_humanoid(bpy.context, 1.0, (0.0, 0.0, 0.0))
+        skeleton.fit(bpy.context, rig, [body, eyes], body=[body], skin=[body], eyes=[eyes])
+        for side, sign in (("Left", 1.0), ("Right", -1.0)):
+            eye = world_head(rig, side + "Eye")
+            self.assertLess((eye - Vector((3.0 + sign * 0.11, 0.22, 1.8))).length, 0.01, side)
+            self.assertLess(world_tail(rig, side + "Eye").y, eye.y)  # looking forward (-Y)
+
+    def test_a_head_without_a_neck_keeps_the_template(self):
+        rig = skeleton.create_humanoid(bpy.context, 1.0, (0.0, 0.0, 0.0))
+        body = polyline_chibi(CentreLineTest.ARM, CentreLineTest.LEG)
+        skeleton.fit(bpy.context, rig, [body], body=[body], skin=[body])
+        self.assertGreater(world_head(rig, "Head").z, 1.46 + 0.05)  # the template's, up in the head
 
 
 class OutlineTest(unittest.TestCase):
@@ -433,6 +587,49 @@ class FacingTest(unittest.TestCase):
         body.matrix_world = turned(math.pi / 2.0, self.MIDDLE)  # facing +X
         self.assertAlmostEqual(facing.face_front(bpy.context, [body]), -math.pi / 2.0, places=6)
         self.assert_matrix(body.matrix_world, Matrix.Identity(4))
+
+    def test_big_boots_still_tell(self):
+        """Chunky boots reach farther from the shins than a slim foot (pl1, a real model, wore boots reaching 12.4% of
+        its height past its shins and was rigged sideways), still nearer than the hem of a long dress."""
+        boot = ((0.09, 0.1, 0.0), (0.09, -0.26, 0.0), 0.07)
+        body = polyline_chibi(self.ARM, self.LEG, extra=[boot])
+        body.matrix_world = turned(math.pi / 2.0, self.MIDDLE)  # facing +X
+        self.assertAlmostEqual(facing.face_front(bpy.context, [body]), -math.pi / 2.0, places=6)
+        self.assert_matrix(body.matrix_world.to_3x3(), Matrix.Identity(3))  # (the boots' tops nudge the spot it turns on)
+        self.assertLess(self.toes(body)[1], -0.02)
+
+    def test_boots_reaching_back_too_tell_by_their_toes(self):
+        """Boots with a heel reaching back past the shins, the toes a little farther forward: on the whole the soles sit
+        under the shins (RGforGame, a real model facing +X, was left sideways), the toes still tell."""
+        boot = ((0.09, 0.06, 0.0), (0.09, -0.12, 0.0), 0.07)
+        body = polyline_chibi(self.ARM, self.LEG, extra=[boot])
+        body.matrix_world = turned(math.pi / 2.0, self.MIDDLE)  # facing +X
+        self.assertAlmostEqual(facing.face_front(bpy.context, [body]), -math.pi / 2.0, places=6)
+        self.assertFalse(facing.sideways(bpy.context, [body]))
+
+    def test_a_side_facing_character_without_feet_is_noticed(self):
+        """No foot tells which way it faces (the shins end flat), but its legs stand side by side along Y: it faces a
+        side. It is not turned blindly (left or right is not known); the Check asks."""
+        body = polyline_chibi(self.ARM, self.LEG)
+        self.assertFalse(facing.sideways(bpy.context, [body]))
+        body.matrix_world = turned(math.pi / 2.0, self.MIDDLE)
+        self.assertTrue(facing.sideways(bpy.context, [body]))
+        self.assertEqual(facing.face_front(bpy.context, [body]), 0.0)
+
+    def test_feet_that_tell_are_not_sideways(self):
+        body = polyline_chibi(self.ARM, self.LEG, extra=[self.FRONT])
+        body.matrix_world = turned(math.pi / 2.0, self.MIDDLE)
+        self.assertFalse(facing.sideways(bpy.context, [body]))  # face_front turns it instead
+
+    def test_turn_on_the_spot(self):
+        body = polyline_chibi(self.ARM, self.LEG)
+        hat = box("Hat", (2.9, 0.4, 2.0), (3.1, 0.7, 2.1))
+        hat.parent = body
+        bpy.context.view_layer.update()
+        before = hat.matrix_world.copy()
+        facing.turn(bpy.context, [body, hat], -math.pi / 2.0, body=[body])
+        self.assert_matrix(body.matrix_world, turned(-math.pi / 2.0, self.MIDDLE))
+        self.assert_matrix(hat.matrix_world, turned(-math.pi / 2.0, self.MIDDLE) @ before)
 
     def test_a_character_facing_the_front_stays(self):
         body = polyline_chibi(self.ARM, self.LEG, extra=[self.FRONT])
