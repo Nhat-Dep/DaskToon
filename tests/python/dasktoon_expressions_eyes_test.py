@@ -138,6 +138,38 @@ class SculptTest(unittest.TestCase):
         self.assertAlmostEqual(after[2] / before[2], 1.12, places=4)
 
 
+class SkinTest(unittest.TestCase):
+    """pl1 (a real model) paints its eye whites on the face: the skin under each eye closes with it, fading back to
+    rest a margin out; only the Body part's skin, never the hair or clothes."""
+
+    def test_the_skin_under_the_eyes_closes_with_them(self):
+        rig, objs, eyes = character()
+        body = objs["Body"]
+        body.modifiers.new("Armature", 'ARMATURE').object = rig
+        shirt = objs["Shirt"]
+        shirt.modifiers.new("Armature", 'ARMATURE').object = rig
+        made = dict(eye_shapes.sculpt(rig, [eyes, body, shirt]))
+        self.assertEqual(sorted(made["blink"]), ["Body", "Eyes"])
+        self.assertIsNone(shirt.data.shape_keys)
+        found = eye_shapes.find_eyes(rig, [eyes])
+        to_arm = rig.matrix_world.inverted() @ body.matrix_world
+        rest_arm = np.array([to_arm @ v.co for v in body.data.vertices])
+        centre, _size = head_frame(rig)
+        closed = rest_arm + offsets(body, "blink")  # the body has no transform of its own here
+        inside_any = np.zeros(len(rest_arm), dtype=bool)
+        for eye in found.values():
+            line = eye.low[2] + (eye.high[2] - eye.low[2]) / 3.0
+            inside = ((rest_arm[:, 0] > eye.low[0]) & (rest_arm[:, 0] < eye.high[0]) & (rest_arm[:, 2] > eye.low[2])
+                      & (rest_arm[:, 2] < eye.high[2]) & (rest_arm[:, 1] < centre.y))
+            self.assertGreater(inside.sum(), 0)
+            self.assertLess(np.abs(closed[inside, 2] - line).max(), 0.05 * (eye.high[2] - eye.low[2]))
+            pad = eye_shapes.MARGIN * (eye.high - eye.low)
+            inside_any |= ((rest_arm[:, 0] > eye.low[0] - pad[0]) & (rest_arm[:, 0] < eye.high[0] + pad[0])
+                           & (rest_arm[:, 2] > eye.low[2] - pad[2]) & (rest_arm[:, 2] < eye.high[2] + pad[2]))
+        far = ~inside_any | (rest_arm[:, 1] >= centre.y)
+        self.assertLess(np.abs(offsets(body, "blink")[far]).max(), 1e-7)  # the back of the head, the body below
+
+
 class ExistingKeysTest(unittest.TestCase):
     def test_keys_that_move_are_kept_and_empty_ones_filled(self):
         rig, objs, eyes = character()

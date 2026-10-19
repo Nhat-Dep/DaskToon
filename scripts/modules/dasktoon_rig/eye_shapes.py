@@ -12,7 +12,11 @@ an eye when its centre is in front, to the side, at eye height and it is small; 
 and both eyes are needed. Hair parts are left out (a lock hanging in front of an eye). Open edges of other pieces all
 around an eye (an eye in a socket) leave the face alone; the edge of the hair crossing it is no socket.
 
-Keys, on each mesh holding eye pieces: blink (both eyes onto the close line, a third of the way up, keeping KEEP of
+Eye whites painted on the face (pl1) would stay open, so the skin under each eye moves with it: the vertices of the
+Body parts' meshes in front of the head inside the eye's outline (across and up) move as the eye does, fading back to
+rest MARGIN of the eye's size out of it. Hair and clothes never move.
+
+Keys, on each mesh holding eye pieces or skin under them: blink (both eyes onto the close line, a third of the way up, keeping KEEP of
 their height), blink_L and blink_R, joy (closed as an arc, its middle raised by ARCH of the eye's height) and surprised
 (WIDEN times bigger about the eye's centre, across and up). A key of the same expression (expressions.SLOTS) that moves
 is kept, an empty one filled, a missing one added under its VRM 0.x name."""
@@ -31,6 +35,7 @@ CLOSE_AT = 1.0 / 3.0
 KEEP = 0.04
 ARCH = 0.35
 WIDEN = 1.12
+MARGIN = 0.3  # of the eye's size: the skin under an eye fades back to rest this far out of it
 FEWEST = 3  # vertices of a piece (a loose vertex is no eye)
 SOCKET_GAP = 1.5  # radians: open edges around an eye leaving no wider gap make it a socket
 # (key, its slot, the eyes it closes or widens, how)
@@ -170,6 +175,34 @@ def _moved(eye, points, how):
     return out
 
 
+def _skin(rig, eyes, meshes):
+    """{Body mesh: {side: (vertex indices, fade)}}: the face skin under each eye (module docstring)."""
+    head = _head(rig)
+    data = getattr(rig.data, "dasktoon_rig", None)
+    bodies = {part.object for part in (data.parts if data is not None else ())
+              if part.role == 'BODY' and part.object is not None}
+    pieces = {}
+    for eye in eyes.values():
+        for obj, piece in eye.pieces:
+            pieces.setdefault(obj, set()).update(piece.tolist())
+    out = {}
+    for obj in meshes:
+        if obj not in bodies or not _is_mesh_of(rig, obj):
+            continue
+        rest = _rest(rig, obj)
+        free = np.ones(len(rest), dtype=bool)
+        free[list(pieces.get(obj, ()))] = False
+        for side, eye in eyes.items():
+            pad = np.maximum(MARGIN * (eye.high - eye.low), 1e-9)
+            out_x = np.maximum(np.maximum(eye.low[0] - rest[:, 0], rest[:, 0] - eye.high[0]), 0.0) / pad[0]
+            out_z = np.maximum(np.maximum(eye.low[2] - rest[:, 2], rest[:, 2] - eye.high[2]), 0.0) / pad[2]
+            fade = np.clip(1.0 - np.maximum(out_x, out_z), 0.0, 1.0)
+            near = np.nonzero(free & (fade > 0.0) & (rest[:, 1] < head[0][1]))[0]
+            if len(near):
+                out.setdefault(obj, {})[side] = (near, fade[near])
+    return out
+
+
 def _target(obj, slot, name):
     """The key to write `name`'s shape into: a key of its slot that moves nothing, or None when one moves; a new key
     under `name` when the slot has none."""
@@ -196,11 +229,13 @@ def sculpt(rig, meshes):
     eyes = find_eyes(rig, meshes)
     if not eyes:
         return []
+    skin = _skin(rig, eyes, meshes)
     holders = []
     for eye in eyes.values():
         for obj, _piece in eye.pieces:
             if obj not in holders:
                 holders.append(obj)
+    holders += [obj for obj in skin if obj not in holders]
     made = {}
     for name, slot, sides, how in KEYS:
         for obj in holders:
@@ -217,6 +252,9 @@ def sculpt(rig, meshes):
                 for owner, piece in eyes[side].pieces:
                     if owner == obj:
                         moved[piece] = _moved(eyes[side], rest[piece], how) - rest[piece]
+                near, fade = skin.get(obj, {}).get(side, ((), None))
+                if len(near):
+                    moved[near] = (_moved(eyes[side], rest[near], how) - rest[near]) * fade[:, None]
             to_arm = np.array((rig.matrix_world.inverted() @ obj.matrix_world).to_3x3())
             block.data.foreach_set("co", (base + moved @ np.linalg.inv(to_arm).T).ravel())
             made.setdefault(block.name, []).append(obj.name)

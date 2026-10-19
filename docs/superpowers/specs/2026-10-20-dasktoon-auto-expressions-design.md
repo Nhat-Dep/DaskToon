@@ -40,7 +40,10 @@ eyes are needed. Hair parts are left out (a lock of filie's hair hangs in front 
 socket needs its lids moved, which this does not do. The edge of the hair along the forehead crosses the eyes (pl1)
 but does not go around them, so it is no socket.
 
-For each eye, the close line is a third of the way up from its lowest point. Keys, on each mesh holding eye pieces:
+For each eye, the close line is a third of the way up from its lowest point. Eye whites painted on the face (pl1) or
+a face layer behind an eye (RGforGame) would stay open, so the skin under each eye moves with it: the vertices of the
+Body parts' meshes in front of the head inside the eye's outline move as the eye does, fading back to rest 30% of the
+eye's size out of it. Hair and clothes never move. Keys, on each mesh holding eye pieces or skin under them:
 
 - blink: every vertex of the eye goes to the close line, keeping 4% of its height (the lashes meet in a line);
 - blink_L, blink_R: one eye (the character's left at +X);
@@ -54,18 +57,19 @@ VRM 0.x name. The report names the keys made and the meshes.
 
 - filie: both eyes found (eye "mat" and lashes "mi"); closed, the eyes leave the lash line on her skin; joy arcs;
   surprised widens. Works.
-- pl1: both eyes found (three pieces each in the body mesh); iris and lashes close to a line, but the eye whites are
-  painted on the face texture under them and stay visible. Needs the whites as a piece (or painted over) to look shut.
-- RGforGame: both eyes found; one eye closes to a line, the other shows a white layer that sat behind a skin-coloured
-  piece of the eye. Its eyes are built unusually (at rest they already differ).
+- pl1: both eyes found (three pieces each in the body mesh). With the pieces alone, the eye whites painted on the face
+  stayed open; with the skin under the eyes moving too, both eyes close to clean lines, joy shows "^^".
+- RGforGame: both eyes found; with the pieces alone one eye showed a white face layer behind; with the skin moving it
+  closes to a line too.
 
 ## Rulings (autonomous)
 
 1. Eyes only for the sculpt: the user's three characters without keys show no mouth geometry to move (pl1 draws it,
    filie's is small cards). DaskToon's 2D mouth (atlas) already covers drawn mouths. Cost if wrong: mouth shapes still
    to make by hand.
-2. Squashing the eye pieces to a line, not moving lids: these characters have no lids to move. Cost if wrong: on a
-   model whose iris shows above the lash line, a sliver of iris stays visible when closed.
+2. Squashing the eye pieces and the skin under them to a line, not moving lids: these characters have no lids to
+   move. Cost if wrong: the face around a closed eye is slightly flattened (seen in plain studio light, not in toon
+   shading); a model whose iris shows above the lash line keeps a sliver of it.
 3. Fill treats "barely moves" (under 15% of the usual) as empty, because tdt's "e" is not zero but useless. Cost if
    wrong: a deliberately subtle key gets replaced; the button is undoable and the report says which.
 4. Both parts are buttons, not run by the auto rig: they change the user's expression keys, which should be asked for.
