@@ -565,6 +565,25 @@ class CheckPanelTest(unittest.TestCase):
         bpy.ops.dasktoon.rig_check()  # a new list: what was shown is not in it
         self.assertIsNone(ui._spot["rig"])
 
+    def test_a_character_facing_a_side_is_turned_by_a_button(self):
+        """The Check cannot tell left from right when no foot shows the front: it asks, with a button each way; the
+        button turns the character on the spot, fits, builds and checks again."""
+        from dasktoon_rig import facing
+        meshes = list(dict.fromkeys(part.object for part in self.data.parts if part.object))
+        facing.turn(bpy.context, meshes, math.pi / 2.0, body=[self.objs["Body"]])
+        bpy.ops.dasktoon.rig_check()
+        self.assertEqual(self.data.issues[0].kind, 'FACING')
+        log = self.draw()
+        self.assertEqual(sorted(props.degrees for _text, props in logged(log, "dasktoon.rig_turn_character")),
+                         [-90, 90])
+        with iu.language('vi_VN'):
+            self.assertEqual(ui.issue_sentence(self.data.issues[0]),
+                             "Nhân vật đang quay ngang, không quay về phía trước (-Y)")
+        self.assertEqual(bpy.ops.dasktoon.rig_turn_character(degrees=-90), {'FINISHED'})
+        self.assertTrue(self.data.checked)
+        self.assertNotIn('FACING', [item.kind for item in self.data.issues])
+        self.assertFalse(facing.sideways(bpy.context, [self.objs["Body"]]))
+
     def test_change_role_builds_and_checks_again(self):
         from dasktoon_rig import parts as rig_parts
         _skirt, hair = add_skirt_and_hair(self.rig)
@@ -633,7 +652,7 @@ class TextTest(unittest.TestCase):
         strings = {ui.DaskRigPart.bl_rna.description, ui.DaskRig.bl_rna.description,
                    ui.DaskRigCollider.bl_rna.description}
         operators = [cls for cls in ui.classes if issubclass(cls, bpy.types.Operator)]
-        self.assertEqual(len(operators), 20)
+        self.assertEqual(len(operators), 21)
         for struct in operators:
             strings.update((struct.bl_label, struct.__doc__))
         for struct in [ui.DaskRigPart, ui.DaskRigCollider, ui.DaskRig] + operators:

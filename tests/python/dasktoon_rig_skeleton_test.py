@@ -434,6 +434,40 @@ class FacingTest(unittest.TestCase):
         self.assertAlmostEqual(facing.face_front(bpy.context, [body]), -math.pi / 2.0, places=6)
         self.assert_matrix(body.matrix_world, Matrix.Identity(4))
 
+    def test_big_boots_still_tell(self):
+        """Chunky boots reach farther from the shins than a slim foot (pl1, a real model, wore boots reaching 12.4% of
+        its height past its shins and was rigged sideways), still nearer than the hem of a long dress."""
+        boot = ((0.09, 0.1, 0.0), (0.09, -0.26, 0.0), 0.07)
+        body = polyline_chibi(self.ARM, self.LEG, extra=[boot])
+        body.matrix_world = turned(math.pi / 2.0, self.MIDDLE)  # facing +X
+        self.assertAlmostEqual(facing.face_front(bpy.context, [body]), -math.pi / 2.0, places=6)
+        self.assert_matrix(body.matrix_world.to_3x3(), Matrix.Identity(3))  # (the boots' tops nudge the spot it turns on)
+        self.assertLess(self.toes(body)[1], -0.02)
+
+    def test_a_side_facing_character_without_feet_is_noticed(self):
+        """No foot tells which way it faces (the shins end flat), but its legs stand side by side along Y: it faces a
+        side. It is not turned blindly (left or right is not known); the Check asks."""
+        body = polyline_chibi(self.ARM, self.LEG)
+        self.assertFalse(facing.sideways(bpy.context, [body]))
+        body.matrix_world = turned(math.pi / 2.0, self.MIDDLE)
+        self.assertTrue(facing.sideways(bpy.context, [body]))
+        self.assertEqual(facing.face_front(bpy.context, [body]), 0.0)
+
+    def test_feet_that_tell_are_not_sideways(self):
+        body = polyline_chibi(self.ARM, self.LEG, extra=[self.FRONT])
+        body.matrix_world = turned(math.pi / 2.0, self.MIDDLE)
+        self.assertFalse(facing.sideways(bpy.context, [body]))  # face_front turns it instead
+
+    def test_turn_on_the_spot(self):
+        body = polyline_chibi(self.ARM, self.LEG)
+        hat = box("Hat", (2.9, 0.4, 2.0), (3.1, 0.7, 2.1))
+        hat.parent = body
+        bpy.context.view_layer.update()
+        before = hat.matrix_world.copy()
+        facing.turn(bpy.context, [body, hat], -math.pi / 2.0, body=[body])
+        self.assert_matrix(body.matrix_world, turned(-math.pi / 2.0, self.MIDDLE))
+        self.assert_matrix(hat.matrix_world, turned(-math.pi / 2.0, self.MIDDLE) @ before)
+
     def test_a_character_facing_the_front_stays(self):
         body = polyline_chibi(self.ARM, self.LEG, extra=[self.FRONT])
         self.assertEqual(facing.face_front(bpy.context, [body]), 0.0)

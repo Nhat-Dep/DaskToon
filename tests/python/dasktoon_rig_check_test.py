@@ -5,6 +5,7 @@
 """The Check of the one-button auto rig (docs/superpowers/specs/2026-10-14-dasktoon-auto-rig-design.md): test poses, the
 mesh moved through its weights, joints outside the body, stretched spots and roles that look wrong."""
 
+import math
 import os
 import sys
 import unittest
@@ -170,6 +171,16 @@ class CheckTest(unittest.TestCase):
         self.assertEqual([(item.pose, item.region) for item in ear], [('ARMS_UP', 'HEAD')])
         self.assertTrue(len(ear[0]["vertices"]) >= 3)
         self.assertTrue(all(bone.matrix_basis == bone.matrix_basis.Identity(4) for bone in self.rig.pose.bones))
+
+    def test_a_character_facing_a_side(self):
+        """Its legs side by side along Y and no foot telling which way: the first spot of the list asks to turn it."""
+        from dasktoon_rig import facing
+        check.run(bpy.context, self.rig)
+        self.assertNotIn('FACING', [item.kind for item in self.rig.data.dasktoon_rig.issues])
+        meshes = list(dict.fromkeys(part.object for part in self.rig.data.dasktoon_rig.parts if part.object))
+        facing.turn(bpy.context, meshes, math.pi / 2.0, body=[self.objs["Body"]])
+        check.run(bpy.context, self.rig)
+        self.assertEqual(self.rig.data.dasktoon_rig.issues[0].kind, 'FACING')
 
     def test_roles_that_look_wrong(self):
         from bl_ui import dasktoon_rig as ui

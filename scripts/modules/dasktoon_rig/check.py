@@ -281,10 +281,15 @@ def role_issues(rig, parts):
 def run(context, rig):
     """Look for the spots worth a look (spec 4) and keep them on the rig (rig.data.dasktoon_rig.issues); the rig is left
     at rest. Returns how many were found."""
+    from . import facing
     data = rig.data.dasktoon_rig
     parts = [part for part in data.parts if part.object is not None]
     found = regions.analyse(context, rig, parts)
     data.issues.clear()
+    meshes = [part.object for part in parts if part.object.type == 'MESH']
+    body = [part.object for part in parts if part.object.type == 'MESH' and part.role in regions.BODY_ROLES]
+    if facing.sideways(context, list(dict.fromkeys(body or meshes))):
+        data.issues.add().kind = 'FACING'  # first: everything else follows from the way it faces
     for name in joint_issues(rig, parts):
         item = data.issues.add()
         item.kind, item.bone = 'JOINT', name

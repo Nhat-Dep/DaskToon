@@ -66,7 +66,7 @@ JOINT_NAMES = {
     "LeftFoot": "Left ankle", "RightFoot": "Right ankle",
     "Neck": "Base of the neck", "Head": "Head joint",
 }
-ISSUE_ICONS = {'JOINT': 'BONE_DATA', 'STRETCH': 'MOD_SIMPLEDEFORM'}
+ISSUE_ICONS = {'JOINT': 'BONE_DATA', 'STRETCH': 'MOD_SIMPLEDEFORM', 'FACING': 'ORIENTATION_GLOBAL'}
 
 
 def _is_mesh(_self, obj):
@@ -168,7 +168,8 @@ def _look_changed(self, _context):
 # vertices in the item's "vertices" property.
 class DaskRigIssue(PropertyGroup):
     """A spot the Check of the auto rig found"""
-    kind: EnumProperty(items=[('JOINT', "", ""), ('STRETCH', "", ""), ('ROLE', "", "")], default='JOINT')
+    kind: EnumProperty(items=[('JOINT', "", ""), ('STRETCH', "", ""), ('ROLE', "", ""), ('FACING', "", "")],
+                       default='JOINT')
     bone: StringProperty()
     part: StringProperty()
     object: PointerProperty(type=bpy.types.Object)
@@ -1155,8 +1156,43 @@ class DASKTOON_OT_rig_change_role(Operator):
         return {'FINISHED'}
 
 
+class DASKTOON_OT_rig_turn_character(Operator):
+    """Turn the character on the spot by a quarter, then fit the skeleton, build the rig and check it again"""
+    bl_idname = "dasktoon.rig_turn_character"
+    bl_label = "Turn the Character"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    degrees: IntProperty(name="Degrees", description="How far to turn, to the left (positive) or the right",
+                         default=90, min=-180, max=180)
+
+    @classmethod
+    def poll(cls, context):
+        return _check_poll(context)
+
+    def execute(self, context):
+        from dasktoon_rig import build, facing, regions
+        rig = rig_of(context)
+        parts = [part for part in rig.data.dasktoon_rig.parts if part.object is not None]
+        meshes = list(dict.fromkeys(part.object for part in parts if part.object.type == 'MESH'))
+        body = list(dict.fromkeys(part.object for part in parts
+                                  if part.object.type == 'MESH' and part.role in regions.BODY_ROLES))
+        facing.turn(context, meshes, math.radians(self.degrees), body=body or None)
+        report_turn(self, fit_to_parts(context, rig))
+        try:
+            result, _recognized = build_rig(context, rig)
+        except build.BuildError as ex:
+            self.report({'ERROR'}, str(ex))
+            return {'FINISHED'}  # it is turned and fitted
+        for warning in result.warnings:
+            self.report({'WARNING'}, warning)
+        self.report({'INFO'}, check_summary(run_check(context, rig)))
+        return {'FINISHED'}
+
+
 def issue_sentence(issue):
     """What a spot of the Check's list says, in the interface's language."""
+    if issue.kind == 'FACING':
+        return rpt_("The character faces a side, not the front (-Y)")
     if issue.kind == 'JOINT':
         return rpt_("%s is outside the body") % iface_(JOINT_NAMES.get(issue.bone, issue.bone))
     if issue.kind == 'STRETCH':
@@ -1173,7 +1209,10 @@ def draw_issue(layout, rig, index, issue):
     box.label(text=issue_sentence(issue), icon=ISSUE_ICONS.get(issue.kind) or ROLE_ICONS.get(issue.role, 'ERROR'),
               translate=False)
     row = box.row(align=True)
-    if issue.kind == 'JOINT':
+    if issue.kind == 'FACING':
+        row.operator("dasktoon.rig_turn_character", text="Turn 90° Left", icon='LOOP_BACK').degrees = 90
+        row.operator("dasktoon.rig_turn_character", text="Turn 90° Right", icon='LOOP_FORWARDS').degrees = -90
+    elif issue.kind == 'JOINT':
         row.operator("dasktoon.rig_fix_joint", text="Fix", icon='EDITMODE_HLT').bone = issue.bone
     elif issue.kind == 'STRETCH':
         shown = _spot["rig"] == rig.name and _spot["index"] == index and spot_shown() is not None
@@ -1461,6 +1500,7 @@ classes = (
     DASKTOON_OT_rig_show_spot,
     DASKTOON_OT_rig_paint_spot,
     DASKTOON_OT_rig_change_role,
+    DASKTOON_OT_rig_turn_character,
     DASKTOON_UL_rig_parts,
     DATA_PT_dasktoon_rig,
     DATA_PT_dasktoon_rig_check,
