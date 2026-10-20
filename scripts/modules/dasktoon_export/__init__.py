@@ -37,15 +37,20 @@ def _tex_label(prop):
 
 
 def _materials(objects):
-    """{material: [mesh objects using it]} in slot order; empty slots and outline companions are left out."""
+    """{material: [mesh objects whose faces use it]} in slot order; empty slots, slots no face uses and outline
+    companions are left out (pl1, a real model, kept an unused material in four meshes' slots: baking it on the first
+    found no faces)."""
     from . import graph
     found = {}
     for obj in objects:
         if obj.type != 'MESH':
             continue
-        for slot in obj.material_slots:
+        indexes = [0] * len(obj.data.polygons)
+        obj.data.polygons.foreach_get("material_index", indexes)
+        used = set(indexes)
+        for index, slot in enumerate(obj.material_slots):
             mat = slot.material
-            if mat is None or graph.is_outline_companion(mat):
+            if index not in used or mat is None or graph.is_outline_companion(mat):
                 continue
             users = found.setdefault(mat, [])
             if obj not in users:

@@ -101,6 +101,28 @@ class TextureFileTest(unittest.TestCase):
         np.testing.assert_allclose(pixels[0], (2.0, 0.25, -0.5, 1.0), atol=1e-3)
 
 
+class MaterialUsersTest(unittest.TestCase):
+    """A material in a mesh's slots that no face of it uses is not used by that mesh: pl1 (a real model) kept such a
+    material in four meshes' slots, and Engine Export baked on the first, found no faces and warned "bake failed"."""
+
+    def test_only_meshes_whose_faces_use_it(self):
+        import dasktoon_export
+        tu.reset_scene()
+        bpy.ops.mesh.primitive_plane_add(size=2.0)
+        empty_slot = bpy.context.active_object
+        bpy.ops.mesh.primitive_plane_add(size=2.0, location=(3.0, 0.0, 0.0))
+        used = bpy.context.active_object
+        skin, unused = bpy.data.materials.new("Skin"), bpy.data.materials.new("Unused")
+        empty_slot.data.materials.append(bpy.data.materials.new("Other"))
+        empty_slot.data.materials.append(skin)  # slot 1: no face uses it
+        empty_slot.data.materials.append(unused)
+        used.data.materials.append(skin)
+        found = dasktoon_export._materials([empty_slot, used])
+        self.assertEqual(found[skin], [used])
+        self.assertNotIn(unused, found)
+        self.assertEqual([obj.name for obj in found[empty_slot.data.materials[0]]], [empty_slot.name])
+
+
 class BakeTest(unittest.TestCase):
     def setUp(self):
         tu.reset_scene()
