@@ -44,7 +44,17 @@ class EngineExportOperatorTest(unittest.TestCase):
     def test_coming_soon_engine_is_refused(self):
         character()
         with self.assertRaises(RuntimeError):
-            bpy.ops.export_scene.dasktoon_engine(directory=tempfile.mkdtemp(prefix="dt_ui_"), engine='GODOT_4')
+            bpy.ops.export_scene.dasktoon_engine(directory=tempfile.mkdtemp(prefix="dt_ui_"), engine='UNREAL_5')
+
+    def test_godot_export_writes_a_folder_to_copy_into_the_godot_project(self):
+        character()
+        out = tempfile.mkdtemp(prefix="dt_ui_godot_")
+        self.assertEqual(bpy.ops.export_scene.dasktoon_engine(directory=out, engine='GODOT_4', bake_size=64,
+                                                              include_animation=False), {'FINISHED'})
+        root = os.path.join(out, "Untitled_Godot", "DaskToon")
+        self.assertTrue(os.path.isfile(os.path.join(root, "Untitled", "Untitled.glb")))
+        self.assertTrue(os.path.isfile(os.path.join(root, "Untitled", "Materials", "Skin.tres")))
+        self.assertEqual(targets.remembered_target(bpy.context.scene), (out, 'GODOT_4'))
 
     def test_nothing_selected_is_refused(self):
         character()

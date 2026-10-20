@@ -41,14 +41,15 @@ class EXPORT_SCENE_OT_dasktoon_engine(Operator):
     engine: EnumProperty(name="Engine", items=targets.ENGINES, default='UNITY_URP')
     model_format: EnumProperty(
         name="Model",
-        items=(('FBX', "FBX", "Export the model as FBX"),
+        items=(('FBX', "FBX / glTF", "Export the model: FBX for Unity, glTF (.glb) for Godot"),
                ('NONE', "No Model", "Export only the materials and shaders")),
         default='FBX')
     use_selection: BoolProperty(name="Selected Objects Only", default=True)
     include_animation: BoolProperty(name="Include Animation", default=True)
     merge_meshes: BoolProperty(
         name="Merge the Character's Meshes", default=True,
-        description="One mesh for the character in Unity, each material kept; the file you work on stays as it is")
+        description="One mesh for the character in the game engine, each material kept; the file you work on stays "
+                    "as it is")
     export_materials: BoolProperty(name="Export Materials and Shaders", default=True)
     bake_size: IntProperty(name="Bake Size", default=1024, min=64, max=8192, subtype='PIXEL')
     bake_samples: IntProperty(name="Bake Samples", default=16, min=1, max=4096)
@@ -81,18 +82,23 @@ class EXPORT_SCENE_OT_dasktoon_engine(Operator):
         if self.directory:
             target = targets.make_target(self.directory, targets.blend_name(bpy.data.filepath), self.engine)
             box = layout.box()
-            if target.mode == 'PROJECT':
+            if target.mode == 'PROJECT' and target.engine == 'GODOT_4':
+                box.label(text="Writes straight into the Godot project", icon='CHECKMARK')
+                box.label(text="%s/DaskToon" % os.path.basename(target.project), translate=False)
+            elif target.mode == 'PROJECT':
                 box.label(text="Writes straight into the Unity project", icon='CHECKMARK')
                 box.label(text="%s/Assets/DaskToon" % os.path.basename(target.project), translate=False)
             else:
-                box.label(text=iface_("Creates the folder %s") % os.path.basename(target.root), icon='FILE_FOLDER',
+                folder = os.path.relpath(target.root, os.path.abspath(bpy.path.abspath(self.directory)))
+                box.label(text=iface_("Creates the folder %s") % folder.replace("\\", "/"), icon='FILE_FOLDER',
                           translate=False)
 
     def execute(self, context):
         import dasktoon_export
         from dasktoon_export import model_fbx, report
         if self.engine not in targets.SUPPORTED_ENGINES:
-            self.report({'ERROR'}, rpt_("This engine is coming soon; only Unity 6 (URP) is supported for now"))
+            self.report({'ERROR'}, rpt_("This engine is coming soon; only Unity 6 (URP) and Godot 4 are supported for "
+                                        "now"))
             return {'CANCELLED'}
         if not self.directory:
             self.report({'ERROR'}, rpt_("No destination folder chosen"))

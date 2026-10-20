@@ -362,6 +362,9 @@ def export_model(context, target, objects, options):
     from . import assets, face_shading, targets, unity_yaml
     if target.engine not in targets.SUPPORTED_ENGINES:
         raise ValueError(rpt_("Engine %s is not supported yet") % target.engine)
+    if target.engine == 'GODOT_4':
+        from . import godot
+        return godot.export_model(context, target, objects, options)
     rep = report.Report(mode=target.mode, root=target.root, name=target.name)
     meshes = [o for o in objects if o.type == 'MESH']
     snapshots, rep.face_meshes, errors = face_shading.bake_rest_normals(context, meshes)

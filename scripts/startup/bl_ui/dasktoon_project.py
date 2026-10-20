@@ -76,7 +76,7 @@ def forget_models():
 
 
 def engine_label(project):
-    """"Engine: Unity 6 (URP)", or "Engine: not linked" until a Unity project is linked (spec 11)."""
+    """"Engine: Unity 6 (URP)", or "Engine: not linked" until a game project is linked (spec 11)."""
     if not project.engines:
         return iface_("Engine: not linked")
     names = {key: label for key, label, _desc in targets.ENGINES}
@@ -126,7 +126,7 @@ def _choose(op, project):
 
 
 def _linked_project(op, then):
-    """The selected project when a Unity project is linked to it. Otherwise Project Settings opens to link one, and runs
+    """The selected project when a game project is linked to it. Otherwise Project Settings opens to link one, and runs
     `then` afterwards (spec 11); returns None."""
     project = selected_project()
     if project is None:
@@ -136,23 +136,24 @@ def _linked_project(op, then):
         if interactive():
             bpy.ops.dasktoon.project_settings('INVOKE_DEFAULT', then=then)
         else:
-            op.report({'ERROR'}, rpt_("Project %s is not linked to a Unity project yet: link it in Project Settings")
+            op.report({'ERROR'}, rpt_("Project %s is not linked to a game project yet: link it in Project Settings")
                       % project.name)
         return None
     return project
 
 
 class DASKTOON_OT_project_create(Operator):
-    """Create a DaskToon project: a folder with Models/ and Textures/; link a Unity project now or later"""
+    """Create a DaskToon project: a folder with Models/ and Textures/; link a Unity or Godot project now or later"""
     bl_idname = "dasktoon.project_create"
     bl_label = "New Project"
 
     name: StringProperty(name="Name", default="New Project")
     location: StringProperty(name="Location", subtype='DIR_PATH',
                              description="The folder that receives the project folder")
-    engine_path: StringProperty(name="Unity Project", subtype='DIR_PATH',
-                                description="Optional: the Unity project models are exported to (link it later in "
-                                            "Project Settings)")
+    engine: EnumProperty(name="Engine", items=targets.ENGINES, default='UNITY_URP')
+    engine_path: StringProperty(name="Game Project", subtype='DIR_PATH',
+                                description="Optional: the Unity or Godot project models are exported to (link it "
+                                            "later in Project Settings)")
     model_start_from: StringProperty(options={'HIDDEN', 'SKIP_SAVE'})  # passed on to New Model
 
     def invoke(self, context, _event):
@@ -165,7 +166,7 @@ class DASKTOON_OT_project_create(Operator):
         engine_path = bpy.path.abspath(self.engine_path) if self.engine_path else ""
         try:
             name = dtp.clean_name(self.name)
-            project = dtp.create_project(name, os.path.join(location, name), engine_path)
+            project = dtp.create_project(name, os.path.join(location, name), engine_path, self.engine)
         except (ValueError, OSError) as ex:
             self.report({'ERROR'}, str(ex))
             return {'CANCELLED'}
@@ -225,14 +226,14 @@ class DASKTOON_OT_project_select(Operator):
 
 
 class DASKTOON_OT_project_settings(Operator):
-    """Rename the project and link it to a Unity project; the DaskToon shaders are installed when the link is new or changes"""
+    """Rename the project and link it to a Unity or Godot project; the DaskToon shaders are installed when the link is new or changes"""
     bl_idname = "dasktoon.project_settings"
     bl_label = "Project Settings"
 
     name: StringProperty(name="Name")
     engine: EnumProperty(name="Engine", items=targets.ENGINES, default='UNITY_URP')
-    engine_path: StringProperty(name="Unity Project", subtype='DIR_PATH',
-                                description="The Unity project models are exported to; leave empty to unlink")
+    engine_path: StringProperty(name="Game Project", subtype='DIR_PATH',
+                                description="The Unity or Godot project models are exported to; leave empty to unlink")
     then: EnumProperty(items=THEN, options={'HIDDEN', 'SKIP_SAVE'})
 
     @classmethod
@@ -286,7 +287,7 @@ class DASKTOON_OT_project_open_model(Operator):
 
 
 class DASKTOON_OT_project_export(Operator):
-    """Export this file's model, materials and shaders straight into the project's Unity project"""
+    """Export this file's model, materials and shaders straight into the project's game project"""
     bl_idname = "dasktoon.project_export"
     bl_label = "Export This Model"
 
@@ -308,7 +309,7 @@ class DASKTOON_OT_project_export(Operator):
 
 
 class DASKTOON_OT_project_reinstall_shaders(Operator):
-    """Write the DaskToon shaders into the project's Unity project again"""
+    """Write the DaskToon shaders into the project's game project again"""
     bl_idname = "dasktoon.project_reinstall_shaders"
     bl_label = "Reinstall Shaders"
 
@@ -392,7 +393,6 @@ class TOPBAR_MT_dasktoon_project(Menu):
     bl_translation_context = "DaskToon"
 
     def draw(self, _context):
-        from dasktoon_export import shaders_install
         layout = self.layout
         project = selected_project()
         if project is None:
@@ -401,7 +401,7 @@ class TOPBAR_MT_dasktoon_project(Menu):
         layout.label(text=project.name, icon='FILE_FOLDER', translate=False)
         layout.label(text=engine_label(project), translate=False)
         if project.engines:
-            version = shaders_install.installed_version(os.path.join(project.engine_path, "Assets", "DaskToon"))
+            version = dtp.shaders_version(project)
             layout.label(text=(iface_("Shaders: version %d") % version) if version else iface_("Shaders: not installed"),
                          icon='CHECKMARK' if version else 'ERROR', translate=False)
         layout.separator()

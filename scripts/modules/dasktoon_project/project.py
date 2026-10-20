@@ -138,17 +138,35 @@ def find_project(blend_path):
 
 
 def project_target(project, name):
-    """PROJECT-mode export target inside the project's Unity project."""
+    """PROJECT-mode export target inside the project's game-engine project: Assets/DaskToon in Unity, res://DaskToon in
+    Godot."""
     from dasktoon_export import targets
-    root = os.path.join(os.path.normpath(project.engine_path), "Assets", "DaskToon")
-    return targets.ExportTarget(project.engine, 'PROJECT', root, name, os.path.normpath(project.engine_path))
+    path = os.path.normpath(project.engine_path)
+    if project.engine == 'GODOT_4':
+        root = os.path.join(path, targets.GODOT_FOLDER)
+    else:
+        root = os.path.join(path, "Assets", "DaskToon")
+    return targets.ExportTarget(project.engine, 'PROJECT', root, name, path)
 
 
 def install_project_shaders(project, force=False):
-    from dasktoon_export import shaders_install
     warnings = []
+    if project.engine == 'GODOT_4':
+        from dasktoon_export.godot import files
+        return files.install(project_target(project, "").root, force=force), warnings
+    from dasktoon_export import shaders_install
     written = shaders_install.install_shaders(project_target(project, ""), warnings, force=force)
     return written, warnings
+
+
+def shaders_version(project):
+    """Version of the DaskToon shaders in the linked project; 0 when they are not there."""
+    root = project_target(project, "").root
+    if project.engine == 'GODOT_4':
+        from dasktoon_export.godot import files
+        return files.installed_version(root)
+    from dasktoon_export import shaders_install
+    return shaders_install.installed_version(root)
 
 
 def check_engine_path(engine, engine_path):
@@ -157,7 +175,10 @@ def check_engine_path(engine, engine_path):
     if engine not in targets.SUPPORTED_ENGINES:
         raise ValueError(rpt_("Engine %s is not supported yet") % engine)
     engine_path = os.path.abspath(engine_path)
-    if not targets.is_unity_project(engine_path):
+    if engine == 'GODOT_4':
+        if not os.path.isfile(os.path.join(engine_path, targets.GODOT_PROJECT_FILE)):
+            raise ValueError(rpt_("%s is not a Godot project (it needs project.godot)") % engine_path)
+    elif not targets.is_unity_project(engine_path):
         raise ValueError(rpt_("%s is not a Unity project (it needs Assets/ and ProjectSettings/)") % engine_path)
     return engine_path
 

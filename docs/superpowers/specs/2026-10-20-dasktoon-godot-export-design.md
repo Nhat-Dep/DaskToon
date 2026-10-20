@@ -53,3 +53,25 @@ cộng bóng anime vào `DIFFUSE_LIGHT`, ánh sáng môi trường tự tính (t
 2. Script nhập thay cho cảnh `.tscn` dựng sẵn: không phụ thuộc tên nút Godot đặt khi nhập, và kéo `.glb` là đủ.
 3. Bộ lò xo, nhìn theo... dùng nút có sẵn của Godot để người dùng chỉnh được bằng công cụ của Godot.
 4. Đợt 1 chỉ có Anime BSDF: vật liệu loại khác dùng Anime BSDF với màu của chúng và báo trong báo cáo xuất.
+
+Đợt 1, đo trên Godot 4.7.2 rồi quyết:
+
+5. Nhiều đèn: Godot tính từng đèn riêng, không có bước sau cùng để tô bóng anime trên tổng ánh sáng như DaskToon. Mỗi
+   đèn tô bóng với (ánh sáng World + đèn đó); kết quả sáng nhất được giữ. Một đèn thì đúng như DaskToon (đo: chênh tối đa
+   0,017 trên ảnh sRGB, ngưỡng 0,03). Sai nếu cảnh có nhiều đèn cùng chiếu một chỗ: chỗ đó lấy đèn sáng nhất thay vì
+   tổng.
+6. Ánh sáng World đi vào tham số World Ambient của mỗi vật liệu (màu World × độ mạnh); ánh sáng môi trường của Godot tắt
+   (`ambient_light_disabled`). Không ghi vào `project.godot` của người dùng.
+7. Đèn: DirectionalLight3D energy = Sun ÷ π, màu đèn ghi dạng sRGB (đo: `LIGHT_COLOR` = màu × energy × π). Báo cáo xuất
+   gợi ý con số này.
+8. Godot không cho bật tắt cull và trong suốt theo vật liệu: mỗi kiểu là một tệp shader nhỏ
+   (`anime_bsdf[_cull][_clip|_blend].gdshader`) cùng đọc `anime_bsdf.gdshaderinc`. Các module (Ramp, Ambient, Light,
+   Rim, Grade) là công tắc trong vật liệu.
+9. AO: Godot không cho shader tự viết đọc độ che khuất; module AO không vẽ gì, báo cáo xuất cảnh báo.
+10. Tên vật liệu: bộ xuất glTF chỉ giữ tên khi xuất cả vật liệu (`export_materials='EXPORT'`, không kèm ảnh); vật liệu
+    đó bị script nhập thay ngay.
+11. Viền: Godot đọc TEXCOORD_2 trở đi vào CUSTOM0–2 (hai bản đồ một kênh) và glTF lật trục V; shader viền đọc lại đúng
+    kênh và lật về (đo: hướng viền lệch dưới 2° so với DaskToon).
+12. Thư mục `res://DaskToon` là của DaskToon: xuất lại ghi đè trong đó; riêng `<Tên>.glb.import` giữ những gì Godot đã
+    ghi (uid, lựa chọn của người dùng), chỉ đặt lại dòng script nhập.
+13. Dự án DaskToon gắn được project Godot (cần `project.godot`), cài shader vào `res://DaskToon`.

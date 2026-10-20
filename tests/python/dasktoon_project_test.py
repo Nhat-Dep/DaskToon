@@ -250,6 +250,19 @@ class ProjectTest(unittest.TestCase):
         self.assertTrue(os.path.isfile(os.path.join(self.unity, "Assets", "DaskToon", "Hero", "Materials", "Skin.mat")))
         self.assertTrue(targets.find_unity_project(target.root))
 
+    def test_a_godot_project_links_and_gets_the_godot_files(self):
+        godot = os.path.join(tempfile.mkdtemp(prefix="dt_proj_godot_"), "Game")
+        touch(os.path.join(godot, "project.godot"))
+        project = dtp.create_project("P", self.folder, godot, 'GODOT_4')
+        self.assertEqual(project.engine, 'GODOT_4')
+        self.assertTrue(os.path.isfile(os.path.join(godot, "DaskToon", "Shaders", "anime_bsdf.gdshader")))
+        self.assertTrue(os.path.isfile(os.path.join(godot, "DaskToon", "Scripts", "dasktoon_import.gd")))
+        self.assertGreater(dtp.shaders_version(project), 0)
+        target = dtp.project_target(project, "Hero")
+        self.assertEqual((target.engine, target.mode, target.root), ('GODOT_4', 'PROJECT', os.path.join(godot, "DaskToon")))
+        with self.assertRaises(ValueError):
+            dtp.link_engine(project, 'GODOT_4', self.unity)
+
 
 if __name__ == "__main__":
     tu.run_tests()

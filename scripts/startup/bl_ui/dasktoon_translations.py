@@ -14,7 +14,7 @@ KEEP = {
     "DaskToon", "Unity", "Unity 6 (URP)", "VRM", "VRoid", "ARKit", "FBX", "URP",
     "VRM 0.x", "VRM 1.0", "_L / _R", "_l / _r", "Left / Right",
     "Anime BSDF", "Manga BSDF", "DaskToon Anime", "DaskToon Manga", "Manga", "Unity 6, Universal Render Pipeline 17.5",
-    "Engine: %s",
+    "Engine: %s", "Godot 4", "FBX / glTF",
 }
 
 VI = {
@@ -25,20 +25,21 @@ VI = {
         "Xuất model, material DaskToon và shader cho game engine",
     "Folder": "Thư mục",
     "Model": "Mô hình",
-    "Export the model as FBX": "Xuất model dạng FBX",
+    "Export the model: FBX for Unity, glTF (.glb) for Godot": "Xuất model: FBX cho Unity, glTF (.glb) cho Godot",
     "No Model": "Không xuất model",
     "Export only the materials and shaders": "Chỉ xuất material và shader",
     "Include Animation": "Kèm animation",
     "Merge the Character's Meshes": "Gộp lưới nhân vật thành một",
-    "One mesh for the character in Unity, each material kept; the file you work on stays as it is":
-        "Unity nhận một lưới cho nhân vật, mỗi material giữ riêng; file đang làm giữ nguyên",
+    "One mesh for the character in the game engine, each material kept; the file you work on stays as it is":
+        "Engine nhận một lưới cho nhân vật, mỗi material giữ riêng; file đang làm giữ nguyên",
     "Merged %d meshes of the character into one: %s": "Đã gộp %d lưới của nhân vật thành một: %s",
     "Export Materials and Shaders": "Xuất material và shader",
     "Bake Size": "Cỡ ảnh bake",
     "Writes straight into the Unity project": "Ghi thẳng vào project Unity",
+    "Writes straight into the Godot project": "Ghi thẳng vào project Godot",
     "Creates the folder %s": "Tạo thư mục %s",
-    "This engine is coming soon; only Unity 6 (URP) is supported for now":
-        "Engine này sắp có; hiện chỉ hỗ trợ Unity 6 (URP)",
+    "This engine is coming soon; only Unity 6 (URP) and Godot 4 are supported for now":
+        "Engine này sắp có; hiện chỉ hỗ trợ Unity 6 (URP) và Godot 4",
     "No destination folder chosen": "Chưa chọn thư mục đích",
     "Nothing to export (no object selected?)": "Không có gì để xuất (chưa chọn object?)",
 
@@ -736,16 +737,16 @@ VI = {
     "Models": "Các model",
     "Shaders: version %d": "Shader: phiên bản %d",
     "Shaders: not installed": "Shader: chưa cài",
-    "Unity Project": "Project Unity",
+    "Game Project": "Project game",
     "Created project %s": "Đã tạo dự án %s",
     "Opened project %s": "Đã mở dự án %s",
     "Export This Model": "Xuất model này",
-    "Export this file's model, materials and shaders straight into the project's Unity project":
-        "Xuất model, material và shader của file này thẳng vào project Unity của dự án",
+    "Export this file's model, materials and shaders straight into the project's game project":
+        "Xuất model, material và shader của file này thẳng vào project game của dự án",
     "This file has no object to export": "File không có object nào để xuất",
     "Reinstall Shaders": "Cài lại shader",
-    "Write the DaskToon shaders into the project's Unity project again":
-        "Ghi lại shader DaskToon vào project Unity của dự án",
+    "Write the DaskToon shaders into the project's game project again":
+        "Ghi lại shader DaskToon vào project game của dự án",
     "Reinstalled the shaders into %s": "Đã cài lại shader vào %s",
     "Open Project Folder": "Mở thư mục dự án",
     "Open the project folder in the file manager": "Mở thư mục dự án trong trình quản lý file",
@@ -754,15 +755,16 @@ VI = {
     "Engine %s is not supported yet": "Engine %s chưa được hỗ trợ",
     "%s is not a Unity project (it needs Assets/ and ProjectSettings/)":
         "%s không phải project Unity (cần có Assets/ và ProjectSettings/)",
+    "%s is not a Godot project (it needs project.godot)": "%s không phải project Godot (cần có project.godot)",
     "%s is already a DaskToon project": "%s đã là một dự án DaskToon",
     "The name is empty": "Tên đang để trống",
     "The project already has a model named %s": "Dự án đã có model tên %s",
     "New Project": "Tạo dự án",
-    "Create a DaskToon project: a folder with Models/ and Textures/; link a Unity project now or later":
-        "Tạo dự án DaskToon: một thư mục có Models/ và Textures/; gắn project Unity ngay hoặc để sau",
+    "Create a DaskToon project: a folder with Models/ and Textures/; link a Unity or Godot project now or later":
+        "Tạo dự án DaskToon: một thư mục có Models/ và Textures/; gắn project Unity hoặc Godot ngay hoặc để sau",
     "The folder that receives the project folder": "Thư mục sẽ chứa thư mục dự án",
-    "Optional: the Unity project models are exported to (link it later in Project Settings)":
-        "Không bắt buộc: project Unity nhận model khi xuất (có thể gắn sau trong Cài đặt dự án)",
+    "Optional: the Unity or Godot project models are exported to (link it later in Project Settings)":
+        "Không bắt buộc: project Unity hoặc Godot nhận model khi xuất (có thể gắn sau trong Cài đặt dự án)",
     "Open Project": "Mở dự án",
     "Open a DaskToon project (its dasktoon_project.json or its folder) and show its models on the start screen":
         "Mở một dự án DaskToon (file dasktoon_project.json hoặc thư mục của nó) và hiện các model của nó ở màn hình đầu",
@@ -771,13 +773,14 @@ VI = {
     "Choose this project: the start screen shows its models": "Chọn dự án này: màn hình đầu hiện các model của nó",
     "Project Settings": "Cài đặt dự án",
     "Project Settings…": "Cài đặt dự án…",
-    "Rename the project and link it to a Unity project; the DaskToon shaders are installed when the link is new or changes":
-        "Đổi tên dự án và gắn với một project Unity; shader DaskToon được cài khi gắn mới hoặc đổi project",
-    "The Unity project models are exported to; leave empty to unlink":
-        "Project Unity nhận model khi xuất; để trống để bỏ gắn",
+    "Rename the project and link it to a Unity or Godot project; the DaskToon shaders are installed when the link is "
+    "new or changes":
+        "Đổi tên dự án và gắn với một project Unity hoặc Godot; shader DaskToon được cài khi gắn mới hoặc đổi project",
+    "The Unity or Godot project models are exported to; leave empty to unlink":
+        "Project Unity hoặc Godot nhận model khi xuất; để trống để bỏ gắn",
     "Saved the settings of project %s": "Đã lưu cài đặt của dự án %s",
-    "Project %s is not linked to a Unity project yet: link it in Project Settings":
-        "Dự án %s chưa gắn với project Unity: hãy gắn trong Cài đặt dự án",
+    "Project %s is not linked to a game project yet: link it in Project Settings":
+        "Dự án %s chưa gắn với project game: hãy gắn trong Cài đặt dự án",
     "Open this model of the project (DaskToon asks to save the current file first when it has changes)":
         "Mở model này của dự án (DaskToon hỏi lưu file hiện tại trước nếu file có thay đổi)",
     "File not found: %s": "Không tìm thấy file: %s",
@@ -882,7 +885,7 @@ VI = {
 
     # dasktoon_export: engines, warnings and skip reasons
     "Unreal 5 (coming soon)": "Unreal 5 (sắp có)",
-    "Godot 4 (coming soon)": "Godot 4 (sắp có)",
+    "Godot 4.3 or newer, Forward+ or Mobile renderer": "Godot 4.3 trở lên, bộ vẽ Forward+ hoặc Mobile",
     "Not supported yet": "Chưa hỗ trợ",
     "%s: cannot read the normal map image %s; normal map left out":
         "%s: không đọc được ảnh normal map %s; bỏ normal map",
@@ -891,6 +894,14 @@ VI = {
         "%s › %s: bake trên mesh của %s, các mesh khác dùng chung texture này",
     "Not in the FBX: %s (not in the current view layer, for example in an excluded collection)":
         "Không đưa vào FBX: %s (không nằm trong view layer hiện tại, ví dụ collection bị loại trừ)",
+    "Not in the model: %s (not in the current view layer, for example in an excluded collection)":
+        "Không đưa vào model: %s (không nằm trong view layer hiện tại, ví dụ collection bị loại trừ)",
+
+    # dasktoon_export/godot
+    "%s: %s is not in Godot yet; it is shown with Anime BSDF and its colours":
+        "%s: %s chưa có trong Godot; tạm hiện bằng Anime BSDF với màu của nó",
+    "%s: AO is not drawn in Godot (Godot gives custom shading no ambient occlusion)":
+        "%s: AO không được vẽ trong Godot (Godot không cho shader tự viết đọc độ che khuất)",
     "Skipped %s: the file already exists and was not made by DaskToon":
         "Bỏ qua %s: file đã có sẵn và không do DaskToon tạo",
     "Mesh %s has no UV map to bake": "Mesh %s không có UV map để bake",
@@ -904,6 +915,8 @@ VI = {
     "%s: outline data not written (%s)": "%s: không ghi được dữ liệu outline (%s)",
     "%s: modifiers %s are not applied in the FBX; apply them before exporting if needed":
         "%s: modifier %s không được áp dụng vào FBX; hãy Apply trước khi xuất nếu cần",
+    "%s: modifiers %s are not applied in the model; apply them before exporting if needed":
+        "%s: modifier %s không được áp dụng vào model; hãy Apply trước khi xuất nếu cần",
     "a branch with a shader (%s)": "nhánh chứa shader (%s)",
     "a branch that depends on light or view (%s)": "nhánh phụ thuộc ánh sáng hoặc góc nhìn (%s)",
     "a branch that depends on the view (%s › %s)": "nhánh phụ thuộc góc nhìn (%s › %s)",
@@ -933,6 +946,40 @@ VI = {
     "Shaders: the project already has a recent enough version, not written again":
         "Shader: project đã có bản đủ mới, không ghi lại",
     "Shaders: not exported (material export is off)": "Shader: không xuất (đã tắt xuất material)",
+    "Shaders and import script: installed or updated": "Shader và script nhập: đã cài hoặc cập nhật",
+    "Shaders and import script: already up to date": "Shader và script nhập: đã là bản mới nhất",
+    "with glTF": "có glTF",
+    "written straight into the Godot project": "ghi thẳng vào project Godot",
+    "a folder to copy into a Godot project": "thư mục để chép vào project Godot",
+    "Model: %s (Godot puts the DaskToon materials on it when it imports it)":
+        "Mô hình: %s (Godot gắn material DaskToon lên khi nhập)",
+    "Skipped material %s: %s (Godot keeps the model's own material)":
+        "Bỏ qua material %s: %s (Godot giữ material của model)",
+    "Face shading: wrote the egg proxy normals (rest pose) for: %s; blend shapes do not change normals":
+        "Bóng mặt: đã ghi normal khối trứng (tư thế nghỉ) cho: %s; blend shape không đổi normal",
+    "DaskToon's materials light themselves from World Ambient, not from Godot's ambient light.":
+        "Material DaskToon lấy ánh sáng môi trường từ World Ambient, không dùng ánh sáng môi trường của Godot.",
+    "Exporting again overwrites any manual edits to these files in Godot.":
+        "Xuất lại sẽ ghi đè mọi chỉnh sửa tay trên các file này trong Godot.",
+    "Suggested light: Sun %s → DirectionalLight3D energy %.3f, color #%s":
+        "Đèn gợi ý: Sun %s → DirectionalLight3D energy %.3f, màu #%s",
+    "Suggested light: the scene has no Sun; DirectionalLight3D energy = Sun strength ÷ π":
+        "Đèn gợi ý: scene không có Sun; energy của DirectionalLight3D = Sun strength ÷ π",
+    "Ambient: the World is not a single color; World Ambient in the materials is Blender's default grey, change it in "
+    "Godot if needed":
+        "Ambient: World không phải một màu đơn; World Ambient trong material là màu xám mặc định của Blender, đổi trong "
+        "Godot nếu cần",
+    "Ambient: World Ambient in the materials is the World color #%s (linear %.3f, %.3f, %.3f)":
+        "Ambient: World Ambient trong material là màu World #%s (linear %.3f, %.3f, %.3f)",
+    "How to use (Godot 4.3 or newer, Forward+ or Mobile renderer):":
+        "Cách dùng (Godot 4.3 trở lên, bộ vẽ Forward+ hoặc Mobile):",
+    "1. Copy the DaskToon folder into the root of the Godot project, so that it becomes res://DaskToon. With a second "
+    "character, copy it over the one already there.":
+        "1. Chép thư mục DaskToon vào gốc project Godot để nó thành res://DaskToon. Với nhân vật thứ hai, chép đè lên "
+        "thư mục đã có.",
+    "2. Godot imports the model and puts the DaskToon materials on it. Drag %s/%s.glb into a scene.":
+        "2. Godot nhập model và gắn material DaskToon lên. Kéo %s/%s.glb vào một cảnh.",
+    "3. Set the DirectionalLight3D as suggested below.": "3. Đặt DirectionalLight3D theo gợi ý bên dưới.",
     "Engine Export: %d materials, %s, %d warnings": "Xuất sang engine: %d material, %s, %d cảnh báo",
     "with FBX": "có FBX",
     "no model": "không có model",
