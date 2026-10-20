@@ -93,14 +93,16 @@ def images_of(obj):
         if not faces:
             continue
         for node in mat.node_tree.nodes:
-            if node.bl_idname == 'ShaderNodeTexImage' and node.image is not None and node.image.has_data:
+            if (node.bl_idname == 'ShaderNodeTexImage' and node.image is not None and node.image.has_data
+                    and any(output.is_linked for output in node.outputs)):  # pictures the shader reads
                 out.setdefault(node.image, []).extend(faces)
     return out
 
 
-def transfer(meshes, old_names, mirrored=()):
+def transfer(meshes, old_names, mirrored=(), exclude=()):
     """Carry every picture of `meshes` from their old UV maps ({obj: name}) to their active one; returns the images
-    changed. `mirrored`: (obj, face) keys of the right faces lying on the left ones (drawn first)."""
+    changed. `mirrored`: (obj, face) keys of the right faces lying on the left ones (drawn first); `exclude`: pictures
+    already laid out on the new map (the sets' colour pictures)."""
     right = set(mirrored)
     work = {}  # image: [(obj, faces)]
     for obj in meshes:
@@ -108,6 +110,8 @@ def transfer(meshes, old_names, mirrored=()):
         if not old:
             continue
         for image, faces in images_of(obj).items():
+            if image in exclude:
+                continue
             targets = [image] + [item.image for item in image.dasktoon_layers if item.image is not None]
             for target in targets:
                 work.setdefault(target, []).append((obj, faces))

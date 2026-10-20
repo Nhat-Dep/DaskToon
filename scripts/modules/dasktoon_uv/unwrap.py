@@ -35,6 +35,9 @@ class Result(NamedTuple):
     labels: dict  # {obj: label of every face}
     mirrored: dict  # {(obj, right face): (obj, left face)}
     old: dict  # {obj: name of the old UV map, or None}
+    sets: dict = {}  # {obj: set (index in sets.NAMES) of every face}, game texture sets only
+    sizes: dict = {}  # {set name: image size}
+    density: float = 0.0  # the Body and Hair sets' pixels per metre (the Face's is twice that)
 
 
 def get_uv(obj):
@@ -221,9 +224,30 @@ def _material_keys(obj):
     return [slots[i] if i < len(slots) else None for i in indices.tolist()]
 
 
-def unwrap(context, meshes, rig=None, tight=True):
+def _share(meshes, keys, key, skip):
+    """UV units per metre of the faces whose key is `key` (the mirrored right faces left out)."""
+    uv_area = world_area = 0.0
+    for obj in meshes:
+        uv = get_uv(obj)
+        faces = [f for f, k in enumerate(keys[obj]) if k == key and f not in skip[obj]]
+        uv_area += _area(uv, obj.data, faces)
+        world_area += _area3(obj, faces)
+    return (uv_area / world_area) ** 0.5 if world_area > 0 else 0.0
+
+
+def _pack(context, meshes, keys, key, skip, tight, margin, rotate):
+    for obj in meshes:
+        select_faces(obj, [f for f, k in enumerate(keys[obj]) if k == key and f not in skip[obj]])
+    with editing(context, meshes):
+        bpy.ops.uv.pack_islands(rotate=rotate, scale=True, margin_method='FRACTION', margin=margin,
+                                shape_method=SHAPES[tight])
+
+
+def unwrap(context, meshes, rig=None, tight=True, sets=False):
     """The anime unwrap of `meshes` (mesh objects) into new UV maps; see the module. `tight`: pack by the islands'
-    exact shapes (slow) rather than by their boxes."""
+    exact shapes (slow) rather than by their boxes. `sets` (with a rig): game texture sets (sets.py), one square per
+    set, islands upright, sizes by one sharpness."""
+    from . import sets as sets_
     if context.active_object is not None and context.active_object.mode == 'EDIT':
         bpy.ops.object.mode_set(mode='OBJECT')  # UV maps and seams are written to the mesh, not to Edit Mode's copy
     meshes = [obj for obj in meshes if obj.type == 'MESH' and len(obj.data.polygons)]
@@ -232,9 +256,13 @@ def unwrap(context, meshes, rig=None, tight=True):
     analysis = None
     if rig is not None and not all((regions.read(obj) >= 0).any() for obj in meshes):
         analysis = regions.analyse(context, rig, list(rig.data.dasktoon_rig.parts))
-    labels, faces_of, old = {}, {}, {}
+    sets = bool(sets and rig is not None)
+    labels, faces_of, old, face_set = {}, {}, {}, {}
     for obj in meshes:
         cut, labels[obj] = seams_.seams(context, obj, rig, analysis)
+        if sets:
+            face_set[obj] = sets_.face_sets(obj, rig, labels[obj])
+            sets_.split_materials(obj, face_set[obj])
         mesh = obj.data
         flags = np.zeros(len(mesh.edges), dtype=bool)
         flags[list(cut)] = True
@@ -255,7 +283,10 @@ def unwrap(context, meshes, rig=None, tight=True):
     with editing(context, meshes):
         bpy.ops.uv.average_islands_scale()
     for obj in meshes:
-        scale_head(obj, labels[obj], faces_of[obj])
+        if sets:
+            sets_.stand_upright(obj, labels[obj], faces_of[obj], rig)  # the sets' sizes give the face its pixels
+        else:
+            scale_head(obj, labels[obj], faces_of[obj])
 
     frame = rig.matrix_world if rig is not None else Matrix.Identity(4)
     zs = np.concatenate([[(obj.matrix_world @ v.co).z for v in obj.data.vertices] for obj in meshes])
@@ -266,15 +297,27 @@ def unwrap(context, meshes, rig=None, tight=True):
         mirrors[obj] = (pairs, vertex_mirror)
         mirrored.update({(obj, face): (obj, other) for face, other in pairs.items()})
 
-    keys = {obj: _material_keys(obj) for obj in meshes}
-    for material in {key for obj in meshes for key in keys[obj]}:
-        for obj in meshes:
-            right = mirrors[obj][0]
-            select_faces(obj, [f for f, key in enumerate(keys[obj]) if key == material and f not in right])
-        with editing(context, meshes):
-            bpy.ops.uv.pack_islands(rotate=True, scale=True, margin_method='FRACTION', margin=MARGIN,
-                                    shape_method=SHAPES[tight])
+    skip = {obj: set(mirrors[obj][0]) for obj in meshes}
+    sizes, density = {}, 0.0
+    if sets:
+        keys = {obj: face_set[obj].tolist() for obj in meshes}
+        present = sorted({k for obj in meshes for k in keys[obj]})
+        for key in present:  # upright islands: packed without turning
+            _pack(context, meshes, keys, key, skip, tight, MARGIN, rotate=False)
+        shares = {sets_.NAMES[k]: _share(meshes, keys, k, skip) for k in present}
+        wanted = {name: (sets_.FACE_SHARPNESS if name == 'FACE' else 1.0) for name in shares}
+        # One sharpness for the character; the set that needs the most pixels for it gets the largest size.
+        density = sets_.MAX_SIZE * min(share / wanted[name] for name, share in shares.items() if share > 0)
+        for key in present:
+            name = sets_.NAMES[key]
+            sizes[name] = sets_.size_for(density * wanted[name], shares[name])
+            if sizes[name] < sets_.MAX_SIZE:  # the gap between islands in pixels of the set's own size
+                _pack(context, meshes, keys, key, skip, tight, sets_.MARGIN_PIXELS / sizes[name], rotate=False)
+    else:
+        keys = {obj: _material_keys(obj) for obj in meshes}
+        for material in {key for obj in meshes for key in keys[obj]}:
+            _pack(context, meshes, keys, material, skip, tight, MARGIN, rotate=True)
     for obj in meshes:
         copy_mirrored(obj, *mirrors[obj])
         select_faces(obj, [])
-    return Result(labels, mirrored, old)
+    return Result(labels, mirrored, old, face_set, sizes, density)

@@ -286,6 +286,7 @@ foreach(dasktoon_test
     dasktoon_guide_ui_test
     dasktoon_paint_layers_test
     dasktoon_uv_unwrap_test
+    dasktoon_uv_sets_test
     dasktoon_material_convert_test
     dasktoon_export_rig_test
     dasktoon_spring_constraint_test

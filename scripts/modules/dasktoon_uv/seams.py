@@ -18,6 +18,7 @@ from dasktoon_rig import regions
 PIECE = 100  # labels of loose pieces start here; regions are 0..5
 EXPOSURE = 6.0  # how much more an edge facing away from the hidden side costs
 FLAT = 0.2  # a group thinner than this (its least spread over its most) is a flat piece: an eye plate, a card
+SHARP = 60.0  # degrees: a closed piece is also cut where its faces meet this sharply (a capped tube's rims)
 TORSO = regions.REGIONS.index('TORSO')
 LEGS = (regions.REGIONS.index('LEG_L'), regions.REGIONS.index('LEG_R'))
 LABELS = regions.REGIONS + ('HAND_L', 'HAND_R', 'FOOT_L', 'FOOT_R')  # the hands and feet cut off their limbs
@@ -276,4 +277,20 @@ def seams(context, obj, rig, analysis=None):
         if openings == 1 and name not in ('HEAD', 'TORSO') and _flat(obj, group):
             continue  # a flat piece with one edge round it (an eye plate): it unwraps as it is
         cut.update(cut_along(obj, group, HIDDEN.get(name, (0, 1, 0)), frame, index_of, name in UPRIGHT))
+        if openings == 0:  # closed: one cut along leaves its caps folded over it
+            cut.update(_sharp_edges(mesh, group, faces_of, index_of))
     return cut, labels
+
+
+def _sharp_edges(mesh, group, faces_of, index_of):
+    """Edges inside the group where its two faces meet at more than SHARP degrees."""
+    inside = set(group)
+    limit = np.cos(np.radians(SHARP))
+    out = []
+    for key, count in _edge_counts(mesh, group).items():
+        if count != 2:
+            continue
+        a, b = (f for f in faces_of[index_of[key]] if f in inside)
+        if mesh.polygons[a].normal.dot(mesh.polygons[b].normal) < limit:
+            out.append(index_of[key])
+    return out

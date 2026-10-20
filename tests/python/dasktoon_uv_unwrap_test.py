@@ -77,7 +77,7 @@ class UnwrapTest(unittest.TestCase):
     def setUpClass(cls):
         cls.rig, objs = rt.rigged()
         cls.meshes = [objs["Body"], objs["Shirt"], objs["Boots"]]
-        cls.result = unwrap.unwrap(bpy.context, cls.meshes, cls.rig)
+        cls.result = unwrap.unwrap(bpy.context, cls.meshes, cls.rig, tight=False)
 
     def test_every_face_is_in_the_square(self):
         for obj in self.meshes:
@@ -148,7 +148,7 @@ class LabelTest(unittest.TestCase):
         obj = bpy.context.active_object
         labels = seams.face_labels(bpy.context, obj, None)
         self.assertEqual(len(set(labels.tolist())), 2)
-        unwrap.unwrap(bpy.context, [obj], None)
+        unwrap.unwrap(bpy.context, [obj], None, tight=False)
         counts = coverage(triangles(obj))
         self.assertEqual((counts > 1).sum(), 0)  # two closed cubes, cut open, side by side
 
@@ -183,6 +183,15 @@ class RealModelTest(unittest.TestCase):
         # lr's shorts (wider than tall) were cut along their width: the head, the torso and garments (merged into the
         # torso) use the up axis; loose pieces (a rabbit ear lying across) keep their own longest axis.
         self.assertEqual(seams.UPRIGHT, {'HEAD', 'TORSO'})
+
+    def test_a_closed_lock_is_also_cut_at_its_sharp_rims(self):
+        # A hair lock modelled as a capped tube folded its caps over itself with one cut along it.
+        bpy.ops.wm.read_factory_settings(use_empty=True)
+        bpy.ops.mesh.primitive_cylinder_add(vertices=8, radius=0.1, depth=1.0, end_fill_type='NGON')
+        obj = bpy.context.active_object
+        unwrap.unwrap(bpy.context, [obj], None, tight=False)
+        counts = coverage(triangles(obj))
+        self.assertLess((counts > 1).sum() / max((counts > 0).sum(), 1), 0.01)
 
     def test_a_garment_over_the_hips_is_one_piece(self):
         # Shorts and skirts were cut round the hips, in front: their leg faces take the torso's label.
@@ -227,7 +236,10 @@ class TransferTest(unittest.TestCase):
         ys, xs = np.mgrid[0:size, 0:size]
         px = np.stack([xs / size, ys / size, np.full(xs.shape, 0.5), np.ones(xs.shape)], axis=-1).astype(np.float32)
         image.pixels.foreach_set(px.ravel())
-        mat.node_tree.nodes.new("ShaderNodeTexImage").image = image
+        node = mat.node_tree.nodes.new("ShaderNodeTexImage")
+        node.image = image
+        from dasktoon_paint import start
+        mat.node_tree.links.new(node.outputs["Color"], start.anime_node(mat).inputs["Base Color"])
         from dasktoon_paint import layers
         top = layers.add(image).image
         top.pixels.foreach_set(np.tile(np.array((1, 0, 0, 0.5), np.float32), size * size))
