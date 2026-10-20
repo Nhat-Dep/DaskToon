@@ -33,7 +33,7 @@ def ensure_uv(context, obj):
         return False
     from dasktoon_guide import checks
     from dasktoon_uv import unwrap
-    unwrap.unwrap(context, [obj], checks.humanoid_rig([obj]))
+    unwrap.unwrap(context, [obj], checks.humanoid_rig([obj]), tight=False)  # quick: Anime Unwrap packs tighter
     return True
 
 

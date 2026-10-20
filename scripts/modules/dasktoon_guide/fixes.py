@@ -123,7 +123,7 @@ def fix_uv(context, meshes, rig):
     from dasktoon_uv import unwrap
     missing = [obj for obj in meshes if not obj.data.uv_layers]
     if missing:
-        unwrap.unwrap(context, missing, rig)
+        unwrap.unwrap(context, missing, rig, tight=False)  # quick: Anime Unwrap packs tighter
 
 
 def fix_shader(context, meshes, rig):

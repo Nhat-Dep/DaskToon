@@ -448,6 +448,9 @@ VI = {
         "phải chồng lên trái, xếp kín; hình đã vẽ chuyển sang bản đồ UV mới",
     "Anime Unwrap: %d meshes, %d mirrored faces%s": "Trải UV anime: %d lưới, %d mặt đối xứng%s",
     ", the old UV maps kept": ", giữ lại bản đồ UV cũ",
+    "Tight Packing": "Xếp thật kín",
+    "Pack by the islands' exact shapes: the least empty space, but slow (up to a minute on a character)":
+        "Xếp theo đúng hình từng mảng: ít chỗ trống nhất, nhưng chậm (tới cả phút với một nhân vật)",
     "Make the mesh ready to paint: UV map, a picture of each anime material's colour, anime brushes":
         "Chuẩn bị lưới để tô vẽ: bản đồ UV, một ảnh mang màu của từng vật liệu anime, bút anime",
     "Ready to paint": "Sẵn sàng tô vẽ",

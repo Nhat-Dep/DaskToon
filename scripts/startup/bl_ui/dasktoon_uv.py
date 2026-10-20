@@ -7,15 +7,16 @@ menu and the material slots' menu."""
 
 import bpy
 from bpy.app.translations import pgettext_rpt as rpt_
+from bpy.props import BoolProperty
 from bpy.types import Operator
 
 
-def unwrap_meshes(context, meshes):
+def unwrap_meshes(context, meshes, tight=True):
     """The anime unwrap of `meshes`, their pictures carried over; the unwrap's result."""
     from dasktoon_guide import checks
     from dasktoon_uv import transfer, unwrap
     rig = checks.humanoid_rig(meshes)
-    result = unwrap.unwrap(context, meshes, rig)
+    result = unwrap.unwrap(context, meshes, rig, tight)
     transfer.transfer(meshes, result.old, result.mirrored)
     return result
 
@@ -26,6 +27,10 @@ class DASKTOON_OT_uv_unwrap_anime(Operator):
     bl_idname = "dasktoon.uv_unwrap_anime"
     bl_label = "Anime Unwrap"
     bl_options = {'REGISTER', 'UNDO'}
+
+    tight: BoolProperty(name="Tight Packing", default=True,
+                        description="Pack by the islands' exact shapes: the least empty space, but slow (up to a "
+                                    "minute on a character)")
 
     @classmethod
     def poll(cls, context):
@@ -40,7 +45,7 @@ class DASKTOON_OT_uv_unwrap_anime(Operator):
             meshes.remove(context.active_object)
             meshes.insert(0, context.active_object)
         mode = context.active_object.mode
-        result = unwrap_meshes(context, meshes)
+        result = unwrap_meshes(context, meshes, self.tight)
         if mode == 'EDIT' and context.active_object.mode != 'EDIT':
             bpy.ops.object.mode_set(mode='EDIT')
         kept = [name for name in result.old.values() if name]

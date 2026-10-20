@@ -20,6 +20,9 @@ from . import seams as seams_
 
 HEAD_SCALE = 1.5  # the face gets 1.5 times the pixels across (spec, ruling 3)
 MARGIN = 0.004  # about 8 pixels at 2048: room for a game's mipmaps, still tight
+# Packing by the islands' exact shapes is the tightest but slow (20 to 80 s on the real characters); by their boxes
+# takes seconds and leaves a few % more empty (pl1 89 -> 86 %, tdt 78 -> 71 %).
+SHAPES = {True: 'CONCAVE', False: 'AABB'}
 MIRROR_TOLERANCE = 0.001  # of the character's height: a vertex and its mirror
 OLD = " Old"
 HEAD = regions.REGIONS.index('HEAD')
@@ -193,8 +196,9 @@ def _material_keys(obj):
     return [slots[i] if i < len(slots) else None for i in indices.tolist()]
 
 
-def unwrap(context, meshes, rig=None):
-    """The anime unwrap of `meshes` (mesh objects) into new UV maps; see the module."""
+def unwrap(context, meshes, rig=None, tight=True):
+    """The anime unwrap of `meshes` (mesh objects) into new UV maps; see the module. `tight`: pack by the islands'
+    exact shapes (slow) rather than by their boxes."""
     meshes = [obj for obj in meshes if obj.type == 'MESH' and len(obj.data.polygons)]
     if not meshes:
         return Result({}, {}, {})
@@ -242,7 +246,7 @@ def unwrap(context, meshes, rig=None):
             select_faces(obj, [f for f, key in enumerate(keys[obj]) if key == material and f not in right])
         with editing(context, meshes):
             bpy.ops.uv.pack_islands(rotate=True, scale=True, margin_method='FRACTION', margin=MARGIN,
-                                    shape_method='CONCAVE')
+                                    shape_method=SHAPES[tight])
     for obj in meshes:
         copy_mirrored(obj, *mirrors[obj])
         select_faces(obj, [])
