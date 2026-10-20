@@ -82,7 +82,7 @@ Nhờ vậy nhánh để riêng `dasktoon-spring-collide-on-reset` (lò xo đẩ
 ## 5. Buổi sáng 2026-10-20 (theo các câu trả lời của bạn)
 
 **Gộp nhánh lò xo, dùng bản VS 2026** (c26b7d3). Từ nay mọi phép thử chạy bằng
-`D:uild_windows_x64_vc18_Releasein\Release\DaskToon.exe`; bản vc17 cũ không còn khớp mã nguồn. Cả bộ kiểm tra (80
+`D:/build_windows_x64_vc18_Release/bin/Release/DaskToon.exe`; bản vc17 cũ không còn khớp mã nguồn. Cả bộ kiểm tra (80
 tệp, có 8 tệp Unity) đều đạt trên bản này.
 
 **Thử cả quy trình với tính năng mới** trên pl1 (bản sao): tự gắn khung (có sửa chỗ gập) → Dùng shader DaskToon →
@@ -102,7 +102,7 @@ mặt kín, các mảnh rời chỉ là tấm nằm khuất bên trong; pl1 vẽ
 mặt kín. Điều làm được (61c886e): các tấm trong miệng filie cho biết miệng nằm đâu, nên **joy** của filie cũng nhếch
 khoé miệng.
 
-**Tóc dài**: chưa có model. D:\gameddl.blend chỉ là phần thân trên tóc ngắn, không phải tóc dài.
+**Tóc dài**: chưa có model. `D:/game/ad/adl.blend` chỉ là phần thân trên tóc ngắn, không phải tóc dài.
 
 ## Các quyết định đã tự chọn
 
