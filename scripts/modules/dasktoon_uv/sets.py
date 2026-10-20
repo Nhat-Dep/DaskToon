@@ -80,27 +80,49 @@ def face_sets(obj, rig, labels):
     return out
 
 
-def split_materials(obj, face_set):
-    """A material used by faces of several sets keeps the set using it most; the others get a copy named
-    "<material> <Set>" (the face's own material, as games have)."""
-    mesh = obj.data
-    indices = np.empty(len(mesh.polygons), dtype=np.int32)
-    mesh.polygons.foreach_get("material_index", indices)
-    for slot_index, slot in enumerate(list(obj.material_slots)):
-        if slot.material is None:
-            continue
-        used = face_set[indices == slot_index]
-        if len(used) == 0:
-            continue
-        kept = np.bincount(used, minlength=len(NAMES)).argmax()
-        for other in sorted(set(used.tolist()) - {kept}):
-            name = "%s %s" % (slot.material.name, SUFFIX[NAMES[other]])
-            copy = bpy.data.materials.get(name) or slot.material.copy()
-            copy.name = name
-            mesh.materials.append(copy)
-            indices[(indices == slot_index) & (face_set == other)] = len(mesh.materials) - 1
-    mesh.polygons.foreach_set("material_index", indices)
-    mesh.update()
+def _indices(obj):
+    indices = np.empty(len(obj.data.polygons), dtype=np.int32)
+    obj.data.polygons.foreach_get("material_index", indices)
+    return indices
+
+
+def split_materials(meshes, face_sets_of):
+    """A material used by faces of several sets, in one mesh or across meshes (luna's clothes and a hair ornament), keeps
+    the set using it most; the others get a copy named "<material> <Set>" (the face's own material, as games have),
+    so every Base Color reads one set's picture."""
+    usage = {}
+    for obj in meshes:
+        indices = _indices(obj)
+        for slot_index, slot in enumerate(obj.material_slots):
+            if slot.material is not None:
+                counts = np.bincount(face_sets_of[obj][indices == slot_index], minlength=len(NAMES))
+                usage[slot.material] = usage.get(slot.material, np.zeros(len(NAMES), np.int64)) + counts
+    kept = {mat: int(counts.argmax()) for mat, counts in usage.items()}
+    copies = {}
+    for obj in meshes:
+        mesh = obj.data
+        indices = _indices(obj)
+        changed = False
+        for slot_index, slot in enumerate(list(obj.material_slots)):
+            mat = slot.material
+            if mat is None:
+                continue
+            here = face_sets_of[obj][indices == slot_index]
+            for other in sorted(set(here.tolist()) - {kept[mat]}):
+                if (mat, other) not in copies:
+                    copy = mat.copy()
+                    copy.name = "%s %s" % (mat.name, SUFFIX[NAMES[other]])
+                    copies[(mat, other)] = copy
+                copy = copies[(mat, other)]
+                slot_of_copy = next((i for i, s in enumerate(obj.material_slots) if s.material == copy), None)
+                if slot_of_copy is None:
+                    mesh.materials.append(copy)
+                    slot_of_copy = len(mesh.materials) - 1
+                indices[(indices == slot_index) & (face_sets_of[obj] == other)] = slot_of_copy
+                changed = True
+        if changed:
+            mesh.polygons.foreach_set("material_index", indices)
+            mesh.update()
 
 
 def _up_field(obj, labels, rig):

@@ -158,6 +158,22 @@ class SetsTest(unittest.TestCase):
             self.assertEqual(material == "Body Face", self.set_of(self.body)[poly.index] == face)
 
 
+class SharedMaterialTest(unittest.TestCase):
+    def test_a_material_shared_by_meshes_of_two_sets_is_copied_for_one(self):
+        # luna's "cus" dresses the clothes (Body) and a hair ornament (Hair): one Base Color cannot read two pictures.
+        rig, meshes = character()
+        body, shirt, boots, hair = meshes
+        hair.data.materials[0] = shirt.data.materials[0]
+        result = unwrap.unwrap(bpy.context, meshes, rig, tight=False, sets=True)
+        atlases = sets.make_atlases(meshes, rig, result)
+        self.assertNotEqual(hair.material_slots[hair.data.polygons[0].material_index].material,
+                            shirt.material_slots[0].material)
+        for obj, name in ((shirt, 'BODY'), (hair, 'HAIR')):
+            mat = obj.material_slots[obj.data.polygons[0].material_index].material
+            socket = start.anime_node(mat).inputs["Base Color"]
+            self.assertEqual(socket.links[0].from_node.image, atlases[name], obj.name)
+
+
 class HeadPiecesTest(unittest.TestCase):
     def test_hair_in_the_body_mesh_goes_to_hair_and_eye_pieces_to_the_face(self):
         # tdt's hair is modelled in its body mesh (its locks Recognize made rigid accessories): it filled the face set.

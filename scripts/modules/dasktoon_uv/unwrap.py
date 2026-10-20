@@ -306,13 +306,14 @@ def unwrap(context, meshes, rig=None, tight=True, sets=False):
         cut, labels[obj] = seams_.seams(context, obj, rig, analysis)
         if sets:
             face_set[obj] = sets_.face_sets(obj, rig, labels[obj])
-            sets_.split_materials(obj, face_set[obj])
         mesh = obj.data
         flags = np.zeros(len(mesh.edges), dtype=bool)
         flags[list(cut)] = True
         mesh.edges.foreach_set("use_seam", flags)
         faces_of[obj] = seams_._edge_faces(mesh)
         old[obj] = new_uv_map(obj)
+    if sets:
+        sets_.split_materials(meshes, face_set)
     with editing(context, meshes):
         bpy.ops.mesh.select_all(action='SELECT')
         bpy.ops.uv.unwrap(method='MINIMUM_STRETCH', fill_holes=True, margin=0.0)
