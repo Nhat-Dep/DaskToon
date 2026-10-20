@@ -25,9 +25,10 @@ MARGIN = 0.004  # about 8 pixels at 2048: room for a game's mipmaps, still tight
 SHAPES = {True: 'CONCAVE', False: 'AABB'}
 MIRROR_TOLERANCE = 0.001  # of the character's height: a vertex and its mirror
 OLD = " Old"
-HEAD = regions.REGIONS.index('HEAD')
-MIRRORS = {regions.REGIONS.index('ARM_R'): regions.REGIONS.index('ARM_L'),
-           regions.REGIONS.index('LEG_R'): regions.REGIONS.index('LEG_L')}  # the character's right on its left
+HEAD = seams_.LABELS.index('HEAD')
+MIRRORS = {seams_.LABELS.index(right): seams_.LABELS.index(left) for right, left in (
+    ('ARM_R', 'ARM_L'), ('LEG_R', 'LEG_L'), ('HAND_R', 'HAND_L'), ('FOOT_R', 'FOOT_L'))}  # the right on the left
+TOO_SMALL = 0.02  # an island whose pixels per area fall under this share of the usual one failed to unwrap
 
 
 class Result(NamedTuple):
@@ -179,13 +180,37 @@ def _area(uv, mesh, faces):
     return total
 
 
-def failed_islands(obj, labels, faces_of):
-    """Faces of the groups Minimum Stretch could not solve (laid flat to nothing)."""
-    uv = get_uv(obj)
-    out = []
-    for group in seams_.groups(obj.data, labels, faces_of):
-        if _area(uv, obj.data, group) < 1e-9:
-            out += group
+def _area3(obj, faces):
+    mesh = obj.data
+    world = [obj.matrix_world @ v.co for v in mesh.vertices]
+    total = 0.0
+    for f in faces:
+        corners = list(mesh.polygons[f].vertices)
+        for k in range(1, len(corners) - 1):
+            total += ((world[corners[k]] - world[corners[0]]).cross(world[corners[k + 1]] - world[corners[0]])).length / 2
+    return total
+
+
+def too_small(ratios):
+    """The keys of {key: UV area over surface area} whose ratio is under TOO_SMALL of the median one."""
+    usual = float(np.median(list(ratios.values()))) if ratios else 0.0
+    return [key for key, ratio in ratios.items() if ratio <= TOO_SMALL * usual]
+
+
+def failed_islands(meshes, labels, faces_of):
+    """{obj: faces} of the groups Minimum Stretch could not solve: laid flat to nothing, or a speck beside the others
+    (lr's thighs)."""
+    ratios, faces = {}, {}
+    for obj in meshes:
+        uv = get_uv(obj)
+        for k, group in enumerate(seams_.groups(obj.data, labels[obj], faces_of[obj])):
+            surface = _area3(obj, group)
+            if surface > 0:
+                ratios[(obj, k)] = _area(uv, obj.data, group) / surface
+                faces[(obj, k)] = group
+    out = {obj: [] for obj in meshes}
+    for obj, k in too_small(ratios):
+        out[obj] += faces[(obj, k)]
     return out
 
 
@@ -219,7 +244,7 @@ def unwrap(context, meshes, rig=None, tight=True):
     with editing(context, meshes):
         bpy.ops.mesh.select_all(action='SELECT')
         bpy.ops.uv.unwrap(method='MINIMUM_STRETCH', fill_holes=True, margin=0.0)
-    failed = {obj: failed_islands(obj, labels[obj], faces_of[obj]) for obj in meshes}
+    failed = failed_islands(meshes, labels, faces_of)
     if any(failed.values()):  # Minimum Stretch gives up on some shapes: Angle Based for those
         for obj in meshes:
             select_faces(obj, failed[obj])

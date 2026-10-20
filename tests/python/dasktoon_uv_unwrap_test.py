@@ -123,6 +123,14 @@ class UnwrapTest(unittest.TestCase):
 
         self.assertGreater(density('HEAD'), 1.3 * density('TORSO'))
 
+    def test_hands_and_feet_are_islands_of_their_own(self):
+        # filie's legs with their feet and toes came out stretched as one island: the foot is cut at the ankle.
+        found = set()
+        for obj in self.meshes:
+            found |= set(self.result.labels[obj].tolist())
+        self.assertTrue({seams.LABELS.index(name) for name in ('FOOT_L', 'FOOT_R')} <= found)
+        self.assertTrue({seams.LABELS.index(name) for name in ('HAND_L', 'HAND_R')} <= found)
+
     def test_the_packing_is_tight(self):
         tris = []
         for obj in self.meshes:
@@ -143,6 +151,47 @@ class LabelTest(unittest.TestCase):
         unwrap.unwrap(bpy.context, [obj], None)
         counts = coverage(triangles(obj))
         self.assertEqual((counts > 1).sum(), 0)  # two closed cubes, cut open, side by side
+
+
+class RealModelTest(unittest.TestCase):
+    """What the real characters showed (report: Thử trên model thật)."""
+
+    def test_a_tube_closed_at_one_end_is_cut_along(self):
+        # filie's legs (a leg and its foot, open at the hip) came out stretched: one opening was taken for a flat piece.
+        bpy.ops.wm.read_factory_settings(use_empty=True)
+        bpy.ops.mesh.primitive_cylinder_add(vertices=16, depth=4.0, end_fill_type='NGON')
+        obj = bpy.context.active_object
+        top = max(obj.data.polygons, key=lambda p: p.center.z)
+        import bmesh
+        bm = bmesh.new()
+        bm.from_mesh(obj.data)
+        bm.faces.ensure_lookup_table()
+        bmesh.ops.delete(bm, geom=[bm.faces[top.index]], context='FACES_ONLY')
+        bm.to_mesh(obj.data)
+        bm.free()
+        cut, _labels = seams.seams(bpy.context, obj, None)
+        long_edges = [e for e in cut if abs(obj.data.vertices[obj.data.edges[e].vertices[0]].co.z
+                                            - obj.data.vertices[obj.data.edges[e].vertices[1]].co.z) > 0.5]
+        self.assertTrue(long_edges, "the sock is not cut along its length")
+
+    def test_an_island_laid_much_too_small_is_unwrapped_again(self):
+        # lr's thighs came out a speck: Minimum Stretch failed without laying them flat to nothing.
+        sizes = {"good": (1.0, 1.0), "also good": (0.6, 0.5), "speck": (1e-5, 1.0)}
+        self.assertEqual(unwrap.too_small({name: uv / world for name, (uv, world) in sizes.items()}), ["speck"])
+
+    def test_wide_garments_and_the_head_are_cut_along_the_body(self):
+        # lr's shorts (wider than tall) were cut along their width: the head, the torso and garments (merged into the
+        # torso) use the up axis; loose pieces (a rabbit ear lying across) keep their own longest axis.
+        self.assertEqual(seams.UPRIGHT, {'HEAD', 'TORSO'})
+
+    def test_a_garment_over_the_hips_is_one_piece(self):
+        # Shorts and skirts were cut round the hips, in front: their leg faces take the torso's label.
+        torso, leg_l, leg_r, arm_l = (regions.REGIONS.index(r) for r in ('TORSO', 'LEG_L', 'LEG_R', 'ARM_L'))
+        labels = np.array([torso, leg_l, leg_r, leg_l, torso, arm_l, leg_r])
+        pieces = np.array([0, 0, 0, 1, 2, 2, 3])  # shorts; a sock; a shirt; the body's leg
+        clothing = np.array([True, True, True, True, True, True, False])
+        self.assertEqual(seams.merge_garments(labels, pieces, clothing).tolist(),
+                         [torso, torso, torso, leg_l, torso, arm_l, leg_r])
 
 
 class OperatorTest(unittest.TestCase):
