@@ -370,8 +370,8 @@ VI = {
     "%s: the faces point inward, so the rig's weights pick the wrong bones":
         "%s: mặt lưới hướng vào trong, nên trọng số của rig chọn nhầm xương",
     "Mirror not applied (the bend fixes skip such meshes): %s":
-        "Chưa áp dụng Mirror (phần sửa chỗ gập bỏ qua các lưới này): %s",
-    "No Mirror left to apply": "Không còn Mirror cần áp dụng",
+        "Chưa áp dụng bộ Phản Chiếu Đối Xứng (phần sửa chỗ gập bỏ qua các lưới này): %s",
+    "No Mirror left to apply": "Không còn bộ Phản Chiếu Đối Xứng cần áp dụng",
     "%d faces with more than 4 sides: Unity splits them its own way":
         "%d mặt có hơn 4 cạnh: Unity tự chia chúng theo cách của nó",
     "Faces of 3 or 4 sides": "Mặt 3 hoặc 4 cạnh",
@@ -390,7 +390,7 @@ VI = {
     "Not rigged yet: the auto rig makes the skeleton, weights and bend fixes":
         "Chưa gắn khung: tự gắn khung sẽ tạo khung xương, trọng số và phần sửa chỗ gập",
     "Rigged by %s": "Đã gắn khung bằng %s",
-    "After the rig": "Sau khi gắn khung",
+    "Mouth": "Miệng",
     "The rig's Check has not run since it was built": "Mục Kiểm tra của rig chưa chạy từ lần dựng gần nhất",
     "The rig's Check found %d spots to look at (Anime Rig › Check)":
         "Mục Kiểm tra của rig thấy %d chỗ cần xem (Rig anime › Kiểm tra)",
@@ -416,6 +416,9 @@ VI = {
     # The Guide tab and its steps
     "Model Check": "Kiểm tra model",
     "Step by Step": "Từng bước",
+    "%s: after the rig": "%s: sau khi gắn khung",
+    "Rig Check": "Kiểm tra khung",
+    "Edge Loops at the Knees and Elbows": "Vòng cạnh ở gối và khuỷu tay",
     "Check Model": "Kiểm tra model",
     "Check the selected character (or every visible mesh) for what DaskToon's automatic tools need":
         "Kiểm tra nhân vật đang chọn (hoặc mọi lưới đang hiện) xem đã đủ để các công cụ tự động của DaskToon chạy chưa",
@@ -1825,6 +1828,23 @@ VI = {
 # context means something else here, and Blender's translation always wins in that context.
 VI_CONTEXT = {
     "DaskToon": {
+        # The Guide's steps, groups and checks (Blender's own Vietnamese has "Tóc/Lông", "Dàn Dựng" for some)
+        "New Model": "Tạo model",
+        "Body": "Cơ thể",
+        "Head and Face": "Đầu và mặt",
+        "Hair": "Tóc",
+        "Clothes": "Quần áo",
+        "Materials": "Vật liệu",
+        "Rigging": "Gắn khung",
+        "Expressions": "Biểu cảm",
+        "Unity": "Unity",
+        "Standing": "Tư thế đứng",
+        "Mesh": "Lưới",
+        "After the Rig": "Sau khi gắn khung",
+        "Rig Check": "Kiểm tra khung",
+        "Edge Loops at the Knees and Elbows": "Vòng cạnh ở gối và khuỷu tay",
+        "Eyes": "Mắt",
+        "Mouth": "Miệng",
         "Project": "Dự án",
         "Chains": "Số chuỗi",
         # The Check's test poses and Show (Blender's "Wave" is the modifier, its "Show" is "Hiển thị").

@@ -106,6 +106,14 @@ class GuideTest(unittest.TestCase):
         self.assertTrue(url.startswith("file:///"))
         self.assertTrue(url.endswith("/vi/body.html#facing"))
 
+    def test_a_section_opens_through_a_page_without_anchor(self):
+        # Windows drops the #section of a file URL it hands to the browser: open a page that goes there instead.
+        url = ui.opening_url('BODY', "facing")
+        self.assertNotIn("#", url)
+        with open(url[len("file:///"):], encoding="utf-8") as f:
+            self.assertIn(ui.page_url('BODY', "facing"), f.read())
+        self.assertEqual(ui.opening_url('BODY', ""), ui.page_url('BODY'))
+
 
 class PagesTest(unittest.TestCase):
     """The pages: a page a step in both languages, a section a check on its step's page, every picture and link a

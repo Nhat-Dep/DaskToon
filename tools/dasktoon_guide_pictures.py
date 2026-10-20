@@ -154,7 +154,8 @@ def rig_picture():
             bone = rig.pose.bones[fix.child]
             bone.rotation_mode = 'QUATERNION'
             frame = rig.data.bones[fix.child].matrix_local.to_3x3()
-            bone.rotation_quaternion = (frame.inverted() @ Matrix.Rotation(fix.angle, 3, fix.axis) @ frame).to_quaternion()
+            turn = frame.inverted() @ Matrix.Rotation(fix.angle, 3, fix.axis) @ frame
+            bone.rotation_quaternion = turn.to_quaternion()
     bpy.context.view_layer.update()
     panels.append(shoot((0, 0, 0.95), (0.9, -0.8, 0.3), 2.6))
     write(panels, "rig")

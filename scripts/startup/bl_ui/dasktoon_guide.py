@@ -7,7 +7,9 @@ Model Check (the checks of dasktoon_guide.checks, their fixes and pages) and the
 one DaskToon tab of the viewport sidebar, by the user's choice of 2026-10-20 (the sidebar stays in view while
 modelling). The results live in the window, not in the file."""
 
+import html
 import os
+import tempfile
 
 import bpy
 from bpy.app.translations import pgettext_iface as iface_, pgettext_n as n_, pgettext_rpt as rpt_
@@ -40,6 +42,19 @@ def page_url(step_id, anchor="", language=None):
     if not os.path.exists(path):
         path = os.path.join(PAGES, "en", step_id.lower() + ".html")
     return "file:///" + path.replace("\\", "/") + ("#" + anchor if anchor else "")
+
+
+def opening_url(step_id, anchor=""):
+    """The URL to hand the browser: the page itself, or, for a section, a page in the temporary folder that goes on to
+    it (Windows drops the #section of a file URL it opens)."""
+    url = page_url(step_id, anchor)
+    if not anchor:
+        return url
+    path = os.path.join(tempfile.gettempdir(), "dasktoon_guide_section.html")
+    with open(path, "w", encoding="utf-8") as f:
+        f.write('<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=%s">'
+                '<script>location.replace(%r)</script>' % (html.escape(url), url))
+    return "file:///" + path.replace("\\", "/")
 
 
 def fill(context):
@@ -104,14 +119,14 @@ class DASKTOON_OT_guide_page(Operator):
     anchor: StringProperty(name="Anchor", options={'SKIP_SAVE'})
 
     def execute(self, context):
-        bpy.ops.wm.url_open(url=page_url(self.step or "NEW", self.anchor))
+        bpy.ops.wm.url_open(url=opening_url(self.step or "NEW", self.anchor))
         return {'FINISHED'}
 
 
-def draw_result(layout, item):
+def draw_result(layout, item, width=None):
     from .dasktoon_rig import wrapped_label
     box = layout.box()
-    wrapped_label(box, item.text, icon=STATUS_ICONS.get(item.status, 'NONE'))
+    wrapped_label(box, item.text, icon=STATUS_ICONS.get(item.status, 'NONE'), width=width)
     if item.status in ('WARN', 'ERROR') or item.fixable:
         row = box.row(align=True)
         if item.fixable:
@@ -141,7 +156,7 @@ class VIEW3D_PT_dasktoon_guide_check(DaskGuidePanel, Panel):
             items = [item for item in results if item.group == group]
             if not items:
                 continue
-            layout.label(text=label)
+            layout.label(text=iface_(label, "DaskToon"), translate=False)
             for item in items:
                 draw_result(layout, item)
 
@@ -159,15 +174,17 @@ class VIEW3D_PT_dasktoon_guide_steps(DaskGuidePanel, Panel):
         for number, step in enumerate(steps.STEPS, start=1):
             is_done = steps.done(step.id, found, context.scene, meshes)
             row = layout.row()
-            row.label(text="%d. %s" % (number, iface_(step.title)), translate=False,
+            row.label(text="%d. %s" % (number, iface_(step.title, "DaskToon")), translate=False,
                       icon='CHECKMARK' if is_done else ('PLAY' if step.id == now else 'BLANK1'))
             if step.id != now:
                 continue
             box = layout.box()
-            wrapped_label(box, iface_(step.advice))
+            region_width = context.region.width if context.region is not None else 0
+            inner = region_width - 24 * (context.preferences.system.ui_scale or 1.0)  # inside the box
+            wrapped_label(box, iface_(step.advice), width=inner)
             for item in context.window_manager.dasktoon_guide_results:
                 if item.step == step.id:
-                    draw_result(box, item)
+                    draw_result(box, item, width=inner - 24 * (context.preferences.system.ui_scale or 1.0))
             for operator, label, icon in step.buttons:
                 box.operator(operator, text=label, icon=icon)
             box.operator("dasktoon.guide_page", text="Read the Guide", icon='HELP').step = step.id

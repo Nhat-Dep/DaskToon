@@ -1312,7 +1312,7 @@ def wrapped_label(layout, text, icon='NONE', width=None):
     lines = textwrap.wrap(text, chars) if chars >= 16 else []
     column = layout.column(align=True)
     for k, line in enumerate(lines or [text]):
-        column.label(text=line, icon=icon if k == 0 else 'BLANK1', translate=False)
+        column.label(text=line, icon=icon if k == 0 or icon == 'NONE' else 'BLANK1', translate=False)
 
 
 def draw_issue(layout, rig, index, issue):

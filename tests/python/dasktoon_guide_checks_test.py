@@ -30,10 +30,11 @@ BEFORE_RIG = ("size", "floor", "middle", "facing", "pose", "scale", "normals", "
               "shader", "unused")
 
 
-def good(arm=ARM, foot=True):
+def good(arm=ARM, foot=True, reset=True):
     """The test chibi as a newcomer should leave it: standing on the floor in the middle, facing -Y (its feet tell),
-    arms out, a UV map, DaskToon's shader."""
-    bpy.ops.wm.read_factory_settings(use_empty=True)
+    arms out, a UV map, DaskToon's shader. `reset` starts from an empty file (not in a window: it resets the UI)."""
+    if reset:
+        bpy.ops.wm.read_factory_settings(use_empty=True)
     body = st.polyline_chibi(arm, LEG, extra=[FOOT] if foot else [])
     body.data.transform(Matrix.Translation((-3.0, -0.5, 0.0)))  # polyline_chibi stands at (3, 0.5)
     bm = bmesh.new()  # the tubes' caps are n-gons and their faces not all outward: as a newcomer should leave them
@@ -73,6 +74,8 @@ class GoodTest(unittest.TestCase):
         self.assertTrue(found["rig"].fixable)
         for name in ("rig_check", "joints", "eyes", "mouth", "expressions"):
             self.assertEqual(found[name].status, 'LATER', name)  # they need the rig
+        later = [found[name].text for name in ("rig_check", "joints", "eyes", "mouth", "expressions")]
+        self.assertEqual(len(set(later)), len(later), later)  # each says which check waits
         self.assertTrue(all(r.text for r in found.values()))
         self.assertEqual([r.id for r in checks.run(bpy.context, [body])], list(checks.ORDER))
 

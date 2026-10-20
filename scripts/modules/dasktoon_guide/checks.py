@@ -12,7 +12,7 @@ the selected meshes; nothing selected, every visible mesh."""
 from typing import NamedTuple
 
 import numpy as np
-from bpy.app.translations import pgettext_rpt as rpt_
+from bpy.app.translations import pgettext_iface as iface_, pgettext_n as n_, pgettext_rpt as rpt_
 
 SIZE = (0.5, 3.5)  # metres: a character outside is too small or too big for DaskToon's and Unity's defaults
 FLOOR = 0.02  # x the height: the lowest point this near z = 0 stands on the floor
@@ -241,15 +241,18 @@ def check_rig(c):
     return 'OK', rpt_("Rigged by %s") % c.rig.name
 
 
-def _after_rig(fn):
-    def check(c):
-        if c.rig is None:
-            return 'LATER', rpt_("After the rig")
-        return fn(c)
-    return check
+def _after_rig(title):
+    """A check that needs the rig: before it, LATER, saying which check waits (`title`)."""
+    def wrap(fn):
+        def check(c):
+            if c.rig is None:
+                return 'LATER', rpt_("%s: after the rig") % iface_(title, "DaskToon")
+            return fn(c)
+        return check
+    return wrap
 
 
-@_after_rig
+@_after_rig(n_("Rig Check"))
 def check_rig_check(c):
     data = c.rig.data.dasktoon_rig
     if not data.checked:
@@ -259,7 +262,7 @@ def check_rig_check(c):
     return 'OK', rpt_("The rig's Check found nothing")
 
 
-@_after_rig
+@_after_rig(n_("Edge Loops at the Knees and Elbows"))
 def check_joints(c):
     from dasktoon_rig import correctives
     thin = []
@@ -294,7 +297,7 @@ def _moving_key(meshes, slot):
     return False
 
 
-@_after_rig
+@_after_rig(n_("Eyes"))
 def check_eyes(c):
     from dasktoon_rig import eye_shapes
     if eye_shapes.find_eyes(c.rig, c.meshes):
@@ -305,7 +308,7 @@ def check_eyes(c):
                         "blink yourself")
 
 
-@_after_rig
+@_after_rig(n_("Mouth"))
 def check_mouth(c):
     from dasktoon_rig import eye_shapes
     eyes = eye_shapes.find_eyes(c.rig, c.meshes)
@@ -316,7 +319,7 @@ def check_mouth(c):
     return 'WARN', rpt_("No mouth DaskToon finds: draw it on the face texture, or use a 2D mouth")
 
 
-@_after_rig
+@_after_rig(n_("Expressions"))
 def check_expressions(c):
     if not _moving_key(c.meshes, "BLINK"):
         return 'WARN', rpt_("No blink yet: Sculpt Eye Expressions (or sculpt it yourself)")
