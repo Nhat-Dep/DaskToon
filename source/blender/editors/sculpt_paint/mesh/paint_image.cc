@@ -35,6 +35,7 @@
 #include "BKE_colorband.hh"
 #include "BKE_context.hh"
 #include "BKE_curves.hh"
+#include "BKE_global.hh"
 #include "BKE_grease_pencil.hh"
 #include "BKE_image.hh"
 #include "BKE_library.hh"
@@ -170,6 +171,9 @@ void imapaint_image_update(
     BKE_image_update_gputexture(
         image, iuser, imapaintpartial.dirty_region.xmin, imapaintpartial.dirty_region.ymin, w, h);
   }
+
+  /* DaskToon paint layers: the images this one is a layer of show the stroke too. */
+  ED_paint_layers_painted(G_MAIN, image, &imapaintpartial.dirty_region);
 }
 
 /** \} */

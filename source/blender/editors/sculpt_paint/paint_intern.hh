@@ -516,6 +516,7 @@ void PAINT_OT_texture_paint_toggle(wmOperatorType *ot);
 void PAINT_OT_project_image(wmOperatorType *ot);
 void PAINT_OT_image_from_view(wmOperatorType *ot);
 void PAINT_OT_add_texture_paint_slot(wmOperatorType *ot);
+void PAINT_OT_dasktoon_layers_composite(wmOperatorType *ot);
 void PAINT_OT_image_paint(wmOperatorType *ot);
 void PAINT_OT_add_simple_uvs(wmOperatorType *ot);
 

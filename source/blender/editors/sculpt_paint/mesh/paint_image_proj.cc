@@ -213,7 +213,10 @@ struct ProjPaintState;
  * because 'partRedrawRect' and 'touch' values would not be thread safe.
  */
 struct ProjPaintImage {
+  /** The image strokes go to: the slot's image, or its active DaskToon paint layer. */
   Image *ima;
+  /** The image of the texture slot, which faces are matched with. */
+  Image *slot_ima;
   ImageUser iuser;
   ImBuf *ibuf;
   ImagePaintPartialRedraw *partRedrawRect;
@@ -3593,7 +3596,7 @@ static void project_bucket_init(const ProjPaintState *ps,
         ibuf = nullptr;
         for (image_index = 0; image_index < ps->image_tot; image_index++) {
           ProjPaintImage *projIma = &ps->projImages[image_index];
-          if ((projIma->ima == tpage) && (projIma->iuser.tile == tile)) {
+          if ((projIma->slot_ima == tpage) && (projIma->iuser.tile == tile)) {
             ibuf = projIma->ibuf;
             break;
           }
@@ -4374,7 +4377,8 @@ static void project_paint_build_proj_ima(ProjPaintState *ps,
   {
     projIma->iuser = entry->iuser;
     int size;
-    projIma->ima = entry->ima;
+    projIma->slot_ima = entry->ima;
+    projIma->ima = ED_paint_layers_target(entry->ima); /* DaskToon paint layers */
     projIma->touch = false;
     projIma->ibuf = BKE_image_acquire_ibuf(projIma->ima, &projIma->iuser, nullptr);
     if (projIma->ibuf == nullptr) {
@@ -4736,6 +4740,9 @@ static void project_paint_end(ProjPaintState *ps)
     for (a = 0, projIma = ps->projImages; a < ps->image_tot; a++, projIma++) {
       BKE_image_release_ibuf(projIma->ima, projIma->ibuf, nullptr);
       DEG_id_tag_update(&projIma->ima->id, 0);
+      if (projIma->slot_ima != projIma->ima) {
+        DEG_id_tag_update(&projIma->slot_ima->id, 0);
+      }
     }
   }
 
@@ -6373,7 +6380,7 @@ static wmOperatorStatus texture_paint_camera_project_exec(bContext *C, wmOperato
 
   for (a = 0; a < ps.image_tot; a++) {
     BKE_image_free_gputextures(ps.projImages[a].ima);
-    WM_event_add_notifier(C, NC_IMAGE | NA_EDITED, ps.projImages[a].ima);
+    WM_event_add_notifier(C, NC_IMAGE | NA_EDITED, ps.projImages[a].slot_ima);
   }
 
   project_paint_end(&ps);
@@ -6781,6 +6788,19 @@ static std::optional<std::string> proj_paint_color_attribute_create(wmOperator *
  * \param ma: The material to attempt using as the default color source.
  *            If this fails or \p ma is null, a default Principled BSDF is used instead.
  */
+/** DaskToon's anime shaders, which a Base Color paint slot connects to when there is no Principled BSDF. */
+static bNode *dasktoon_anime_shader_node(bNodeTree *ntree)
+{
+  ntree->ensure_topology_cache();
+  for (const char *idname : {"ShaderNodeAnimeCharacter", "ShaderNodeDaskCel"}) {
+    const Span<bNode *> nodes = ntree->nodes_by_type(UString(idname));
+    if (!nodes.is_empty()) {
+      return nodes.first();
+    }
+  }
+  return nullptr;
+}
+
 static void default_paint_slot_color_get(int layer_type, Material *ma, float color[4])
 {
   switch (layer_type) {
@@ -6794,6 +6814,9 @@ static void default_paint_slot_color_get(int layer_type, Material *ma, float col
         ma->nodetree->ensure_topology_cache();
         const Span<bNode *> nodes = ma->nodetree->nodes_by_type("ShaderNodeBsdfPrincipled"_ustr);
         in_node = nodes.is_empty() ? nullptr : nodes.first();
+        if (in_node == nullptr && layer_type == LAYER_BASE_COLOR) {
+          in_node = dasktoon_anime_shader_node(ma->nodetree); /* DaskToon: the anime shader's color */
+        }
       }
       if (!in_node) {
         /* An existing material or Principled BSDF node could not be found.
@@ -6901,6 +6924,9 @@ static bool proj_paint_add_slot(bContext *C, wmOperator *op)
     ntree->ensure_topology_cache();
     const Span<bNode *> bsdf_nodes = ntree->nodes_by_type("ShaderNodeBsdfPrincipled"_ustr);
     bNode *in_node = bsdf_nodes.is_empty() ? nullptr : bsdf_nodes.first();
+    if (in_node == nullptr) {
+      in_node = dasktoon_anime_shader_node(ntree); /* DaskToon: new materials use the anime shader */
+    }
     bNode *out_node = new_node;
 
     if (in_node != nullptr) {

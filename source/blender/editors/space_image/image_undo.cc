@@ -42,6 +42,7 @@
 #include "IMB_imbuf_types.hh"
 
 #include "BKE_context.hh"
+#include "BKE_global.hh"
 #include "BKE_image.hh"
 #include "BKE_paint.hh"
 #include "BKE_paint_types.hh"
@@ -336,6 +337,7 @@ static void ptile_restore_runtime_map(PaintTileMap *paint_tile_map)
 
     BKE_image_release_ibuf(image, ibuf, nullptr);
   }
+  ED_paint_layers_refresh_all(G_MAIN); /* DaskToon paint layers */
 }
 
 /** \} */
@@ -982,6 +984,9 @@ static void image_undosys_step_decode(
   {
     DEG_id_tag_update(&object->id, ID_RECALC_SHADING);
   }
+
+  /* DaskToon paint layers: images made of layers show the restored layer pixels. */
+  ED_paint_layers_refresh_all(bmain);
 
   /* Refresh texture slots. */
   ED_editors_init_for_undo(bmain);

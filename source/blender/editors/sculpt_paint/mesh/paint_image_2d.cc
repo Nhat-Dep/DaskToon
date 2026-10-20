@@ -1629,7 +1629,7 @@ void *paint_2d_new_stroke(bContext *C, wmOperator *op, const BrushStrokeMode mod
   s->brush_type = brush->image_brush_type;
   s->blend = brush->blend;
 
-  s->image = s->sima->image;
+  s->image = ED_paint_layers_target(s->sima->image); /* DaskToon paint layers */
   s->symmetry = settings->imapaint.paint.symmetry_flags;
 
   if (s->image == nullptr) {
@@ -1726,7 +1726,7 @@ void paint_2d_redraw(const bContext *C, void *ps, bool final)
       ED_region_tag_redraw(CTX_wm_region(C));
     }
     else {
-      WM_event_add_notifier(C, NC_IMAGE | NA_PAINTING, s->image);
+      WM_event_add_notifier(C, NC_IMAGE | NA_PAINTING, s->sima->image);
     }
   }
 
@@ -1736,7 +1736,7 @@ void paint_2d_redraw(const bContext *C, void *ps, bool final)
     }
 
     /* compositor listener deals with updating */
-    WM_event_add_notifier(C, NC_IMAGE | NA_EDITED, s->image);
+    WM_event_add_notifier(C, NC_IMAGE | NA_EDITED, s->sima->image);
     DEG_id_tag_update(&s->image->id, 0);
 
     /* Ideally, we shouldn't have to tag the object as needing to be recalculated if using this
@@ -1845,7 +1845,7 @@ void paint_2d_bucket_fill(const bContext *C,
 {
   SpaceImage *sima = CTX_wm_space_image(C);
   Paint *paint = BKE_paint_get_active_from_context(C);
-  Image *ima = sima->image;
+  Image *ima = ED_paint_layers_target(sima->image); /* DaskToon paint layers */
 
   ImagePaintState *s = static_cast<ImagePaintState *>(ps);
 
@@ -2037,14 +2037,14 @@ void paint_2d_bucket_fill(const bContext *C,
 
   BKE_image_release_ibuf(ima, ibuf, nullptr);
 
-  WM_event_add_notifier(C, NC_IMAGE | NA_EDITED, ima);
+  WM_event_add_notifier(C, NC_IMAGE | NA_EDITED, sima->image);
 }
 
 void paint_2d_gradient_fill(
     const bContext *C, Brush *br, const float mouse_init[2], const float mouse_final[2], void *ps)
 {
   SpaceImage *sima = CTX_wm_space_image(C);
-  Image *ima = sima->image;
+  Image *ima = ED_paint_layers_target(sima->image); /* DaskToon paint layers */
   ImagePaintState *s = static_cast<ImagePaintState *>(ps);
 
   ImBuf *ibuf;
@@ -2161,7 +2161,7 @@ void paint_2d_gradient_fill(
 
   BKE_image_release_ibuf(ima, ibuf, nullptr);
 
-  WM_event_add_notifier(C, NC_IMAGE | NA_EDITED, ima);
+  WM_event_add_notifier(C, NC_IMAGE | NA_EDITED, sima->image);
 }
 
 }  // namespace blender

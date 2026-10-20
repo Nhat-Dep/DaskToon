@@ -23,6 +23,7 @@ struct ImageUndoStep;
 struct ImageUser;
 struct ImBuf;
 struct Main;
+struct rcti;
 struct Object;
 struct PaintModeSettings;
 struct PaintTileMap;
@@ -38,6 +39,17 @@ struct wmOperator;
 void ED_operatortypes_paint();
 void ED_operatormacros_paint();
 void ED_keymap_paint(wmKeyConfig *keyconf);
+
+/* `paint_image_layers.cc`: DaskToon paint layers (docs/superpowers/specs/2026-10-20-dasktoon-paint-layers-design.md). */
+
+/** The image strokes on `image` go to: its active layer's image, or `image` itself. */
+Image *ED_paint_layers_target(Image *image);
+/** Composite `image`'s layers into its pixels: all of them (`region` null) or `region`; false when it has none. */
+bool ED_paint_layers_composite(Image *image, const rcti *region);
+/** After `layer` was painted in `region`: composite that region of every image `layer` is a layer of. */
+void ED_paint_layers_painted(Main *bmain, Image *layer, const rcti *region);
+/** Composite every image that has layers (after undo restored layer pixels). */
+void ED_paint_layers_refresh_all(Main *bmain);
 
 /* `paint_image.cc` */
 

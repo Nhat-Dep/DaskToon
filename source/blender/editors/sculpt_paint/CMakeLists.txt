@@ -81,6 +81,7 @@ set(SRC
   mesh/paint_image.cc
   mesh/paint_image_2d.cc
   mesh/paint_image_2d_curve_mask.cc
+  mesh/paint_image_layers.cc
   mesh/paint_image_ops_paint.cc
   mesh/paint_image_proj.cc
   mesh/paint_mask.cc
