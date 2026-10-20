@@ -20,7 +20,9 @@ import dasktoon_rig_regions_test as rt  # noqa: E402
 import dasktoon_test_utils as tu  # noqa: E402
 from dasktoon_rig import build, correctives  # noqa: E402
 
-JOINTS = ("Knee", "KneeDeep", "Elbow", "ElbowDeep", "Hip", "Shoulder", "ShoulderUp")
+# No fix for the arm raised: in DaskToon's shader it bulged the armpit out (tdt) and pushed the skin through the
+# shirt (lr_shape), real models, 2026-10-20.
+JOINTS = ("Knee", "KneeDeep", "Elbow", "ElbowDeep", "Hip", "Shoulder")
 
 
 def built():
@@ -100,11 +102,10 @@ class FixesTest(unittest.TestCase):
 
     def test_the_bend_of_each_joint(self):
         for name, degrees in (("LeftKnee", 90.0), ("LeftKneeDeep", 150.0), ("LeftElbow", 90.0),
-                              ("LeftElbowDeep", 140.0), ("LeftHip", 90.0), ("LeftShoulder", 40.0),
-                              ("LeftShoulderUp", 140.0)):
+                              ("LeftElbowDeep", 140.0), ("LeftHip", 90.0), ("LeftShoulder", 40.0)):
             fix = fix_of(self.rig, name)
             self.assertAlmostEqual(math.degrees(fix.angle), degrees, delta=2.0, msg=name)
-        self.assertGreater(fix_of(self.rig, "LeftShoulderUp").target.z, 0.99)  # the arm straight up
+        self.assertNotIn("LeftShoulderUp", [fix.name for fix in correctives.fixes(self.rig)])
         deep = fix_of(self.rig, "LeftKneeDeep")
         self.assertGreater(deep.target.z, 0.8)  # 150 degrees from hanging down, back towards up
         self.assertGreater(deep.target.y, 0.45)
@@ -116,7 +117,7 @@ class FixesTest(unittest.TestCase):
 
     def test_the_driver_follows_the_bend(self):
         body = self.objs["Body"]
-        for name in ("RightHip", "RightShoulder", "LeftShoulderUp", "LeftKneeDeep", "RightElbowDeep"):
+        for name in ("RightHip", "RightShoulder", "LeftKneeDeep", "RightElbowDeep"):
             fix = fix_of(self.rig, name)
             key = correctives.PREFIX + name
             self.assertTrue(body.data.shape_keys.animation_data.drivers.find(
@@ -154,24 +155,39 @@ class FixesTest(unittest.TestCase):
             turn(self.rig, fix.child, axis, angle)
             self.assertLess(value(body, correctives.PREFIX + "LeftHip"), 1e-3, what)
 
-    def test_the_shape_is_the_rotation_blend(self):
-        """At the fix's pose with the key on, each vertex is where turning it about the joint by its share of the bend
-        puts it."""
+    def test_the_outer_side_is_the_rotation_blend_the_inner_side_linear(self):
+        """At the fix's pose with the key on, a vertex on the outer side of the bend (the knee cap, the seat, the top of
+        the shoulder) is where turning it about the joint by its share of the bend puts it; one on the inner side (the
+        back of the knee, the groin, the armpit) stays where linear blending puts it. Both sides fixed, the inner side
+        bulged out: the armpit of tdt (a real model, with DaskToon's shader) with its arm raised."""
         body = self.objs["Body"]
-        for name in ("LeftKnee", "LeftHip", "LeftElbow", "LeftKneeDeep", "LeftShoulderUp"):
+        for name in ("LeftKnee", "LeftHip", "LeftElbow", "LeftKneeDeep", "LeftShoulder"):
             fix = fix_of(self.rig, name)
             turn(self.rig, fix.child, fix.axis, fix.angle)
             share = child_share(self.rig, body, fix.child)
-            blended = np.nonzero((share > 0.01) & (share < 0.99))[0]
-            self.assertGreater(len(blended), 10, name)
             got = evaluated(body)
             to_arm = self.rig.matrix_world.inverted() @ body.matrix_world
             rest = [to_arm @ v.co for v in body.data.vertices]
+            inward = (fix.target - fix.rest * fix.rest.dot(fix.target)).normalized()  # where the limb folds to
+            outer, inner = [], []
+            for i in np.nonzero((share > 0.01) & (share < 0.99))[0]:
+                rel = rest[i] - fix.joint
+                off_axis = (rel - fix.rest * rel.dot(fix.rest)).length
+                if rel.dot(inward) < -0.5 * off_axis:
+                    outer.append(i)
+                elif rel.dot(inward) > 0.5 * off_axis:
+                    inner.append(i)
+            self.assertGreater(len(outer), 3, name)
+            self.assertGreater(len(inner), 3, name)
             worst = 0.0
-            for i in blended:  # the other fixes stay at 0: their joints are not bent
+            for i in outer:  # the other fixes stay at 0: their joints are not bent
                 want = fix.joint + Matrix.Rotation(share[i] * fix.angle, 3, fix.axis) @ (rest[i] - fix.joint)
                 worst = max(worst, (to_arm @ Vector(got[i]) - want).length)
             self.assertLess(worst, 1e-4, name)
+            key = body.data.shape_keys
+            base = np.array([v.co for v in key.reference_key.data])
+            moved = np.array([v.co for v in key.key_blocks[correctives.PREFIX + name].data]) - base
+            self.assertLess(np.abs(moved[inner]).max(), 1e-7, name)
 
     def test_vertices_on_one_side_do_not_move(self):
         body = self.objs["Body"]
@@ -192,7 +208,7 @@ class RebuildTest(unittest.TestCase):
         build.build(bpy.context, rig, list(rig.data.dasktoon_rig.parts))
         names = [block.name for block in objs["Body"].data.shape_keys.key_blocks]
         self.assertEqual(len(names), len(set(names)))
-        self.assertEqual(len([name for name in names if name.startswith(correctives.PREFIX)]), 14)
+        self.assertEqual(len([name for name in names if name.startswith(correctives.PREFIX)]), 12)
 
     def test_no_fixes_on_a_mirrored_half(self):
         """A shape key sits under the Mirror modifier: a fix made on one half would show on the other half too, whose

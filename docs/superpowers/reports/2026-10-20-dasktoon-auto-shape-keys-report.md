@@ -92,7 +92,7 @@ theo đoạn phim, 95,6 theo tư thế thật Unity tính lại (chênh do hệ 
 Lỗi lộ ra và đã sửa (a4c8ec4): vật liệu nằm trong ô vật liệu nhưng không mặt nào dùng làm việc bake báo "bake failed" (và
 có thể bake hỏng nếu lưới đầu tiên không có mặt nào dùng nó); nay chỉ tính lưới có mặt dùng vật liệu đó.
 
-**Thêm tư thế sửa chỗ gập** (8fab07c): gối gập sâu 150° (quỳ), khuỷu gập sâu 140°, giơ tay lên. Tầng 90° nhạt dần khi
+**Thêm tư thế sửa chỗ gập** (8fab07c): gối gập sâu 150° (quỳ), khuỷu gập sâu 140°, giơ tay lên (sau đó bỏ, xem mục 6). Tầng 90° nhạt dần khi
 tầng sâu bật lên; Unity tính y hệt (bộ script phiên bản 7). Trên tdt: gối giữ mặt trước tròn ở 120°, 135°, 150°; giơ tay
 thì vai đầy lên nhưng nách phình ra. Lỗi lộ ra và đã sửa: lưới có bộ đối xứng Mirror nhận phần sửa của một nửa rồi chép
 sang nửa kia (ống tay lệch 0,48 m) — nay lưới có Mirror không có phần sửa.
@@ -103,6 +103,18 @@ mặt kín. Điều làm được (61c886e): các tấm trong miệng filie cho 
 khoé miệng.
 
 **Tóc dài**: chưa có model. `D:/game/ad/adl.blend` chỉ là phần thân trên tóc ngắn, không phải tóc dài.
+
+## 6. Thử với shader DaskToon
+
+Theo yêu cầu "thử trên có shader": các bản sao tdt, lr_shape, RG2, pl1, filie, RGforGame, bấm **Dùng shader DaskToon** cho
+mọi vật liệu, đèn mặt trời, engine anime của DaskToon.
+
+- Biểu cảm (pl1, filie, RGforGame): nhắm mắt, cười "^^" kèm khoé miệng, mở to đều đẹp; không thấy mặt bị bẹt quanh mắt.
+- Sửa chỗ gập: gối (90°, 150°) và hông tốt hơn rõ. Từ đây có hai thay đổi:
+  - chỉ sửa **phía ngoài** chỗ gập (đầu gối, mông, đỉnh vai); phía trong (khoeo, bẹn) để nguyên, vì sửa cả hai phía làm
+    phía trong phồng lên (gờ ở đầu ống chân, nếp ở bẹn);
+  - **bỏ** phần sửa "giơ tay lên": khi giơ tay, nách là phía ngoài bị kéo căng, giữ thể tích làm nách phồng ra (tdt) và
+    đẩy da lòi qua áo (lr_shape). Phần "hạ tay xuống" vẫn giữ: trên RG2 (tay dang ngang) vai tròn hơn, nách không sao.
 
 ## Các quyết định đã tự chọn
 
@@ -116,7 +128,8 @@ khoé miệng.
 | Nặn mắt bằng ép dẹt, kéo cả da dưới mắt | Quanh mắt nhắm hơi phẳng đi (thấy dưới đèn studio, không thấy với đổ bóng toon) |
 | Lấp và nặn là nút bấm, không tự chạy khi gắn khung | Phải bấm tay một lần |
 | Miệng: chỉ nụ cười cho joy (miệng vẽ hoặc miệng làm bằng tấm bên trong); không làm miệng há | A I U E O vẫn cần nặn tay hoặc dùng miệng 2D |
-| Giữ phần sửa "giơ tay lên" dù nách phình | Muốn bỏ thì tắt Sửa chỗ gập hoặc tắt riêng shape key đó |
+| Chỉ sửa phía ngoài chỗ gập | Phía trong (vd. đùi to sát bắp chân) vẫn giữ nếp gấp của cách trộn thường |
+| Bỏ phần sửa "giơ tay lên" (đã thử, làm nách phồng) | Giơ tay thì vai vẫn hơi mỏng; vai tự nâng theo tay đỡ một phần |
 | Lưới có Mirror không có phần sửa chỗ gập | Lưới dựng nửa rồi đối xứng vẫn gập phẳng; áp dụng Mirror trước khi Dựng rig thì có |
 
 ## Kiểm tra

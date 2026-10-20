@@ -85,8 +85,7 @@ class CorrectivesJsonTest(unittest.TestCase):
         data = rig_json.rig_data(rig)  # no chains, no face: the fixes alone make a rig file
         fixes = {c["shape"]: c for c in data["correctives"]}
         self.assertEqual(set(fixes), {"DT_Fix_" + side + joint for side in ("Left", "Right")
-                                      for joint in ("Knee", "KneeDeep", "Elbow", "ElbowDeep", "Hip", "Shoulder",
-                                                    "ShoulderUp")})
+                                      for joint in ("Knee", "KneeDeep", "Elbow", "ElbowDeep", "Hip", "Shoulder")})
         knee = fixes["DT_Fix_LeftKnee"]
         self.assertEqual((knee["parent"], knee["child"]), ("LeftUpperLeg", "LeftLowerLeg"))
         self.assertAlmostEqual(knee["angle"], math.pi / 2, places=3)
@@ -104,7 +103,6 @@ class CorrectivesJsonTest(unittest.TestCase):
         self.assertAlmostEqual(deep["start"], math.pi / 2, places=3)
         self.assertAlmostEqual(deep["end"], 0.0, places=5)  # kept at full past its pose
         self.assertAlmostEqual(deep["reach"], math.pi / 2, places=3)
-        self.assertGreater(fixes["DT_Fix_LeftShoulderUp"]["target"][1], 0.99)  # the arm up
 
     def test_no_fixes_without_their_keys(self):
         rig, _objs = built(roles=(("Body", 'BODY'),), bend_fixes=False)

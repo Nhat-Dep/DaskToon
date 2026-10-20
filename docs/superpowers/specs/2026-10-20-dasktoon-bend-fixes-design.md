@@ -54,7 +54,7 @@ that the knee's target points back, the hip's and elbow's forward and the should
 removes the fixes. Building again remakes them (a key edited by hand is replaced). The rig file is written for a rig
 whose only content is its fixes, so Unity gets the scripts too.
 
-## Deeper bends and the arm up (2026-10-20, morning)
+## Deeper bends, the outer side only (2026-10-20, morning)
 
 The user then asked for more poses ("Thêm tư thế sửa chỗ gập"). Knees and elbows get a second fix on the same arc:
 `DT_Fix_<Side>KneeDeep` at 150 degrees (kneeling) and `DT_Fix_<Side>ElbowDeep` at 140 degrees (a forearm folded up).
@@ -63,10 +63,18 @@ rises; past 150 the deep key stays at 1. Each key has a start, its angle and an 
 and fades off the arc over the arc's first bend:
 `clamp((bend - start) / (angle - start)) * clamp((end - bend) / (end - angle)) * clamp(1 - |off| / reach)`;
 the driver expression stays under 255 characters, the rig file carries start, end and reach, and Unity's script works
-the same weight out (scripts version 7). `DT_Fix_<Side>ShoulderUp` turns the arm straight up (skipped when it already
-points within 20 degrees of up), next to the arm-down fix. On tdt (copy): the knee keeps its round front at 120, 135
-and 150 degrees; arms up the shoulder fills, with the armpit bulging out, the rotation blend's known side effect (the
-shoulders lift with the arms when animating, so the fix shows at about 70%).
+the same weight out (scripts version 7). On tdt (copy): the knee keeps its round front at 120, 135 and 150 degrees.
+
+The user then asked to see it with DaskToon's shader ("thử trên có shader"): tdt, lr_shape and RG2 (copies) with Use
+DaskToon Shader on every material and the anime engine. Two changes came of it:
+
+- Only the outer side of a bend is fixed (the knee cap, the seat, the top of the shoulder), where linear blending loses
+  the volume. On the inner side (the back of the knee, the groin) the turned vertices bulged into a bump at the top of
+  the shin and a fold at the groin. The key fades from one side to the other over a band half the vertex's distance
+  from the bone wide.
+- No fix for the arm raised (`ShoulderUp`, tried that morning): with the arm up the armpit is the outer, stretched side,
+  and keeping its volume bulged it out (tdt) and pushed the skin through the shirt (lr_shape). The arm-down fix stays
+  (RG2, T-posed: a rounder shoulder top, nothing in the armpit).
 
 A mesh with a Mirror modifier gets no fixes: the shape key sits under the Mirror, so a fix made on one half showed on
 the other half too, whose limb was not bent (a sleeve moved 0.48 m in Wave; the deep fixes, about four times larger
@@ -75,7 +83,7 @@ in rest space at 150 degrees, showed it). lr_shape models halves so; its mirrore
 ## Rulings (autonomous)
 
 1. One fix per joint at one pose (90° for knee, elbow, hip; arm down for the shoulder) at first; deep knee and elbow
-   bends and the arm up were added the next morning on the user's word (section above).
+   bends were added the next morning on the user's word (section above); the arm up was tried and dropped.
 2. The rotation blend is the target, not a sculpted or smoothed shape: it is exact, cannot make a rigid part move, and
    matches what the spike showed. Cost if wrong: elbows gain little on meshes with narrow weight blends.
 3. Elbow bends forward (palms-down T-pose); knee bends back; hip forward. Cost if wrong: a rig with other conventions
@@ -85,4 +93,7 @@ in rest space at 150 degrees, showed it). lr_shape models halves so; its mirrore
    frame from the pose, so Mecanim retargeted clips get the fixes too.
 6. No fixes on a mesh with a Mirror modifier (above). Cost if wrong: mirrored halves keep linear blending's flat
    joints; applying the Mirror before Build Rig gives them fixes.
-7. The arm-up fix stays although the armpit bulges. Cost if wrong: turn Bend Fixes off, or mute that key.
+7. The outer side only (above). Cost if wrong: an inner side that does lose volume (a thick thigh against the calf)
+   keeps linear blending's crease there.
+8. No arm-up fix (above). Cost if wrong: raised arms keep linear blending's thin shoulder; the shoulders' own lift
+   (Shoulder Follows Arm) still helps there.

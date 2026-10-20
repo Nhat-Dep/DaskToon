@@ -5,7 +5,10 @@
 """Bend fixes (docs/superpowers/specs/2026-10-20-dasktoon-bend-fixes-design.md): corrective shape keys for the knees,
 elbows, hips and shoulders, made by Build Rig. Linear blending puts a vertex weighted across a joint on the straight line
 between where each bone would take it, so a bent joint loses volume; at the fix's pose the key moves such a vertex to
-where turning it about the joint by its share of the bend puts it.
+where turning it about the joint by its share of the bend puts it. Only on the outer side of the bend (the knee cap,
+the seat, the top of the shoulder), where linear blending loses the volume: on the inner side (the back of the knee, the
+groin, the armpit) the turned vertices bulged out, as tdt (a real model) showed in DaskToon's shader with its arm
+raised; the key fades from one side to the other over a band OUTER_BAND of the vertex's distance from the bone wide.
 
 The fix's pose: the child bone turned about the joint, from its rest direction (along the bone) to the target, by
 `angle` about `axis`. A vertex with the share `a` of its weight on the child side goes, with linear blending, to
@@ -31,17 +34,18 @@ from mathutils import Matrix, Vector
 PREFIX = "DT_Fix_"  # the shape keys: DT_Fix_LeftKnee
 SIDES = ("Left", "Right")
 FRONT, BACK = Vector((0.0, -1.0, 0.0)), Vector((0.0, 1.0, 0.0))
-DOWN, UP = Vector((0.0, 0.0, -1.0)), Vector((0.0, 0.0, 1.0))
+DOWN = Vector((0.0, 0.0, -1.0))
 # (joint, parent, child, where the child turns, its bends in degrees): toward FRONT or BACK across the bone, a fix at
-# each bend in turn (the second named ...Deep); straight DOWN or UP, one fix there (bends None).
+# each bend in turn (the second named ...Deep); straight DOWN, one fix there (bends None). No fix for the arm raised:
+# in DaskToon's shader it bulged the armpit out (tdt) and pushed the skin through the shirt (lr_shape), real models.
 JOINTS = (("Knee", "{}UpperLeg", "{}LowerLeg", BACK, (90.0, 150.0)),
           ("Elbow", "{}UpperArm", "{}LowerArm", FRONT, (90.0, 140.0)),
           ("Hip", "Hips", "{}UpperLeg", FRONT, (90.0,)),
-          ("Shoulder", "{}Shoulder", "{}UpperArm", DOWN, None),
-          ("ShoulderUp", "{}Shoulder", "{}UpperArm", UP, None))
+          ("Shoulder", "{}Shoulder", "{}UpperArm", DOWN, None))
 DEEP = "Deep"
-LEAST_TURN = math.radians(20.0)  # an arm hanging this near down (or up) needs no fix there
+LEAST_TURN = math.radians(20.0)  # an arm hanging this near down needs no fix there
 SMALLEST = 0.0005  # x the character's height: a key moving no vertex further is not made
+OUTER_BAND = 0.5  # the key fades from the outer to the inner side of the bend over this x the distance from the bone
 LONGEST = 255  # characters Blender keeps of a driver's expression
 
 
@@ -179,6 +183,13 @@ def offsets(rig, obj, fix):
     wanted = _turned(relative, fix.axis, a * fix.angle)
     blend = (1.0 - a)[:, None, None] * np.eye(3) + a[:, None, None] * whole
     moved = np.linalg.solve(blend, (wanted - linear)[:, :, None])[:, :, 0]
+    inward = fix.target - fix.rest * fix.rest.dot(fix.target)  # where the limb folds to
+    inward.normalize()
+    along = relative @ np.array(inward)
+    rest_dir = np.array(fix.rest)
+    off_axis = np.linalg.norm(relative - np.outer(relative @ rest_dir, rest_dir), axis=1)
+    t = np.clip(0.5 - along / (2.0 * np.maximum(OUTER_BAND * off_axis, 1e-9)), 0.0, 1.0)
+    moved *= (t * t * (3.0 - 2.0 * t))[:, None]  # 1 on the outer side, 0 on the inner side
     out[blended] = moved @ np.linalg.inv(linear_part).T
     return out
 
