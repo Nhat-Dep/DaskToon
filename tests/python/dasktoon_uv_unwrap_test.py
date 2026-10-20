@@ -17,7 +17,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import dasktoon_rig_regions_test as rt  # noqa: E402
 import dasktoon_test_utils as tu  # noqa: E402
 from dasktoon_rig import regions  # noqa: E402
-from dasktoon_uv import seams, unwrap  # noqa: E402
+from dasktoon_uv import seams, transfer, unwrap  # noqa: E402
 
 GRID = 256
 
@@ -143,6 +143,49 @@ class LabelTest(unittest.TestCase):
         unwrap.unwrap(bpy.context, [obj], None)
         counts = coverage(triangles(obj))
         self.assertEqual((counts > 1).sum(), 0)  # two closed cubes, cut open, side by side
+
+
+class TransferTest(unittest.TestCase):
+    def test_the_picture_keeps_its_colours_on_the_new_map(self):
+        bpy.ops.wm.read_factory_settings(use_empty=True)
+        bpy.ops.mesh.primitive_uv_sphere_add(segments=24, ring_count=12)
+        obj = bpy.context.active_object
+        mat = bpy.data.materials.new("Skin")
+        obj.data.materials.append(mat)
+        size = 128
+        image = bpy.data.images.new("Skin Color", size, size, alpha=True)
+        ys, xs = np.mgrid[0:size, 0:size]
+        px = np.stack([xs / size, ys / size, np.full(xs.shape, 0.5), np.ones(xs.shape)], axis=-1).astype(np.float32)
+        image.pixels.foreach_set(px.ravel())
+        mat.node_tree.nodes.new("ShaderNodeTexImage").image = image
+        from dasktoon_paint import layers
+        top = layers.add(image).image
+        top.pixels.foreach_set(np.tile(np.array((1, 0, 0, 0.5), np.float32), size * size))
+        layers.composite(image)
+        old_name = obj.data.uv_layers.active.name
+        before = {}
+        old_uv = uvs(obj)
+        base = image.dasktoon_layers[0].image
+        source = np.empty(size * size * 4, np.float32)
+        base.pixels.foreach_get(source)
+        source = source.reshape(size, size, 4)
+        for poly in list(obj.data.polygons)[::7]:
+            centre = old_uv[list(poly.loop_indices)].mean(axis=0)
+            before[poly.index] = transfer._sample(source, centre[None])[0]
+        result = unwrap.unwrap(bpy.context, [obj], None)
+        self.assertEqual(result.old[obj], old_name + unwrap.OLD)
+        transfer.transfer([obj], result.old, result.mirrored)
+        new_uv = uvs(obj)
+        after = np.empty(size * size * 4, np.float32)
+        base.pixels.foreach_get(after)
+        after = after.reshape(size, size, 4)
+        errors = [np.abs(transfer._sample(after, new_uv[list(obj.data.polygons[f].loop_indices)].mean(axis=0)[None])[0]
+                         - colour).max() for f, colour in before.items()]
+        self.assertLess(np.median(errors), 0.03)
+        self.assertEqual(len(image.dasktoon_layers), 2)  # the layers carried over too, the picture composited again
+        shown = np.empty(size * size * 4, np.float32)
+        image.pixels.foreach_get(shown)
+        self.assertGreater(shown.reshape(-1, 4)[:, 0].max(), 0.9)
 
 
 if __name__ == "__main__":
