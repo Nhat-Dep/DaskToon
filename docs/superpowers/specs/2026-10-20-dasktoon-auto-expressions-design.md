@@ -57,6 +57,11 @@ the middle that is a wide line is the mouth, and the skin at its corners lifts b
 middle). On pl1 it finds the 0.13-wide line and smiles; filie's materials have no image, so no mouth is read. An open
 mouth ("a") is not made: stretching a drawn line hides it rather than opening it (tried on pl1).
 
+A face without a drawing may hold its mouth as loose pieces in the middle below the eyes: filie's face is closed, its
+mouth a crease, with plates inside it (two loose pieces of the body, and a cavity). No shape key can open a closed face,
+so there is no "a" there either; the plates' outline gives the mouth for the smile (2026-10-20, morning: the user asked
+for A I U E O on "a model with mouth pieces", and none of the user's characters has an openable one).
+
 A key of the same expression that already moves is left alone; an empty one is filled; a missing one is added under its
 VRM 0.x name. The report names the keys made and the meshes.
 

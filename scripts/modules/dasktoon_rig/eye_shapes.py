@@ -21,6 +21,8 @@ largest patch unlike the skin near the middle that is a wide line is the mouth (
 at rest: pl1's Subdivision moves the drawing away from where its cage puts it; only what shows from the front: pl1
 has a pink inside of the mouth behind its face), and the skin at its corners lifts
 (SMILE of its width at the corners, nothing in the middle). Stretching a drawn line cannot open it, so there is no "a".
+A face without a drawing (filie) may hold the mouth as loose pieces in the middle below the eyes (plates inside the
+crease of a closed face): their outline gives the mouth instead.
 
 Keys, on each mesh holding eye pieces or skin under them: blink (both eyes onto the close line, a third of the way up,
 keeping KEEP of their height), blink_L and blink_R, joy (closed as an arc, its middle raised by ARCH of the eye's
@@ -343,6 +345,37 @@ def drawn_mouth(rig, meshes, eyes):
     return (best.min(axis=0) + best.max(axis=0)) / 2.0, width / 2.0
 
 
+def piece_mouth(rig, meshes, eyes):
+    """(middle, half width) in armature space of the loose pieces in the middle of the face below the eyes (a mouth
+    built of pieces), or None."""
+    head = _head(rig)
+    if head is None or not eyes:
+        return None
+    centre, size = head
+    middle_x = (eyes["LEFT"].low[0] + eyes["LEFT"].high[0] + eyes["RIGHT"].low[0] + eyes["RIGHT"].high[0]) / 4.0
+    top = min(eye.low[2] for eye in eyes.values()) - 0.03 * size
+    found = []
+    for obj in meshes:
+        if not _is_mesh_of(rig, obj) or not len(obj.data.vertices):
+            continue
+        rest = _rest(rig, obj)
+        for piece in _pieces(obj.data):
+            if len(piece) < FEWEST:
+                continue
+            p = rest[piece]
+            middle = (p.min(axis=0) + p.max(axis=0)) / 2.0
+            if (abs(middle[0] - middle_x) < 0.06 * size and middle[1] < centre[1] and top - 0.6 * size < middle[2] < top
+                    and np.ptp(p, axis=0).max() < WIDEST * size):
+                found.append(p)
+    if not found:
+        return None
+    points = np.concatenate(found)
+    width = np.ptp(points[:, 0])
+    if width < 0.05 * size:
+        return None
+    return (points.min(axis=0) + points.max(axis=0)) / 2.0, width / 2.0
+
+
 def _smile(rest, mouth, front):
     """Offsets lifting the skin at the corners of `mouth` (middle, half width)."""
     middle, half = mouth
@@ -382,7 +415,7 @@ def sculpt(rig, meshes):
     if not eyes:
         return []
     skin = _skin(rig, eyes, meshes)
-    mouth = drawn_mouth(rig, meshes, eyes)
+    mouth = drawn_mouth(rig, meshes, eyes) or piece_mouth(rig, meshes, eyes)
     smiling = _bodies(rig, meshes) if mouth is not None else []
     holders = []
     for eye in eyes.values():

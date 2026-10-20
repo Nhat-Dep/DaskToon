@@ -269,6 +269,41 @@ class DrawnMouthTest(unittest.TestCase):
         self.assertIsNotNone(mouth)
         self.assertAlmostEqual(mouth[1], 0.1 * size, delta=0.03 * size)
 
+    def test_a_mouth_of_pieces_smiles_too(self):
+        """filie (a real model): her mouth is a crease of her face with plates inside it, loose pieces of the Body
+        in the middle below the eyes, and no image: the plates tell where the mouth is and how wide."""
+        from bl_ui import dasktoon_rig as ui
+        rig, objs, eyes = character()
+        centre, size = head_frame(rig)
+        n = 25
+        us = np.linspace(0.0, 1.0, n)
+        verts = [(centre.x + size * (u - 0.5) * 0.8, centre.y - 0.6 * size, centre.z + size * (-0.7 + 0.6 * v))
+                 for v in us for u in us]
+        faces = [(r * n + c, r * n + c + 1, (r + 1) * n + c + 1, (r + 1) * n + c) for r in range(n - 1)
+                 for c in range(n - 1)]
+        plate, plate_faces = grid(centre.x, centre.z - 0.4 * size, 0.1 * size, 0.01 * size, centre.y - 0.55 * size)
+        faces += [tuple(i + len(verts) for i in face) for face in plate_faces]
+        verts += plate
+        mesh = bpy.data.meshes.new("Face")
+        mesh.from_pydata([tuple(v) for v in verts], [], faces)
+        face = bpy.data.objects.new("Face", mesh)
+        bpy.context.scene.collection.objects.link(face)
+        face.modifiers.new("Armature", 'ARMATURE').object = rig
+        ui.add_part(rig, face, 'BODY')
+        found = eye_shapes.find_eyes(rig, [eyes])
+        self.assertIsNone(eye_shapes.drawn_mouth(rig, [face, eyes], found))
+        mouth = eye_shapes.piece_mouth(rig, [face, eyes], found)
+        self.assertIsNotNone(mouth)
+        middle, half = mouth
+        self.assertAlmostEqual(middle[2], centre.z - 0.4 * size, delta=0.02 * size)
+        self.assertAlmostEqual(half, 0.1 * size, delta=0.01 * size)
+        eye_shapes.sculpt(rig, [eyes, face])
+        rest_arm = np.array([v.co for v in face.data.vertices])
+        moved = offsets(face, "joy")
+        rel_x = (rest_arm[:, 0] - middle[0]) / half
+        corners = (np.abs(rest_arm[:, 2] - middle[2]) < 0.03 * size) & (np.abs(np.abs(rel_x) - 1.0) < 0.2)
+        self.assertGreater(moved[corners, 2].min(), 0.02 * half)
+
     def test_no_drawing_no_smile(self):
         rig, _objs, eyes = character()
         face = painted_face(rig, mouth=False)
