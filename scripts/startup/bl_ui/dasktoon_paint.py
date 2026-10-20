@@ -171,6 +171,7 @@ class DASKTOON_OT_paint_start(Operator):
         if obj.mode != 'TEXTURE_PAINT':
             bpy.ops.object.mode_set(mode='TEXTURE_PAINT')
         context.tool_settings.image_paint.mode = 'MATERIAL'
+        context.tool_settings.image_paint.seam_bleed = 4  # the anime unwrap leaves 8 pixels between islands
         brushes.activate(context, 'PEN')
         if made:
             self.report({'INFO'}, rpt_("Ready to paint: %d new pictures") % len(made))

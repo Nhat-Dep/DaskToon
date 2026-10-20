@@ -119,18 +119,11 @@ def fix_ngons(context, meshes, rig):
 
 
 def fix_uv(context, meshes, rig):
-    """UV › Smart UV Project on the meshes without a UV map."""
-    view_layer = context.view_layer
-    active = view_layer.objects.active
-    for obj in [obj for obj in meshes if not obj.data.uv_layers]:
-        view_layer.objects.active = obj
-        with context.temp_override(active_object=obj, object=obj, selected_objects=[obj],
-                                   selected_editable_objects=[obj]):
-            bpy.ops.object.mode_set(mode='EDIT')
-            bpy.ops.mesh.select_all(action='SELECT')
-            bpy.ops.uv.smart_project()
-            bpy.ops.object.mode_set(mode='OBJECT')
-    view_layer.objects.active = active
+    """The anime unwrap (dasktoon_uv) on the meshes without a UV map, together."""
+    from dasktoon_uv import unwrap
+    missing = [obj for obj in meshes if not obj.data.uv_layers]
+    if missing:
+        unwrap.unwrap(context, missing, rig)
 
 
 def fix_shader(context, meshes, rig):

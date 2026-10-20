@@ -145,6 +145,17 @@ class LabelTest(unittest.TestCase):
         self.assertEqual((counts > 1).sum(), 0)  # two closed cubes, cut open, side by side
 
 
+class OperatorTest(unittest.TestCase):
+    def test_the_operator_keeps_the_old_map(self):
+        bpy.ops.wm.read_factory_settings(use_empty=True)
+        bpy.ops.mesh.primitive_uv_sphere_add()
+        obj = bpy.context.active_object
+        self.assertEqual(bpy.ops.dasktoon.uv_unwrap_anime(), {'FINISHED'})
+        self.assertEqual([layer.name for layer in obj.data.uv_layers], ["UVMap" + unwrap.OLD, "UVMap"])
+        self.assertTrue(obj.data.uv_layers["UVMap"].active_render)
+        self.assertEqual(obj.mode, 'OBJECT')
+
+
 class TransferTest(unittest.TestCase):
     def test_the_picture_keeps_its_colours_on_the_new_map(self):
         bpy.ops.wm.read_factory_settings(use_empty=True)

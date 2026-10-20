@@ -441,6 +441,13 @@ VI = {
     "Layers are for single images, not tiled ones": "Lớp vẽ chỉ dùng cho ảnh đơn, không cho ảnh nhiều ô",
     "The active layer is hidden: strokes on it do not show": "Lớp đang chọn đang ẩn: nét vẽ trên nó không hiện",
     "Start Painting": "Bắt đầu tô vẽ",
+    "Anime Unwrap": "Trải UV anime",
+    "Unwrap the selected meshes for anime painting: each body part whole, seams on the hidden side, the face larger, "
+    "the right limbs on the left ones, packed tight; painted pictures move to the new UV map":
+        "Trải UV các lưới đang chọn để tô vẽ anime: mỗi bộ phận một mảng, đường cắt ở chỗ khuất, mặt to hơn, tay chân "
+        "phải chồng lên trái, xếp kín; hình đã vẽ chuyển sang bản đồ UV mới",
+    "Anime Unwrap: %d meshes, %d mirrored faces%s": "Trải UV anime: %d lưới, %d mặt đối xứng%s",
+    ", the old UV maps kept": ", giữ lại bản đồ UV cũ",
     "Make the mesh ready to paint: UV map, a picture of each anime material's colour, anime brushes":
         "Chuẩn bị lưới để tô vẽ: bản đồ UV, một ảnh mang màu của từng vật liệu anime, bút anime",
     "Ready to paint": "Sẵn sàng tô vẽ",

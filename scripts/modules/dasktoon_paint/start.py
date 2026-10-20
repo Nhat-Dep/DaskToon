@@ -10,7 +10,6 @@ import numpy as np
 from mathutils import Color
 
 SIZE = 2048  # enough for a 1.6 m character's whole body (spec, ruling 6)
-ISLAND_MARGIN = 0.01  # about 20 pixels at 2048: a fill's bleed over the seams stays off the next island
 ANIME = ('ShaderNodeAnimeCharacter', 'ShaderNodeDaskCel')  # DaskToon's shaders, as dasktoon_material_convert
 
 
@@ -28,15 +27,13 @@ def used_slots(obj):
 
 
 def ensure_uv(context, obj):
-    """A UV map by Smart UV Project when the mesh has none; True when one was made."""
+    """A UV map by the anime unwrap (docs/superpowers/specs/2026-10-20-dasktoon-anime-unwrap-design.md) when the mesh
+    has none; True when one was made."""
     if obj.data.uv_layers:
         return False
-    mode = obj.mode
-    with context.temp_override(active_object=obj, object=obj, selected_objects=[obj], selected_editable_objects=[obj]):
-        bpy.ops.object.mode_set(mode='EDIT')
-        bpy.ops.mesh.select_all(action='SELECT')
-        bpy.ops.uv.smart_project(island_margin=ISLAND_MARGIN)
-        bpy.ops.object.mode_set(mode=mode if mode != 'EDIT' else 'OBJECT')
+    from dasktoon_guide import checks
+    from dasktoon_uv import unwrap
+    unwrap.unwrap(context, [obj], checks.humanoid_rig([obj]))
     return True
 
 

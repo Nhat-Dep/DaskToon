@@ -80,6 +80,7 @@ _modules = [
     "dasktoon_finish",
     "dasktoon_guide",
     "dasktoon_paint",
+    "dasktoon_uv",
     "properties_collection",
     "properties_strip",
     "properties_strip_modifier",
