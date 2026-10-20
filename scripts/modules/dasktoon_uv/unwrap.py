@@ -199,6 +199,8 @@ def _material_keys(obj):
 def unwrap(context, meshes, rig=None, tight=True):
     """The anime unwrap of `meshes` (mesh objects) into new UV maps; see the module. `tight`: pack by the islands'
     exact shapes (slow) rather than by their boxes."""
+    if context.active_object is not None and context.active_object.mode == 'EDIT':
+        bpy.ops.object.mode_set(mode='OBJECT')  # UV maps and seams are written to the mesh, not to Edit Mode's copy
     meshes = [obj for obj in meshes if obj.type == 'MESH' and len(obj.data.polygons)]
     if not meshes:
         return Result({}, {}, {})

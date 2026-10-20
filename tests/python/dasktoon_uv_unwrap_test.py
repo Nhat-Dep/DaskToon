@@ -155,6 +155,16 @@ class OperatorTest(unittest.TestCase):
         self.assertTrue(obj.data.uv_layers["UVMap"].active_render)
         self.assertEqual(obj.mode, 'OBJECT')
 
+    def test_from_edit_mode_where_the_uv_menu_is(self):
+        bpy.ops.wm.read_factory_settings(use_empty=True)
+        bpy.ops.mesh.primitive_uv_sphere_add()
+        obj = bpy.context.active_object
+        bpy.ops.object.mode_set(mode='EDIT')
+        self.assertEqual(bpy.ops.dasktoon.uv_unwrap_anime(), {'FINISHED'})
+        self.assertEqual(obj.mode, 'EDIT')
+        bpy.ops.object.mode_set(mode='OBJECT')
+        self.assertEqual(len(obj.data.uv_layers), 2)
+
 
 class TransferTest(unittest.TestCase):
     def test_the_picture_keeps_its_colours_on_the_new_map(self):
