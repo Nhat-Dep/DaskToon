@@ -46,6 +46,16 @@ def character():
     return rig, meshes
 
 
+def skin_faces(obj, labels):
+    """The head faces of the loose piece that also has faces below the head (the skin reaching the neck)."""
+    from dasktoon_uv import seams
+    mesh = obj.data
+    pieces = seams.loose_pieces(mesh)[[p.vertices[0] for p in mesh.polygons]]
+    head = labels == regions.REGIONS.index('HEAD')
+    reaching = {piece for piece in np.unique(pieces[head]) if (~head[pieces == piece]).any()}
+    return np.nonzero(head & np.isin(pieces, list(reaching)))[0]
+
+
 def srgb(rgb):
     return np.array(Color(rgb).from_scene_linear_to_srgb())
 
@@ -66,8 +76,12 @@ class SetsTest(unittest.TestCase):
         hair, body, face = (sets.NAMES.index(name) for name in ('HAIR', 'BODY', 'FACE'))
         self.assertTrue((self.set_of(self.hair) == hair).all())
         self.assertTrue((self.set_of(self.shirt) == body).all())
-        head = self.result.labels[self.body] == regions.REGIONS.index('HEAD')
-        self.assertTrue((self.set_of(self.body)[head] == face).all())
+        labels = self.result.labels[self.body]
+        head = labels == regions.REGIONS.index('HEAD')
+        skin = skin_faces(self.body, labels)
+        self.assertTrue(len(skin))
+        self.assertTrue((self.set_of(self.body)[skin] == face).all())  # the head's skin
+        self.assertTrue(np.isin(self.set_of(self.body)[head], [face, hair]).all())  # its locks and ears: hair
         self.assertTrue((self.set_of(self.body)[~head] == body).all())
 
     def test_each_set_lies_in_its_square_without_overlaps(self):
@@ -142,6 +156,36 @@ class SetsTest(unittest.TestCase):
         for poly in self.body.data.polygons:
             material = self.body.material_slots[poly.material_index].material.name
             self.assertEqual(material == "Body Face", self.set_of(self.body)[poly.index] == face)
+
+
+class HeadPiecesTest(unittest.TestCase):
+    def test_hair_in_the_body_mesh_goes_to_hair_and_eye_pieces_to_the_face(self):
+        # tdt's hair is modelled in its body mesh (its locks Recognize made rigid accessories): it filled the face set.
+        import bmesh
+        import dasktoon_expressions_eyes_test as et
+        rig, objs, eyes = et.character()
+        body = objs["Body"]
+        centre, size = et.head_frame(rig)
+        bm = bmesh.new()
+        bm.from_mesh(body.data)
+        cap = bmesh.ops.create_uvsphere(bm, u_segments=12, v_segments=6, radius=size * 0.7,
+                                        matrix=__import__("mathutils").Matrix.Translation(
+                                            centre + __import__("mathutils").Vector((0, size * 0.1, size * 0.45))))
+        cap_verts = {v.index for v in cap["verts"]}
+        bm.to_mesh(body.data)
+        bm.free()
+        body.data.update()
+        from dasktoon_uv import seams
+        labels = seams.face_labels(bpy.context, body, rig)
+        found = sets.face_sets(body, rig, labels)
+        cap_faces = [p.index for p in body.data.polygons if set(p.vertices) <= cap_verts]
+        self.assertTrue(cap_faces)
+        self.assertTrue((found[cap_faces] == sets.NAMES.index('HAIR')).all())
+        skin = skin_faces(body, labels)
+        self.assertTrue(len(skin))
+        self.assertTrue((found[skin] == sets.NAMES.index('FACE')).all())
+        eye_labels = seams.face_labels(bpy.context, eyes, rig)
+        self.assertTrue((sets.face_sets(eyes, rig, eye_labels) == sets.NAMES.index('FACE')).all())
 
 
 if __name__ == "__main__":

@@ -29,19 +29,54 @@ ARMS = {seams_.LABELS.index(name): side for name, side in (
 SHADERS = ('ShaderNodeAnimeCharacter', 'ShaderNodeDaskCel', 'ShaderNodeBsdfPrincipled')
 
 
+IN_HEAD = 1.2  # a loose piece whose middle lies within this many head lengths of the head's middle is on the head
+FRONT = 0.3  # a head piece this many head lengths in front of the head's middle, and
+SMALL = 0.6  # no larger than this many head lengths, is a face piece (an eye, a brow, a mouth)
+
+
 def face_sets(obj, rig, labels):
-    """The set (index in NAMES) of every face: Hair where a Hair part of the rig owns it, Face where its label is the
-    head's, else Body."""
+    """The set (index in NAMES) of every face. Hair: what a Hair part of the rig owns, and the pieces on the head that
+    are neither its skin nor small pieces in front of the face (a hair cap or locks in the body mesh, ears, a ribbon).
+    Face: the head's skin (the piece reaching the neck or holding the chin) and the small pieces in front of it.
+    Body: the rest."""
     from dasktoon_rig import build
     mesh = obj.data
+    labels = np.asarray(labels)
     parts = list(rig.data.dasktoon_rig.parts)
     owners = build.ownership(parts).get(obj)
+    first = np.array([p.vertices[0] for p in mesh.polygons], dtype=np.int64)
     out = np.full(len(mesh.polygons), NAMES.index('BODY'), dtype=np.int64)
-    out[np.asarray(labels) == HEAD] = NAMES.index('FACE')
+    hair = np.zeros(len(mesh.polygons), dtype=bool)
     if owners is not None:
-        hair = np.array([part.role == 'HAIR' for part in parts] + [False])[owners]
-        first = np.array([p.vertices[0] for p in mesh.polygons])
-        out[hair[first]] = NAMES.index('HAIR')
+        hair = np.array([part.role == 'HAIR' for part in parts] + [False])[owners][first]
+
+    bones = rig.data.bones
+    if "Head" in bones:
+        head = bones["Head"]
+        centre = np.array((head.head_local + head.tail_local) / 2)
+        size = max(head.length, 1e-6)
+        to_rig = rig.matrix_world.inverted() @ obj.matrix_world
+        local = np.array([to_rig @ v.co for v in mesh.vertices]).reshape(-1, 3)
+        pieces = seams_.loose_pieces(mesh)[first]
+        on_head = labels == HEAD
+        for piece in np.unique(pieces):
+            faces = pieces == piece
+            middle = local[np.unique(np.concatenate([list(mesh.polygons[f].vertices)
+                                                     for f in np.nonzero(faces)[0][:400]]))].mean(axis=0)
+            if not on_head[faces].any() and (labels[faces] < seams_.PIECE).any():
+                continue  # a body part of the rig away from the head
+            if not on_head[faces].any() and np.linalg.norm(middle - centre) > IN_HEAD * size:
+                continue  # a loose piece elsewhere
+            head_faces = faces & (on_head | (labels >= seams_.PIECE))
+            verts = np.unique(np.concatenate([list(mesh.polygons[f].vertices) for f in np.nonzero(head_faces)[0]]))
+            points = local[verts]
+            skin = (faces & ~on_head & (labels < seams_.PIECE)).any()  # it reaches the neck
+            skin |= on_head[faces].any() and points[:, 2].min() <= local[np.isin(np.arange(len(local)), np.unique(
+                np.concatenate([list(mesh.polygons[f].vertices) for f in np.nonzero(on_head)[0]])))][:, 2].min() + 1e-6
+            in_front = (points[:, 1].mean() < centre[1] - FRONT * size
+                        and float(np.ptp(points, axis=0).max()) < SMALL * size)
+            out[head_faces] = NAMES.index('FACE') if (skin or in_front) else NAMES.index('HAIR')
+    out[hair] = NAMES.index('HAIR')
     return out
 
 
