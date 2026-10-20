@@ -48,3 +48,7 @@ Model thật (bản sao): đo số mảng, phần ảnh được dùng, độ n�
 3. Mặt nét gấp 1,5 lần, lòng bàn chân và mặt dưới cùng một nửa; khe 8 điểm ảnh: đủ cho mipmap của game, vẫn kín.
 4. Bắt đầu tô vẽ trước đây để khe 20 điểm ảnh cho nét đổ màu không lem; nay khe 8 điểm ảnh và nét lem của Blender (Bleed)
    đặt 4 điểm ảnh khi Bắt đầu tô vẽ.
+5. Xếp theo đúng hình mảng chỉ khi bấm Trải UV anime (ô "Xếp thật kín", mặc định bật): trên model thật mất 24 đến 78 s,
+   hình bao lồi còn chậm hơn; Bắt đầu tô vẽ và nút Sửa xếp theo hình chữ nhật bao (4 đến 11 s, kém kín vài phần trăm).
+6. Đường cắt mới thay mọi đường cắt cũ; chỗ tay chân phải chồng lên trái, khi chuyển ảnh cũ thì hình bên trái được giữ.
+7. Ruling 3 thu hẹp: mặt gấp 1,5 lần; chưa thu nhỏ lòng bàn chân (chưa là mảng riêng).
