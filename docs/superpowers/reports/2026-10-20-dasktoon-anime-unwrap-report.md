@@ -60,6 +60,45 @@ Chạy trên bản sao 7 nhân vật của bạn (không lưu đè). Không mode
 - Ở model mà mặt và thân dùng chung một ảnh (pl1, luna), mặt nét gấp 1,4 đến 1,5 lần thân. Ở model mà mặt có vật liệu
   riêng, hai ảnh xếp riêng, nên phép so này không có nghĩa.
 
+## Xem tận mắt trên model thật (lần 2, theo lời "thử trên model thật")
+
+Bản sao của cả 7 nhân vật, lần này lấy mọi lưới đang hiện, như khi bạn chọn cả nhân vật. Ảnh chụp chỉ để trong máy, ở
+`docs/superpowers/reports/real-model/anime-unwrap/` (ngoài git). Mỗi model có ba loại ảnh:
+
+- `<model>_1_before_after.png`: trước và sau khi trải. Mỗi vật liệu được tô một ảnh thử, các dải màu theo vị trí trên
+  cơ thể, hai bên giống nhau. Ảnh thử được vẽ trên UV cũ, nên nếu chuyển ảnh đúng thì hai ảnh chụp trùng nhau.
+- `<model>_2_checker_front_back.png`: ô bàn cờ trên UV mới, nhìn trước và sau lưng.
+- `<model>_3_layout_*.png`: sơ đồ UV của từng vật liệu.
+
+Lần xem đầu bắt được bốn lỗi, đều đã sửa và có phép thử:
+
+1. Chân của filie (một ống liền bàn chân và các ngón) bị kéo dãn mạnh. Ống kín một đầu bị coi như mảnh phẳng nên không
+   được cắt. Nay chỉ mảnh thật sự phẳng mới không cắt; bàn tay tách ở cổ tay, bàn chân tách ở cổ chân (theo xương của
+   khung), vẫn chồng trái lên phải.
+2. Quần short, váy có đường cắt chạy quanh hông, lộ ngay phía trước. Nay một món quần áo vừa có phần thân vừa có phần
+   chân là một mảng. Tay áo vẫn tách ở nách như đường may thật; tất và giày vẫn để riêng để còn chồng hai bên.
+3. Quần rộng ngang hơn cao bị cắt theo bề ngang. Nay đầu, thân và quần áo cắt theo trục đứng của nhân vật.
+4. Đùi của lr thành một màu trơn: mảng trải hỏng, co rất nhỏ nhưng không bằng không nên lọt qua. Nay mảng nhỏ bất thường
+   so với các mảng khác cũng được trải lại.
+
+Sau khi sửa:
+
+| Model | Phần điểm ảnh khác đi sau khi chuyển ảnh |
+|---|---|
+| tdt | 0,20% |
+| luna | 0,13% |
+| filie | 1,11% |
+| lr | 1,36% |
+| pl1 | 1,65% |
+| rg2 | 3,63% |
+| rgg | 4,08% |
+
+- Chỗ khác nằm ở mép đường cắt, và ở chỗ UV cũ vốn chồng hai bên lên nhau (ảnh thử "trước" đã lệch ngay từ đầu).
+- Ô bàn cờ đều trên chân, tay của filie và lr; gáy, lưng áo, áo khoác có ô đều và đường cắt nằm phía sau.
+- Mỗi vật liệu được xếp vào một ảnh riêng, nên chữ ô to hay nhỏ giữa hai vật liệu khác nhau không so được với nhau (ví
+  dụ đùi của tdt so với quần, váy của rg2 so với áo).
+- Còn một chỗ chưa tốt: vạt trước bên trái áo khoác của rgg vẫn bị kéo dãn.
+
 ## Kiểm tra
 
 - `dasktoon_uv_unwrap_test` (10 bài). Trên nhân vật thử có khung:
@@ -99,3 +138,4 @@ quay lại) và thêm phép thử.
 - Kiểm tra model chưa có mục "UV chồng nhau" (mục còn treo từ phần tô vẽ). Nay phải tính cả chỗ chồng có chủ ý của tay
   chân đối xứng.
 - Bước xếp thật kín chậm trên model lớn: có thể chạy ngầm kèm thanh tiến độ.
+- Vạt áo khoác mở phía trước (rgg) còn bị kéo dãn: một đường cắt dọc chưa đủ cho mảnh có nhiều lỗ hở.
