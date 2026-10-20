@@ -344,6 +344,75 @@ VI = {
     "Filled %d shape keys: %s": "Đã lấp %d hình mẫu: %s",
     "No empty expression could be built from the others":
         "Không có biểu cảm trống nào dựng được từ các biểu cảm khác",
+    # The Guide's Model Check (docs/superpowers/specs/2026-10-20-dasktoon-model-guide-design.md)
+    "No mesh to check": "Không có lưới nào để kiểm tra",
+    "%.2f m tall": "Cao %.2f m",
+    "%.2f m tall: DaskToon and Unity count in metres, a person is 1 to 2 m":
+        "Cao %.2f m: DaskToon và Unity tính bằng mét, một người cao khoảng 1 đến 2 m",
+    "Standing on the floor": "Đứng trên sàn",
+    "The feet are %.2f m above or below the floor (z = 0)": "Bàn chân cách sàn (z = 0) %.2f m",
+    "In the middle of the scene": "Ở giữa cảnh",
+    "Standing %.2f m away from the middle of the scene": "Đứng cách giữa cảnh %.2f m",
+    "The feet do not tell which way the character faces: from the front view (1) you should see its face":
+        "Bàn chân không cho biết nhân vật quay hướng nào: nhìn từ phía trước (phím 1) phải thấy mặt nhân vật",
+    "Facing the front (-Y)": "Quay mặt ra trước (-Y)",
+    "Facing another way than the front (-Y): the rig would swap its left and right":
+        "Không quay mặt ra trước (-Y): rig sẽ đảo trái và phải",
+    "Arms out (T or A pose)": "Tay dang ra (tư thế chữ T hoặc chữ A)",
+    "The arms are low: a T or A pose (arms 0 to 45 degrees below level) rigs best":
+        "Tay hơi thấp: tư thế chữ T hoặc chữ A (tay thấp hơn phương ngang từ 0 đến 45 độ) gắn khung tốt nhất",
+    "The arms hang down: model the character in a T or A pose, the rig finds arms by them":
+        "Tay buông xuôi: hãy dựng nhân vật ở tư thế chữ T hoặc chữ A, rig nhờ đó mới tìm ra tay",
+    "Mirrored by a negative scale: %s": "Bị lật bởi tỉ lệ âm: %s",
+    "Stretched by an uneven scale (apply it): %s": "Bị kéo lệch bởi tỉ lệ không đều (hãy áp dụng): %s",
+    "Even scale": "Tỉ lệ đều",
+    "Faces point outward": "Mặt lưới hướng ra ngoài",
+    "%s: the faces point inward, so the rig's weights pick the wrong bones":
+        "%s: mặt lưới hướng vào trong, nên trọng số của rig chọn nhầm xương",
+    "Mirror not applied (the bend fixes skip such meshes): %s":
+        "Chưa áp dụng Mirror (phần sửa chỗ gập bỏ qua các lưới này): %s",
+    "No Mirror left to apply": "Không còn Mirror cần áp dụng",
+    "%d faces with more than 4 sides: Unity splits them its own way":
+        "%d mặt có hơn 4 cạnh: Unity tự chia chúng theo cách của nó",
+    "Faces of 3 or 4 sides": "Mặt 3 hoặc 4 cạnh",
+    "Parts DaskToon can tell apart": "Các bộ phận DaskToon phân biệt được",
+    "The whole character is one piece: keep the hair and clothes as objects or loose pieces of their own, so "
+    "DaskToon tells them apart":
+        "Cả nhân vật là một khối liền: hãy để tóc và quần áo thành đối tượng hoặc mảnh rời riêng, để DaskToon phân "
+        "biệt được",
+    "No UV map (textures and the Unity export need one): %s":
+        "Chưa có bản đồ UV (ảnh và việc xuất sang Unity cần nó): %s",
+    "UV maps": "Có bản đồ UV",
+    "Not DaskToon's shader: %s": "Chưa dùng shader DaskToon: %s",
+    "DaskToon's shader": "Dùng shader DaskToon",
+    "Material slots no face uses: %s": "Ô vật liệu không mặt nào dùng: %s",
+    "No unused material": "Không có vật liệu thừa",
+    "Not rigged yet: the auto rig makes the skeleton, weights and bend fixes":
+        "Chưa gắn khung: tự gắn khung sẽ tạo khung xương, trọng số và phần sửa chỗ gập",
+    "Rigged by %s": "Đã gắn khung bằng %s",
+    "After the rig": "Sau khi gắn khung",
+    "The rig's Check has not run since it was built": "Mục Kiểm tra của rig chưa chạy từ lần dựng gần nhất",
+    "The rig's Check found %d spots to look at (Anime Rig › Check)":
+        "Mục Kiểm tra của rig thấy %d chỗ cần xem (Rig anime › Kiểm tra)",
+    "The rig's Check found nothing": "Mục Kiểm tra của rig không thấy gì cần sửa",
+    "Too few edge loops round %s: add 2 or 3 loops so the joint bends round":
+        "Quá ít vòng cạnh quanh %s: thêm 2 hoặc 3 vòng để khớp gập được tròn",
+    "Enough edge loops round the knees and elbows": "Đủ vòng cạnh quanh gối và khuỷu tay",
+    "Eyes of loose pieces in front of the face: Sculpt Eye Expressions closes them":
+        "Mắt làm bằng mảnh rời trước mặt: Nặn biểu cảm mắt nhắm được",
+    "The eyes close by a shape key of their own": "Mắt nhắm bằng hình mẫu sẵn có",
+    "No eyes DaskToon can close: build each eye of loose pieces in front of the face, or sculpt a blink yourself":
+        "Không có mắt DaskToon nhắm được: dựng mỗi mắt bằng các mảnh rời trước mặt, hoặc tự nặn nhắm mắt",
+    "A mouth DaskToon finds: joy smiles; for A I U E O use a 2D mouth":
+        "DaskToon tìm thấy miệng: joy sẽ cười; muốn có A I U E O hãy dùng Miệng 2D",
+    "The mouth opens by a shape key of its own": "Miệng há bằng hình mẫu sẵn có",
+    "No mouth DaskToon finds: draw it on the face texture, or use a 2D mouth":
+        "DaskToon không tìm thấy miệng: hãy vẽ miệng lên ảnh da mặt, hoặc dùng Miệng 2D",
+    "No blink yet: Sculpt Eye Expressions (or sculpt it yourself)":
+        "Chưa có nhắm mắt: Nặn biểu cảm mắt (hoặc tự nặn)",
+    "Some expression shape keys move nothing: Fill Empty Expressions":
+        "Có hình mẫu biểu cảm không dịch chuyển gì: Lấp biểu cảm còn trống",
+    "Expressions ready": "Biểu cảm đã sẵn sàng",
     "Sculpt Eye Expressions": "Nặn biểu cảm mắt",
     "Make blink, blink_L, blink_R, joy and surprised for eyes built from loose pieces in front of the face":
         "Tạo nhắm mắt, nhắm mắt trái, nhắm mắt phải, vui và ngạc nhiên cho mắt làm bằng các mảnh rời đặt trước mặt",
