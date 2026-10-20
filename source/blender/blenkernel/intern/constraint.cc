@@ -2813,8 +2813,9 @@ static void spring_id_looper(bConstraint *con, ConstraintIDFunc func, void *user
  * current and previous world position; a step adds the inertia, a pull towards the posed direction and gravity, keeps
  * the bone's length and pushes the tail out of the collider capsules. The state of every frame is cached, keyed by the
  * object's session UID and the bone, with the inputs it was solved from: the same frame again gives the same pose, the
- * scene's start frame and changed inputs start again, a new frame steps on from the closest earlier one. A time between
- * two frames (motion blur) carries the last whole frame on by its velocity and leaves the cache alone. */
+ * scene's start frame and changed inputs start again (hanging in the pose, out of the colliders: a skirt starting again
+ * stood through the thighs), a new frame steps on from the closest earlier one. A time between two frames (motion blur)
+ * carries the last whole frame on by its velocity and leaves the cache alone. */
 
 struct SpringFrame {
   float3 current;
@@ -2893,6 +2894,20 @@ static float3 spring_push_out(const float3 &point,
   return closest + away / gap * distance;
 }
 
+/* The tail out of the collider capsules, keeping the bone's length. */
+static float3 spring_collide(float3 tail,
+                             const float3 &head,
+                             const float length,
+                             const Span<SpringCapsule> capsules,
+                             const float joint_radius)
+{
+  for (const SpringCapsule &capsule : capsules) {
+    tail = spring_push_out(tail, capsule.a, capsule.b, capsule.radius + joint_radius);
+    tail = head + spring_unit(tail - head) * length;
+  }
+  return tail;
+}
+
 static void spring_step(SpringFrame &state,
                         const float3 &head,
                         const float3 &rest,
@@ -2905,11 +2920,7 @@ static void spring_step(SpringFrame &state,
   const float3 current = state.current;
   float3 tail = current + (current - state.previous) * (1.0f - data.drag) +
                 rest * (data.stiffness * dt) + float3(0.0f, 0.0f, -1.0f) * (data.gravity * dt);
-  tail = head + spring_unit(tail - head) * length;
-  for (const SpringCapsule &capsule : capsules) {
-    tail = spring_push_out(tail, capsule.a, capsule.b, capsule.radius + joint_radius);
-    tail = head + spring_unit(tail - head) * length;
-  }
+  tail = spring_collide(head + spring_unit(tail - head) * length, head, length, capsules, joint_radius);
   state.previous = current;
   state.current = tail;
 }
@@ -2955,6 +2966,9 @@ static void spring_evaluate(bConstraint *con,
     capsules.append({a, b, ct.weight * mat4_to_scale(world)});
   }
 
+  const float joint_radius = data->radius * object_scale;
+  /* Hanging in the pose, out of the colliders: where the chain starts again. */
+  const float3 hanging = spring_collide(head + rest * length, head, length, capsules, joint_radius);
   const Scene *scene = cob->scene;
   const float ctime = DEG_get_ctime(cob->depsgraph);
   const int frame = int(std::lround(ctime));
@@ -2976,14 +2990,14 @@ static void spring_evaluate(bConstraint *con,
         tail = head + spring_unit(tail - head) * length;
       }
       else {
-        tail = head + rest * length;
+        tail = hanging;
       }
     }
     else if (frame == scene->r.sfra) {
       /* The scene's start frame always starts again, so playing from it gives the same sway. */
       history.clear();
       SpringFrame state;
-      state.current = state.previous = head + rest * length;
+      state.current = state.previous = hanging;
       state.head = head;
       state.rest = rest;
       history.insert_or_assign(frame, state);
@@ -3006,13 +3020,12 @@ static void spring_evaluate(bConstraint *con,
         const auto earlier = std::prev(after);
         state = earlier->second;
         for (int step = earlier->first; step < frame; step++) {
-          spring_step(
-              state, head, rest, length, *data, capsules, data->radius * object_scale, dt);
+          spring_step(state, head, rest, length, *data, capsules, joint_radius, dt);
         }
       }
       else {
         history.clear();
-        state.current = state.previous = head + rest * length;
+        state.current = state.previous = hanging;
       }
       state.head = head;
       state.rest = rest;
