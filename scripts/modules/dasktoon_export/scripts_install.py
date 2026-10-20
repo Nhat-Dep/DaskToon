@@ -10,7 +10,7 @@ import os
 
 from . import assets, shaders_install, unity_yaml
 
-SCRIPTS_VERSION = 6
+SCRIPTS_VERSION = 7
 SCRIPT_DIR = "Scripts"
 VERSION_FILE = "DaskToonScripts.version"
 SOURCE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "unity_scripts")

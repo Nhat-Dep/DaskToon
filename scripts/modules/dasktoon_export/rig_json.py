@@ -7,8 +7,9 @@ by bone name. Unity keeps a bone's tail along its local +Y, as Blender does, so 
 units (meters): the rig keeps its radii in armature units. Version 2 (R3, spec 10) adds the flat eyes and 2D mouths:
 the mesh, the material (name and slot), the eye's side and range, the atlas's rows and columns and its cell bone.
 The bend fixes (docs/superpowers/specs/2026-10-20-dasktoon-bend-fixes-design.md) add `correctives`: the shape key, the
-parent and child bones, the angle and the target direction in the character's frame (left, up, front), which Unity
-rebuilds from the same bones; readers that do not know the field skip it."""
+parent and child bones, the angle, where the key starts and ends along the bend and the swing off it that fades it (all
+radians), and the target direction in the character's frame (left, up, front), which Unity rebuilds from the same
+bones; readers that do not know the field skip it."""
 
 import json
 
@@ -49,7 +50,8 @@ def _correctives(rig):
     if frame is None:
         return []
     return [{"shape": correctives.PREFIX + fix.name, "parent": fix.parent, "child": fix.child,
-             "target": [round(fix.target.dot(axis), 6) for axis in frame], "angle": round(fix.angle, 6)}
+             "target": [round(fix.target.dot(axis), 6) for axis in frame], "angle": round(fix.angle, 6),
+             "start": round(fix.start, 6), "end": round(fix.end, 6), "reach": round(fix.reach, 6)}
             for fix in correctives.keyed(rig, bpy.data.objects)]
 
 

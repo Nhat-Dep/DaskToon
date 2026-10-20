@@ -2,8 +2,8 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-"""Bend fixes (docs/superpowers/specs/2026-10-20-dasktoon-bend-fixes-design.md): a corrective shape key for each knee,
-elbow, hip and shoulder, made by Build Rig. Linear blending puts a vertex weighted across a joint on the straight line
+"""Bend fixes (docs/superpowers/specs/2026-10-20-dasktoon-bend-fixes-design.md): corrective shape keys for the knees,
+elbows, hips and shoulders, made by Build Rig. Linear blending puts a vertex weighted across a joint on the straight line
 between where each bone would take it, so a bent joint loses volume; at the fix's pose the key moves such a vertex to
 where turning it about the joint by its share of the bend puts it.
 
@@ -14,9 +14,11 @@ blending land there: M^-1 (wanted - linear), M = (1 - a) I + a R, since the bone
 
 A driver shows the key. The child's swing from rest (its turn as seen from the parent, without the twist about itself),
 read in its own frame as the swing quaternion's vector v = sin(alpha / 2) n, splits into the bend along the fix's arc,
-2 asin(v . axis), and the swing off it, 2 asin(v . across). The key's value is clamp(bend / angle) * clamp(1 -
-|off| / angle): 0 at rest and for a limb swung the other way, bend / angle along the arc (exactly), 1 at the fix's pose
-and past it, fading for a limb swung elsewhere (a leg out to the side leaves the sitting fix). A Transform variable in
+2 asin(v . axis), and the swing off it, 2 asin(v . across). The key's value rises from 0 at `start` to 1 at `angle`
+along the arc (exactly linear in the bend), stays at 1 past it, or, when a deeper fix follows on the same arc, falls back
+to 0 at `end` while that one rises (a knee: 90 degrees, then kneeling at 150); it fades for a limb swung off the arc,
+over `reach` (a leg out to the side leaves the sitting fix):
+clamp((bend - start) / (angle - start)) * clamp((end - bend) / (end - angle)) * clamp(1 - |off| / reach). A Transform variable in
 Swing and Y Twist mode gives 2 asin of v's X and Z, so sin(x / 2) and sin(z / 2) are v's components: a simple
 expression, no Python, no Auto Run. DaskToon's Unity script works the value out the same way."""
 
@@ -28,13 +30,17 @@ from mathutils import Matrix, Vector
 
 PREFIX = "DT_Fix_"  # the shape keys: DT_Fix_LeftKnee
 SIDES = ("Left", "Right")
-FRONT, BACK, DOWN = Vector((0.0, -1.0, 0.0)), Vector((0.0, 1.0, 0.0)), Vector((0.0, 0.0, -1.0))
-# (joint, parent, child, where the child turns: across the bone toward FRONT or BACK, or straight DOWN)
-JOINTS = (("Knee", "{}UpperLeg", "{}LowerLeg", BACK),
-          ("Elbow", "{}UpperArm", "{}LowerArm", FRONT),
-          ("Hip", "Hips", "{}UpperLeg", FRONT),
-          ("Shoulder", "{}Shoulder", "{}UpperArm", DOWN))
-LEAST_TURN = math.radians(20.0)  # an arm hanging this near down needs no shoulder fix
+FRONT, BACK = Vector((0.0, -1.0, 0.0)), Vector((0.0, 1.0, 0.0))
+DOWN, UP = Vector((0.0, 0.0, -1.0)), Vector((0.0, 0.0, 1.0))
+# (joint, parent, child, where the child turns, its bends in degrees): toward FRONT or BACK across the bone, a fix at
+# each bend in turn (the second named ...Deep); straight DOWN or UP, one fix there (bends None).
+JOINTS = (("Knee", "{}UpperLeg", "{}LowerLeg", BACK, (90.0, 150.0)),
+          ("Elbow", "{}UpperArm", "{}LowerArm", FRONT, (90.0, 140.0)),
+          ("Hip", "Hips", "{}UpperLeg", FRONT, (90.0,)),
+          ("Shoulder", "{}Shoulder", "{}UpperArm", DOWN, None),
+          ("ShoulderUp", "{}Shoulder", "{}UpperArm", UP, None))
+DEEP = "Deep"
+LEAST_TURN = math.radians(20.0)  # an arm hanging this near down (or up) needs no fix there
 SMALLEST = 0.0005  # x the character's height: a key moving no vertex further is not made
 LONGEST = 255  # characters Blender keeps of a driver's expression
 
@@ -47,7 +53,10 @@ class Fix(NamedTuple):
     rest: Vector  # the child's direction at rest (along the bone)
     target: Vector  # its direction at the fix's pose
     axis: Vector  # rest x target: the fix turns the child about it
-    angle: float
+    angle: float  # the bend of the fix's pose, where the key is 1
+    start: float  # the bend where it starts to show: 0, or the fix before on the same arc
+    end: float  # the bend where it is gone again (the next fix on the arc), 0 when it stays past its pose
+    reach: float  # the swing off the arc it fades over (the arc's first bend)
 
 
 def fixes(rig):
@@ -55,21 +64,26 @@ def fixes(rig):
     bones = rig.data.bones
     out = []
     for side in SIDES:
-        for joint, parent, child, toward in JOINTS:
+        for joint, parent, child, toward, bends in JOINTS:
             parent, child = parent.format(side), child.format(side)
             if bones.get(parent) is None or bones.get(child) is None:
                 continue
             bone = bones[child]
             rest = (bone.tail_local - bone.head_local).normalized()
-            target = toward.copy() if toward is DOWN else toward - toward.dot(rest) * rest
-            if target.length < 1e-3:
+            across = toward - toward.dot(rest) * rest
+            if across.length < 1e-3:
                 continue
-            target.normalize()
-            angle = rest.angle(target)
-            if angle < LEAST_TURN:
+            across.normalize()
+            angles = [math.radians(bend) for bend in bends] if bends else [rest.angle(toward)]
+            if angles[0] < LEAST_TURN:
                 continue
-            axis = rest.cross(target).normalized()
-            out.append(Fix(side + joint, parent, child, bone.head_local.copy(), rest, target, axis, angle))
+            axis = rest.cross(across).normalized()
+            for i, angle in enumerate(angles):
+                target = rest * math.cos(angle) + across * math.sin(angle)
+                start = angles[i - 1] if i else 0.0
+                end = angles[i + 1] if i + 1 < len(angles) else 0.0
+                out.append(Fix(side + joint + (DEEP if i else ""), parent, child, bone.head_local.copy(), rest,
+                               target, axis, angle, start, end, angles[0]))
     return out
 
 
@@ -108,7 +122,11 @@ def _height(rig):
 
 
 def _deformed_by(obj, rig):
-    """True when an Armature modifier of `obj` blends linearly with `rig` (Preserve Volume would blend otherwise)."""
+    """True when an Armature modifier of `obj` blends linearly with `rig` (Preserve Volume would blend otherwise) and
+    no Mirror modifier copies its half: the key would show on the other half too, whose limb is not bent (lr_shape, a
+    real model, models halves so)."""
+    if any(m.type == 'MIRROR' for m in obj.modifiers):
+        return False
     return any(m.type == 'ARMATURE' and m.object == rig and not m.use_deform_preserve_volume for m in obj.modifiers)
 
 
@@ -174,7 +192,14 @@ def expression(rig, fix):
     def part(v):
         return "2*asin(min(max(%.5f*sin(x/2)+%.5f*sin(z/2),-1),1))" % (v.x, v.z)
 
-    text = "clamp(%s/%.5f)*clamp(1-abs(%s)/%.5f)" % (part(along), fix.angle, part(across), fix.angle)
+    bend = part(along)
+    if fix.start:
+        rise = "clamp(%s*%.5f-%.5f)" % (bend, 1.0 / (fix.angle - fix.start), fix.start / (fix.angle - fix.start))
+    else:
+        rise = "clamp(%s/%.5f)" % (bend, fix.angle)
+    fall = ("*clamp(%.5f-%s*%.5f)" % (fix.end / (fix.end - fix.angle), bend, 1.0 / (fix.end - fix.angle))
+            if fix.end else "")
+    text = "%s%s*clamp(1-abs(%s)/%.5f)" % (rise, fall, part(across), fix.reach)
     if len(text) > LONGEST:
         raise ValueError("driver expression too long: %d characters" % len(text))
     return text

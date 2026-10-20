@@ -20,7 +20,7 @@ import dasktoon_rig_regions_test as rt  # noqa: E402
 import dasktoon_test_utils as tu  # noqa: E402
 from dasktoon_rig import build, correctives  # noqa: E402
 
-JOINTS = ("Knee", "Elbow", "Hip", "Shoulder")
+JOINTS = ("Knee", "KneeDeep", "Elbow", "ElbowDeep", "Hip", "Shoulder", "ShoulderUp")
 
 
 def built():
@@ -99,9 +99,16 @@ class FixesTest(unittest.TestCase):
             self.assertIn(correctives.PREFIX + name, keys)
 
     def test_the_bend_of_each_joint(self):
-        for name, degrees in (("LeftKnee", 90.0), ("LeftElbow", 90.0), ("LeftHip", 90.0), ("LeftShoulder", 40.0)):
+        for name, degrees in (("LeftKnee", 90.0), ("LeftKneeDeep", 150.0), ("LeftElbow", 90.0),
+                              ("LeftElbowDeep", 140.0), ("LeftHip", 90.0), ("LeftShoulder", 40.0),
+                              ("LeftShoulderUp", 140.0)):
             fix = fix_of(self.rig, name)
             self.assertAlmostEqual(math.degrees(fix.angle), degrees, delta=2.0, msg=name)
+        self.assertGreater(fix_of(self.rig, "LeftShoulderUp").target.z, 0.99)  # the arm straight up
+        deep = fix_of(self.rig, "LeftKneeDeep")
+        self.assertGreater(deep.target.z, 0.8)  # 150 degrees from hanging down, back towards up
+        self.assertGreater(deep.target.y, 0.45)
+        self.assertEqual((deep.axis - fix_of(self.rig, "LeftKnee").axis).length < 1e-6, True)  # the same arc
         self.assertGreater(fix_of(self.rig, "LeftKnee").target.y, 0.9)  # the lower leg goes back
         self.assertLess(fix_of(self.rig, "LeftHip").target.y, -0.9)  # the thigh comes forward
         self.assertLess(fix_of(self.rig, "LeftElbow").target.y, -0.9)  # the forearm comes forward
@@ -109,17 +116,34 @@ class FixesTest(unittest.TestCase):
 
     def test_the_driver_follows_the_bend(self):
         body = self.objs["Body"]
-        for name in ("LeftKnee", "RightHip", "LeftElbow", "RightShoulder"):
+        for name in ("RightHip", "RightShoulder", "LeftShoulderUp", "LeftKneeDeep", "RightElbowDeep"):
             fix = fix_of(self.rig, name)
             key = correctives.PREFIX + name
             self.assertTrue(body.data.shape_keys.animation_data.drivers.find(
                 'key_blocks["%s"].value' % key).driver.is_simple_expression, name)  # no Python needed
             self.assertAlmostEqual(value(body, key), 0.0, places=3, msg=name)
             for fraction in (0.5, 1.0):
-                turn(self.rig, fix.child, fix.axis, fraction * fix.angle)
+                bend = fix.start + fraction * (fix.angle - fix.start)
+                turn(self.rig, fix.child, fix.axis, bend)
                 self.assertAlmostEqual(value(body, key), fraction, delta=0.01, msg=name)
-            turn(self.rig, fix.child, fix.axis, 1.3 * fix.angle)
+            turn(self.rig, fix.child, fix.axis, min(fix.angle + math.radians(20.0), math.radians(175.0)))
             self.assertAlmostEqual(value(body, key), 1.0, delta=0.01, msg=name)  # past the pose: kept at full
+
+    def test_a_deeper_bend_hands_over_to_the_deep_fix(self):
+        """Kneeling or a forearm folded right up: the 90 degree fix fades out as the deep one takes over."""
+        body = self.objs["Body"]
+        for name in ("LeftKnee", "RightElbow"):
+            first, deep = fix_of(self.rig, name), fix_of(self.rig, name + "Deep")
+            self.assertAlmostEqual(first.end, deep.angle, places=6)
+            self.assertAlmostEqual(deep.start, first.angle, places=6)
+            middle = (first.angle + deep.angle) / 2.0
+            for bend, want_first, want_deep in ((0.5 * first.angle, 0.5, 0.0), (first.angle, 1.0, 0.0),
+                                                (middle, 0.5, 0.5), (deep.angle, 0.0, 1.0)):
+                turn(self.rig, first.child, first.axis, bend)
+                self.assertAlmostEqual(value(body, correctives.PREFIX + first.name), want_first, delta=0.01,
+                                       msg=(name, math.degrees(bend)))
+                self.assertAlmostEqual(value(body, correctives.PREFIX + deep.name), want_deep, delta=0.01,
+                                       msg=(name, math.degrees(bend)))
 
     def test_a_limb_moving_elsewhere_leaves_the_fix(self):
         body = self.objs["Body"]
@@ -134,7 +158,7 @@ class FixesTest(unittest.TestCase):
         """At the fix's pose with the key on, each vertex is where turning it about the joint by its share of the bend
         puts it."""
         body = self.objs["Body"]
-        for name in ("LeftKnee", "LeftHip", "LeftElbow"):
+        for name in ("LeftKnee", "LeftHip", "LeftElbow", "LeftKneeDeep", "LeftShoulderUp"):
             fix = fix_of(self.rig, name)
             turn(self.rig, fix.child, fix.axis, fix.angle)
             share = child_share(self.rig, body, fix.child)
@@ -168,7 +192,22 @@ class RebuildTest(unittest.TestCase):
         build.build(bpy.context, rig, list(rig.data.dasktoon_rig.parts))
         names = [block.name for block in objs["Body"].data.shape_keys.key_blocks]
         self.assertEqual(len(names), len(set(names)))
-        self.assertEqual(len([name for name in names if name.startswith(correctives.PREFIX)]), 8)
+        self.assertEqual(len([name for name in names if name.startswith(correctives.PREFIX)]), 14)
+
+    def test_no_fixes_on_a_mirrored_half(self):
+        """A shape key sits under the Mirror modifier: a fix made on one half would show on the other half too, whose
+        arm is not bent (a sleeve flew 0.48 m in Wave). lr_shape, a real model, has such halves."""
+        import dasktoon_rig_regions_test as rt
+        from bl_ui import dasktoon_rig as ui
+        rig, _objs = rt.rigged()
+        start, end = rt.mirrored(rt.ARM_START), rt.mirrored(rt.ARM_END)  # the right arm
+        sleeve = rt.merged("Sleeve", [rt.st.tube(tuple(start + (end - start) * 0.3),
+                                                 tuple(start + (end - start) * 0.9), 0.07)])
+        sleeve.modifiers.new("Mirror", 'MIRROR')
+        ui.add_part(rig, sleeve, 'CLOTHING')
+        build.build(bpy.context, rig, list(rig.data.dasktoon_rig.parts))
+        key = sleeve.data.shape_keys
+        self.assertFalse(key is not None and any(b.name.startswith(correctives.PREFIX) for b in key.key_blocks))
 
     def test_off_removes_them(self):
         rig, objs = built()

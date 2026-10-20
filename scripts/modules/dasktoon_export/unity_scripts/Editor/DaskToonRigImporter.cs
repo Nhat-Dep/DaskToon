@@ -67,6 +67,9 @@ namespace DaskToon.Editor
             public string child;
             public float[] target;  // in the character's frame: left, up, front
             public float angle;
+            public float start;
+            public float end;
+            public float reach;
         }
 
         [Serializable]
@@ -196,6 +199,7 @@ namespace DaskToon.Editor
                 {
                     shape = c.shape, parent = parent, child = child, rest = rest, along = along,
                     across = Vector3.Cross(rest, along), angle = Vector3.Angle(rest, target) * Mathf.Deg2Rad,
+                    start = c.start, end = c.end, reach = c.reach,
                     renderers = found.ToArray(), indices = indices.ToArray(),
                 });
             }

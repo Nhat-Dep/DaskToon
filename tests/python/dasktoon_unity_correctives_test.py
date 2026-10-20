@@ -29,13 +29,16 @@ def poses(rig, body):
     """[(fix name, axis, angle)] to try: along the arc, past it, off it, mixed."""
     fixes = {fix.name: fix for fix in correctives.fixes(rig)}
     knee, hip, elbow, shoulder = fixes["LeftKnee"], fixes["RightHip"], fixes["RightElbow"], fixes["LeftShoulder"]
+    up = fixes["RightShoulderUp"]
     left_hip = fixes["LeftHip"]
     across = left_hip.rest.cross(left_hip.axis)
     return [("LeftKnee", knee.axis, 0.5 * knee.angle), ("LeftKnee", knee.axis, knee.angle),
             ("LeftKnee", knee.axis, 1.3 * knee.angle), ("RightHip", hip.axis, 0.6 * hip.angle),
             ("LeftHip", across, math.radians(60.0)), ("LeftHip", (left_hip.axis + 0.5 * across).normalized(),
                                                        math.radians(70.0)),
-            ("RightElbow", elbow.axis, 0.8 * elbow.angle), ("LeftShoulder", shoulder.axis, 0.5 * shoulder.angle)]
+            ("RightElbow", elbow.axis, 0.8 * elbow.angle), ("LeftShoulder", shoulder.axis, 0.5 * shoulder.angle),
+            ("LeftKnee", knee.axis, math.radians(120.0)), ("LeftKneeDeep", knee.axis, math.radians(120.0)),
+            ("LeftKneeDeep", knee.axis, math.radians(165.0)), ("RightShoulderUp", up.axis, 0.7 * up.angle)]
 
 
 @unittest.skipUnless(harness.unity_exe(), harness.SKIP_REASON)
@@ -76,6 +79,8 @@ class UnityCorrectivesTest(unittest.TestCase):
         self.assertGreater(result["DT_Fix_RightHip.front"], 0.99)  # the thigh comes forward
         self.assertGreater(result["DT_Fix_LeftElbow.front"], 0.99)  # the forearm comes forward
         self.assertGreater(result["DT_Fix_RightShoulder.down"], 0.99)  # the arm down
+        self.assertLess(result["DT_Fix_RightShoulderUp.down"], -0.99)  # the arm up
+        self.assertLess(result["DT_Fix_LeftKneeDeep.down"], -0.8)  # 150 degrees: the lower leg folded up
         self.assertEqual(len(result["weights"]), len(expected))
         for got, want, pose in zip(result["weights"], expected, sent):
             self.assertAlmostEqual(got, want, delta=0.01, msg=pose)

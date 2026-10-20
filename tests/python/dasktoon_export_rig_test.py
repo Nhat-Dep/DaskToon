@@ -85,7 +85,8 @@ class CorrectivesJsonTest(unittest.TestCase):
         data = rig_json.rig_data(rig)  # no chains, no face: the fixes alone make a rig file
         fixes = {c["shape"]: c for c in data["correctives"]}
         self.assertEqual(set(fixes), {"DT_Fix_" + side + joint for side in ("Left", "Right")
-                                      for joint in ("Knee", "Elbow", "Hip", "Shoulder")})
+                                      for joint in ("Knee", "KneeDeep", "Elbow", "ElbowDeep", "Hip", "Shoulder",
+                                                    "ShoulderUp")})
         knee = fixes["DT_Fix_LeftKnee"]
         self.assertEqual((knee["parent"], knee["child"]), ("LeftUpperLeg", "LeftLowerLeg"))
         self.assertAlmostEqual(knee["angle"], math.pi / 2, places=3)
@@ -96,6 +97,14 @@ class CorrectivesJsonTest(unittest.TestCase):
         self.assertEqual((shoulder["parent"], shoulder["child"]), ("RightShoulder", "RightUpperArm"))
         self.assertLess(shoulder["target"][1], -0.99)  # the arm down
         self.assertAlmostEqual(sum(c * c for c in shoulder["target"]), 1.0, places=4)
+        # a bend in two steps: the 90 degree fix fades out from 90 to 150 degrees, the deep one takes over
+        deep = fixes["DT_Fix_LeftKneeDeep"]
+        self.assertAlmostEqual(knee["start"], 0.0, places=5)
+        self.assertAlmostEqual(knee["end"], math.radians(150.0), places=3)
+        self.assertAlmostEqual(deep["start"], math.pi / 2, places=3)
+        self.assertAlmostEqual(deep["end"], 0.0, places=5)  # kept at full past its pose
+        self.assertAlmostEqual(deep["reach"], math.pi / 2, places=3)
+        self.assertGreater(fixes["DT_Fix_LeftShoulderUp"]["target"][1], 0.99)  # the arm up
 
     def test_no_fixes_without_their_keys(self):
         rig, _objs = built(roles=(("Body", 'BODY'),), bend_fixes=False)
@@ -133,7 +142,7 @@ class ScriptsInstallTest(unittest.TestCase):
         self.assertIn("static void OnPostprocessAllAssets(", importer)
         self.assertIn("AddCorrectives(root, data, byName);", importer)
         self.assertIn("DaskToonCorrective.cs", si.FILE_GUIDS)  # the bend fixes (2026-10-20)
-        self.assertEqual(si.SCRIPTS_VERSION, 6)
+        self.assertEqual(si.SCRIPTS_VERSION, 7)  # 7: bend fixes in two steps
 
     def test_older_scripts_are_replaced(self):
         from dasktoon_export import scripts_install as si

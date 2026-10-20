@@ -54,10 +54,28 @@ that the knee's target points back, the hip's and elbow's forward and the should
 removes the fixes. Building again remakes them (a key edited by hand is replaced). The rig file is written for a rig
 whose only content is its fixes, so Unity gets the scripts too.
 
+## Deeper bends and the arm up (2026-10-20, morning)
+
+The user then asked for more poses ("Thêm tư thế sửa chỗ gập"). Knees and elbows get a second fix on the same arc:
+`DT_Fix_<Side>KneeDeep` at 150 degrees (kneeling) and `DT_Fix_<Side>ElbowDeep` at 140 degrees (a forearm folded up).
+The 90 degree key rises from 0 to 1 up to 90 degrees, then falls back to 0 at the deep fix's bend while the deep key
+rises; past 150 the deep key stays at 1. Each key has a start, its angle and an end (0 when it stays past its pose),
+and fades off the arc over the arc's first bend:
+`clamp((bend - start) / (angle - start)) * clamp((end - bend) / (end - angle)) * clamp(1 - |off| / reach)`;
+the driver expression stays under 255 characters, the rig file carries start, end and reach, and Unity's script works
+the same weight out (scripts version 7). `DT_Fix_<Side>ShoulderUp` turns the arm straight up (skipped when it already
+points within 20 degrees of up), next to the arm-down fix. On tdt (copy): the knee keeps its round front at 120, 135
+and 150 degrees; arms up the shoulder fills, with the armpit bulging out, the rotation blend's known side effect (the
+shoulders lift with the arms when animating, so the fix shows at about 70%).
+
+A mesh with a Mirror modifier gets no fixes: the shape key sits under the Mirror, so a fix made on one half showed on
+the other half too, whose limb was not bent (a sleeve moved 0.48 m in Wave; the deep fixes, about four times larger
+in rest space at 150 degrees, showed it). lr_shape models halves so; its mirrored meshes go without fixes.
+
 ## Rulings (autonomous)
 
-1. One fix per joint at one pose (90° for knee, elbow, hip; arm down for the shoulder), not several poses blended — the
-   clamp keeps the fix at full past that pose. Cost if wrong: deep bends (kneeling) look as at 90°; more poses later.
+1. One fix per joint at one pose (90° for knee, elbow, hip; arm down for the shoulder) at first; deep knee and elbow
+   bends and the arm up were added the next morning on the user's word (section above).
 2. The rotation blend is the target, not a sculpted or smoothed shape: it is exact, cannot make a rigid part move, and
    matches what the spike showed. Cost if wrong: elbows gain little on meshes with narrow weight blends.
 3. Elbow bends forward (palms-down T-pose); knee bends back; hip forward. Cost if wrong: a rig with other conventions
@@ -65,3 +83,6 @@ whose only content is its fixes, so Unity gets the scripts too.
 4. Built by Build Rig, on by default, not a separate button: "tự shapekey" was asked as automatic.
 5. Clips still bake the key values (the FBX exporter samples every shape key); the Unity component overrides them each
    frame from the pose, so Mecanim retargeted clips get the fixes too.
+6. No fixes on a mesh with a Mirror modifier (above). Cost if wrong: mirrored halves keep linear blending's flat
+   joints; applying the Mirror before Build Rig gives them fixes.
+7. The arm-up fix stays although the armpit bulges. Cost if wrong: turn Bend Fixes off, or mute that key.
