@@ -440,6 +440,16 @@ VI = {
         "Chỗ tối tối thêm, chỗ sáng sáng thêm: hoa văn và chất liệu",
     "Layers are for single images, not tiled ones": "Lớp vẽ chỉ dùng cho ảnh đơn, không cho ảnh nhiều ô",
     "The active layer is hidden: strokes on it do not show": "Lớp đang chọn đang ẩn: nét vẽ trên nó không hiện",
+    "Start Painting": "Bắt đầu tô vẽ",
+    "Make the mesh ready to paint: UV map, a picture of each anime material's colour, anime brushes":
+        "Chuẩn bị lưới để tô vẽ: bản đồ UV, một ảnh mang màu của từng vật liệu anime, bút anime",
+    "Ready to paint": "Sẵn sàng tô vẽ",
+    "Ready to paint: %d new pictures": "Sẵn sàng tô vẽ: %d ảnh mới",
+    "Fill Part": "Đổ màu mảng",
+    "Fill the part under the cursor with the brush colour, on the active layer (face mask on: selected faces)":
+        "Đổ màu bút kín mảnh dưới con trỏ, vào lớp đang chọn (khi bật Face Mask: các mặt đang chọn)",
+    "Click a part of the model to fill it with the brush colour, on the active paint layer":
+        "Bấm vào một mảnh của model để đổ màu bút kín mảnh đó, vào lớp vẽ đang chọn",
     "%s: after the rig": "%s: sau khi gắn khung",
     "Rig Check": "Kiểm tra khung",
     "Edge Loops at the Knees and Elbows": "Vòng cạnh ở gối và khuỷu tay",

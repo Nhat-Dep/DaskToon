@@ -9,6 +9,7 @@ the active layer need a window: dasktoon_paint_layers_window_test."""
 
 import os
 import sys
+import tempfile
 import unittest
 
 import bpy
@@ -16,7 +17,8 @@ import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import dasktoon_test_utils as tu  # noqa: E402
-from dasktoon_paint import layers  # noqa: E402
+from dasktoon_paint import brushes, fill as fill_part, layers, start  # noqa: E402
+from mathutils import Color  # noqa: E402
 
 W, H = 8, 4
 BYTE = 1.0 / 255.0 + 1e-6
@@ -150,6 +152,98 @@ class PaintSlotTest(unittest.TestCase):
         links = [link for link in mat.node_tree.links if link.to_node == anime and link.to_socket.name == "Base Color"]
         self.assertEqual(len(links), 1)
         self.assertEqual(links[0].from_node.bl_idname, 'ShaderNodeTexImage')
+
+
+def mesh_object(name, parts, materials=("Skin",)):
+    """A mesh of `parts` quads side by side (no UV map), faces alternating over `materials`."""
+    verts, faces = [], []
+    for k in range(parts):
+        base = len(verts)
+        verts += [(3 * k, 0, 0), (3 * k + 1, 0, 0), (3 * k + 1, 1, 0), (3 * k, 1, 0), (3 * k + 2, 0, 0),
+                  (3 * k + 2, 1, 0)]
+        faces += [(base, base + 1, base + 2, base + 3), (base + 1, base + 4, base + 5, base + 2)]
+    mesh = bpy.data.meshes.new(name)
+    mesh.from_pydata(verts, [], faces)
+    obj = bpy.data.objects.new(name, mesh)
+    bpy.context.scene.collection.objects.link(obj)
+    for mat_name in materials:
+        mesh.materials.append(bpy.data.materials.get(mat_name) or bpy.data.materials.new(mat_name))
+    for i, poly in enumerate(mesh.polygons):
+        poly.material_index = i % len(materials)
+    bpy.context.view_layer.objects.active = obj
+    obj.select_set(True)
+    return obj
+
+
+class StartTest(unittest.TestCase):
+    def setUp(self):
+        bpy.ops.wm.read_factory_settings(use_empty=True)
+
+    def test_start_painting_connects_a_picture_of_the_colour(self):
+        obj = mesh_object("Doll", 1)
+        mat = obj.data.materials[0]
+        node = start.anime_node(mat)
+        node.inputs["Base Color"].default_value = (0.2, 0.4, 0.8, 1.0)
+        self.assertFalse(obj.data.uv_layers)
+        made = start.start(bpy.context, obj, size=16)
+        self.assertEqual(len(made), 1)
+        self.assertTrue(obj.data.uv_layers)  # Smart UV Project
+        link = node.inputs["Base Color"].links[0]
+        self.assertEqual(link.from_node.image, made[0])
+        self.assertEqual(mat.node_tree.nodes.active, link.from_node)  # the paint slot
+        expected = (*Color((0.2, 0.4, 0.8)).from_scene_linear_to_srgb(), 1.0)
+        np.testing.assert_allclose(pixels(made[0])[3, 5], expected, atol=BYTE)
+        self.assertEqual(start.start(bpy.context, obj, size=16), [])  # nothing more to make
+
+    def test_the_operator_leaves_the_mesh_in_texture_paint_with_the_anime_pen(self):
+        obj = mesh_object("Doll", 1)
+        self.assertEqual(bpy.ops.dasktoon.paint_start(), {'FINISHED'})
+        self.assertEqual(obj.mode, 'TEXTURE_PAINT')
+        found = {key: brushes.find(key) for key in brushes.BRUSHES}
+        self.assertTrue(all(brush is not None and brush.asset_data is not None for brush in found.values()))
+        self.assertEqual(bpy.context.tool_settings.image_paint.brush, found['PEN'])
+        self.assertEqual(found['FILL'].image_brush_type, 'FILL')
+        self.assertEqual(found['PEN'].curve_distance_falloff_preset, 'CONSTANT')
+        self.assertTrue(bpy.ops.dasktoon.paint_start.poll())
+        bpy.ops.dasktoon.paint_start()
+        self.assertEqual(len([b for b in bpy.data.brushes if b.get(brushes.MARK)]), 3)  # not made twice
+
+
+class SaveTest(unittest.TestCase):
+    def test_saving_the_file_keeps_the_pictures_and_the_layers(self):
+        bpy.ops.wm.read_factory_settings(use_empty=True)
+        image, _px = picture()
+        top = layers.add(image).image
+        fill(top, (0.0, 1.0, 0.0, 0.5))
+        layers.composite(image)
+        shown = pixels(image)
+        plain = bpy.data.images.new("Painted", W, H)
+        fill(plain, (0.3, 0.3, 0.9, 1.0))
+        names = (image.name, top.name)
+        # Something must use the images, or the file drops them.
+        mat = bpy.data.materials.new("Skin")
+        mat.node_tree.nodes.new("ShaderNodeTexImage").image = image
+        mat.node_tree.nodes.new("ShaderNodeTexImage").image = plain
+        mat.use_fake_user = True
+        path = os.path.join(tempfile.mkdtemp(prefix="dt_paint_save_"), "doll.blend")
+        bpy.ops.wm.save_as_mainfile(filepath=path)
+        self.assertTrue(all(bpy.data.images[n].packed_file is not None for n in names + ("Painted",)))
+        bpy.ops.wm.open_mainfile(filepath=path)
+        image = bpy.data.images[names[0]]
+        self.assertEqual(len(image.dasktoon_layers), 2)
+        self.assertEqual(image.dasktoon_layers[1].image.name, names[1])
+        np.testing.assert_allclose(pixels(image), shown, atol=2 * BYTE)
+        np.testing.assert_allclose(pixels(bpy.data.images["Painted"])[0, 0], (0.3, 0.3, 0.9, 1.0), atol=2 * BYTE)
+
+
+class FillPartTest(unittest.TestCase):
+    def test_a_part_is_its_connected_faces_of_one_material(self):
+        bpy.ops.wm.read_factory_settings(use_empty=True)
+        obj = mesh_object("Doll", 3)
+        self.assertEqual(fill_part.part_faces(obj.data, 2), [2, 3])  # the second part only
+        two = mesh_object("Dress", 2, materials=("Cloth", "Lace"))
+        self.assertEqual(fill_part.part_faces(two.data, 0), [0])  # its neighbour is Lace
+        self.assertEqual(fill_part.face_under(obj, (3.5, 0.5, 5.0), (0.0, 0.0, -1.0)), 2)
 
 
 if __name__ == "__main__":

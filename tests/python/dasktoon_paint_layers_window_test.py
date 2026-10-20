@@ -155,6 +155,34 @@ def steps(work):
     view.ui_type = 'VIEW_3D'
     yield wait(0.5)
 
+    # 4. The Fill Part tool, clicked on the plane: the whole part on the active layer, the brush in use kept.
+    import easy_keys
+    owner, base, top = images()
+    top.pixels.foreach_set(np.zeros(len(top.pixels), dtype=np.float32))
+    top.update()
+    layers.composite(owner)
+    settings.unified_paint_settings.color = (0.0, 0.0, 1.0)
+    brush_before = settings.brush
+    view = max((a for a in win.screen.areas if a.type == 'VIEW_3D'), key=lambda a: a.width)
+    reg = region(view)
+    with bpy.context.temp_override(window=win, area=view, region=reg):
+        bpy.ops.ed.undo_push(message="Before Fill Part")
+        bpy.ops.wm.tool_set_by_id(name="dasktoon.fill_part")
+    yield wait(0.5)
+    e = easy_keys.EventGenerate(win)
+    e.cursor_position_set(reg.x + reg.width // 2, reg.y + reg.height // 2, move=True)
+    yield wait(0.3)
+    e.leftmouse.tap()
+    yield wait(1.5)
+    owner, base, top = images()
+    alpha = pixels(top)[..., 3]
+    log.append("fill part: covered %.3f, blue %.3f" % ((alpha > 0.9).mean(), pixels(owner)[..., 2].mean()))
+    check((alpha > 0.9).mean() > 0.95, "Fill Part did not fill the plane on the active layer")
+    check(np.abs(pixels(base) - base_before).max() < 1e-6, "Fill Part changed the layer Base")
+    check(pixels(owner)[..., 2].mean() > 0.9, "the image does not show the fill")
+    check(settings.brush == brush_before, "Fill Part did not give the brush in use back")
+    check(not plane.data.use_paint_mask, "Fill Part left the face mask on")
+
     write_result()
     bpy.ops.wm.quit_blender()
 

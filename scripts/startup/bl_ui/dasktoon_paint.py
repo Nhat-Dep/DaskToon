@@ -4,15 +4,16 @@
 
 """Anime painting (docs/superpowers/specs/2026-10-20-dasktoon-paint-layers-design.md): the paint layers of an image
 (their data, the operators, the list drawn into Blender's Texture Slots panel and the Image Editor's Image panel, no
-DaskToon panel of its own: UI spec of 2026-10-04), and the handlers that keep the composites right after loading and
-undoing."""
+DaskToon panel of its own: UI spec of 2026-10-04), Start Painting (the material menu, Texture Slots without slots), the
+Fill Part tool of Texture Paint, and the handlers: composites right after loading and undoing, painted images saved
+with the file."""
 
 import bpy
 from bpy.app.handlers import persistent
-from bpy.app.translations import pgettext_n as n_
+from bpy.app.translations import pgettext_n as n_, pgettext_rpt as rpt_
 from bpy.props import BoolProperty, CollectionProperty, EnumProperty, FloatProperty, IntProperty, PointerProperty, \
     StringProperty
-from bpy.types import Operator, PropertyGroup, UIList
+from bpy.types import Operator, PropertyGroup, UIList, WorkSpaceTool
 
 BLENDS = (
     ('NORMAL', n_("Normal"), n_("The layer covers what is under it"), 0),
@@ -151,6 +152,80 @@ class DASKTOON_OT_paint_layers_flatten(DaskPaintLayerOperator, Operator):
         return {'FINISHED'}
 
 
+class DASKTOON_OT_paint_start(Operator):
+    """Make the mesh ready to paint: UV map, a picture of each anime material's colour, anime brushes"""
+    bl_idname = "dasktoon.paint_start"
+    bl_label = "Start Painting"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        obj = context.active_object
+        return obj is not None and obj.type == 'MESH' and len(obj.material_slots) > 0
+
+    def execute(self, context):
+        from dasktoon_paint import brushes, start
+        obj = context.active_object
+        made = start.start(context, obj)
+        brushes.ensure()
+        if obj.mode != 'TEXTURE_PAINT':
+            bpy.ops.object.mode_set(mode='TEXTURE_PAINT')
+        context.tool_settings.image_paint.mode = 'MATERIAL'
+        brushes.activate(context, 'PEN')
+        if made:
+            self.report({'INFO'}, rpt_("Ready to paint: %d new pictures") % len(made))
+        else:
+            self.report({'INFO'}, rpt_("Ready to paint"))
+        return {'FINISHED'}
+
+
+class DASKTOON_OT_paint_fill_part(Operator):
+    """Fill the part under the cursor with the brush colour, on the active layer (face mask on: selected faces)"""
+    bl_idname = "dasktoon.paint_fill_part"
+    bl_label = "Fill Part"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        obj = context.active_object
+        return (obj is not None and obj.type == 'MESH' and obj.mode == 'TEXTURE_PAINT'
+                and context.region is not None and context.region.type == 'WINDOW')
+
+    def invoke(self, context, event):
+        return self.fill(context, (event.mouse_region_x, event.mouse_region_y))
+
+    def fill(self, context, coord):
+        from bpy_extras import view3d_utils
+        from dasktoon_paint import brushes, fill
+        obj = context.active_object
+        origin = view3d_utils.region_2d_to_origin_3d(context.region, context.region_data, coord)
+        direction = view3d_utils.region_2d_to_vector_3d(context.region, context.region_data, coord)
+        face = fill.face_under(obj, origin, direction)
+        if face is None:
+            return {'CANCELLED'}
+        mesh = obj.data
+        faces = [p.index for p in mesh.polygons if p.select] if mesh.use_paint_mask else fill.part_faces(mesh, face)
+        settings = context.tool_settings.image_paint
+        unified = settings.unified_paint_settings
+        color = tuple(unified.color if unified.use_unified_color or settings.brush is None else settings.brush.color)
+        point = {"name": "", "location": (0.0, 0.0, 0.0), "mouse": coord, "mouse_event": coord, "pressure": 1.0,
+                 "size": 10.0, "time": 0.0, "is_start": True, "x_tilt": 0.0, "y_tilt": 0.0}
+        with fill.only_faces(obj, faces), brushes.using(context, 'FILL') as brush:
+            brush.color = color
+            bpy.ops.paint.image_paint(stroke=[point])
+        return {'FINISHED'}
+
+
+class DaskFillPartTool(WorkSpaceTool):
+    bl_space_type = 'VIEW_3D'
+    bl_context_mode = 'PAINT_TEXTURE'
+    bl_idname = "dasktoon.fill_part"
+    bl_label = "Fill Part"
+    bl_description = "Click a part of the model to fill it with the brush colour, on the active paint layer"
+    bl_icon = "brush.paint_texture.fill"
+    bl_keymap = (("dasktoon.paint_fill_part", {"type": 'LEFTMOUSE', "value": 'PRESS'}, None),)
+
+
 class DASKTOON_UL_paint_layers(UIList):
     def draw_item(self, _context, layout, _data, item, _icon, _active_data, _active_propname, _index):
         row = layout.row(align=True)
@@ -202,7 +277,16 @@ def draw_layers(layout, image):
 
 def draw_texture_slots(self, context):
     """Appended to Blender's Texture Slots panel (3D texture paint)."""
-    draw_layers(self.layout, paint_image(context))
+    image = paint_image(context)
+    if image is None:
+        self.layout.operator("dasktoon.paint_start", text="Start Painting", icon='BRUSH_DATA')
+        return
+    draw_layers(self.layout, image)
+
+
+def draw_material_menu(self, _context):
+    """Appended to the material slots' menu, after Use DaskToon Shader."""
+    self.layout.operator("dasktoon.paint_start", text="Start Painting", icon='BRUSH_DATA')
 
 
 def draw_image_panel(self, context):
@@ -220,8 +304,14 @@ def _composite_all(*_args):
         layers.composite()
 
 
+@persistent
+def _save_painted(*_args):
+    from dasktoon_paint import saving
+    saving.save_painted()
+
+
 _HANDLERS = ((bpy.app.handlers.load_post, _composite_all), (bpy.app.handlers.undo_post, _composite_all),
-             (bpy.app.handlers.redo_post, _composite_all))
+             (bpy.app.handlers.redo_post, _composite_all), (bpy.app.handlers.save_pre, _save_painted))
 
 classes = (
     DaskPaintLayer,
@@ -231,6 +321,8 @@ classes = (
     DASKTOON_OT_paint_layer_move,
     DASKTOON_OT_paint_layer_merge_down,
     DASKTOON_OT_paint_layers_flatten,
+    DASKTOON_OT_paint_start,
+    DASKTOON_OT_paint_fill_part,
     DASKTOON_UL_paint_layers,
 )
 
@@ -241,8 +333,11 @@ def register():  # bl_ui registers the classes first
     bpy.types.Image.dasktoon_layers = CollectionProperty(type=DaskPaintLayer, name="Paint Layers")
     bpy.types.Image.dasktoon_layer_index = IntProperty(name="Active Layer", min=0,
                                                        description="The paint layer strokes go to")
+    from .properties_material import MATERIAL_MT_context_menu
     VIEW3D_PT_slots_projectpaint.append(draw_texture_slots)
     IMAGE_PT_image_properties.append(draw_image_panel)
+    MATERIAL_MT_context_menu.append(draw_material_menu)
+    bpy.utils.register_tool(DaskFillPartTool, after={"builtin.brush"}, separator=True)
     for handlers, handler in _HANDLERS:
         if handler not in handlers:
             handlers.append(handler)
@@ -254,6 +349,9 @@ def unregister():
     for handlers, handler in _HANDLERS:
         if handler in handlers:
             handlers.remove(handler)
+    from .properties_material import MATERIAL_MT_context_menu
+    bpy.utils.unregister_tool(DaskFillPartTool)
+    MATERIAL_MT_context_menu.remove(draw_material_menu)
     IMAGE_PT_image_properties.remove(draw_image_panel)
     VIEW3D_PT_slots_projectpaint.remove(draw_texture_slots)
     del bpy.types.Image.dasktoon_layer_index
