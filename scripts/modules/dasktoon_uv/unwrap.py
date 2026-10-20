@@ -235,6 +235,50 @@ def _share(meshes, keys, key, skip):
     return (uv_area / world_area) ** 0.5 if world_area > 0 else 0.0
 
 
+BIG_SHARE = 0.7  # the largest islands making up this share of a set's area stay upright and in place
+
+
+def _pin(obj, faces):
+    """Pin the UV corners of `faces` (and unpin the others)."""
+    layer = obj.data.uv_layers.active
+    layer.pin_ensure()
+    flags = np.zeros(len(obj.data.loops), dtype=bool)
+    for f in faces:
+        flags[list(obj.data.polygons[f].loop_indices)] = True
+    layer.pin.foreach_set("value", flags)
+
+
+def _pack_upright(context, meshes, keys, key, skip, tight, margin, labels, faces_of):
+    """Pack a set with its islands upright, then pack its small islands again round the large ones (locked), turned by
+    quarter turns where that fits them better: the face, torso and limbs stay upright, the small pieces fill gaps."""
+    _pack(context, meshes, keys, key, skip, tight, margin, rotate=False)
+    islands = []
+    for obj in meshes:
+        uv = get_uv(obj)
+        for group in seams_.groups(obj.data, labels[obj], faces_of[obj]):
+            group = [f for f in group if keys[obj][f] == key and f not in skip[obj]]
+            if group:
+                islands.append((_area(uv, obj.data, group), obj, group))
+    total = sum(area for area, _obj, _group in islands)
+    if total <= 0 or len(islands) < 2:
+        return
+    big, running = {obj: [] for obj in meshes}, 0.0
+    for area, obj, group in sorted(islands, key=lambda item: -item[0]):
+        if running >= BIG_SHARE * total:
+            break
+        big[obj] += group
+        running += area
+    for obj in meshes:
+        _pin(obj, big[obj])
+    for obj in meshes:
+        select_faces(obj, [f for f, k in enumerate(keys[obj]) if k == key and f not in skip[obj]])
+    with editing(context, meshes):
+        bpy.ops.uv.pack_islands(rotate=True, rotate_method='CARDINAL', scale=True, margin_method='FRACTION',
+                                margin=margin, pin=True, pin_method='LOCKED', shape_method=SHAPES[tight])
+    for obj in meshes:
+        _pin(obj, [])
+
+
 def _pack(context, meshes, keys, key, skip, tight, margin, rotate):
     for obj in meshes:
         select_faces(obj, [f for f, k in enumerate(keys[obj]) if k == key and f not in skip[obj]])
@@ -302,8 +346,8 @@ def unwrap(context, meshes, rig=None, tight=True, sets=False):
     if sets:
         keys = {obj: face_set[obj].tolist() for obj in meshes}
         present = sorted({k for obj in meshes for k in keys[obj]})
-        for key in present:  # upright islands: packed without turning
-            _pack(context, meshes, keys, key, skip, tight, MARGIN, rotate=False)
+        for key in present:  # upright islands; the small ones may turn to fill gaps
+            _pack_upright(context, meshes, keys, key, skip, tight, MARGIN, labels, faces_of)
         shares = {sets_.NAMES[k]: _share(meshes, keys, k, skip) for k in present}
         wanted = {name: (sets_.FACE_SHARPNESS if name == 'FACE' else 1.0) for name in shares}
         # One sharpness for the character; the set that needs the most pixels for it gets the largest size.
@@ -312,7 +356,8 @@ def unwrap(context, meshes, rig=None, tight=True, sets=False):
             name = sets_.NAMES[key]
             sizes[name] = sets_.size_for(density * wanted[name], shares[name])
             if sizes[name] < sets_.MAX_SIZE:  # the gap between islands in pixels of the set's own size
-                _pack(context, meshes, keys, key, skip, tight, sets_.MARGIN_PIXELS / sizes[name], rotate=False)
+                _pack_upright(context, meshes, keys, key, skip, tight, sets_.MARGIN_PIXELS / sizes[name], labels,
+                              faces_of)
     else:
         keys = {obj: _material_keys(obj) for obj in meshes}
         for material in {key for obj in meshes for key in keys[obj]}:
