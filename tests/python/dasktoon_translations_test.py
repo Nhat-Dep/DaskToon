@@ -80,6 +80,7 @@ TRANSLATED = [
     "scripts/modules/dasktoon_uv/seams.py",
     "scripts/modules/dasktoon_uv/unwrap.py",
     "scripts/modules/dasktoon_uv/transfer.py",
+    "scripts/modules/dasktoon_uv/sets.py",
     "scripts/startup/bl_ui/dasktoon_uv.py",
     "scripts/modules/dasktoon_rig/chains.py",
     "scripts/modules/dasktoon_rig/parts.py",

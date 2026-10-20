@@ -449,6 +449,18 @@ VI = {
     "Anime Unwrap: %d meshes, %d mirrored faces%s": "Trải UV anime: %d lưới, %d mặt đối xứng%s",
     ", the old UV maps kept": ", giữ lại bản đồ UV cũ",
     "Tight Packing": "Xếp thật kín",
+    "Pictures": "Ảnh",
+    "How the UV squares and pictures are shared out": "Cách chia ô UV và ảnh",
+    "By Part (Game)": "Theo bộ phận (kiểu game)",
+    "Hair, Body and Face sets as in big games: one square and one colour picture per set, islands upright, the face "
+    "twice as sharp (needs a DaskToon rig)":
+        "Bộ Tóc, Thân, Mặt như các game lớn: mỗi bộ một ô UV và một ảnh màu, mảng đứng thẳng, mặt nét gấp đôi (cần khung "
+        "DaskToon)",
+    "By Material": "Theo vật liệu",
+    "One square per material, islands turned to pack tighter": "Mỗi vật liệu một ô UV, mảng được xoay để xếp kín hơn",
+    "Pictures by part: %s": "Ảnh theo bộ phận: %s",
+    "Pictures by part need a DaskToon rig: unwrapped by material":
+        "Ảnh theo bộ phận cần khung DaskToon: đã trải theo vật liệu",
     "Pack by the islands' exact shapes: the least empty space, but slow (up to a minute on a character)":
         "Xếp theo đúng hình từng mảng: ít chỗ trống nhất, nhưng chậm (tới cả phút với một nhân vật)",
     "Make the mesh ready to paint: UV map, a picture of each anime material's colour, anime brushes":

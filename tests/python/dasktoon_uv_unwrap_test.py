@@ -208,7 +208,7 @@ class OperatorTest(unittest.TestCase):
         bpy.ops.wm.read_factory_settings(use_empty=True)
         bpy.ops.mesh.primitive_uv_sphere_add()
         obj = bpy.context.active_object
-        self.assertEqual(bpy.ops.dasktoon.uv_unwrap_anime(), {'FINISHED'})
+        self.assertEqual(bpy.ops.dasktoon.uv_unwrap_anime(tight=False), {'FINISHED'})  # no rig: by material
         self.assertEqual([layer.name for layer in obj.data.uv_layers], ["UVMap" + unwrap.OLD, "UVMap"])
         self.assertTrue(obj.data.uv_layers["UVMap"].active_render)
         self.assertEqual(obj.mode, 'OBJECT')
@@ -218,7 +218,7 @@ class OperatorTest(unittest.TestCase):
         bpy.ops.mesh.primitive_uv_sphere_add()
         obj = bpy.context.active_object
         bpy.ops.object.mode_set(mode='EDIT')
-        self.assertEqual(bpy.ops.dasktoon.uv_unwrap_anime(), {'FINISHED'})
+        self.assertEqual(bpy.ops.dasktoon.uv_unwrap_anime(tight=False), {'FINISHED'})
         self.assertEqual(obj.mode, 'EDIT')
         bpy.ops.object.mode_set(mode='OBJECT')
         self.assertEqual(len(obj.data.uv_layers), 2)
