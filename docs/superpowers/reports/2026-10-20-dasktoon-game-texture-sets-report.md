@@ -64,6 +64,12 @@ Kết quả, xếp thật kín:
 4. Ảnh rất phí chỗ khi mọi mảng đều không được xoay. Nay xếp hai lượt: Mặt của tdt từ 34% lên 55%, Thân của filie từ 50%
    lên 56%.
 
+5. **Ảnh tô nằm trong tệp riêng mà Blender chưa nạp** bị coi như không có ảnh. tdt có ảnh tô thật cho da và quần áo,
+   nhưng ảnh màu chung chỉ lấy màu mặc định (toàn màu da), và cả Trải UV anime theo vật liệu (đã đẩy lên trước đó) cũng
+   không chuyển ảnh đó sang UV mới. Nay ảnh được tự nạp khi cần. Lỗi này lộ ra khi bạn hỏi vì sao ảnh "cầu vồng": màu cầu
+   vồng là ảnh thử tôi tô lên để kiểm tra việc chuyển hình, và nó che mất việc ảnh thật bị bỏ qua. Ảnh màu thật của tdt sau
+   khi sửa: `real-model/game-sets/tdt_real_colours_body.png`, `_face.png`, `_hair.png` (trong máy).
+
 Ảnh chụp đầu tiên bằng Workbench trông như ảnh màu chung bị xáo trộn. Đó là do Workbench hiện nhầm một ảnh khác trong vật
 liệu; chụp qua shader thật thì khớp. Phép so từng mặt lưới cũng cho thấy ảnh màu chung đúng ở 92–100% các mặt.
 

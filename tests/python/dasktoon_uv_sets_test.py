@@ -174,6 +174,18 @@ class SharedMaterialTest(unittest.TestCase):
             self.assertEqual(socket.links[0].from_node.image, atlases[name], obj.name)
 
 
+class UnloadedColourTest(unittest.TestCase):
+    def test_a_colour_texture_not_read_yet_is_the_colour_source(self):
+        bpy.ops.wm.read_factory_settings(use_empty=True)
+        mat = bpy.data.materials.new("Cloth")
+        image = ut.file_picture("Cloth Tex")
+        self.assertFalse(image.has_data)
+        node = mat.node_tree.nodes.new("ShaderNodeTexImage")
+        node.image = image
+        mat.node_tree.links.new(node.outputs["Color"], start.anime_node(mat).inputs["Base Color"])
+        self.assertEqual(sets.colour_source(mat), ('IMAGE', image))
+
+
 class HeadPiecesTest(unittest.TestCase):
     def test_hair_in_the_body_mesh_goes_to_hair_and_eye_pieces_to_the_face(self):
         # tdt's hair is modelled in its body mesh (its locks Recognize made rigid accessories): it filled the face set.

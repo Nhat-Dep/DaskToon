@@ -8,6 +8,7 @@ the face one island, the head cut at the back, the face with more pixels than th
 
 import os
 import sys
+import tempfile
 import unittest
 
 import bpy
@@ -222,6 +223,37 @@ class OperatorTest(unittest.TestCase):
         self.assertEqual(obj.mode, 'EDIT')
         bpy.ops.object.mode_set(mode='OBJECT')
         self.assertEqual(len(obj.data.uv_layers), 2)
+
+
+def file_picture(name, size=64):
+    """A picture saved to a file and opened again, not read yet (as a texture is before anything shows it)."""
+    path = os.path.join(tempfile.mkdtemp(prefix="dt_uv_file_"), name + ".png")
+    image = bpy.data.images.new(name, size, size, alpha=True)
+    ys, xs = np.mgrid[0:size, 0:size]
+    px = np.stack([xs / size, ys / size, np.full(xs.shape, 0.3), np.ones(xs.shape)], axis=-1).astype(np.float32)
+    image.pixels.foreach_set(px.ravel())
+    image.filepath_raw = path
+    image.file_format = 'PNG'
+    image.save()
+    bpy.data.images.remove(image)
+    return bpy.data.images.load(path)
+
+
+class UnloadedPictureTest(unittest.TestCase):
+    def test_a_texture_not_read_yet_is_still_carried_over(self):
+        # tdt's textures were files not read yet: they were taken for no picture and left on the old map.
+        bpy.ops.wm.read_factory_settings(use_empty=True)
+        bpy.ops.mesh.primitive_uv_sphere_add(segments=16, ring_count=8)
+        obj = bpy.context.active_object
+        mat = bpy.data.materials.new("Skin")
+        obj.data.materials.append(mat)
+        image = file_picture("Skin Tex")
+        self.assertFalse(image.has_data)
+        from dasktoon_paint import start
+        node = mat.node_tree.nodes.new("ShaderNodeTexImage")
+        node.image = image
+        mat.node_tree.links.new(node.outputs["Color"], start.anime_node(mat).inputs["Base Color"])
+        self.assertEqual(list(transfer.images_of(obj)), [image])
 
 
 class TransferTest(unittest.TestCase):

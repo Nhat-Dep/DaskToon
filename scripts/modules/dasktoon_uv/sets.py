@@ -220,7 +220,7 @@ def colour_source(mat):
         if current.name in seen:
             continue
         seen.add(current.name)
-        if current.bl_idname == 'ShaderNodeTexImage' and current.image is not None and current.image.has_data:
+        if current.bl_idname == 'ShaderNodeTexImage' and transfer.has_pixels(current.image):
             return 'IMAGE', current.image
         if current.bl_idname == 'ShaderNodeRGB':
             return 'FLAT', tuple(current.outputs[0].default_value[:3])

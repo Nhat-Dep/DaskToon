@@ -12,6 +12,19 @@ import numpy as np
 BLEED = 4  # pixels grown round the islands, so filtering at the seams finds colour
 
 
+def has_pixels(image):
+    """True when the picture has pixels, reading a file picture nothing has shown yet (has_data is False until then:
+    tdt's textures were taken for no picture)."""
+    if image is None:
+        return False
+    if image.has_data:
+        return True
+    try:
+        return len(image.pixels) > 0  # reading the pixels loads the file
+    except (RuntimeError, ReferenceError):
+        return False
+
+
 def _pixels(image):
     width, height = image.size
     px = np.empty(width * height * 4, dtype=np.float32)
@@ -93,8 +106,8 @@ def images_of(obj):
         if not faces:
             continue
         for node in mat.node_tree.nodes:
-            if (node.bl_idname == 'ShaderNodeTexImage' and node.image is not None and node.image.has_data
-                    and any(output.is_linked for output in node.outputs)):  # pictures the shader reads
+            if (node.bl_idname == 'ShaderNodeTexImage' and any(output.is_linked for output in node.outputs)
+                    and has_pixels(node.image)):  # pictures the shader reads
                 out.setdefault(node.image, []).extend(faces)
     return out
 
