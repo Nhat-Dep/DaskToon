@@ -62,3 +62,13 @@ Model thật: xem tận mắt như lần trước.
 3. Cỡ ảnh làm tròn lên luỹ thừa của 2: độ nét không bao giờ thấp hơn mức chung, có thể cao hơn tới hai lần.
 4. Mặt nét gấp đôi thân, thay cho 1,5 lần của Trải UV anime theo vật liệu.
 5. Bàn chân, mảng phẳng có hướng lên không rõ thì giữ hướng sau khi trải.
+6. (thêm khi thử model thật) Vùng đầu chia theo mảnh rời: mảnh da nối xuống cổ hoặc chứa cằm và các mảnh nhỏ trước mặt
+   (mắt, lông mày, miệng) vào Mặt; các mảnh khác trên đầu (chỏm tóc, lọn tóc, tai thỏ, nơ, kẹp) vào Tóc. tdt có tóc
+   trong lưới cơ thể và các lọn là phụ kiện cứng: theo vai trò thì cả tóc vào Mặt. Mảnh rời của lưới khác nằm trong
+   vùng đầu cũng theo luật này.
+7. Một vật liệu dùng cho mặt của nhiều bộ, dù ở một lưới hay nhiều lưới, được sao chép cho các bộ dùng ít hơn (luna dùng
+   một vật liệu cho áo và kẹp tóc).
+8. Xếp hai lượt: lượt đầu mọi mảng đứng thẳng; lượt sau ghim các mảng lớn nhất (70% diện tích bộ) và xếp lại mảng nhỏ
+   quanh chúng, được xoay từng 90°. Mảng nhỏ có thể nằm ngang; mặt, thân, tay chân đứng thẳng.
+9. Khối kín (không miệng hở) được cắt thêm ở các cạnh gập trên 60°: lọn tóc hình ống có nắp không còn gập nắp lên ống.
+10. Theo bộ phận, "Xếp thật kín" là cần: xếp nhanh để lại 25–40% ô dùng được (luna), xếp kín 48–76%.
