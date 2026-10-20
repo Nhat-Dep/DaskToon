@@ -37,7 +37,7 @@ class DaskPaintLayer(PropertyGroup):
     opacity: FloatProperty(name="Opacity", default=1.0, min=0.0, max=1.0, subtype='FACTOR', update=_layer_changed,
                            description="How strongly the layer shows")
     blend: EnumProperty(name="Blend", items=BLENDS, default='NORMAL', update=_layer_changed,
-                        description="How the layer mixes with the layers under it")
+                        translation_context="DaskToon", description="How the layer mixes with the layers under it")
     hide: BoolProperty(name="Hide", update=_layer_changed, description="Hide the layer (strokes still go to it)")
 
 
@@ -210,9 +210,13 @@ class DASKTOON_OT_paint_fill_part(Operator):
         color = tuple(unified.color if unified.use_unified_color or settings.brush is None else settings.brush.color)
         point = {"name": "", "location": (0.0, 0.0, 0.0), "mouse": coord, "mouse_event": coord, "pressure": 1.0,
                  "size": 10.0, "time": 0.0, "is_start": True, "x_tilt": 0.0, "y_tilt": 0.0}
+        tool = context.workspace.tools.from_space_view3d_mode('PAINT_TEXTURE', create=False)
+        tool_before = tool.idname if tool is not None else ""  # read now: going back to the brush changes it
         with fill.only_faces(obj, faces), brushes.using(context, 'FILL') as brush:
             brush.color = color
             bpy.ops.paint.image_paint(stroke=[point])
+        if tool_before == DaskFillPartTool.bl_idname:
+            bpy.ops.wm.tool_set_by_id(name=DaskFillPartTool.bl_idname)  # going back to the brush chose its tool
         return {'FINISHED'}
 
 
@@ -224,6 +228,17 @@ class DaskFillPartTool(WorkSpaceTool):
     bl_description = "Click a part of the model to fill it with the brush colour, on the active paint layer"
     bl_icon = "brush.paint_texture.fill"
     bl_keymap = (("dasktoon.paint_fill_part", {"type": 'LEFTMOUSE', "value": 'PRESS'}, None),)
+
+    @staticmethod
+    def draw_settings(context, layout, _tool):
+        settings = context.tool_settings.image_paint
+        unified = settings.unified_paint_settings
+        owner = unified if unified.use_unified_color or settings.brush is None else settings.brush
+        layout.prop(owner, "color", text="")
+        image = paint_image(context)
+        if image is not None and len(image.dasktoon_layers):
+            layer = image.dasktoon_layers[min(image.dasktoon_layer_index, len(image.dasktoon_layers) - 1)]
+            layout.label(text=layer.name, icon='RENDERLAYERS', translate=False)
 
 
 class DASKTOON_UL_paint_layers(UIList):
@@ -269,10 +284,10 @@ def draw_layers(layout, image):
         column.prop(layer, "opacity")
         if layer.hide:
             column.label(text="The active layer is hidden: strokes on it do not show", icon='ERROR')
-    row = box.row(align=True)
-    row.operator("dasktoon.paint_layer_duplicate", text="Duplicate", icon='DUPLICATE').image = name
-    row.operator("dasktoon.paint_layer_merge_down", text="Merge Down", icon='TRIA_DOWN_BAR').image = name
-    row.operator("dasktoon.paint_layers_flatten", text="Flatten", icon='IMAGE_DATA').image = name
+    column = box.column(align=True)
+    column.operator("dasktoon.paint_layer_duplicate", text="Duplicate", icon='DUPLICATE').image = name
+    column.operator("dasktoon.paint_layer_merge_down", text="Merge Down", icon='TRIA_DOWN_BAR').image = name
+    column.operator("dasktoon.paint_layers_flatten", text="Flatten", icon='IMAGE_DATA').image = name
 
 
 def draw_texture_slots(self, context):

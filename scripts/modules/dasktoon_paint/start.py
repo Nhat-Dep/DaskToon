@@ -10,6 +10,7 @@ import numpy as np
 from mathutils import Color
 
 SIZE = 2048  # enough for a 1.6 m character's whole body (spec, ruling 6)
+ISLAND_MARGIN = 0.01  # about 20 pixels at 2048: a fill's bleed over the seams stays off the next island
 ANIME = ('ShaderNodeAnimeCharacter', 'ShaderNodeDaskCel')  # DaskToon's shaders, as dasktoon_material_convert
 
 
@@ -34,7 +35,7 @@ def ensure_uv(context, obj):
     with context.temp_override(active_object=obj, object=obj, selected_objects=[obj], selected_editable_objects=[obj]):
         bpy.ops.object.mode_set(mode='EDIT')
         bpy.ops.mesh.select_all(action='SELECT')
-        bpy.ops.uv.smart_project()
+        bpy.ops.uv.smart_project(island_margin=ISLAND_MARGIN)
         bpy.ops.object.mode_set(mode=mode if mode != 'EDIT' else 'OBJECT')
     return True
 

@@ -1879,6 +1879,13 @@ VI_CONTEXT = {
         "Edge Loops at the Knees and Elbows": "Vòng cạnh ở gối và khuỷu tay",
         "Eyes": "Mắt",
         "Mouth": "Miệng",
+        # The paint layers' blend modes
+        "Blend": "Hoà trộn",
+        "Normal": "Thường",
+        "Multiply": "Nhân",
+        "Add": "Cộng",
+        "Screen": "Sáng",
+        "Overlay": "Phủ",
         "Project": "Dự án",
         "Chains": "Số chuỗi",
         # The Check's test poses and Show (Blender's "Wave" is the modifier, its "Show" is "Hiển thị").
