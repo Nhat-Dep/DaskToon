@@ -79,6 +79,31 @@ Nhờ vậy nhánh để riêng `dasktoon-spring-collide-on-reset` (lò xo đẩ
 - Đã gộp master vào nhánh, cả bộ kiểm tra đạt trên bản VS 2026, đã đẩy lên GitHub (0807fb6).
 - **Chưa gộp vào master**: chờ bạn quyết. Bản cài VS 2026 hiện đang chứa bản sửa này; bản vc17 không có.
 
+## 5. Buổi sáng 2026-10-20 (theo các câu trả lời của bạn)
+
+**Gộp nhánh lò xo, dùng bản VS 2026** (c26b7d3). Từ nay mọi phép thử chạy bằng
+`D:uild_windows_x64_vc18_Releasein\Release\DaskToon.exe`; bản vc17 cũ không còn khớp mã nguồn. Cả bộ kiểm tra (80
+tệp, có 8 tệp Unity) đều đạt trên bản này.
+
+**Thử cả quy trình với tính năng mới** trên pl1 (bản sao): tự gắn khung (có sửa chỗ gập) → Dùng shader DaskToon →
+**Nặn biểu cảm mắt** → một đoạn ngồi + nhắm mắt bằng **Key Pose** → **Xuất sang engine** vào dự án Unity thử. Trong Unity:
+có DaskToonCorrective với 8 khớp, lưới gộp có 13 blendshape; phát đoạn phim qua Animator (Humanoid): gối khi ngồi 99,2
+theo đoạn phim, 95,6 theo tư thế thật Unity tính lại (chênh do hệ cơ Humanoid), hông 92,7 / 93,0, nhắm mắt 0 → 100 → 0.
+Lỗi lộ ra và đã sửa (a4c8ec4): vật liệu nằm trong ô vật liệu nhưng không mặt nào dùng làm việc bake báo "bake failed" (và
+có thể bake hỏng nếu lưới đầu tiên không có mặt nào dùng nó); nay chỉ tính lưới có mặt dùng vật liệu đó.
+
+**Thêm tư thế sửa chỗ gập** (8fab07c): gối gập sâu 150° (quỳ), khuỷu gập sâu 140°, giơ tay lên. Tầng 90° nhạt dần khi
+tầng sâu bật lên; Unity tính y hệt (bộ script phiên bản 7). Trên tdt: gối giữ mặt trước tròn ở 120°, 135°, 150°; giơ tay
+thì vai đầy lên nhưng nách phình ra. Lỗi lộ ra và đã sửa: lưới có bộ đối xứng Mirror nhận phần sửa của một nửa rồi chép
+sang nửa kia (ống tay lệch 0,48 m) — nay lưới có Mirror không có phần sửa.
+
+**Miệng A I U E O cho model có mảnh miệng**: không model nào của bạn có miệng mở được. Miệng filie là một nếp gấp của
+mặt kín, các mảnh rời chỉ là tấm nằm khuất bên trong; pl1 vẽ miệng; RGforGame chỉ có chấm nhỏ. Shape key không mở được
+mặt kín. Điều làm được (61c886e): các tấm trong miệng filie cho biết miệng nằm đâu, nên **joy** của filie cũng nhếch
+khoé miệng.
+
+**Tóc dài**: chưa có model. D:\gameddl.blend chỉ là phần thân trên tóc ngắn, không phải tóc dài.
+
 ## Các quyết định đã tự chọn
 
 | Quyết định | Nếu sai thì sao |
@@ -90,7 +115,9 @@ Nhờ vậy nhánh để riêng `dasktoon-spring-collide-on-reset` (lò xo đẩ
 | "Gần như trống" (dưới 15%) cũng tính là trống | Shape key cố ý làm nhẹ có thể bị thay; nút hoàn tác được và có báo tên |
 | Nặn mắt bằng ép dẹt, kéo cả da dưới mắt | Quanh mắt nhắm hơi phẳng đi (thấy dưới đèn studio, không thấy với đổ bóng toon) |
 | Lấp và nặn là nút bấm, không tự chạy khi gắn khung | Phải bấm tay một lần |
-| Miệng: chỉ nụ cười cho joy khi miệng vẽ trên da; không làm miệng há | A I U E O vẫn cần nặn tay hoặc dùng miệng 2D |
+| Miệng: chỉ nụ cười cho joy (miệng vẽ hoặc miệng làm bằng tấm bên trong); không làm miệng há | A I U E O vẫn cần nặn tay hoặc dùng miệng 2D |
+| Giữ phần sửa "giơ tay lên" dù nách phình | Muốn bỏ thì tắt Sửa chỗ gập hoặc tắt riêng shape key đó |
+| Lưới có Mirror không có phần sửa chỗ gập | Lưới dựng nửa rồi đối xứng vẫn gập phẳng; áp dụng Mirror trước khi Dựng rig thì có |
 
 ## Kiểm tra
 
