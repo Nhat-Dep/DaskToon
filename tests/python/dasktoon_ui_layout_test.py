@@ -108,7 +108,8 @@ class NoSidebarTest(unittest.TestCase):
             dasktoon = "dasktoon" in module or "DASKTOON" in cls.__name__.upper()
             if not dasktoon:
                 continue
-            if cls.bl_region_type == 'UI' or getattr(cls, "bl_category", "") in {"DaskToon", "ARKit", "Shape Axis"}:
+            guide = module == "bl_ui.dasktoon_guide" and cls.bl_space_type == 'VIEW_3D' and                 getattr(cls, "bl_category", "") == "Guide"  # the one exception, the user's choice of 2026-10-20
+            if (cls.bl_region_type == 'UI' and not guide) or                     getattr(cls, "bl_category", "") in {"DaskToon", "ARKit", "Shape Axis"}:
                 bad.append(cls.__name__)
             if cls.bl_space_type == 'PROPERTIES' and getattr(cls, "bl_context", "") in {"render", "data"} and \
                     getattr(cls, "bl_parent_id", "").startswith("DATA_PT_EEVEE_light"):

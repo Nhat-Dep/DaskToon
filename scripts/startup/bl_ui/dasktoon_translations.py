@@ -413,6 +413,51 @@ VI = {
     "Some expression shape keys move nothing: Fill Empty Expressions":
         "Có hình mẫu biểu cảm không dịch chuyển gì: Lấp biểu cảm còn trống",
     "Expressions ready": "Biểu cảm đã sẵn sàng",
+    # The Guide tab and its steps
+    "Model Check": "Kiểm tra model",
+    "Check Model": "Kiểm tra model",
+    "Check the selected character (or every visible mesh) for what DaskToon's automatic tools need":
+        "Kiểm tra nhân vật đang chọn (hoặc mọi lưới đang hiện) xem đã đủ để các công cụ tự động của DaskToon chạy chưa",
+    "Let DaskToon fix this, then check again": "Để DaskToon tự sửa chỗ này, rồi kiểm tra lại",
+    "Open the guide's page about this in the web browser": "Mở trang hướng dẫn về chỗ này trong trình duyệt",
+    "Read the Guide": "Đọc hướng dẫn",
+    "One result of the Model Check": "Một kết quả của Kiểm tra model",
+    "Fixable": "Sửa được",
+    "Anchor": "Mục",
+    "Model Check: %d to fix": "Kiểm tra model: %d chỗ cần sửa",
+    "Model Check: nothing to fix": "Kiểm tra model: không có gì cần sửa",
+    "Could not fix it: %s": "Không sửa được: %s",
+    "Select the character, or nothing to check every visible mesh":
+        "Chọn nhân vật, hoặc không chọn gì để kiểm tra mọi lưới đang hiện",
+    "Standing": "Tư thế đứng",
+    "After the Rig": "Sau khi gắn khung",
+    "Head and Face": "Đầu và mặt",
+    "Clothes": "Quần áo",
+    "Rigging": "Gắn khung",
+    "Expressions": "Biểu cảm",
+    "Start from File › New Model with the DaskToon Scene: the sun, the camera and the anime engine are set.":
+        "Bắt đầu bằng Tệp › Tạo model với Cảnh DaskToon: mặt trời, máy quay và engine anime đã đặt sẵn.",
+    "Model the body standing on the floor in the middle of the scene, facing the front (-Y), the arms out in a T or "
+    "A pose. Check it now and then while you model.":
+        "Dựng thân đứng trên sàn ở giữa cảnh, quay mặt ra trước (-Y), tay dang theo tư thế chữ T hoặc chữ A. Thỉnh "
+        "thoảng bấm Kiểm tra trong lúc dựng.",
+    "Build each eye of loose pieces in front of the face (the white, the iris, the lashes) or draw it on the face "
+    "texture; draw the mouth on the texture or leave it a crease. Apply a Mirror before rigging.":
+        "Dựng mỗi mắt bằng các mảnh rời trước mặt (lòng trắng, tròng, mi) hoặc vẽ lên ảnh da mặt; vẽ miệng lên ảnh "
+        "hoặc để là một nếp gấp. Áp dụng Mirror trước khi gắn khung.",
+    "Keep the hair a mesh of its own, with its locks as loose pieces: DaskToon sways each lock.":
+        "Để tóc là một lưới riêng, các lọn tóc là mảnh rời: DaskToon cho từng lọn đung đưa.",
+    "Clothes are meshes of their own, a skirt apart from the top; give them faces of 3 or 4 sides.":
+        "Quần áo là các lưới riêng, váy tách khỏi áo; dùng mặt 3 hoặc 4 cạnh.",
+    "Give every mesh a UV map and DaskToon's shader (the material slot menu › Use DaskToon Shader).":
+        "Cho mỗi lưới một bản đồ UV và shader DaskToon (menu ô vật liệu › Dùng shader DaskToon).",
+    "Select the character and use Add › Armature › Anime Humanoid: it rigs, weights and checks in one go.":
+        "Chọn nhân vật rồi dùng Thêm › Khung xương › Khung người anime: gắn khung, trọng số và kiểm tra trong một lần.",
+    "Sculpt Eye Expressions closes the eyes and smiles; Fill Empty Expressions fills the shape keys that move "
+    "nothing.":
+        "Nặn biểu cảm mắt cho nhắm mắt và cười; Lấp biểu cảm còn trống lấp các hình mẫu không dịch chuyển gì.",
+    "File › Export › DaskToon Engine Export writes the model, its rig file and its clips for Unity.":
+        "Tệp › Xuất › Xuất sang engine của DaskToon ghi model, tệp rig và các đoạn phim cho Unity.",
     "Sculpt Eye Expressions": "Nặn biểu cảm mắt",
     "Make blink, blink_L, blink_R, joy and surprised for eyes built from loose pieces in front of the face":
         "Tạo nhắm mắt, nhắm mắt trái, nhắm mắt phải, vui và ngạc nhiên cho mắt làm bằng các mảnh rời đặt trước mặt",

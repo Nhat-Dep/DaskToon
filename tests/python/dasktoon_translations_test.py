@@ -69,6 +69,8 @@ TRANSLATED = [
     "scripts/modules/dasktoon_guide/__init__.py",
     "scripts/modules/dasktoon_guide/checks.py",
     "scripts/modules/dasktoon_guide/fixes.py",
+    "scripts/modules/dasktoon_guide/steps.py",
+    "scripts/startup/bl_ui/dasktoon_guide.py",
     "scripts/modules/dasktoon_rig/chains.py",
     "scripts/modules/dasktoon_rig/parts.py",
     "scripts/modules/dasktoon_rig/weights.py",

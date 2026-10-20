@@ -108,6 +108,8 @@ class EXPORT_SCENE_OT_dasktoon_engine(Operator):
             export_materials=self.export_materials, bake_size=self.bake_size, bake_samples=self.bake_samples,
             merge_meshes=self.merge_meshes)
         rep = dasktoon_export.export_model(context, target, objects, options)
+        from dasktoon_guide import steps
+        context.scene[steps.EXPORTED] = True  # the Guide's last step is done
         targets.remember_target(context.scene, self.directory, self.engine)
         report.show_popup(rep)
         self.report({'WARNING'} if rep.warnings else {'INFO'}, rep.summary())

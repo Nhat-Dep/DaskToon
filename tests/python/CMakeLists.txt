@@ -283,6 +283,7 @@ foreach(dasktoon_test
     dasktoon_expressions_fill_test
     dasktoon_expressions_eyes_test
     dasktoon_guide_checks_test
+    dasktoon_guide_ui_test
     dasktoon_material_convert_test
     dasktoon_export_rig_test
     dasktoon_spring_constraint_test
