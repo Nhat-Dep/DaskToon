@@ -7,6 +7,7 @@ sidebar; Check Model fills the window's list for the selected character, Fix put
 Steps open the first step not done, and Engine Export marks the last one done."""
 
 import os
+import re
 import sys
 import tempfile
 import unittest
@@ -104,6 +105,40 @@ class GuideTest(unittest.TestCase):
         url = ui.page_url('BODY', "facing", language="vi")
         self.assertTrue(url.startswith("file:///"))
         self.assertTrue(url.endswith("/vi/body.html#facing"))
+
+
+class PagesTest(unittest.TestCase):
+    """The pages: a page a step in both languages, a section a check on its step's page, every picture and link a
+    page uses there."""
+    LANGUAGES = ("en", "vi")
+
+    def read(self, language, name):
+        path = os.path.join(ui.PAGES, language, name)
+        self.assertTrue(os.path.exists(path), path)
+        with open(path, encoding="utf-8") as f:
+            return f.read()
+
+    def test_every_step_has_its_page_in_both_languages(self):
+        for language in self.LANGUAGES:
+            for step in steps.IDS + ("index",):
+                self.read(language, step.lower() + ".html")
+
+    def test_every_check_has_its_section_on_its_steps_page(self):
+        for language in self.LANGUAGES:
+            for name, _group, step, _fn, _fixable in checks.CHECKS:
+                self.assertIn('<section id="%s">' % name, self.read(language, step.lower() + ".html"),
+                              (language, name))
+
+    def test_every_picture_and_link_is_there(self):
+        for language in self.LANGUAGES:
+            folder = os.path.join(ui.PAGES, language)
+            for name in os.listdir(folder):
+                for target, anchor in re.findall(r'(?:src|href)="([^"#:]*)(?:#([^"]*))?"', self.read(language, name)):
+                    path = os.path.normpath(os.path.join(folder, target or name))
+                    self.assertTrue(os.path.exists(path), (language, name, target))
+                    if anchor:
+                        with open(path, encoding="utf-8") as f:
+                            self.assertIn('id="%s"' % anchor, f.read(), (language, name, target, anchor))
 
 
 if __name__ == "__main__":

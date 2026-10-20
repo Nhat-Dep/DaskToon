@@ -147,7 +147,7 @@ class VIEW3D_PT_dasktoon_guide_check(DaskGuidePanel, Panel):
 
 
 class VIEW3D_PT_dasktoon_guide_steps(DaskGuidePanel, Panel):
-    bl_label = "Steps"
+    bl_label = "Step by Step"  # not "Steps": Blender translates that one as a number of steps
 
     def draw(self, context):
         from dasktoon_guide import checks, steps

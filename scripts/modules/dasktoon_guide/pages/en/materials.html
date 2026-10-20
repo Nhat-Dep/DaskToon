@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>6. Materials — DaskToon Guide</title>
+<link rel="stylesheet" href="../guide.css">
+</head>
+<body>
+<main>
+<nav><a href="clothes.html">‹ 5. Clothes</a> <a href="index.html">All steps</a> <a href="../vi/materials.html">Tiếng Việt</a> <a href="rig.html">7. Rigging ›</a></nav>
+<h1>6. Materials</h1>
+<p class="lead">What the character is painted with, and how it reaches Unity.</p>
+<section id="uv">
+<h2>UV map</h2>
+<p>Every mesh needs a UV map: textures sit on it, and the Unity export bakes with it. It is listed in the <b>Object Data</b> properties under <b>UV Maps</b>. <b>Fix</b> makes one with <b>Smart UV Project</b>.</p>
+</section>
+<section id="shader">
+<h2>DaskToon&#x27;s shader</h2>
+<p>Every material a face uses needs DaskToon's anime shader: it gives the flat anime shading and the outline, and it is what DaskToon's Unity shader reads. New materials have it already; for imported ones use the material slots' menu › <b>Use DaskToon Shader</b> (or <b>on All Selected</b>). <b>Fix</b> does it for the character.</p>
+</section>
+<section id="unused">
+<h2>No unused materials</h2>
+<p>Remove material slots no face uses, or Unity gets empty materials. <b>Fix</b> removes them.</p>
+</section>
+</main>
+</body>
+</html>

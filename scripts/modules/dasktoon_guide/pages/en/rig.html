@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>7. Rigging — DaskToon Guide</title>
+<link rel="stylesheet" href="../guide.css">
+</head>
+<body>
+<main>
+<nav><a href="materials.html">‹ 6. Materials</a> <a href="index.html">All steps</a> <a href="../vi/rig.html">Tiếng Việt</a> <a href="expressions.html">8. Expressions ›</a></nav>
+<h1>7. Rigging</h1>
+<p class="lead">The rig is the skeleton that moves the character. DaskToon builds it for you.</p>
+<figure><img src="../pictures/rig.png" alt="After the auto rig: at rest, then the left knee and elbow bent; the bend fixes keep the joints round."><figcaption>After the auto rig: at rest, then the left knee and elbow bent; the bend fixes keep the joints round.</figcaption></figure>
+<section id="rig">
+<h2>Rig</h2>
+<p>Select the character (or nothing, for every visible mesh) and use <b>Add › Armature › Anime Humanoid</b>. It finds the body, builds the skeleton, paints the weights, makes the bend fixes and runs the Check, in one go. <b>Fix</b> runs it.</p>
+</section>
+<section id="rig_check">
+<h2>Rig Check</h2>
+<p>The rig's Check (<b>Anime Rig › Check</b>) bends the character in test poses and lists the spots that tear or dent. Look at each and paint the weights there. <b>Fix</b> runs the Check again.</p>
+</section>
+<section id="joints">
+<h2>Edge loops at the knees and elbows</h2>
+<p>Each knee and elbow needs 2 or 3 edge loops, so it bends round and the bend fixes have vertices to move. Add them with <b>Loop Cut</b> (<kbd>Ctrl R</kbd>) and rig again. No <b>Fix</b>: it is modelling.</p>
+</section>
+</main>
+</body>
+</html>

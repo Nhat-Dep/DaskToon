@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2. Body — DaskToon Guide</title>
+<link rel="stylesheet" href="../guide.css">
+</head>
+<body>
+<main>
+<nav><a href="new.html">‹ 1. New Model</a> <a href="index.html">All steps</a> <a href="../vi/body.html">Tiếng Việt</a> <a href="head.html">3. Head and Face ›</a></nav>
+<h1>2. Body</h1>
+<p class="lead">Model the body standing up, the way the auto rig expects to find it. On the floor of the 3D view the red line is the X axis and the green one the Y axis; the front of the scene is -Y, the side the Front view (<kbd>Numpad 1</kbd>) looks at.</p>
+<figure><img src="../pictures/body.png" alt="From the left: standing right (on the floor, in the middle, facing the front, arms out); floating off the middle; turned to the back (its toes point away); arms hanging down."><figcaption>From the left: standing right (on the floor, in the middle, facing the front, arms out); floating off the middle; turned to the back (its toes point away); arms hanging down.</figcaption></figure>
+<section id="size">
+<h2>Size</h2>
+<p>Make the character 0.5 to 3.5 m tall; a person is about 1.6 to 1.8 m. DaskToon and Unity count in metres: a character 100 times too big gets springs, lights and physics 100 times too weak. The height is in the sidebar's <b>Item</b> tab, <b>Dimensions</b> Z. <b>Fix</b> scales the character to 1.6 m about its feet.</p>
+</section>
+<section id="floor">
+<h2>On the floor</h2>
+<p>The soles touch z = 0. Animations put the feet on the game's floor, so a character modelled above it floats. <b>Fix</b> moves it onto the floor.</p>
+</section>
+<section id="middle">
+<h2>In the middle</h2>
+<p>Stand where the red and green lines cross (x = 0, y = 0). The rig mirrors left and right across x = 0, and Unity turns the character about that point. <b>Fix</b> moves it there.</p>
+</section>
+<section id="facing">
+<h2>Facing the front</h2>
+<p>The face and the toes point to -Y, toward the Front view. The rig names the sides by it: a character facing the back gets its left arm called right. DaskToon reads the way it faces from the feet, so give them toes that point forward. <b>Fix</b> turns it to the front.</p>
+</section>
+<section id="pose">
+<h2>T or A pose</h2>
+<p>Model the arms out to the sides: level (a T) or up to 45° below level (an A). The auto rig finds the arms by how far they reach; arms hanging along the body are taken for the body. There is no <b>Fix</b>: pose the arms out in Edit Mode before rigging.</p>
+</section>
+<section id="scale">
+<h2>Even scale</h2>
+<p>Scale objects the same on X, Y and Z, or apply the scale (<b>Object › Apply › Scale</b>). A stretched or mirrored (negative) scale bends the weights and the export. <b>Fix</b> applies it.</p>
+</section>
+<section id="normals">
+<h2>Faces point outward</h2>
+<p>Turn on <b>Overlays › Face Orientation</b>: blue faces point outward, red ones inward. Inward faces make the rig give vertices to the wrong bones, and flip the outline and the shading. <b>Fix</b> turns them outward, like <b>Mesh › Normals › Recalculate Outside</b> in Edit Mode.</p>
+</section>
+</main>
+</body>
+</html>

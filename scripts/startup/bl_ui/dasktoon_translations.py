@@ -415,6 +415,7 @@ VI = {
     "Expressions ready": "Biểu cảm đã sẵn sàng",
     # The Guide tab and its steps
     "Model Check": "Kiểm tra model",
+    "Step by Step": "Từng bước",
     "Check Model": "Kiểm tra model",
     "Check the selected character (or every visible mesh) for what DaskToon's automatic tools need":
         "Kiểm tra nhân vật đang chọn (hoặc mọi lưới đang hiện) xem đã đủ để các công cụ tự động của DaskToon chạy chưa",
@@ -436,7 +437,7 @@ VI = {
     "Rigging": "Gắn khung",
     "Expressions": "Biểu cảm",
     "Start from File › New Model with the DaskToon Scene: the sun, the camera and the anime engine are set.":
-        "Bắt đầu bằng Tệp › Tạo model với Cảnh DaskToon: mặt trời, máy quay và engine anime đã đặt sẵn.",
+        "Bắt đầu bằng Tập Tin › Tạo model với Cảnh DaskToon: mặt trời, máy quay và engine anime đã đặt sẵn.",
     "Model the body standing on the floor in the middle of the scene, facing the front (-Y), the arms out in a T or "
     "A pose. Check it now and then while you model.":
         "Dựng thân đứng trên sàn ở giữa cảnh, quay mặt ra trước (-Y), tay dang theo tư thế chữ T hoặc chữ A. Thỉnh "
@@ -444,7 +445,7 @@ VI = {
     "Build each eye of loose pieces in front of the face (the white, the iris, the lashes) or draw it on the face "
     "texture; draw the mouth on the texture or leave it a crease. Apply a Mirror before rigging.":
         "Dựng mỗi mắt bằng các mảnh rời trước mặt (lòng trắng, tròng, mi) hoặc vẽ lên ảnh da mặt; vẽ miệng lên ảnh "
-        "hoặc để là một nếp gấp. Áp dụng Mirror trước khi gắn khung.",
+        "hoặc để là một nếp gấp. Áp dụng bộ Phản Chiếu Đối Xứng trước khi gắn khung.",
     "Keep the hair a mesh of its own, with its locks as loose pieces: DaskToon sways each lock.":
         "Để tóc là một lưới riêng, các lọn tóc là mảnh rời: DaskToon cho từng lọn đung đưa.",
     "Clothes are meshes of their own, a skirt apart from the top; give them faces of 3 or 4 sides.":
@@ -452,12 +453,12 @@ VI = {
     "Give every mesh a UV map and DaskToon's shader (the material slot menu › Use DaskToon Shader).":
         "Cho mỗi lưới một bản đồ UV và shader DaskToon (menu ô vật liệu › Dùng shader DaskToon).",
     "Select the character and use Add › Armature › Anime Humanoid: it rigs, weights and checks in one go.":
-        "Chọn nhân vật rồi dùng Thêm › Khung xương › Khung người anime: gắn khung, trọng số và kiểm tra trong một lần.",
+        "Chọn nhân vật rồi dùng Thêm › Khung Rối › Khung người anime: gắn khung, trọng số và kiểm tra trong một lần.",
     "Sculpt Eye Expressions closes the eyes and smiles; Fill Empty Expressions fills the shape keys that move "
     "nothing.":
         "Nặn biểu cảm mắt cho nhắm mắt và cười; Lấp biểu cảm còn trống lấp các hình mẫu không dịch chuyển gì.",
-    "File › Export › DaskToon Engine Export writes the model, its rig file and its clips for Unity.":
-        "Tệp › Xuất › Xuất sang engine của DaskToon ghi model, tệp rig và các đoạn phim cho Unity.",
+    "File › Export › Engine Export writes the model, its rig file and its clips for Unity.":
+        "Tập Tin › Xuất Khẩu › Xuất sang engine ghi model, tệp rig và các đoạn phim cho Unity.",
     "Sculpt Eye Expressions": "Nặn biểu cảm mắt",
     "Make blink, blink_L, blink_R, joy and surprised for eyes built from loose pieces in front of the face":
         "Tạo nhắm mắt, nhắm mắt trái, nhắm mắt phải, vui và ngạc nhiên cho mắt làm bằng các mảnh rời đặt trước mặt",

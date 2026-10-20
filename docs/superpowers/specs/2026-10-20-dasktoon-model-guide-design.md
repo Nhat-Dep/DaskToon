@@ -75,3 +75,8 @@ see it in Blender.
    models had both); only an uneven or negative scale breaks the weights and the export. Cost if wrong: none known.
 7. Joints: at least 8 vertices blending across each knee and elbow (a thin tube of the test chibi blends over 6 or 7 at
    its elbow, the regions chibi's limbs pass). Cost if wrong: a low-poly limb that still bends fine gets a warning.
+8. The Steps panel is labelled **Step by Step** ("Từng bước"): Blender's own Vietnamese turns "Steps" into
+   "Số/Phân/Bước" (a number of steps). Cost if wrong: one label.
+9. The pictures are rendered in the Solid look (the look a newcomer models in), without text, by
+   `tools/dasktoon_guide_pictures.py`; the captions in the pages say what each panel shows. Pages name Blender's menus
+   by the names its Vietnamese interface shows (Tập Tin, Khung Rối, Xuất Khẩu...), DaskToon's by DaskToon's.

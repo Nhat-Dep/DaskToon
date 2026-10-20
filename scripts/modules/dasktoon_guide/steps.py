@@ -48,7 +48,7 @@ STEPS = (
          (("dasktoon.sculpt_eye_expressions", n_("Sculpt Eye Expressions"), 'HIDE_OFF'),
           ("dasktoon.fill_empty_expressions", n_("Fill Empty Expressions"), 'SHAPEKEY_DATA'))),
     Step('UNITY', n_("Unity"),
-         n_("File › Export › DaskToon Engine Export writes the model, its rig file and its clips for Unity."),
+         n_("File › Export › Engine Export writes the model, its rig file and its clips for Unity."),
          (("export_scene.dasktoon_engine", n_("Engine Export"), 'EXPORT'),)),
 )
 IDS = tuple(step.id for step in STEPS)

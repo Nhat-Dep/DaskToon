@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2. Cơ thể — Hướng dẫn DaskToon</title>
+<link rel="stylesheet" href="../guide.css">
+</head>
+<body>
+<main>
+<nav><a href="new.html">‹ 1. Tạo model</a> <a href="index.html">Mọi bước</a> <a href="../en/body.html">English</a> <a href="head.html">3. Đầu và mặt ›</a></nav>
+<h1>2. Cơ thể</h1>
+<p class="lead">Dựng cơ thể ở tư thế đứng, đúng như cách công cụ tự gắn khung mong gặp. Trên sàn khung nhìn 3D, đường đỏ là trục X, đường xanh lá là trục Y; phía trước của cảnh là -Y, phía mà góc nhìn Trước (<kbd>phím số 1</kbd>) nhìn vào.</p>
+<figure><img src="../pictures/body.png" alt="Từ trái sang: đứng đúng (trên sàn, ở giữa, quay ra trước, dang tay); lơ lửng và lệch khỏi giữa; quay lưng ra trước (mũi chân chĩa ra sau); tay buông thõng."><figcaption>Từ trái sang: đứng đúng (trên sàn, ở giữa, quay ra trước, dang tay); lơ lửng và lệch khỏi giữa; quay lưng ra trước (mũi chân chĩa ra sau); tay buông thõng.</figcaption></figure>
+<section id="size">
+<h2>Kích thước</h2>
+<p>Cho nhân vật cao từ 0,5 đến 3,5 m; một người cao khoảng 1,6 đến 1,8 m. DaskToon và Unity tính bằng mét: nhân vật to gấp 100 lần thì lò xo, ánh sáng và vật lý yếu đi 100 lần. Chiều cao nằm ở thẻ <b>Phần Tử</b> của thanh bên, dòng Z của <b>Kích Thước/Chiều</b>. Nút <b>Sửa</b> đổi cỡ nhân vật về 1,6 m, giữ nguyên chỗ đặt chân.</p>
+</section>
+<section id="floor">
+<h2>Đứng trên sàn</h2>
+<p>Lòng bàn chân chạm z = 0. Các đoạn chuyển động đặt chân lên sàn của game, nên nhân vật dựng cao hơn sàn sẽ lơ lửng. Nút <b>Sửa</b> đưa nhân vật xuống sàn.</p>
+</section>
+<section id="middle">
+<h2>Ở giữa cảnh</h2>
+<p>Đứng ở chỗ đường đỏ và đường xanh cắt nhau (x = 0, y = 0). Khung xương lấy x = 0 làm đường chia trái phải, và Unity xoay nhân vật quanh điểm đó. Nút <b>Sửa</b> đưa nhân vật vào giữa.</p>
+</section>
+<section id="facing">
+<h2>Quay mặt ra trước</h2>
+<p>Mặt và mũi chân hướng về -Y, phía góc nhìn Trước. Khung xương đặt tên hai bên theo hướng này: nhân vật quay lưng ra trước sẽ bị gọi tay trái là tay phải. DaskToon đọc hướng nhìn qua bàn chân, nên hãy dựng mũi chân chĩa ra trước. Nút <b>Sửa</b> xoay nhân vật ra trước.</p>
+</section>
+<section id="pose">
+<h2>Tư thế chữ T hoặc chữ A</h2>
+<p>Dựng hai tay dang sang hai bên: ngang vai (chữ T) hoặc chếch xuống tới 45° (chữ A). Công cụ tự gắn khung tìm tay qua độ vươn ra ngoài; tay buông sát người sẽ bị coi là thân. Mục này không có nút <b>Sửa</b>: hãy dang tay ra trong Chế Độ Biên Soạn trước khi gắn khung.</p>
+</section>
+<section id="scale">
+<h2>Tỷ lệ đều</h2>
+<p>Đổi cỡ đối tượng đều nhau trên X, Y, Z, hoặc áp dụng tỷ lệ (<b>Đối Tượng › Áp Dụng › Tỷ Lệ</b>). Tỷ lệ bị kéo dãn hoặc lật ngược (số âm) làm sai trọng số và bản xuất. Nút <b>Sửa</b> áp dụng tỷ lệ.</p>
+</section>
+<section id="normals">
+<h2>Mặt hướng ra ngoài</h2>
+<p>Bật <b>Lớp Vẽ Lồng › Chiều Hướng của Mặt</b>: mặt màu xanh hướng ra ngoài, mặt màu đỏ hướng vào trong. Mặt hướng vào trong làm khung xương gán điểm cho nhầm xương, và lật cả viền lẫn bóng. Nút <b>Sửa</b> quay chúng ra ngoài, giống <b>Khung Lưới › Pháp Tuyến › Tính Lại Hướng Ra Ngoài</b> trong Chế Độ Biên Soạn.</p>
+</section>
+</main>
+</body>
+</html>
