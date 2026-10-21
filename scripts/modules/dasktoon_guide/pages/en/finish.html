@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Illustration Finish — DaskToon Guide</title>
+<link rel="stylesheet" href="../guide.css">
+</head>
+<body>
+<main>
+<nav><a href="features.html">‹ All Features</a> <a href="../vi/finish.html">Tiếng Việt</a></nav>
+<h1>Illustration Finish</h1>
+<p class="lead">The finish treats the whole rendered picture like a painter finishing an illustration: tinted shadows and lights, air, soft glow, strokes and paper. It lives in the scene's compositor and every setting is yours to change.</p>
+<section id="panel">
+<h2>Where it is</h2>
+<p>In Properties › Scene, the <b>Illustration Finish</b> panel. Its checkbox in the header turns the finish on. <b>Style</b> picks a style (Default, Early Morning, Sunset, Night, Watercolor, and your own); the <b>+</b> button next to it saves the current settings as a style of your own, shared by every file. <b>Overall Strength</b> says how much of the finish shows: 0 is the picture as rendered.</p>
+<p><b>Show in Viewport</b> chooses which 3D viewports in Rendered shading show the finish.</p>
+</section>
+<section id="groups">
+<h2>The layers</h2>
+<p>Four groups hold twelve layers, each with its own switch and settings. <b>Painting Colors</b>: <b>Shadow and Light Tint</b>, <b>Light Gradient</b>, <b>Saturation and Contrast</b>. <b>Painting Depth</b>: <b>Air</b>, <b>Soft Background</b>, <b>Vignette</b>. <b>Painting Light</b>: <b>Soft Glow</b>, <b>Light Rays</b>, <b>Back Light Wrap</b>. <b>Strokes and Texture</b>: <b>Brush Strokes</b>, <b>Chromatic Aberration</b>, <b>Paper</b>.</p>
+<p><b>Light Gradient</b> follows the Sun when <b>Follow Sun</b> is on, otherwise it uses the angle you set. <b>Soft Background</b> follows the camera's focus when <b>Auto Focus</b> is on, otherwise the focus distance you set. <b>Air</b> and <b>Soft Background</b> read the depth of the picture.</p>
+</section>
+<section id="compositor">
+<h2>The scene's compositor</h2>
+<p>The finish builds its own node group in the scene's compositor. If the scene already has a compositor of its own, a box appears with <b>Add to Compositor</b>: it puts the finish into your nodes.</p>
+</section>
+<section id="lines">
+<h2>Colored lines</h2>
+<p><b>Colored Lines for All Materials</b> gives every outlined material a line in a deep shade of its own colors, instead of one fixed color.</p>
+</section>
+</main>
+</body>
+</html>

@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dự án và model — Hướng dẫn DaskToon</title>
+<link rel="stylesheet" href="../guide.css">
+</head>
+<body>
+<main>
+<nav><a href="features.html">‹ Mọi chức năng</a> <a href="../en/project.html">English</a></nav>
+<h1>Dự án và model</h1>
+<p class="lead">Trong DaskToon mọi file đều thuộc một dự án: một thư mục giữ các model, ảnh của chúng và liên kết tới game của bạn. Tạo mới, Mở và Lưu đều đi qua dự án.</p>
+<section id="start">
+<h2>Màn hình đầu</h2>
+<p>Khi mở, cột trái liệt kê các dự án của bạn (<b>Tạo dự án…</b>, <b>Mở dự án…</b> và các dự án gần đây) và cột phải liệt kê các model của dự án đang chọn, cùng <b>Tạo model…</b>. Bấm một model để mở. <b>Tiếp tục với bản nháp</b> đóng màn hình và cho bạn làm tiếp trên cảnh đang mở mà không cần dự án.</p>
+</section>
+<section id="project">
+<h2>Dự án</h2>
+<p><b>Tạo dự án…</b> hỏi tên và nơi đặt, và có thể gắn luôn một dự án game. Dự án là một thư mục có tệp <code>dasktoon_project.json</code>, thư mục <code>Models</code> cho các model và thư mục <code>Textures</code>. Ảnh nằm ngoài dự án được chép vào <code>Textures</code> khi bạn lưu, nên dự án giữ đủ mọi thứ.</p>
+<p>Menu <b>Dự án</b> trong <b>Tập Tin</b> cho biết dự án đang chọn và game nó gắn tới, và có <b>Cài đặt dự án…</b> (tên, engine game và thư mục của nó; gắn xong thì cài shader vào đó), <b>Xuất model này</b>, <b>Cài lại shader</b> và <b>Mở thư mục dự án</b>. Tạo dự án không cần có dự án game; gắn sau cũng được.</p>
+</section>
+<section id="models">
+<h2>Model</h2>
+<p><b>Tạo model…</b> hỏi tên và điểm bắt đầu: một cảnh DaskToon (có Sun, camera, DaskToon Anime Engine và Standard view transform), một cảnh trống, cảnh đang mở, hoặc bản sao của một model khác. Model được lưu thành <code>Models/&lt;tên&gt;.blend</code>. <b>Các model</b> trong menu <b>Tập Tin</b> liệt kê các model của dự án.</p>
+<p><b>Lưu</b> lưu tại chỗ. <b>Lưu model thành…</b> lưu thành model mới của dự án rồi chuyển sang nó, <b>Lưu bản sao…</b> ghi một bản sao và ở lại file hiện tại, còn <b>Lưu Tịnh Tiến</b> ghi một bản đánh số bên cạnh file.</p>
+</section>
+<section id="draft">
+<h2>Bản nháp</h2>
+<p>Cảnh không thuộc dự án nào, như cảnh mới hoặc file mở từ ngoài, là bản nháp; thanh trên cùng ghi rõ. Lưu bản nháp sẽ hỏi dự án và tên qua <b>Lưu vào dự án</b>, và file gốc không bao giờ bị ghi đè. <b>Lưu bản sao…</b> và <b>Lưu Tịnh Tiến</b> không dùng được cho bản nháp.</p>
+</section>
+</main>
+</body>
+</html>

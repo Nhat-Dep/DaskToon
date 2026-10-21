@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Anime Shader — DaskToon Guide</title>
+<link rel="stylesheet" href="../guide.css">
+</head>
+<body>
+<main>
+<nav><a href="features.html">‹ All Features</a> <a href="../vi/shader.html">Tiếng Việt</a></nav>
+<h1>The Anime Shader</h1>
+<p class="lead">The Anime BSDF node gives a material flat anime shading in one node, with the lighting, rim, outline and color grading as switches.</p>
+<section id="modules">
+<h2>The switches</h2>
+<p>On the <b>Anime BSDF</b> node, the six switches <b>Ambient</b>, <b>Light</b>, <b>AO</b>, <b>Rim</b>, <b>Outline</b> and <b>Grade</b> each turn one part on. A part that is off hides its inputs. <b>Ambient</b> tints the shadows with the World color, <b>Light</b> tints the lit side with the lamps' color, <b>AO</b> darkens creases, <b>Rim</b> adds a light edge, <b>Outline</b> adds the outline (see Outlines) and <b>Grade</b> grades the color (filter, shadow and highlight tint, saturation, brightness, contrast).</p>
+<p><b>Ambient Mode</b> and <b>Light Mode</b> choose how the World and the lamps color the surface: Overlay, hue only, multiply, add, or <b>Pure Cel</b> (Light Mode only), which keeps the cel shading without any color shift.</p>
+</section>
+<section id="shading">
+<h2>Simple and Ramp</h2>
+<p><b>Shading</b> picks how light becomes shadow. <b>Simple</b> gives the inputs <b>Shadow Color</b>, <b>Shadow Threshold</b> and <b>Shadow Softness</b>. <b>Ramp</b> lets you paint the whole transition from shadow to light with a color ramp; a ramp with hard stops gives 2 or 3 flat tones.</p>
+<p>With Ramp, the <b>Style</b> menu applies a ready-made style (Anime 2-Tone, Anime 3-Tone, Soft Painted, Anime Skin (Warm Edge), Manga) and your own styles. The first button next to it saves the ramp as one of your styles, shared by every file; the second turns the Simple sliders into a ramp.</p>
+</section>
+<section id="convert">
+<h2>Use DaskToon Shader</h2>
+<p>For a material that is not DaskToon's yet, open the material slot menu in Properties › Material and choose <b>Use DaskToon Shader</b> (or <b>Use DaskToon Shader on All Selected</b>). The material gets an Anime BSDF with an outline, fed its old color or texture. The old nodes stay in the material.</p>
+<p>A material with a toon setup of its own (colors multiplied by the light) keeps its lit and shadow colors, read with the Sun and World of the current scene.</p>
+</section>
+<section id="combine">
+<h2>Combine Materials</h2>
+<p><b>Combine Materials</b> in the same menu bakes all the material slots of a mesh into one atlas picture and one Anime BSDF material, so the viewport draws faster. Choose the atlas size (1024, 2048 or 4096) and the margin that hides seams. <b>Restore Original Slots</b> puts the earlier slots back.</p>
+</section>
+<section id="engine">
+<h2>The render engine</h2>
+<p>In Properties › Render, <b>DaskToon Anime Engine</b> is available beside the other engines; it renders with EEVEE and shows EEVEE's settings. New files start with the Standard view transform, so colors match the engine.</p>
+</section>
+</main>
+</body>
+</html>

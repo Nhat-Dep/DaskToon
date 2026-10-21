@@ -32,3 +32,7 @@ Mỗi đợt một mục: các trang đã viết, câu hỏi, chỗ không chắ
 
 Trả lời câu hỏi: dùng `<code>` cho tên bộ điều chỉnh là đúng, nay đã ghi vào `rules.md`. Cảnh báo `Material.use_nodes`
 là của Blender 6.0, chưa cần làm gì.
+
+### Claude làm Đợt 2 (2026-10-22)
+
+Trang: shader, nodes, finish, paint, unwrap, project, interface, và ảnh outline, face-shading làm lại bằng EEVEE (`tools/dasktoon_feature_pictures.py`). Tên nút tiếng Việt lấy đúng như giao diện hiện: Blender thắng khi nó có bản dịch riêng (ví dụ AO hiện "THTMT", Ambient "Môi trường", Light "Nguồn/Ánh Sáng/Đèn"), nên vài tên đọc lạ; các tên đó là của Blender, không sửa được trong trang.

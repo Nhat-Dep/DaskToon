@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tô vẽ theo lớp — Hướng dẫn DaskToon</title>
+<link rel="stylesheet" href="../guide.css">
+</head>
+<body>
+<main>
+<nav><a href="features.html">‹ Mọi chức năng</a> <a href="../en/paint.html">English</a></nav>
+<h1>Tô vẽ theo lớp</h1>
+<p class="lead">Tô màu thẳng lên model theo từng lớp, với các bút làm cho anime. Các lớp nằm ngay trong ảnh, nên chế độ Sơn Chất Liệu của Blender dùng được với chúng.</p>
+<section id="start">
+<h2>Bắt đầu tô vẽ</h2>
+<p>Chọn lưới và mở menu của danh sách vật liệu trong Properties › Material, rồi chọn <b>Bắt đầu tô vẽ</b> (nó cũng có trong bảng <b>Khe Chất Liệu</b> khi lưới chưa có khe nào). DaskToon bảo đảm lưới có bản đồ UV, tạo một ảnh cho màu của mỗi vật liệu anime và nối vào shader, thêm các bút anime và chuyển sang <b>Sơn Chất Liệu</b> với <b>Anime Pen</b> đang chọn.</p>
+</section>
+<section id="brushes">
+<h2>Các bút</h2>
+<p><b>Anime Pen</b> vẽ nét cứng, đều, không mờ mép: viền, mắt, mảng phẳng. <b>Anime Blush</b> là lớp phun mờ nhẹ, vẽ nhiều lần thì đậm dần: má hồng và bóng mềm. <b>Anime Fill</b> là bút đổ màu của Blender. Các bút này nằm trong file.</p>
+</section>
+<section id="fill">
+<h2>Đổ màu mảng</h2>
+<p>Công cụ <b>Đổ màu mảng</b> đổ màu bút vào mảng của model dưới con trỏ, trên lớp đang chọn: bấm một lần lên váy, tay áo hay má. Khi bật mặt nạ mặt, nó đổ vào các mặt đang chọn.</p>
+</section>
+<section id="layers">
+<h2>Các lớp</h2>
+<p>Danh sách <b>Lớp vẽ</b> nằm trong bảng <b>Khe Chất Liệu</b> của khung nhìn 3D và trong bảng Image của Image Editor. <b>Thêm lớp</b> thêm một lớp trống ngay trên lớp đang chọn (lần đầu, ảnh gốc thành lớp Base). Mỗi lớp có <b>Độ Đục</b> và chế độ <b>Hoà trộn</b>, và con mắt để ẩn nó; nét vẽ vẫn đi vào lớp đang ẩn nhưng không hiện. Nét vẽ luôn đi vào lớp đang chọn.</p>
+<p><b>Nhân Đôi</b> sao lớp đang chọn, <b>Hợp Nhất Xuống Dưới</b> gộp nó vào lớp bên dưới, <b>Dát Phẳng</b> bỏ các lớp và giữ phần đang hiện. Ảnh đã tô được lưu cùng file. Lớp chỉ dùng được cho ảnh đơn, không dùng cho ảnh lát.</p>
+</section>
+</main>
+</body>
+</html>

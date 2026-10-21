@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Projects and Models — DaskToon Guide</title>
+<link rel="stylesheet" href="../guide.css">
+</head>
+<body>
+<main>
+<nav><a href="features.html">‹ All Features</a> <a href="../vi/project.html">Tiếng Việt</a></nav>
+<h1>Projects and Models</h1>
+<p class="lead">In DaskToon every file belongs to a project: a folder that holds your models, their textures and the link to your game. New, Open and Save all go through it.</p>
+<section id="start">
+<h2>The start screen</h2>
+<p>On start, the left column lists your projects (<b>New Project…</b>, <b>Open Project…</b> and the recent ones) and the right column lists the models of the chosen project, with <b>New Model…</b>. Click a model to open it. <b>Continue as Draft</b> closes the screen and lets you work on the open scene without a project.</p>
+</section>
+<section id="project">
+<h2>A project</h2>
+<p><b>New Project…</b> asks for a name and a place, and optionally a game project to link. The project is a folder with a <code>dasktoon_project.json</code> file, a <code>Models</code> folder for the models and a <code>Textures</code> folder. Textures that lie outside the project are copied into <code>Textures</code> when you save, so the project holds everything.</p>
+<p>The <b>Project</b> menu in <b>File</b> shows the chosen project and the game it is linked to, and has <b>Project Settings…</b> (name, game engine and its folder; linking installs the shaders there), <b>Export This Model</b>, <b>Reinstall Shaders</b> and <b>Open Project Folder</b>. A project does not need a game project when you make it; link one later.</p>
+</section>
+<section id="models">
+<h2>Models</h2>
+<p><b>New Model…</b> asks for a name and where to start: a DaskToon scene (a Sun, a camera, the DaskToon Anime Engine and the Standard view transform), an empty scene, the scene that is open, or a copy of another model. Models are saved as <code>Models/&lt;name&gt;.blend</code>. <b>Models</b> in the <b>File</b> menu lists the models of the project.</p>
+<p><b>Save</b> saves in place. <b>Save Model As…</b> saves a new model of the project and switches to it, <b>Save Copy…</b> writes a copy and stays where you are, and <b>Save Incremental</b> writes a numbered copy beside the file.</p>
+</section>
+<section id="draft">
+<h2>Drafts</h2>
+<p>A scene that belongs to no project, such as a new scene or a file opened from outside, is a draft; the top bar says so. Saving a draft asks for the project and a name through <b>Save to Project</b>, and the original file is never overwritten. <b>Save Copy…</b> and <b>Save Incremental</b> are not available for drafts.</p>
+</section>
+</main>
+</body>
+</html>

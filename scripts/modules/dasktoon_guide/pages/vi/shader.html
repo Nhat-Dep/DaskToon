@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shader anime — Hướng dẫn DaskToon</title>
+<link rel="stylesheet" href="../guide.css">
+</head>
+<body>
+<main>
+<nav><a href="features.html">‹ Mọi chức năng</a> <a href="../en/shader.html">English</a></nav>
+<h1>Shader anime</h1>
+<p class="lead">Node Anime BSDF cho vật liệu đổ bóng anime phẳng trong một node, với ánh sáng, viền sáng, viền và chỉnh màu là các công tắc.</p>
+<section id="modules">
+<h2>Các công tắc</h2>
+<p>Trên node <b>Anime BSDF</b>, sáu công tắc <b>Môi trường</b>, <b>Nguồn/Ánh Sáng/Đèn</b>, <b>THTMT</b>, <b>Vành Mép</b>, <b>Vẽ Nét Viền</b>, <b>Mức chỉnh màu</b> mỗi cái bật một phần. Phần đang tắt thì ẩn các ô nhập của nó. <b>Môi trường</b> nhuộm bóng bằng màu World, <b>Nguồn/Ánh Sáng/Đèn</b> nhuộm phía sáng bằng màu đèn, <b>THTMT</b> làm tối chỗ khuất, <b>Vành Mép</b> thêm viền sáng, <b>Vẽ Nét Viền</b> thêm viền (xem trang Viền), <b>Mức chỉnh màu</b> chỉnh màu (bộ lọc, màu bóng và màu sáng, độ bão hòa, độ sáng, tương phản).</p>
+<p><b>Chế độ môi trường</b> và <b>Chế độ ánh sáng</b> chọn cách World và đèn nhuộm màu bề mặt: Overlay, chỉ sắc, nhân, cộng, hoặc <b>Cel thuần</b> (chỉ có ở Chế độ ánh sáng) giữ đổ bóng cel và không đổi màu.</p>
+</section>
+<section id="shading">
+<h2>Đơn giản và Dải màu</h2>
+<p><b>Tô Bóng</b> chọn cách ánh sáng thành bóng. <b>Đơn Giản</b> cho các ô <b>Màu Bóng Tối</b>, <b>Ngưỡng bóng</b>, <b>Độ mềm bóng</b>. <b>Nâng/Dốc Màu</b> cho bạn vẽ cả đoạn chuyển từ bóng sang sáng bằng dải màu; dải có các điểm cứng cho 2 hoặc 3 tông phẳng.</p>
+<p>Với Ramp, menu <b>Kiểu</b> áp một kiểu có sẵn (Anime 2 tông, Anime 3 tông, Mềm như vẽ, Da anime (viền ấm), Manga) và các kiểu của bạn. Nút thứ nhất cạnh nó lưu dải thành một kiểu của bạn, dùng chung cho mọi file; nút thứ hai đổi các thanh trượt Đơn giản thành một dải.</p>
+</section>
+<section id="convert">
+<h2>Dùng shader DaskToon</h2>
+<p>Với vật liệu chưa phải của DaskToon, mở menu của danh sách vật liệu trong Properties › Material và chọn <b>Dùng shader DaskToon</b> (hoặc <b>Dùng shader DaskToon cho mọi đối tượng đang chọn</b>). Vật liệu có Anime BSDF kèm viền, nhận màu hoặc ảnh cũ. Các node cũ vẫn nằm trong vật liệu.</p>
+<p>Vật liệu có bộ toon riêng (màu nhân với ánh sáng) giữ màu sáng và màu bóng của nó, đọc theo Sun và World của cảnh đang mở.</p>
+</section>
+<section id="combine">
+<h2>Gộp material</h2>
+<p><b>Gộp material</b> trong cùng menu nướng mọi ô vật liệu của một lưới vào một ảnh atlas và một vật liệu Anime BSDF, để khung nhìn vẽ nhanh hơn. Chọn cỡ atlas (1024, 2048 hoặc 4096) và độ lề che đường nối. <b>Khôi phục slot gốc</b> trả các ô cũ về.</p>
+</section>
+<section id="engine">
+<h2>Bộ dựng hình</h2>
+<p>Trong Properties › Render có thêm <b>DaskToon Anime Engine</b> bên cạnh các bộ dựng khác; nó dựng bằng EEVEE và hiện các cài đặt của EEVEE. File mới bắt đầu với Standard view transform để màu khớp với bộ dựng.</p>
+</section>
+</main>
+</body>
+</html>

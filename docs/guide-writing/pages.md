@@ -43,7 +43,7 @@ Mỗi đợt một lần giao, xong đợt nào thì Claude soát, chạy phép 
 
 1. **Đợt thử** (xong, Claude đã soát): `features.html`, dòng dẫn trong `index.html`, `outline.html`,
    `face-shading.html`. Hai ảnh bị gỡ vì hỏng; làm lại ở Đợt 2.
-2. Làm lại ảnh `outline.png`, `face-shading.png` theo `rules.md` mục 5 và đặt lại vào hai trang; `shader.html`,
+2. (xong, Claude làm) Làm lại ảnh `outline.png`, `face-shading.png` theo `rules.md` mục 5 và đặt lại vào hai trang; `shader.html`,
    `nodes.html`, `finish.html`, `paint.html`, `unwrap.html`, `project.html`, `interface.html`.
 3. `anime-rig.html`, `regions.html`, `rig-check.html`, `sway.html`, `eyes-mouth.html`, `expression-tools.html`,
    `controllers.html`.

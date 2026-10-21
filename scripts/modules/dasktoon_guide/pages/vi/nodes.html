@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Các node anime khác — Hướng dẫn DaskToon</title>
+<link rel="stylesheet" href="../guide.css">
+</head>
+<body>
+<main>
+<nav><a href="features.html">‹ Mọi chức năng</a> <a href="../en/nodes.html">English</a></nav>
+<h1>Các node anime khác</h1>
+<p class="lead">Ngoài Anime BSDF, DaskToon có node cho chất liệu, cho từng phần của nhân vật và cho từng bước đổ bóng. Thêm chúng trong Shader Editor bằng <kbd>Shift A</kbd> › <b>DaskToon Anime</b>.</p>
+<section id="materials">
+<h2>Chất liệu</h2>
+<p><b>Gỗ anime</b> (gỗ và tre vẽ tay), <b>Kim loại / giáp anime</b> (kim loại tương phản cao), <b>Vải anime</b> (ánh nhung và đổi màu lụa), <b>Quần tất và lưới anime</b> (tất mỏng và lưới kim cương), <b>Len đan anime</b> (mắt đan và lông tơ), <b>Kính và đá quý anime</b> (lấp lánh và sáng bên trong) và <b>Nước và chất lỏng anime</b> (độ sâu bậc thang, bọt và vân sáng chuyển động).</p>
+</section>
+<section id="character">
+<h2>Bộ phận nhân vật</h2>
+<p><b>Vòng thiên thần</b> vẽ vòng sáng trên tóc. <b>Bóng đổ trên mặt</b> làm mượt và chỉnh hướng bóng mặt, từ bản đồ SDF hoặc từ hướng đầu; ô Light Vector của nó theo Sun của cảnh. <b>Mắt anime</b> vẽ tròng mắt, đồng tử, ánh sáng dưới tròng, bóng mi trên và các điểm lấp lánh. <b>Chỉnh màu ấm/lạnh</b> tăng bão hòa ở mép bóng, nhuộm phía sáng ấm và bóng lạnh. <b>Viền sáng anime</b> thêm viền sáng sắc hoặc mềm. <b>Cel cổ điển</b> là một node cel đơn giản.</p>
+</section>
+<section id="steps">
+<h2>Từng bước</h2>
+<p>Trong <b>Quy trình mô-đun</b>, mỗi phần của Anime BSDF cũng là một node riêng, để bạn tự xếp thứ tự: <b>Đổ bóng cel</b>, <b>Môi trường World</b>, <b>Nhuộm màu đèn</b>, <b>AO khe kẽ</b>, <b>Chỉnh màu</b> và <b>Mực viền</b>. Nên dùng Anime BSDF trừ khi cần thứ tự khác. Xuất sang engine đọc các node Anime BSDF, Classic Cel, Anime Eye và Đổ bóng cel; các node khác hiện trong game bằng Anime BSDF với màu của chúng.</p>
+</section>
+<section id="manga">
+<h2>Manga</h2>
+<p>Menu <b>DaskToon Manga</b> có <b>Manga BSDF</b>, <b>Tram</b> (chấm bán sắc, góc và độ nét), <b>Gạch chéo</b> (nét chì và mực theo nhiều mức) và <b>Nét tốc độ</b> (đường hành động và va chạm).</p>
+</section>
+</main>
+</body>
+</html>

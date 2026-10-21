@@ -95,48 +95,62 @@ def write_image(panels, name):
     print("Saved %s.png: %dx%d (%.1f KB)" % (name, px.shape[1], h, size_kb))
 
 
-def outline_picture():
-    body = gt.good()
+def eevee_scene(world, sun_strength, sun_rotation):
+    """A scene rendered with EEVEE (Workbench draws neither the anime shader nor the outline hull), a Sun and a camera."""
     scene = bpy.context.scene
-    scene.render.engine = 'BLENDER_WORKBENCH'
-    scene.display.shading.light = 'STUDIO'
-    scene.display.shading.color_type = 'MATERIAL'
-    scene.display.shading.show_shadows = False
-    scene.view_settings.view_transform = 'Standard'
-    if scene.world is None:
-        scene.world = bpy.data.worlds.new("World")
-    scene.world.color = (0.82, 0.84, 0.88)
+    scene.render.engine = 'BLENDER_EEVEE'
     scene.render.resolution_x, scene.render.resolution_y = PANEL
     scene.render.resolution_percentage = 100
-
+    scene.render.film_transparent = False
+    scene.render.image_settings.file_format = 'PNG'
+    scene.view_settings.view_transform = 'Standard'
+    scene.eevee.taa_render_samples = 16
+    if scene.world is None:
+        scene.world = bpy.data.worlds.new("World")
+    tu.set_world_color(world)
+    sun = tu.add_sun(sun_strength)
+    sun.rotation_euler = sun_rotation
+    sun.data.use_shadow = False
     cam = bpy.data.objects.new("Camera", bpy.data.cameras.new("Camera"))
+    cam.data.type = 'ORTHO'
+    cam.data.clip_start, cam.data.clip_end = 0.01, 100.0
     scene.collection.objects.link(cam)
     scene.camera = cam
-    stage_floor()
+    return scene, cam
 
+
+def shoot(scene, name):
+    path = os.path.join(WORK, name + ".png")
+    scene.render.filepath = path
+    bpy.ops.render.render(write_still=True)
+    img = bpy.data.images.load(path, check_existing=False)
+    px = np.empty(PANEL[0] * PANEL[1] * 4, dtype=np.float32)
+    img.pixels.foreach_get(px)
+    bpy.data.images.remove(img)
+    return px.reshape(PANEL[1], PANEL[0], 4)
+
+
+def outline_picture():
+    """The test character with the Anime BSDF, without the outline, then with a thick one."""
+    body = gt.good()
+    scene, cam = eevee_scene((0.55, 0.58, 0.65), 2.5, (math.radians(55.0), 0.0, math.radians(-35.0)))
+    cam.data.ortho_scale = 2.4
+    direction = Vector(THREE_QUARTER).normalized()
+    target = Vector((0.0, 0.0, 0.95))
+    cam.location = target + direction * 10.0
+    cam.rotation_euler = (-direction).to_track_quat('-Z', 'Y').to_euler()
     mat = body.material_slots[0].material
     node = mat.node_tree.nodes['Anime BSDF']
+    node.inputs["Base Color"].default_value = SKIN_COLOR
     node.use_outline = True
-    node.inputs["Outline Width"].default_value = 0.003
+    node.inputs["Outline Width"].default_value = 0.012
+    node.use_outline = False
     ot.sync_all(scene)
-
-    comp = ot.outline_material_for(mat)
-    mat.diffuse_color = SKIN_COLOR
-    comp.diffuse_color = INK_COLOR
-
-    mod = body.modifiers.get("DaskToon Outline")
-
-    # Panel 1: without outline
-    if mod:
-        mod.show_viewport = mod.show_render = False
-    panel_before = shoot_workbench((0, 0, 0.95), THREE_QUARTER, 2.6)
-
-    # Panel 2: with outline
-    if mod:
-        mod.show_viewport = mod.show_render = True
-    panel_after = shoot_workbench((0, 0, 0.95), THREE_QUARTER, 2.6)
-
-    write_image([panel_before, panel_after], "outline")
+    before = shoot(scene, "outline_before")
+    node.use_outline = True
+    ot.sync_all(scene)
+    after = shoot(scene, "outline_after")
+    write_image([before, after], "outline")
 
 
 BUMPS = ((0.0, 0.3, 0.45, 0.12, 0.05),
@@ -153,6 +167,7 @@ def face_shading_picture():
     scene.render.resolution_percentage = 100
     scene.render.film_transparent = False
     scene.render.image_settings.file_format = 'PNG'
+    scene.view_settings.view_transform = 'Standard'
     scene.eevee.taa_render_samples = 16
 
     cam = bpy.data.objects.new("Camera", bpy.data.cameras.new("Camera"))
@@ -163,8 +178,8 @@ def face_shading_picture():
     scene.collection.objects.link(cam)
     scene.camera = cam
 
-    tu.set_world_color((0.82, 0.84, 0.88))
-    sun = tu.add_sun(2.5)
+    tu.set_world_color((0.05, 0.06, 0.08))
+    sun = tu.add_sun(3.0)
     sun.rotation_euler = (math.radians(60.0), 0.0, math.radians(-40.0))
     sun.data.use_shadow = False
 

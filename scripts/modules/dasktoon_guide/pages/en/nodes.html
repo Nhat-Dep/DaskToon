@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Other Anime Nodes — DaskToon Guide</title>
+<link rel="stylesheet" href="../guide.css">
+</head>
+<body>
+<main>
+<nav><a href="features.html">‹ All Features</a> <a href="../vi/nodes.html">Tiếng Việt</a></nav>
+<h1>Other Anime Nodes</h1>
+<p class="lead">Besides the Anime BSDF, DaskToon has nodes for materials, for parts of a character, and for single steps of the shading. Add them in the Shader Editor with <kbd>Shift A</kbd> › <b>DaskToon Anime</b>.</p>
+<section id="materials">
+<h2>Materials</h2>
+<p><b>Anime Wood</b> (hand-painted wood and bamboo), <b>Anime Metal / Armor</b> (high-contrast metal), <b>Anime Fabric / Cloth</b> (velvet sheen and silk color shift), <b>Anime Tights & Fishnet</b> (sheer tights and diamond fishnet), <b>Anime Knit & Wool</b> (stitch loops and fuzz), <b>Anime Glass & Gem</b> (sparkle and inner glow) and <b>Anime Water & Liquid</b> (stepped depth, foam and moving caustics).</p>
+</section>
+<section id="character">
+<h2>Character features</h2>
+<p><b>Angel Ring</b> draws the highlight ring on hair. <b>Face Shadow</b> smooths and directs the face shadow, from an SDF map or from the head direction; its Light Vector input follows the Sun of the scene. <b>Anime Eye</b> draws the iris, pupil, glow under the iris, the shadow of the upper lashes and sparkles. <b>Warm/Cool Grade</b> boosts saturation at the edge of the shadow and tints the lit side warm and the shadow cool. <b>Anime Rim</b> adds a crisp or soft rim light. <b>Classic Cel</b> is a plain cel shader node.</p>
+</section>
+<section id="steps">
+<h2>Single steps</h2>
+<p>Under <b>Modular Pipeline</b>, each part of the Anime BSDF is also a node of its own, to build your own order: <b>Cel Shading</b>, <b>World Ambient</b>, <b>Light Tint</b>, <b>Crevice AO</b>, <b>Color Grade</b> and <b>Outline Ink</b>. Prefer the Anime BSDF unless you need a different order. The Engine Export reads the Anime BSDF, Classic Cel, Anime Eye and Cel Shading nodes; the other nodes are shown in the game with the Anime BSDF and their colors.</p>
+</section>
+<section id="manga">
+<h2>Manga</h2>
+<p>The <b>DaskToon Manga</b> menu has <b>Manga BSDF</b>, <b>Screentone</b> (halftone dots, angle and sharpness), <b>Cross-Hatching</b> (pencil and ink hatching in levels) and <b>Speed Lines</b> (action and impact lines).</p>
+</section>
+</main>
+</body>
+</html>

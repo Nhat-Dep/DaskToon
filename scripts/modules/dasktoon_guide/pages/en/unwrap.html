@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Anime Unwrap — DaskToon Guide</title>
+<link rel="stylesheet" href="../guide.css">
+</head>
+<body>
+<main>
+<nav><a href="features.html">‹ All Features</a> <a href="../vi/unwrap.html">Tiếng Việt</a></nav>
+<h1>Anime Unwrap</h1>
+<p class="lead">Anime Unwrap lays out the UV map of a character the way anime and game characters are made: each body part whole, seams on the side you do not see, the face larger.</p>
+<section id="run">
+<h2>Running it</h2>
+<p>Select the meshes of the character and choose <b>Anime Unwrap</b> in the UV menu of the 3D viewport (in Edit Mode too) or in the material slot menu. Painted pictures move to the new UV map, and the old UV maps are kept.</p>
+</section>
+<section id="how">
+<h2>What it does</h2>
+<p>Each body part is unwrapped in one piece (hands and feet are cut at the wrist and the ankle), A closed piece (the head, the torso, an arm, a leg) is cut once, on the side the character hides: the back, under the arms, the inside of the legs. The face gets more room than the rest. The right limbs share the squares of the left ones, so you paint one side.</p>
+</section>
+<section id="pictures">
+<h2>Pictures</h2>
+<p><b>Pictures</b> chooses how squares and pictures are shared. <b>By Part (Game)</b> makes a Hair, a Body and a Face set as in big games: one square and one color picture for each, with sizes that are powers of two. It needs a DaskToon rig; without one the unwrap falls back to one square per material. <b>By Material</b> gives one square per material, with islands turned to pack tighter.</p>
+</section>
+<section id="packing">
+<h2>Packing</h2>
+<p><b>Tight Packing</b> packs by the exact shape of each island: the least empty space, but it takes up to a minute on a character. Switch it off for a quick pack by boxes. Start Painting always packs quickly.</p>
+</section>
+</main>
+</body>
+</html>

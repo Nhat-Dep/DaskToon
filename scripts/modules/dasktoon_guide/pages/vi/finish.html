@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hoàn thiện tranh — Hướng dẫn DaskToon</title>
+<link rel="stylesheet" href="../guide.css">
+</head>
+<body>
+<main>
+<nav><a href="features.html">‹ Mọi chức năng</a> <a href="../en/finish.html">English</a></nav>
+<h1>Hoàn thiện tranh</h1>
+<p class="lead">Hoàn thiện tranh xử lý cả bức ảnh dựng như một họa sĩ hoàn thiện bức minh họa: bóng và sáng được nhuộm màu, không khí, glow mềm, nét cọ và giấy. Nó nằm trong compositor của cảnh và mọi thiết lập do bạn chỉnh.</p>
+<section id="panel">
+<h2>Nó ở đâu</h2>
+<p>Trong Properties › Scene, bảng <b>Hoàn thiện tranh</b>. Ô đánh dấu ở tiêu đề bật hoàn thiện tranh. <b>Kiểu</b> chọn một kiểu (Mặc định, Nắng sớm, Hoàng hôn, Đêm, Màu nước và các kiểu của bạn); nút <b>+</b> bên cạnh lưu thiết lập hiện tại thành kiểu của bạn, dùng chung cho mọi file. <b>Độ mạnh chung</b> là mức hiện của hoàn thiện tranh: 0 là bức ảnh như lúc dựng.</p>
+<p><b>Hiện trong viewport</b> chọn những 3D viewport ở chế độ Rendered nào hiện hoàn thiện tranh.</p>
+</section>
+<section id="groups">
+<h2>Các lớp</h2>
+<p>Bốn nhóm chứa mười hai lớp, mỗi lớp có công tắc và thiết lập riêng. <b>Màu tranh</b>: <b>Màu bóng, màu sáng</b>, <b>Gradient ánh sáng</b>, <b>Bão hòa, tương phản</b>. <b>Chiều sâu tranh</b>: <b>Không khí</b>, <b>Hậu cảnh mềm</b>, <b>Viền Mờ</b>. <b>Ánh sáng tranh</b>: <b>Glow mềm</b>, <b>Tia sáng</b>, <b>Viền sáng ngược sáng</b>. <b>Nét và chất</b>: <b>Nét cọ</b>, <b>Quang Sai Màu</b>, <b>Giấy</b>.</p>
+<p><b>Gradient ánh sáng</b> theo Sun khi bật <b>Theo mặt trời</b>, không thì dùng góc bạn đặt. <b>Hậu cảnh mềm</b> theo điểm lấy nét của camera khi bật <b>Tự lấy nét</b>, không thì dùng khoảng cách lấy nét bạn đặt. <b>Không khí</b> và <b>Hậu cảnh mềm</b> đọc độ sâu của bức ảnh.</p>
+</section>
+<section id="compositor">
+<h2>Compositor của cảnh</h2>
+<p>Hoàn thiện tranh tự dựng một nhóm node trong compositor của cảnh. Nếu cảnh đã có compositor riêng, một khung hiện ra với nút <b>Thêm vào compositor</b>: nó đặt hoàn thiện tranh vào các node của bạn.</p>
+</section>
+<section id="lines">
+<h2>Nét màu</h2>
+<p><b>Nét màu cho mọi material</b> cho mọi vật liệu có viền một nét màu đậm lấy từ chính màu của nó, thay vì một màu cố định.</p>
+</section>
+</main>
+</body>
+</html>

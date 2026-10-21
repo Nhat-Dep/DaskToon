@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Painting in Layers — DaskToon Guide</title>
+<link rel="stylesheet" href="../guide.css">
+</head>
+<body>
+<main>
+<nav><a href="features.html">‹ All Features</a> <a href="../vi/paint.html">Tiếng Việt</a></nav>
+<h1>Painting in Layers</h1>
+<p class="lead">Paint colors straight on the model in layers, with brushes made for anime. The layers live inside the picture, so Blender's own Texture Paint works with them.</p>
+<section id="start">
+<h2>Start Painting</h2>
+<p>Select the mesh and open the material slot menu in Properties › Material, then choose <b>Start Painting</b> (it is also in the <b>Texture Slots</b> panel while the mesh has no slots). DaskToon makes sure the mesh has a UV map, makes a picture of each anime material's color and connects it to the shader, adds the anime brushes and switches to <b>Texture Paint</b> with <b>Anime Pen</b> chosen.</p>
+</section>
+<section id="brushes">
+<h2>Brushes</h2>
+<p><b>Anime Pen</b> draws a hard, even line without a soft edge: outlines, eyes, flat shapes. <b>Anime Blush</b> is a faint soft spray that builds up: blush and soft shading. <b>Anime Fill</b> is Blender's fill brush. These brushes stay in the file.</p>
+</section>
+<section id="fill">
+<h2>Fill Part</h2>
+<p>The <b>Fill Part</b> tool fills the part of the model under the cursor with the brush color, on the active layer: click once on a skirt, a sleeve or a cheek. With the face mask on, it fills the selected faces.</p>
+</section>
+<section id="layers">
+<h2>Layers</h2>
+<p>The <b>Paint Layers</b> list is in the <b>Texture Slots</b> panel of the 3D view and in the Image panel of the Image Editor. <b>Add Layer</b> adds an empty layer above the active one (the first time, the picture becomes the layer Base). Each layer has an <b>Opacity</b> and a <b>Blend</b> mode, and the eye hides it; strokes still go to a hidden layer, but they do not show. Strokes always go to the active layer.</p>
+<p><b>Duplicate</b> copies the active layer, <b>Merge Down</b> merges it into the one below, and <b>Flatten</b> drops the layers and keeps what shows. Painted pictures are saved with the file. Layers work on single pictures, not on tiled ones.</p>
+</section>
+</main>
+</body>
+</html>
