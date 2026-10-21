@@ -15,6 +15,7 @@ DEFAULT_GODOT = r"D:\Godot_v4.7.2-stable_win64.exe\Godot_v4.7.2-stable_win64_con
 SKIP_REASON = "Godot 4 not found (set DASKTOON_GODOT to its console executable)"
 TESTS_GODOT_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "godot")
 RESULT_PREFIX = "DT_RESULT "
+QUIT_AFTER = 5000  # frames: a test script that stops on an error does not reach quit(), and Godot would wait
 PROJECT_FILE = 'config_version=5\n\n[application]\n\nconfig/name="DaskToonTest"\n'
 
 
@@ -56,7 +57,8 @@ def run_script(root, script, data, headless=True):
     args_path = os.path.join(folder, script + ".json")
     with open(args_path, "w", encoding="utf-8") as f:
         json.dump(data, f)
-    _code, output = run(root, ["--script", "res://dt_tests/%s.gd" % script, "--", args_path], headless=headless)
+    _code, output = run(root, ["--quit-after", str(QUIT_AFTER), "--script", "res://dt_tests/%s.gd" % script, "--",
+                               args_path], headless=headless)
     for line in output.splitlines():
         if line.startswith(RESULT_PREFIX):
             return json.loads(line[len(RESULT_PREFIX):]), output

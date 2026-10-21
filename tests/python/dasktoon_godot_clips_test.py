@@ -66,6 +66,27 @@ class ClipsTest(unittest.TestCase):
         bpy.ops.import_scene.gltf(filepath=os.path.join(target.root, "Hero", "Hero.glb"))
         self.assertTrue({"Walk", "Wave"} <= {action.name for action in bpy.data.actions}, list(bpy.data.actions))
 
+    def test_godot_keeps_every_key(self):
+        """Godot's animation optimizer drops keys whose change keeps its direction (a mouth cell going 1, 3, 4): it is
+        turned off in the model's import settings, the user's own settings kept."""
+        rig, objs, _walk, _wave = ct.character_with_clips()
+        folder = tempfile.mkdtemp(prefix="dt_godot_settings_")
+        target, rep = export(rig, objs, folder)
+        path = os.path.join(target.root, "Hero", "Hero.glb.import")
+        with open(path, encoding="utf-8") as f:
+            text = f.read()
+        self.assertIn('"PATH:AnimationPlayer": {"optimizer/enabled": false}', text)
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(text.replace('"PATH:AnimationPlayer": {"optimizer/enabled": false}',
+                                 '"PATH:AnimationPlayer": {"optimizer/enabled": true, "import_tracks/scale": 1}'))
+        export(rig, objs, folder)
+        with open(path, encoding="utf-8") as f:
+            self.assertIn('"PATH:AnimationPlayer": {"optimizer/enabled": false, "import_tracks/scale": 1}', f.read())
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(text.replace("_subresources={", '_subresources={"nodes": {"PATH:Rig": {"x": Resource("uid://a")}}, '))
+        _target, rep = export(rig, objs, folder)
+        self.assertTrue(any("Optimizer" in w for w in rep.warnings), rep.warnings)
+
     def test_without_animation_there_are_no_clips(self):
         rig, objs, _walk, _wave = ct.character_with_clips()
         target, rep = export(rig, objs, include_animation=False)

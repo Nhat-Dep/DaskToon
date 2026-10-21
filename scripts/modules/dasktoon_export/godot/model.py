@@ -6,6 +6,7 @@
 (Godot spec 3). Modifiers are not applied, so shape keys survive and the Geometry Nodes outline hull stays out of the
 file; Godot draws the outline in the shader from DT_OutlineN/W."""
 
+import json
 import os
 import re
 import shutil
@@ -81,18 +82,48 @@ def _set_param(text, line):
     return text.rstrip("\n") + "\n\n[params]\n\n" + line + "\n"
 
 
-def import_settings(existing, fps):
-    """The .glb.import text: Godot's own settings (its uid, the user's choices) kept, the import script set, and the
-    animations read at the scene's frame rate (Godot resamples them at this rate: anime timing must land on frames)."""
+_SUBRESOURCES = re.compile(r"^_subresources=(.*?)(?=^[A-Za-z_][\w/]*=|\Z)", re.M | re.S)
+
+
+PLAYER = "PATH:AnimationPlayer"  # the AnimationPlayer the glTF import makes, in Godot's per-node import settings
+
+
+def _unoptimized(text):
+    """`text` with the optimizer of the model's AnimationPlayer off (it drops keys whose change keeps its direction,
+    such as a mouth cell going 1, 3, 4), or None when the per-node settings hold more than plain values and cannot be
+    read."""
+    found = _SUBRESOURCES.search(text)
+    try:
+        data = json.loads(found.group(1).strip()) if found else {}
+    except ValueError:
+        return None
+    data.setdefault("nodes", {}).setdefault(PLAYER, {})["optimizer/enabled"] = False
+    line = "_subresources=%s" % json.dumps(data, ensure_ascii=False)
+    if found:
+        return text[:found.start()] + line + "\n" + text[found.end():]
+    return _set_param(text, line)
+
+
+def import_settings(existing, fps, animated=False):
+    """(The .glb.import text, True when the animation optimizer could be turned off): Godot's own settings (its uid, the
+    user's choices) kept, the import script set, the animations read at the scene's frame rate (Godot resamples them at
+    this rate: anime timing must land on frames) and kept as they are."""
     text = existing or IMPORT_TEMPLATE % SCRIPT_LINE
     text = _set_param(text, SCRIPT_LINE)
-    return _set_param(text, "animation/fps=%s" % ("%g" % round(fps, 3)))
+    text = _set_param(text, "animation/fps=%s" % ("%g" % round(fps, 3)))
+    if not animated:
+        return text, True
+    unoptimized = _unoptimized(text)
+    return (text, False) if unoptimized is None else (unoptimized, True)
 
 
-def write_import_settings(path, fps):
+def write_import_settings(path, fps, animated=False):
+    """Returns False when the animation optimizer could not be turned off."""
     try:
         with open(path, encoding="utf-8") as f:
             existing = f.read()
     except OSError:
         existing = ""
-    files.write_bytes(path, import_settings(existing, fps).encode("utf-8"))
+    text, ok = import_settings(existing, fps, animated)
+    files.write_bytes(path, text.encode("utf-8"))
+    return ok

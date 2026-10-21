@@ -185,9 +185,9 @@ def _humanoid(objects):
     return len(rigs) == 1 and skeleton.is_humanoid(rigs[0])
 
 
-def _keyed_runtime_parts(rig):
-    """Parts Unity sways at run time whose chain bones also have rotation keys (from Bake Sway): Unity would sway them
-    twice (anime rig spec 9.5)."""
+def keyed_runtime_parts(rig):
+    """Parts the game engine sways at run time whose chain bones also have rotation keys (from Bake Sway): it would
+    sway them twice (anime rig spec 9.5)."""
     import bpy
     from bpy_extras import anim_utils
     from dasktoon_rig import sway
@@ -224,9 +224,9 @@ def _write_rig(target, writer, model_dir, objects, rep, renamed=None):
                           data=rig_json.text(data).encode("utf-8")):
         rep.rig = rel
     rep.scripts = 'INSTALLED' if scripts_install.install_scripts(target, rep.warnings) else 'UP_TO_DATE'
-    for part in _keyed_runtime_parts(rig):
-        rep.warnings.append(rpt_("Part %s sways in Unity, but its bones have sway keys: Unity would sway it twice. Set "
-                                 "Sway in Unity to Baked, or remove the keys") % part)
+    for part in keyed_runtime_parts(rig):
+        rep.warnings.append(rpt_("Part %s sways in the game, but its bones have sway keys: it would sway twice. Set Sway "
+                                 "in the Game to Baked, or remove the keys") % part)
     return rig
 
 

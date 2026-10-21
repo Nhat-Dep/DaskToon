@@ -297,6 +297,7 @@ foreach(dasktoon_test
     dasktoon_export_clips_test
     dasktoon_godot_export_test
     dasktoon_godot_clips_test
+    dasktoon_godot_rig_test
     dasktoon_timing_test
     dasktoon_onion_test
     dasktoon_fast_action_test

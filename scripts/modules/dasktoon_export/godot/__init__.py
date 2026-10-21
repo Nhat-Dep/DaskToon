@@ -50,17 +50,30 @@ def _write_model(context, target, objects, options, rep, material_paths):
     """<name>/<name>.dasktoon.json, then .glb.import (Godot finds both when it imports the model), then the .glb. With
     clips, each is one animation of the model (Godot spec 3); without, the animation playing now is."""
     from dasktoon_animation import clips, timing
-    from .. import _clip_rig, merge
+    from .. import _clip_rig, keyed_runtime_parts, merge, rig_json
     folder = os.path.join(target.root, target.name)
     clip_rig = _clip_rig(objects) if options.include_animation else None
     clip_list = [{"name": clip.name, "loop": clip.use_cyclic, "stepped": timing.has_steps(clip)}
                  for clip in (clips.clips_of(clip_rig) if clip_rig is not None else ()) if clips.has_keys(clip)]
-    data = {"version": DATA_VERSION, "name": target.name, "materials": material_paths, "clips": clip_list}
+    # The meshes the export merges take the Body's name (merge.merged): the rig data names them so.
+    sources = merge.sources(objects) if options.merge_meshes else []
+    rig = rig_json.find_rig(objects)
+    rig_data = rig_json.rig_data(rig, {obj.name: sources[0].name for obj in sources}) if rig is not None else None
+    data = {"version": DATA_VERSION, "name": target.name, "materials": material_paths, "clips": clip_list,
+            "rig": rig_data}
+    if rig_data is not None:
+        rep.rig = "%s/%s.dasktoon.json" % (target.name, target.name)
+        for part in keyed_runtime_parts(rig):
+            rep.warnings.append(rpt_("Part %s sways in the game, but its bones have sway keys: it would sway twice. "
+                                     "Set Sway in the Game to Baked, or remove the keys") % part)
     files.write_bytes(os.path.join(folder, target.name + ".dasktoon.json"),
                       (json.dumps(data, indent=2, ensure_ascii=False) + "\n").encode("utf-8"))
     path = os.path.join(folder, target.name + ".glb")
     render = context.scene.render
-    model.write_import_settings(path + ".import", render.fps / render.fps_base)
+    if not model.write_import_settings(path + ".import", render.fps / render.fps_base, options.include_animation):
+        rep.warnings.append(rpt_("The model's import settings in Godot were edited: turn the Optimizer of the "
+                                 "AnimationPlayer off in Godot's Advanced Import Settings, or it may drop keys (mouth "
+                                 "cells, anime timing)"))
     merging = merge.merged(context, objects) if options.merge_meshes else contextlib.nullcontext((objects, {}))
     with merging as (objects, renamed):
         if renamed:

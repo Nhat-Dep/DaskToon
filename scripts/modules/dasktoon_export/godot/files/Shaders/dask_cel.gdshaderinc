@@ -27,6 +27,8 @@ uniform float strength : hint_range(0.0, 10.0) = 1.0;
 uniform bool use_normal_map = false;
 uniform sampler2D normal_map : hint_normal, filter_linear_mipmap, repeat_enable;
 uniform float normal_strength : hint_range(0.0, 10.0) = 1.0;
+// Moves the UVs of a flat eye or a 2D mouth (dasktoon_rig.gd).
+uniform vec4 uv_transform = vec4(1.0, 1.0, 0.0, 0.0);
 
 group_uniforms Outline;
 uniform bool use_outline = false;
@@ -66,7 +68,7 @@ DTDaskCel dt_settings(vec3 base, vec3 shadow, float threshold, vec3 line) {
 }
 
 void fragment() {
-	vec2 uv = UV;
+	vec2 uv = dt_moved_uv(UV, uv_transform);
 	dt_base = dt_color_input(base_color, base_map, base_map_on, uv).rgb;
 	dt_shadow = dt_color_input(shadow_color, shadow_color_map, shadow_color_map_on, uv).rgb;
 	dt_threshold = dt_float_input(shadow_threshold, shadow_threshold_map, shadow_threshold_map_on, uv);

@@ -130,11 +130,12 @@ class DaskRigPart(PropertyGroup):
     mouth_columns: IntProperty(name="Columns", description="Columns of mouth cells in the atlas texture", default=4,
                                min=1, max=8)
     sway_in_unity: EnumProperty(
-        name="Sway in Unity",
-        description="How the chain sways in Unity",
+        name="Sway in the Game",
+        description="How the chain sways in the game engine (Unity or Godot)",
         items=[
-            ('RUNTIME', "Runtime", "DaskToon's spring bone script sways the chain while the game runs"),
-            ('BAKED', "Baked", "Unity plays the sway baked into the exported animation"),
+            ('RUNTIME', "Runtime", "The game engine sways the chain while the game runs (DaskToon's spring bone script "
+                                   "in Unity, SpringBoneSimulator3D in Godot)"),
+            ('BAKED', "Baked", "The game engine plays the sway baked into the exported animation"),
         ],
         default='RUNTIME',
     )

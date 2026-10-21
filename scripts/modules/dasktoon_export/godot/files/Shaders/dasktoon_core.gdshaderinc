@@ -115,6 +115,18 @@ vec3 dt_light_mode(vec3 c, vec3 light_col, vec3 light_norm, float strength, int 
 	return c;
 }
 
+// Blender's UV (origin at the bottom) of a Godot UV (origin at the top), moved by a UV transform (scale xy, offset zw):
+// how a flat eye or a 2D mouth moves its UVs (DaskToon's dasktoon_rig.gd sets it; Unity: _DT_UVTransform).
+vec2 dt_blender_uv(vec2 uv, vec4 t) {
+	return vec2(uv.x, 1.0 - uv.y) * t.xy + t.zw;
+}
+
+// The moved UV back in Godot's terms, for reading textures.
+vec2 dt_moved_uv(vec2 uv, vec4 t) {
+	vec2 b = dt_blender_uv(uv, t);
+	return vec2(b.x, 1.0 - b.y);
+}
+
 // value x texture when the map is on. Float inputs read the texture's luminance, like Blender's implicit
 // colour-to-float conversion.
 vec4 dt_color_input(vec4 value, sampler2D tex, bool map_on, vec2 uv) {

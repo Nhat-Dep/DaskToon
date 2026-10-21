@@ -8,8 +8,8 @@ applies while it plays a clip, and the bone constraints are in the keys; the par
 as for Unity). The baked keys become NLA tracks named after the clip on every part, which the glTF exporter turns into
 one animation per clip, each clip at a time of its own (the exporter reads a mesh whose shape keys the armature drives
 while it plays the armature's track, with every shape key track playing: clips side by side do not mix; the animations
-start at 0 s all the same); the bone constraints and the drivers of the baked shape keys (a merged mesh's keys follow the
-originals by drivers) are muted meanwhile, so the exporter reads the baked keys. Everything is given back afterwards. The import script makes the looping clips loop and the clips with anime timing
+start at 0 s all the same); the bone constraints and the drivers of the armature and of the baked shape keys (a merged
+mesh's keys follow the originals by drivers) are muted meanwhile, so the exporter reads the baked keys. Everything is given back afterwards. The import script makes the looping clips loop and the clips with anime timing
 step from frame to frame."""
 
 import contextlib
@@ -105,9 +105,12 @@ def _bake_action(name, idb, start, samples):
 
 @contextlib.contextmanager
 def _muted(armature, keys):
-    """The armature's bone constraints and the drivers of `keys` muted meanwhile."""
+    """The armature's bone constraints and drivers (MouthCell's scale follows a driver) and the drivers of `keys`
+    muted meanwhile: what they gave is in the baked keys."""
     saved = [(c, c.mute) for bone in armature.pose.bones for c in bone.constraints]
-    saved += [(d, d.mute) for key in keys if key.animation_data is not None for d in key.animation_data.drivers]
+    for idb in [armature] + list(keys):
+        if idb.animation_data is not None:
+            saved += [(d, d.mute) for d in idb.animation_data.drivers]
     for item, _mute in saved:
         item.mute = True
     try:

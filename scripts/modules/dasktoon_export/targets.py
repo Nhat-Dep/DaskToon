@@ -13,7 +13,7 @@ from bpy.app.translations import pgettext_n as n_
 ENGINES = (
     ('UNITY_URP', n_("Unity 6 (URP)"), n_("Unity 6, Universal Render Pipeline 17.5")),
     ('UNREAL_5', n_("Unreal 5 (coming soon)"), n_("Not supported yet")),
-    ('GODOT_4', n_("Godot 4"), n_("Godot 4.3 or newer, Forward+ or Mobile renderer")),
+    ('GODOT_4', n_("Godot 4"), n_("Godot 4.4 or newer, Forward+ or Mobile renderer")),
 )
 SUPPORTED_ENGINES = {'UNITY_URP', 'GODOT_4'}
 GODOT_PROJECT_FILE = "project.godot"

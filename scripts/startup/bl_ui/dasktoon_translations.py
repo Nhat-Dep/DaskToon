@@ -885,7 +885,7 @@ VI = {
 
     # dasktoon_export: engines, warnings and skip reasons
     "Unreal 5 (coming soon)": "Unreal 5 (sắp có)",
-    "Godot 4.3 or newer, Forward+ or Mobile renderer": "Godot 4.3 trở lên, bộ vẽ Forward+ hoặc Mobile",
+    "Godot 4.4 or newer, Forward+ or Mobile renderer": "Godot 4.4 trở lên, bộ vẽ Forward+ hoặc Mobile",
     "Not supported yet": "Chưa hỗ trợ",
     "%s: cannot read the normal map image %s; normal map left out":
         "%s: không đọc được ảnh normal map %s; bỏ normal map",
@@ -898,6 +898,10 @@ VI = {
         "Không đưa vào model: %s (không nằm trong view layer hiện tại, ví dụ collection bị loại trừ)",
 
     # dasktoon_export/godot
+    "The model's import settings in Godot were edited: turn the Optimizer of the AnimationPlayer off in Godot's "
+    "Advanced Import Settings, or it may drop keys (mouth cells, anime timing)":
+        "Cài đặt nhập của model trong Godot đã bị sửa: hãy tắt Optimizer của AnimationPlayer trong Advanced Import "
+        "Settings của Godot, nếu không Godot có thể bỏ mất khoá (ô miệng, nhịp anime)",
     "%s: %s is not in Godot yet; it is shown with Anime BSDF and its colours":
         "%s: %s chưa có trong Godot; tạm hiện bằng Anime BSDF với màu của nó",
     "%s: AO is not drawn in Godot (Godot gives custom shading no ambient occlusion)":
@@ -971,8 +975,8 @@ VI = {
         "Godot nếu cần",
     "Ambient: World Ambient in the materials is the World color #%s (linear %.3f, %.3f, %.3f)":
         "Ambient: World Ambient trong material là màu World #%s (linear %.3f, %.3f, %.3f)",
-    "How to use (Godot 4.3 or newer, Forward+ or Mobile renderer):":
-        "Cách dùng (Godot 4.3 trở lên, bộ vẽ Forward+ hoặc Mobile):",
+    "How to use (Godot 4.4 or newer, Forward+ or Mobile renderer):":
+        "Cách dùng (Godot 4.4 trở lên, bộ vẽ Forward+ hoặc Mobile):",
     "1. Copy the DaskToon folder into the root of the Godot project, so that it becomes res://DaskToon. With a second "
     "character, copy it over the one already there.":
         "1. Chép thư mục DaskToon vào gốc project Godot để nó thành res://DaskToon. Với nhân vật thứ hai, chép đè lên "
@@ -1417,9 +1421,9 @@ VI = {
     "Sway": "Lắc",
     "Build Rig first to make the hair and skirt chains": "Hãy Dựng rig trước để có chuỗi xương tóc và váy",
     "Select a hair or skirt part to set how it sways": "Chọn một phần tóc hoặc váy để chỉnh cách nó lắc",
-    # bl_ui/dasktoon_rig.py (Sway in Unity)
-    "Sway in Unity": "Lắc trong Unity",
-    "How the chain sways in Unity": "Cách chuỗi lắc trong Unity",
+    # bl_ui/dasktoon_rig.py (Sway in the Game)
+    "Sway in the Game": "Lắc trong game",
+    "How the chain sways in the game engine (Unity or Godot)": "Cách chuỗi lắc trong game engine (Unity hoặc Godot)",
     "Made by Recognize": "Do Nhận diện tạo",
     "Recognized the regions and %d locks first": "Đã nhận diện vùng và %d lọn trước",
     "Select a vertex of each piece first": "Hãy chọn một đỉnh của mỗi mảnh trước",
@@ -1575,11 +1579,13 @@ VI = {
     "A lock Recognize made from pieces hanging from the head; Recognize makes it again (keeping its role and "
     "settings)": "Lọn do Nhận diện tạo từ các mảnh gắn đầu; Nhận diện lại thì tạo lại (giữ vai trò và thiết lập)",
     "Runtime": "Khi chạy",
-    "DaskToon's spring bone script sways the chain while the game runs":
-        "Script spring bone của DaskToon cho chuỗi lắc khi game chạy",
+    "The game engine sways the chain while the game runs (DaskToon's spring bone script in Unity, "
+    "SpringBoneSimulator3D in Godot)":
+        "Game engine cho chuỗi lắc khi game chạy (script spring bone của DaskToon trong Unity, SpringBoneSimulator3D "
+        "trong Godot)",
     "Baked": "Đã bake",
-    "Unity plays the sway baked into the exported animation":
-        "Unity phát chuyển động lắc đã bake trong animation xuất ra",
+    "The game engine plays the sway baked into the exported animation":
+        "Game engine phát chuyển động lắc đã bake trong animation xuất ra",
     # dasktoon_export (anime rig for Unity)
     "Scripts: installed or updated": "Script: đã cài hoặc cập nhật",
     "Scripts: the project already has a recent enough version, not written again":
@@ -1587,8 +1593,12 @@ VI = {
     "Scripts: not needed (no hair or skirt chains)": "Script: không cần (không có chuỗi tóc hay váy)",
     "Rig: %s (DaskToon's Unity scripts read it: swaying hair and skirts, eyes, mouth, bend fixes)":
         "Rig: %s (script Unity của DaskToon đọc tệp này: tóc và váy lắc, mắt, miệng, sửa chỗ gập)",
-    "Part %s sways in Unity, but its bones have sway keys: Unity would sway it twice. Set Sway in Unity to Baked, or remove the keys":
-        "Phần %s lắc trong Unity nhưng xương của nó có key lắc: Unity sẽ lắc hai lần. Đặt Lắc trong Unity thành Đã bake, hoặc xóa các key đó",
+    "Part %s sways in the game, but its bones have sway keys: it would sway twice. Set Sway in the Game to Baked, or "
+    "remove the keys":
+        "Phần %s lắc trong game nhưng xương của nó có key lắc: nó sẽ lắc hai lần. Đặt Lắc trong game thành Đã bake, "
+        "hoặc xóa các key đó",
+    "Rig: %s (Godot gets the swaying hair and skirts, eyes, mouth and bend fixes from it when it imports the model)":
+        "Rig: %s (Godot lấy từ đây tóc và váy lắc, mắt, miệng, sửa chỗ gập khi nhập model)",
     # dasktoon_export/report.py (scripts once per project)
     "Note: the Scripts folder may be in a Unity project only once. With a second character, delete its Scripts folder after dragging it in, or export into the Unity project itself.":
         "Lưu ý: mỗi project Unity chỉ được có một thư mục Scripts này. Với nhân vật thứ hai, xóa thư mục Scripts của nó sau khi kéo vào, hoặc xuất thẳng vào project Unity.",

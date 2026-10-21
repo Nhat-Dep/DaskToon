@@ -68,6 +68,9 @@ class Report:
         if self.clips:
             out.append(rpt_("Clips: %s") % ", ".join(rpt_("%s (loop)") % name if loop else name
                                                       for name, loop in self.clips))
+        if self.rig:
+            out.append(rpt_("Rig: %s (Godot gets the swaying hair and skirts, eyes, mouth and bend fixes from it when it "
+                            "imports the model)") % self.rig)
         if self.merged:
             out.append(rpt_("Merged %d meshes of the character into one: %s") % self.merged)
         out.append(rpt_("Exported materials (%d): %s") % (len(self.materials), ", ".join(self.materials) or rpt_("none")))
@@ -165,7 +168,7 @@ def _godot_readme(report):
     head = [
         rpt_("DaskToon Engine Export: %s") % report.name,
         "",
-        rpt_("How to use (Godot 4.3 or newer, Forward+ or Mobile renderer):"),
+        rpt_("How to use (Godot 4.4 or newer, Forward+ or Mobile renderer):"),
         rpt_("1. Copy the DaskToon folder into the root of the Godot project, so that it becomes res://DaskToon. With a "
              "second character, copy it over the one already there."),
         rpt_("2. Godot imports the model and puts the DaskToon materials on it. Drag %s/%s.glb into a scene.")

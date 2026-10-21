@@ -25,12 +25,14 @@ uniform sampler2D sparkle_color_map : source_color, hint_default_white, filter_l
 uniform bool sparkle_color_map_on = false;
 // Off: the eye is drawn from the Blender world position's XY, as the node does when its UV input is unlinked.
 uniform bool eye_use_uv = true;
+// Moves the UVs of a flat eye or a 2D mouth (dasktoon_rig.gd).
+uniform vec4 uv_transform = vec4(1.0, 1.0, 0.0, 0.0);
 group_uniforms;
 
 void fragment() {
-	vec2 uv = UV;
+	vec2 uv = dt_moved_uv(UV, uv_transform);
 	// The node reads Blender's UV, whose origin is at the bottom; glTF and Godot put it at the top.
-	vec2 blender_uv = vec2(UV.x, 1.0 - UV.y);
+	vec2 blender_uv = dt_blender_uv(UV, uv_transform);
 	vec3 world = (INV_VIEW_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	vec2 eye_uv = (eye_use_uv && dot(blender_uv, blender_uv) > 1e-6) ? blender_uv : vec2(world.x, -world.z) * 0.5 + 0.5;
 	ALBEDO = dt_anime_eye(dt_color_input(base_color, base_map, base_map_on, uv).rgb,

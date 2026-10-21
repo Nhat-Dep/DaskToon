@@ -90,3 +90,20 @@ cộng bóng anime vào `DIFFUSE_LIGHT`, ánh sáng môi trường tự tính (t
 17. Lưới có bóng mặt: biểu cảm không đổi pháp tuyến (như Unity).
 18. Biểu cảm sửa chỗ gập (`DT_Fix_*`) chưa chạy trong Godot cho tới đợt 3; không có bản đồ xương Humanoid của Godot (tên
     xương là tên chuẩn DaskToon).
+
+Đợt 3:
+
+19. Tóc, váy lắc: SpringBoneSimulator3D của Godot, cùng kiểu vật lý với Live Sway của DaskToon (quán tính × (1 − cản),
+    kéo về tư thế của hoạt cảnh × độ cứng, trọng lực), nhận đúng các số của DaskToon; khối va chạm là
+    SpringBoneCollisionCapsule3D trên xương. Chỉ phần "Khi chạy"; phần "Đã bake" phát theo clip. Tuỳ chọn "Lắc trong
+    Unity" đổi tên thành "Lắc trong game" vì dùng cho cả Godot.
+20. Sửa chỗ gập, mắt phẳng, miệng 2D: một bộ sửa đổi khung xương (`dasktoon_rig.gd`, SkeletonModifier3D) chạy sau bộ lò
+    xo. Hướng xương con được tính từ tư thế cục bộ (Godot tính tư thế toàn cục sau). Vật liệu mắt và miệng được sao một
+    bản cho từng nhân vật lúc chạy; các shader có thêm `uv_transform`. Đo: trọng số sửa chỗ gập khớp DaskToon trong
+    0,01 ở 11 tư thế; mắt và ô miệng khớp con số của bài thử Unity.
+21. Khi xuất clip, driver của khung xương (tỉ lệ xương MouthCell theo ô miệng) bị tắt tạm; giá trị của nó đã nằm trong
+    khoá nướng.
+22. Bộ nén hoạt cảnh của Godot (Optimizer của AnimationPlayer) bỏ mất khoá có hướng thay đổi giữ nguyên (ô miệng 1, 3, 4):
+    tắt trong `.glb.import`. Nếu cài đặt từng nút của người dùng không đọc được, báo cáo xuất nhắc tắt tay.
+23. Cần Godot 4.4 trở lên (SpringBoneSimulator3D có từ 4.4).
+24. Không thêm mắt nhìn theo (LookAtModifier3D): bản Unity cũng không có; người dùng tự thêm nút đó của Godot.
