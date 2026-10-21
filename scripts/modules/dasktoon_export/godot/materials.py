@@ -161,7 +161,7 @@ class Writer:
                 return None
         size = bake.branch_size(src.tree_owner, src.node, src.socket, self.options.bake_size)
         try:
-            pixels = bake.bake_input(users[0], spec.material, src, size, self.options.bake_samples)
+            pixels = bake.bake_input(users, spec.material, src, size, self.options.bake_samples)
         except Exception as ex:  # A failed bake must not stop the export; the input keeps its value.
             self.rep.warnings.append(rpt_("%s › %s: bake failed (%s); using its value")
                                      % (spec.material.name, src.socket, ex))
@@ -173,9 +173,6 @@ class Writer:
         files.write_texture_import(self.path(rel + ".import"))
         files.write_bytes(self.path(rel), data)
         self.rep.baked.append("%s › %s" % (spec.material.name, src.socket))
-        if len(users) > 1:
-            self.rep.warnings.append(rpt_("%s › %s: baked on the mesh of %s; the other meshes share this texture")
-                                     % (spec.material.name, src.socket, users[0].name))
         return rel
 
     def _ramp(self, spec, stem):

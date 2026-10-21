@@ -13,6 +13,7 @@ import numpy as np
 from .graph import follow
 
 MARGIN = 16
+BAKE_UV = "DT_BakeUV"
 
 
 def _input(tree, node_name, socket_identifier):
@@ -46,6 +47,27 @@ def _faces_mesh(obj, material):
     bm.to_mesh(mesh)
     bm.free()
     return mesh
+
+
+def _users_mesh(objs, material):
+    """One mesh with the faces of every object of `objs` that use `material`, in world space, each over its first UV map:
+    a texture several meshes share is baked where each of them reads it (luna's "cus" is on 8 meshes; baked on the
+    first only, the others' parts stayed empty)."""
+    bm = bmesh.new()
+    for obj in objs:
+        mesh = _faces_mesh(obj, material)
+        for layer in list(mesh.uv_layers)[1:]:
+            mesh.uv_layers.remove(layer)
+        mesh.uv_layers[0].name = BAKE_UV  # one name, so the meshes share one UV map
+        mesh.transform(obj.matrix_world)
+        bm.from_mesh(mesh)
+        bpy.data.meshes.remove(mesh)
+    for layer in list(bm.verts.layers.shape):
+        bm.verts.layers.shape.remove(layer)
+    out = bpy.data.meshes.new("DT_BakeMesh")
+    bm.to_mesh(out)
+    bm.free()
+    return out
 
 
 def _strip_outline(mat):
@@ -86,11 +108,14 @@ def _bake_material(source, image):
     return mat
 
 
-def bake_input(obj, material, source, size, samples):
+def bake_input(objs, material, source, size, samples):
     """Float RGBA pixels (size x size, rows bottom-up) of the branch feeding source.node / source.socket in
-    source.tree_owner's tree, baked on the faces of `obj` that use `material`, over the first UV map."""
-    if not obj.data.uv_layers:
-        raise RuntimeError(rpt_("Mesh %s has no UV map to bake") % obj.name)
+    source.tree_owner's tree, baked on the faces of the objects `objs` (or one object) that use `material`, over each
+    one's first UV map."""
+    objs = list(objs) if isinstance(objs, (list, tuple)) else [objs]
+    for obj in objs:
+        if not obj.data.uv_layers:
+            raise RuntimeError(rpt_("Mesh %s has no UV map to bake") % obj.name)
     scene = bpy.context.scene
     view_layer = bpy.context.view_layer
     selected = [o for o in view_layer.objects if o.select_get()]
@@ -100,17 +125,14 @@ def bake_input(obj, material, source, size, samples):
     try:
         image = bpy.data.images.new("DT_Bake", size, size, alpha=True, float_buffer=True, is_data=True)
         mat = _bake_material(source, image)
-        mesh = _faces_mesh(obj, material)
+        mesh = _users_mesh(objs, material)
         mesh.materials.clear()
         mesh.materials.append(mat)
         for poly in mesh.polygons:
             poly.material_index = 0
         mesh.uv_layers.active_index = 0
         temp_obj = bpy.data.objects.new("DT_BakeObject", mesh)
-        temp_obj.matrix_world = obj.matrix_world
         scene.collection.objects.link(temp_obj)
-        if mesh.shape_keys is not None:
-            temp_obj.shape_key_clear()
         for o in selected:
             o.select_set(False)
         temp_obj.select_set(True)

@@ -187,6 +187,35 @@ class BakeTest(unittest.TestCase):
         np.testing.assert_allclose(px[:, :3].mean(axis=0), (0.2, 0.4, 0.6), atol=0.01)
         self.assertFalse([g.name for g in bpy.data.node_groups if "DT_Bake" in g.name])
 
+    def test_every_mesh_using_the_material_is_baked(self):
+        """luna's "cus" material is on 8 meshes: baked on the first only, the others' parts of the texture stayed empty
+        (Use DaskToon Shader now feeds Base Color a node branch, so the Base Color is baked too)."""
+        image = bpy.data.images.new("Halves", 16, 16)
+        image.colorspace_settings.name = 'Non-Color'
+        px = np.zeros((16, 16, 4), dtype=np.float32)
+        px[:, :8] = (1.0, 0.0, 0.0, 1.0)   # left half red
+        px[:, 8:] = (0.0, 0.0, 1.0, 1.0)   # right half blue
+        image.pixels.foreach_set(px.ravel())
+        tex = self.nt.nodes.new('ShaderNodeTexImage')
+        tex.image = image
+        tex.interpolation = 'Closest'
+        mix = self.nt.nodes.new('ShaderNodeMix')
+        mix.data_type, mix.blend_type = 'RGBA', 'MULTIPLY'
+        sockets = {s.identifier: s for s in mix.inputs}
+        sockets["Factor_Float"].default_value = 1.0
+        sockets["B_Color"].default_value = (1.0, 1.0, 1.0, 1.0)
+        self.nt.links.new(tex.outputs["Color"], sockets["A_Color"])
+        self.nt.links.new(next(s for s in mix.outputs if s.identifier == "Result_Color"), self.node.inputs["Base Color"])
+        bpy.ops.mesh.primitive_plane_add(size=2.0, location=(3.0, 0.0, 0.0))
+        other = bpy.context.active_object
+        tu.assign(other, self.mat)
+        for obj, (u0, u1) in ((self.obj, (0.0, 0.5)), (other, (0.5, 1.0))):
+            for loop in obj.data.uv_layers[0].data:  # the plane's UVs squeezed into one half
+                loop.uv = (u0 + loop.uv.x * (u1 - u0), loop.uv.y)
+        baked = bake.bake_input([self.obj, other], self.mat, self.source("Base Color"), 16, 2).reshape(16, 16, 4)
+        np.testing.assert_allclose(baked[4:12, 2:6, :3].mean(axis=(0, 1)), (1.0, 0.0, 0.0), atol=0.05)
+        np.testing.assert_allclose(baked[4:12, 10:14, :3].mean(axis=(0, 1)), (0.0, 0.0, 1.0), atol=0.05)
+
     def test_branch_size_is_the_largest_image(self):
         tex = self.nt.nodes.new('ShaderNodeTexImage')
         tex.image = bpy.data.images.new("Big", 64, 32)

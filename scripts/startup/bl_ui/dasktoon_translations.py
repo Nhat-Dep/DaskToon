@@ -890,8 +890,6 @@ VI = {
     "%s: cannot read the normal map image %s; normal map left out":
         "%s: không đọc được ảnh normal map %s; bỏ normal map",
     "%s › %s: bake failed (%s); using its value": "%s › %s: bake lỗi (%s); dùng giá trị đang đặt",
-    "%s › %s: baked on the mesh of %s; the other meshes share this texture":
-        "%s › %s: bake trên mesh của %s, các mesh khác dùng chung texture này",
     "Not in the FBX: %s (not in the current view layer, for example in an excluded collection)":
         "Không đưa vào FBX: %s (không nằm trong view layer hiện tại, ví dụ collection bị loại trừ)",
     "Not in the model: %s (not in the current view layer, for example in an excluded collection)":
