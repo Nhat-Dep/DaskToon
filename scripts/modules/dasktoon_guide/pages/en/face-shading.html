@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Face Shading — DaskToon Guide</title>
+<link rel="stylesheet" href="../guide.css">
+</head>
+<body>
+<main>
+<nav><a href="features.html">‹ All Features</a> <a href="../vi/face-shading.html">Tiếng Việt</a></nav>
+<h1>Face Shading</h1>
+<p class="lead">Face shading replaces facial skin normals with an egg-shaped proxy so anime cel shadows curve smoothly without catching on eye sockets or cheekbones.</p>
+<figure><img src="../pictures/face-shading.png" alt="Lumpy facial shadows before processing, and smooth curved shadow terminator after setting up face shading."><figcaption>Lumpy facial shadows before processing, and smooth curved shadow terminator after setting up face shading.</figcaption></figure>
+<section id="set-up-face-shading">
+<h2>Setting Up Face Shading</h2>
+<p>Select the character mesh, open the <b>Object Data Properties</b> tab, and locate the <b>Face Shading</b> panel. Click <b>Set Up Face Shading</b>: DaskToon locates the head bone, fits an egg proxy around the head, and adds the <code>DaskToon Face Shading</code> modifier. If unrigged or no head bone is found, switch to <b>Edit Mode</b>, select the face skin vertices, and try again.</p>
+</section>
+<section id="adjust-sliders">
+<h2>Adjusting Face Shading</h2>
+<p>In the <b>Face Shading</b> panel, use the <b>Coverage</b> and <b>Falloff</b> sliders to blend the spherical normals softly into the neck and ears. <b>Keep Nose Shadow</b> and <b>Keep Chin Shadow</b> retain true geometric normals around the nose and jawline so facial features remain defined. Facial shadows update live and follow the character when the head turns.</p>
+</section>
+<section id="select-proxy">
+<h2>Selecting the Proxy</h2>
+<p>Click <b>Select Proxy</b> in the <b>Face Shading</b> panel to select the proxy Empty directly in the 3D viewport. You can translate, rotate, or scale the proxy to adjust the angle and curvature of shadow boundaries across the face. The proxy is parented to the head bone and moves seamlessly with character poses.</p>
+</section>
+<section id="refit-proxy">
+<h2>Refitting the Proxy</h2>
+<p>If you alter the face topology or rescale the head, click <b>Fit Proxy</b> in the <b>Face Shading</b> panel. DaskToon recalculates the proxy size and position to fit the updated face mesh snugly. All previously tuned slider values are preserved.</p>
+</section>
+<section id="remove-face-shading">
+<h2>Removing Face Shading</h2>
+<p>To remove face shading from a mesh, click <b>Remove Face Shading</b> in the <b>Face Shading</b> panel. DaskToon removes the modifier, clears the <code>DT_Face</code> vertex group, and deletes the proxy Empty if no other mesh shares it. Your mesh geometry is cleanly restored to its original state.</p>
+</section>
+</main>
+</body>
+</html>

@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bóng mặt — Hướng dẫn DaskToon</title>
+<link rel="stylesheet" href="../guide.css">
+</head>
+<body>
+<main>
+<nav><a href="features.html">‹ Mọi chức năng</a> <a href="../en/face-shading.html">English</a></nav>
+<h1>Bóng mặt</h1>
+<p class="lead">Bóng mặt thay pháp tuyến da mặt bằng khối trứng để bóng anime cong mượt, không bị lem theo hốc mắt hay gò má.</p>
+<figure><img src="../pictures/face-shading.png" alt="Bóng lem trên mặt trước khi xử lý, và ranh giới bóng cong mượt sau khi đặt bóng mặt."><figcaption>Bóng lem trên mặt trước khi xử lý, và ranh giới bóng cong mượt sau khi đặt bóng mặt.</figcaption></figure>
+<section id="set-up-face-shading">
+<h2>Tạo bóng mặt</h2>
+<p>Chọn lưới nhân vật, mở thẻ <b>Tính Chất của Dữ Liệu Đối Tượng</b> rồi tìm bảng <b>Bóng mặt</b>. Bấm nút <b>Tạo bóng mặt anime</b>: DaskToon tự tìm xương đầu, căn một khối trứng ôm lấy đầu và thêm bộ điều chỉnh <code>DaskToon Face Shading</code>. Nếu chưa gắn khung hoặc không tìm thấy xương đầu, chuyển sang <b>Chế Độ Biên Soạn</b>, chọn vùng da mặt rồi bấm lại.</p>
+</section>
+<section id="adjust-sliders">
+<h2>Tinh chỉnh bóng mặt</h2>
+<p>Trong bảng <b>Bóng mặt</b>, chỉnh hai thanh trượt <b>Diện Tích Bao Phủ</b> và <b>Suy Giảm Dần</b> để đặt mức ảnh hưởng từ khuôn mặt xuống cổ. Hai thanh trượt <b>Giữ bóng mũi</b> và <b>Giữ bóng cằm</b> giữ lại pháp tuyến thật ở mũi và viền hàm để khuôn mặt không bị phẳng lì. Bóng mặt tự cập nhật trong khung nhìn và đi theo khi nhân vật quay đầu.</p>
+</section>
+<section id="select-proxy">
+<h2>Chọn khối trứng</h2>
+<p>Bấm nút <b>Chọn khối trứng</b> trong bảng <b>Bóng mặt</b> để chọn nhanh vật thể proxy trong khung nhìn 3D. Bạn có thể kéo, xoay hoặc co giãn khối trứng để điều chỉnh góc đổ bóng trên mặt theo ý muốn. Khối trứng gắn với xương đầu nên luôn di chuyển khớp với cử động của nhân vật.</p>
+</section>
+<section id="refit-proxy">
+<h2>Căn lại khối trứng</h2>
+<p>Khi bạn sửa lại hình thể mặt hoặc co giãn đầu, bấm <b>Căn lại khối trứng</b> trong bảng <b>Bóng mặt</b>. DaskToon sẽ tự động tính lại vị trí và kích thước khối trứng ôm khít khuôn mặt mới. Mọi thiết lập trên các thanh trượt trước đó đều được giữ nguyên.</p>
+</section>
+<section id="remove-face-shading">
+<h2>Gỡ bóng mặt</h2>
+<p>Để gỡ bỏ bóng mặt khỏi lưới, bấm nút <b>Gỡ bóng mặt</b> trong bảng <b>Bóng mặt</b>. DaskToon sẽ xóa bộ điều chỉnh, nhóm đỉnh <code>DT_Face</code> và xóa khối trứng nếu không còn lưới nào khác dùng. Dữ liệu lưới của bạn trở lại trạng thái ban đầu hoàn toàn sạch sẽ.</p>
+</section>
+</main>
+</body>
+</html>
