@@ -11,14 +11,13 @@
 <nav><a href="features.html">‹ All Features</a> <a href="../vi/face-shading.html">Tiếng Việt</a></nav>
 <h1>Face Shading</h1>
 <p class="lead">Face shading replaces facial skin normals with an egg-shaped proxy so anime cel shadows curve smoothly without catching on eye sockets or cheekbones.</p>
-<figure><img src="../pictures/face-shading.png" alt="Lumpy facial shadows before processing, and smooth curved shadow terminator after setting up face shading."><figcaption>Lumpy facial shadows before processing, and smooth curved shadow terminator after setting up face shading.</figcaption></figure>
 <section id="set-up-face-shading">
 <h2>Setting Up Face Shading</h2>
-<p>Select the character mesh, open the <b>Object Data Properties</b> tab, and locate the <b>Face Shading</b> panel. Click <b>Set Up Face Shading</b>: DaskToon locates the head bone, fits an egg proxy around the head, and adds the <code>DaskToon Face Shading</code> modifier. If unrigged or no head bone is found, switch to <b>Edit Mode</b>, select the face skin vertices, and try again.</p>
+<p>Select the character mesh, open the <b>Object Data Properties</b> tab, and locate the <b>Face Shading</b> panel. Click <b>Set Up Face Shading</b>: DaskToon locates the head bone, fits an egg proxy to the face, and adds the <code>DaskToon Face Shading</code> modifier. If unrigged or no head bone is found, switch to <b>Edit Mode</b>, select the face skin vertices, and try again.</p>
 </section>
 <section id="adjust-sliders">
 <h2>Adjusting Face Shading</h2>
-<p>In the <b>Face Shading</b> panel, use the <b>Coverage</b> and <b>Falloff</b> sliders to blend the spherical normals softly into the neck and ears. <b>Keep Nose Shadow</b> and <b>Keep Chin Shadow</b> retain true geometric normals around the nose and jawline so facial features remain defined. Facial shadows update live and follow the character when the head turns.</p>
+<p>In the <b>Face Shading</b> panel, <b>Coverage</b> is how much the egg's normals replace the face's own (1 fully, 0 not at all); <b>Falloff</b> softens the edge where the face meets the neck and ears. <b>Keep Nose Shadow</b> and <b>Keep Chin Shadow</b> retain true geometric normals around the nose and jawline so facial features remain defined. Facial shadows update live and follow the character when the head turns.</p>
 </section>
 <section id="select-proxy">
 <h2>Selecting the Proxy</h2>
@@ -30,7 +29,7 @@
 </section>
 <section id="remove-face-shading">
 <h2>Removing Face Shading</h2>
-<p>To remove face shading from a mesh, click <b>Remove Face Shading</b> in the <b>Face Shading</b> panel. DaskToon removes the modifier, clears the <code>DT_Face</code> vertex group, and deletes the proxy Empty if no other mesh shares it. Your mesh geometry is cleanly restored to its original state.</p>
+<p>To remove face shading from a mesh, click <b>Remove Face Shading</b> in the <b>Face Shading</b> panel. DaskToon removes the modifier, clears the <code>DT_Face</code> vertex group, and deletes the proxy Empty if no other mesh shares it.</p>
 </section>
 </main>
 </body>

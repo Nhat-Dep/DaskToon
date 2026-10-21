@@ -19,3 +19,16 @@ Mỗi đợt một mục: các trang đã viết, câu hỏi, chỗ không chắ
 
 ### Lỗi thấy trong DaskToon
 - Nhận thấy cảnh báo `DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0` xuất hiện từ `tests/python/dasktoon_guide_checks_test.py:48` và `scripts/modules/dasktoon_guide/checks.py:209`. Đây là cảnh báo chuyển tiếp API của Blender hướng tới phiên bản 6.0.
+
+### Claude soát Đợt 1 (2026-10-22)
+
+Đạt: đúng khuôn, ngắn, đủ hai thứ tiếng, chỉ sửa tệp được phép, lệnh kiểm tra sạch, phép thử qua. Đã sửa:
+
+- Viền: vật liệu đi kèm tên `<tên vật liệu>.Outline` (không phải `.Outline`); "Nét màu cho mọi material" là nút trong
+  bảng Hoàn thiện tranh (thẻ Tính Chất của Cảnh), không phải F3.
+- Bóng mặt: khối trứng ôm khuôn mặt (không phải cả đầu); Diện Tích Bao Phủ là mức thay pháp tuyến bằng pháp tuyến khối
+  trứng, Suy Giảm Dần là độ mềm chỗ mặt giáp cổ và tai; bỏ câu "trở lại hoàn toàn sạch sẽ".
+- Hai ảnh hỏng (dựng bằng Workbench; ảnh bóng mặt không thấy khác biệt) bị gỡ; làm lại ở Đợt 2.
+
+Trả lời câu hỏi: dùng `<code>` cho tên bộ điều chỉnh là đúng, nay đã ghi vào `rules.md`. Cảnh báo `Material.use_nodes`
+là của Blender 6.0, chưa cần làm gì.

@@ -11,10 +11,9 @@
 <nav><a href="features.html">‹ All Features</a> <a href="../vi/outline.html">Tiếng Việt</a></nav>
 <h1>Outlines</h1>
 <p class="lead">Outlines create anime line art around characters with a 3D inverted hull in the viewport and keep the lines when exported to games.</p>
-<figure><img src="../pictures/outline.png" alt="The character before outlines, and after turning on outlines."><figcaption>The character before outlines, and after turning on outlines.</figcaption></figure>
 <section id="dasktoon-outline">
 <h2>DaskToon Outlines</h2>
-<p>Open the material shader, and on the <b>Anime BSDF</b> node check <b>Outline</b> (or on the <b>Cel Shading</b> node choose <b>Use Outline</b>). DaskToon automatically creates a companion material named <code>.Outline</code> and places the <code>DaskToon Outline</code> modifier at the end of the mesh stack. Lines thin down naturally on the lit side with a subtle hand-drawn pen wobble.</p>
+<p>Open the material shader, and on the <b>Anime BSDF</b> node check <b>Outline</b> (or on the <b>Cel Shading</b> node choose <b>Use Outline</b>). DaskToon automatically creates a companion material named <code>&lt;material&gt;.Outline</code> and places the <code>DaskToon Outline</code> modifier at the end of the mesh stack. Lines thin down naturally on the lit side with a subtle hand-drawn pen wobble.</p>
 </section>
 <section id="outline-color">
 <h2>Outline Color</h2>
@@ -22,7 +21,7 @@
 </section>
 <section id="colored-lines">
 <h2>Colored Lines for All Materials</h2>
-<p>Use <b>Colored Lines for All Materials</b> (<kbd>F3</kbd>) to switch every outlined material to auto-harmonized line colors in a single click. This gives clothes, hair, and skin distinct rich tones instead of a uniform plain black line. DaskToon automatically syncs color branches to the companion outline materials.</p>
+<p>Press <b>Colored Lines for All Materials</b> in the <b>Illustration Finish</b> panel (<b>Scene Properties</b> tab) to switch every outlined material to auto-harmonized line colors in a single click. This gives clothes, hair, and skin distinct rich tones instead of a uniform plain black line. DaskToon automatically syncs color branches to the companion outline materials.</p>
 </section>
 <section id="game-export">
 <h2>Prepare Outline for Games</h2>

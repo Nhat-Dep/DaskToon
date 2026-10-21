@@ -28,6 +28,12 @@ trong đó. DaskToon là bản Blender 5.2 sửa riêng cho nhân vật anime; d
 - Tên tiếng Việt của nút lấy từ `scripts/startup/bl_ui/dasktoon_translations.py` (bảng `VI`, `VI_CONTEXT`); tên của chính
   Blender lấy theo bản dịch của Blender (lệnh kiểm tra ở mục 6 biết cả hai).
 - Chỉ viết điều mã làm thật. Không chắc thì bỏ ra và ghi câu hỏi vào `notes.md`.
+- **Nút nằm ở đâu**: tìm chỗ mã vẽ nút đó (`layout.operator(...)`, `.append(...)` vào một menu, `bl_context` của bảng)
+  rồi ghi đúng bảng, thẻ, menu. Chỉ ghi <kbd>F3</kbd> khi lệnh không có ở bảng hay menu nào. (Đợt 1 ghi "Nét màu cho mọi
+  material" là F3, trong khi nó là một nút trong bảng Hoàn thiện tranh.)
+- **Thanh trượt, lựa chọn làm gì**: đọc chú thích của nó và chỗ nó được dùng trong mã hoặc bản thiết kế, đừng đoán từ
+  tên. (Đợt 1 đoán sai "Diện Tích Bao Phủ".)
+- Không viết câu khen hay câu thừa ("hoàn toàn sạch sẽ", "chỉ trong một lần bấm", "một cách dễ dàng").
 
 ## 4. Viết trang
 
@@ -72,7 +78,8 @@ Khung một trang (`NAME` là tên tệp; trang tiếng Anh: `lang="en"`, "‹ A
   cùng ảnh.
 - `<b>` **chỉ** cho tên nút, bảng, thẻ, menu đúng như giao diện hiện, ở đúng thứ tiếng của trang. Đường đi trong menu
   nối bằng ` › `: `<b>Thêm › Khung Rối › Khung người anime</b>`. Phím: `<kbd>Ctrl R</kbd>`. Tên tệp, thư mục, giá trị
-  gõ vào: `<code>`.
+  gõ vào, và tên những thứ DaskToon tạo ra trong cảnh (bộ điều chỉnh `DaskToon Outline`, vật liệu
+  `<tên>.Outline`, nhóm đỉnh `DT_Face`, bản đồ UV `DT_OutlineN`): `<code>`.
 - Tiếng Việt dễ hiểu, không chen từ tiếng Anh khi đã có từ Việt; dùng từ như các trang mẫu (lưới, khung xương, trọng
   số, vật liệu, bản đồ UV, nướng). Tên riêng giữ nguyên: DaskToon, Unity, Godot, VRM, ARKit.
 - Bản tiếng Anh nói cùng nội dung, câu ngắn, rõ.
@@ -81,6 +88,13 @@ Khung một trang (`NAME` là tên tệp; trang tiếng Anh: `lang="en"`, "‹ A
 
 - Ảnh cho thấy kết quả của chức năng (trước và sau, vài khung cạnh nhau), **không chữ trong ảnh**, không chụp giao diện.
   Chỉ một bộ ảnh dùng cho cả hai thứ tiếng; chú thích dưới ảnh nói ảnh cho thấy gì.
+- Chức năng về hình (shader, viền, bóng mặt, Hoàn thiện tranh...) phải dựng bằng **EEVEE**, vật liệu là shader anime của
+  DaskToon, có một đèn Sun chiếu xiên. Workbench (Solid) không vẽ shader anime, còn lớp vỏ viền hiện thành cả người đen.
+  Có sẵn cách làm đúng để theo: `tests/python/dasktoon_face_review.py` (đầu thử có và không có bóng mặt, ba hướng đèn),
+  `tests/python/dasktoon_unity_render_test.py` (các quả cầu, có quả có viền), `tests/python/dasktoon_finish_render_test.py`.
+- **Mở xem từng ảnh trước khi commit.** Điều chú thích nói phải nhìn thấy rõ trong ảnh. Không thấy thì sửa, hoặc bỏ ảnh
+  và ghi vào `notes.md`. (Ảnh Đợt 1: viền là cả người tô đen; bóng mặt là hai khối màu da giống hệt nhau. Cả hai đã bị
+  gỡ.)
 - Làm bằng `tools/dasktoon_feature_pictures.py`, theo cách của `tools/dasktoon_guide_pictures.py` (dựng nhân vật thử
   từ `tests/python`, chụp, ghép các khung). Mỗi trang một hàm, chạy được riêng:
   `DaskToon.exe -b --factory-startup --python tools/dasktoon_feature_pictures.py -- outline`.

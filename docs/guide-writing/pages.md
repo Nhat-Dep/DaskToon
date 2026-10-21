@@ -41,13 +41,12 @@ Tên trong cột "Tên trang" là tên tạm; tên nút trong trang phải lấy
 
 Mỗi đợt một lần giao, xong đợt nào thì Claude soát, chạy phép thử rồi đẩy lên GitHub.
 
-1. **Đợt thử**: `features.html` (mục lục, chỉ dẫn tới các trang đã có) và một dòng dẫn tới nó trong `index.html`;
-   `outline.html`, `face-shading.html`.
-2. `shader.html`, `nodes.html`, `finish.html`.
-3. `paint.html`, `unwrap.html`, `project.html`, `interface.html`.
-4. `anime-rig.html`, `regions.html`, `rig-check.html`, `sway.html`.
-5. `eyes-mouth.html`, `expression-tools.html`, `controllers.html`.
-6. `animation.html`, `clips.html`, `timing.html`, `fast-action.html`.
-7. `export-unity.html`, `export-godot.html`.
+1. **Đợt thử** (xong, Claude đã soát): `features.html`, dòng dẫn trong `index.html`, `outline.html`,
+   `face-shading.html`. Hai ảnh bị gỡ vì hỏng; làm lại ở Đợt 2.
+2. Làm lại ảnh `outline.png`, `face-shading.png` theo `rules.md` mục 5 và đặt lại vào hai trang; `shader.html`,
+   `nodes.html`, `finish.html`, `paint.html`, `unwrap.html`, `project.html`, `interface.html`.
+3. `anime-rig.html`, `regions.html`, `rig-check.html`, `sway.html`, `eyes-mouth.html`, `expression-tools.html`,
+   `controllers.html`.
+4. `animation.html`, `clips.html`, `timing.html`, `fast-action.html`, `export-unity.html`, `export-godot.html`.
 
 Mỗi đợt thêm các trang của nó vào `features.html`.
