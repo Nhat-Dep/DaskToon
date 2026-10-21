@@ -36,6 +36,8 @@ func _init():
 	var model = load(data["model"]).instantiate()
 	viewport.add_child(model)
 	_collect(model)
+	if data.has("finish"):
+		viewport.add_child(load(data["finish"]).instantiate())  # DaskToon's screen layer of the finish
 	var env = Environment.new()
 	env.background_mode = Environment.BG_COLOR
 	env.background_color = Color(0, 0, 0)

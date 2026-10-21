@@ -896,6 +896,17 @@ VI = {
         "Không đưa vào model: %s (không nằm trong view layer hiện tại, ví dụ collection bị loại trừ)",
 
     # dasktoon_export/godot
+    "Illustration Finish: %s, its Painting Colors and Vignette over the screen; add it to the scene":
+        "Hoàn thiện tranh: %s, phần Màu tranh và Vignette phủ lên màn hình; thêm nó vào cảnh",
+    "Illustration Finish layers not in Godot: %s": "Các lớp Hoàn thiện tranh không có trong Godot: %s",
+    "Shadows: set the DirectionalLight3D's Shadow › Normal Bias to 4; at Godot's 2, hair and eyelids leave speckled "
+    "shadows on the face":
+        "Bóng đổ: đặt Shadow › Normal Bias của DirectionalLight3D là 4; để mức 2 mặc định của Godot thì tóc và mí mắt "
+        "để lại bóng lốm đốm trên mặt",
+    "Outlines: turn on Project Settings › Rendering › Anti Aliasing › Quality › MSAA 3D; without it thin outlines "
+    "break into dots":
+        "Viền: bật Project Settings › Rendering › Anti Aliasing › Quality › MSAA 3D; không bật thì viền mảnh vỡ thành "
+        "chấm",
     "The model's import settings in Godot were edited: turn the Optimizer of the AnimationPlayer off in Godot's "
     "Advanced Import Settings, or it may drop keys (mouth cells, anime timing)":
         "Cài đặt nhập của model trong Godot đã bị sửa: hãy tắt Optimizer của AnimationPlayer trong Advanced Import "

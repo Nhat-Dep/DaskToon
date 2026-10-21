@@ -73,9 +73,9 @@ nén cho model của DaskToon.
 - **Nhiều đèn chiếu cùng một chỗ**: Godot tính từng đèn riêng; chỗ đó lấy màu của đèn sáng nhất, không cộng như DaskToon.
   Một đèn thì giống hệt.
 - **AO** (tối ở góc khuất) không vẽ được: Godot không cho shader tự viết đọc độ che khuất. Báo cáo xuất có cảnh báo.
-- **Bóng đổ**: bóng tóc đổ lên mặt trong Godot nhạt hơn EEVEE (tdt). Tắt bóng đổ ở cả hai thì mặt gần như giống nhau.
+- **Bóng đổ**: bóng của Godot và EEVEE không trùng từng điểm (vài lọn tóc của tdt tối hơn trong Godot). Với cài đặt
+  mặc định của Godot (Normal Bias 2), mí mắt và tóc mái phủ bóng lốm đốm lên mắt; xem phần "tdt bật toàn bộ" bên dưới.
 - **Lọn số 6 của luna** lệch 16 cm do khối va chạm của cổ, DaskToon lệch 4 cm.
-- Mắt trái tdt dưới tóc mái hơi khác màu; chưa rõ lý do.
 - Chưa có mắt nhìn theo mục tiêu (bản Unity cũng chưa có; có thể tự thêm nút LookAtModifier3D của Godot) và chưa có bản
   đồ xương Humanoid của Godot.
 - Chưa thử bộ vẽ Compatibility của Godot.
@@ -88,11 +88,54 @@ nó). Đã sửa nút này: chuỗi nút riêng được chép lại với ánh 
 xong gần như trùng bản gốc (chênh trung vị 4/255). Ảnh trong máy:
 `docs/superpowers/reports/real-model/godot/luna_original_vs_converted.png`.
 
+## Sau báo cáo: tdt bật toàn bộ
+
+Bạn hỏi so một bức tdt bật toàn bộ shader anime kèm lớp màu Hoàn thiện tranh; bạn chọn "Thêm lớp Màu tranh vào Godot
+rồi so".
+
+**Thêm vào bản xuất Godot**: khi Hoàn thiện tranh đang bật, bản xuất ghi thêm `DaskToon/<Tên>/<Tên>_finish.tscn`. Kéo
+cảnh này vào cảnh game là có các lớp Màu bóng, màu sáng; Bão hòa, tương phản; Gradient ánh sáng; Vignette phủ lên màn
+hình, cùng số như trong DaskToon. Gradient ánh sáng khi bật "Theo mặt trời" tự theo đèn DirectionalLight3D và camera.
+Các lớp làm nhoè hoặc cần độ sâu (Nét cọ, Không khí, Hậu cảnh mềm, Glow mềm...) không sang Godot; báo cáo xuất kể tên
+lớp nào đang bật mà bị bỏ.
+Trên 4 quả cầu mẫu: chênh tối đa 0,004.
+
+**Bức tdt**: bật Môi trường, Ánh sáng, AO, Viền sáng, Chỉnh màu, Viền, dải "Anime 3 tông", và bốn lớp màu của Hoàn thiện
+tranh (mạnh hơn mặc định). Đo trong vùng nhân vật (chênh trên 255):
+
+| Bức | Trung vị | 90% điểm dưới | Điểm chênh hơn 16 |
+|---|---|---|---|
+| Bật cả AO | 5 | 42 | 27% |
+| Tắt AO | 1 | 17 | 10% |
+| Tắt AO, tắt bóng đổ | 1 | 8 | 4% |
+
+Nền (Gradient ánh sáng và Vignette): chênh 1. Godot chụp với Normal Bias 4 và MSAA (xem dưới).
+
+Chỗ còn khác và lý do:
+
+1. **AO** không vẽ được trong Godot (đã biết, báo cáo xuất có cảnh báo). Đây là phần lớn nhất: AO của tdt làm tối nhiều
+   chỗ trên tóc và mặt.
+2. **Bóng đổ quanh mắt**: với Normal Bias 2 mặc định của Godot, mí mắt và tóc mái phủ bóng lốm đốm lên mắt mà EEVEE để
+   sáng (viền bóng mềm của Godot có nhiễu; bóng anime cắt ngưỡng cứng nên nhiễu thành chấm). Đặt Normal Bias 4 thì gần
+   như hết. Đây cũng là lý do của dòng "mắt trái tdt hơi khác màu" trong báo cáo trước.
+3. **Viền vỡ thành chấm** khi Godot không khử răng cưa: viền 2 mm mảnh hơn một điểm ảnh. Bật MSAA 3D thì liền lại.
+4. Vài lọn tóc bên trái tối hơn ở Godot: bóng của hai bên không trùng từng điểm.
+
+Báo cáo xuất Godot nay có hai dòng khuyên: Normal Bias 4 cho DirectionalLight3D, và bật MSAA 3D.
+
+Ảnh trong máy (ngoài git), thứ tự DaskToon, Godot, chỗ khác (phóng 5 lần):
+
+- `docs/superpowers/reports/real-model/godot/tdt_full_dasktoon_vs_godot.png` (bật cả AO)
+- `docs/superpowers/reports/real-model/godot/tdt_full_noao_dasktoon_vs_godot.png` (tắt AO)
+- `docs/superpowers/reports/real-model/godot/tdt_eyes_godot_default_vs_bias4.png` (mắt: DaskToon, Godot mặc định, Godot
+  Normal Bias 4)
+
 ## Phép thử
 
-- `dasktoon_godot_export_test` (20 bài): đích, tệp, vật liệu, ảnh, viền, cull và trong suốt, báo cáo, gộp lưới, biểu cảm;
+- `dasktoon_godot_export_test` (23 bài): đích, tệp, vật liệu, ảnh, viền, cull và trong suốt, báo cáo, gộp lưới, biểu cảm;
   Godot nhập thật, gắn đúng vật liệu, không lỗi nạp ảnh, hướng viền khớp DaskToon dưới 2°.
 - `dasktoon_godot_clips_test` (6 bài): clip, nhịp anime, lặp, biểu cảm, không nén mất khung.
 - `dasktoon_godot_rig_test` (7 bài): lò xo, khối va chạm, sửa chỗ gập, mắt phẳng, miệng 2D.
-- `dasktoon_godot_render_test`: so 20 quả cầu với DaskToon (Godot mở một cửa sổ nhỏ để vẽ).
+- `dasktoon_godot_render_test`: so 20 quả cầu với DaskToon, và 4 quả cầu có lớp Hoàn thiện tranh (Godot mở một cửa
+  sổ nhỏ để vẽ).
 - Toàn bộ 89 tệp phép thử qua.

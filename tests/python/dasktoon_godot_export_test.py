@@ -181,6 +181,15 @@ class LayoutTest(unittest.TestCase):
         self.assertIn("DirectionalLight3D", text)
         self.assertIn("%.3f" % (3.0 / math.pi), text)
 
+    def test_report_gives_the_godot_settings_of_the_anime_look(self):
+        # tdt in Godot (2026-10-21): at Godot's shadow Normal Bias 2 the eyelids and the fringe shade the eyes in
+        # speckles that EEVEE leaves lit, 4 matches; without MSAA the 2 mm outlines break into dots.
+        body, _mat, _node = character()
+        _target, rep = export([body])
+        text = "\n".join(rep.lines())
+        self.assertIn("Normal Bias to 4", text)
+        self.assertIn("MSAA 3D", text)
+
 
 class MaterialTest(unittest.TestCase):
     def material(self, body, name="Skin"):
@@ -291,6 +300,50 @@ class MaterialTest(unittest.TestCase):
         res = resource(tres(os.path.join(target.root, "Hero", "Materials", "hair.tres")))
         self.assertEqual(res["shader_parameter/use_angel_ring"], "true")
         self.assertIn("shader_parameter/ring_intensity", res)
+
+
+def finish_on(layers, **values):
+    """The scene's illustration finish on with only `layers`, and `values`."""
+    from dasktoon_finish import settings
+    finish = bpy.context.scene.dasktoon_finish
+    finish.enabled = True
+    for key in settings.LAYER_KEYS:
+        setattr(finish, key, key in layers)
+    for key, value in values.items():
+        setattr(finish, key, value)
+    return finish
+
+
+class FinishTest(unittest.TestCase):
+    """The illustration finish's Painting Colors layers (and Vignette) go to Godot as a screen layer to add to a scene
+    (<model>_finish.tscn); the layers Godot does not have are named in the report."""
+
+    def test_the_painting_colours_go_to_godot(self):
+        body, _mat, _node = character()
+        finish_on(("grade", "color", "glow"), saturation=1.3, shadow_tint=(0.5, 0.4, 0.9))
+        target, rep = export([body])
+        folder = os.path.join(target.root, "Hero")
+        sections = tres(os.path.join(folder, "Hero_finish.tres"))
+        res = resource(sections)
+        self.assertEqual(ext_path(sections, res["shader"]), "res://DaskToon/Shaders/dasktoon_finish.gdshader")
+        self.assertEqual((res["shader_parameter/grade_on"], res["shader_parameter/color_on"],
+                          res["shader_parameter/gradient_on"], res["shader_parameter/vignette_on"]),
+                         ("true", "true", "false", "false"))
+        self.assertAlmostEqual(float(res["shader_parameter/saturation"]), 1.3, places=5)
+        self.assertEqual(res["shader_parameter/shadow_tint"], "Vector3(0.5, 0.4, 0.9)")  # colors as seen, unchanged
+        scene_text = read(os.path.join(folder, "Hero_finish.tscn"))
+        self.assertIn('path="res://DaskToon/Hero/Hero_finish.tres"', scene_text)
+        self.assertIn('path="res://DaskToon/Scripts/dasktoon_finish.gd"', scene_text)
+        self.assertTrue(os.path.isfile(os.path.join(target.root, "Shaders", "dasktoon_finish.gdshader")))
+        text = "\n".join(rep.lines())
+        self.assertIn("Hero/Hero_finish.tscn", text)
+        self.assertIn("Soft Glow", text)  # on in DaskToon, not in Godot
+
+    def test_without_the_finish_there_is_no_screen_layer(self):
+        body, _mat, _node = character()
+        target, rep = export([body])
+        self.assertFalse(os.path.exists(os.path.join(target.root, "Hero", "Hero_finish.tscn")))
+        self.assertEqual(rep.finish, "")
 
 
 class ShapeKeyTest(unittest.TestCase):

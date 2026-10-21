@@ -35,9 +35,9 @@ def godot_name(prop):
 
 
 @functools.lru_cache(maxsize=None)
-def uniforms(base):
-    """[(name, type, is colour)] in the order <base>.gdshaderinc declares them."""
-    with open(os.path.join(files.SOURCE_DIR, files.SHADERS, base + ".gdshaderinc"), encoding="utf-8") as f:
+def uniforms(base, ext=".gdshaderinc"):
+    """[(name, type, is colour)] in the order <base><ext> declares them."""
+    with open(os.path.join(files.SOURCE_DIR, files.SHADERS, base + ext), encoding="utf-8") as f:
         text = f.read()
     return [(m.group(2), m.group(1), "source_color" in (m.group(3) or "")) for m in _UNIFORM.finditer(text)]
 
@@ -65,6 +65,8 @@ def value_text(kind, is_colour, value):
         return "Color(%s)" % ", ".join(number(v) for v in rgb + [value[3] if len(value) > 3 else 1.0])
     if kind == "vec3":
         return "Vector3(%s)" % ", ".join(number(v) for v in value[:3])
+    if kind == "vec2":
+        return "Vector2(%s)" % ", ".join(number(v) for v in value[:2])
     raise ValueError(kind)
 
 
@@ -84,9 +86,9 @@ class _Resource:
             self.ext[path] = ("%d_dt" % (len(self.ext) + 1), kind)
         return 'ExtResource("%s")' % self.ext[path][0]
 
-    def params(self, base, values, textures):
+    def params(self, base, values, textures, ext=".gdshaderinc"):
         lines = []
-        for name, kind, is_colour in uniforms(base):
+        for name, kind, is_colour in uniforms(base, ext):
             if kind.startswith("sampler"):
                 if name in textures:
                     lines.append("shader_parameter/%s = %s" % (name, self.ext_id("Texture2D", textures[name])))

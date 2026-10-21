@@ -120,3 +120,17 @@ cộng bóng anime vào `DIFFUSE_LIGHT`, ánh sáng môi trường tự tính (t
 28. Lọn tóc mọc từ bên trong một khối va chạm (luna: tóc mọc từ đỉnh đầu, trong khối của đầu): Live Sway của DaskToon để
     lọn rủ yên (lệch 2–6 cm), bộ lò xo của Godot hất văng 35 cm. Chuỗi nào có gốc nằm trong khối nào thì Godot bỏ khối
     đó cho chuỗi ấy (`exclude`). Còn lại: lọn 6 của luna lệch 16 cm do khối của cổ (DaskToon 4 cm).
+
+Sau đợt 4 (2026-10-21, tdt bật toàn bộ shader anime và Hoàn thiện tranh; người dùng chọn "Thêm lớp Màu tranh vào Godot
+rồi so"):
+
+29. Hoàn thiện tranh: các lớp chỉ đổi màu từng điểm ảnh (Màu bóng, màu sáng; Bão hòa, tương phản; Gradient ánh sáng;
+    Vignette) thành một lớp phủ màn hình, `<Tên>/<Tên>_finish.tscn` (CanvasLayer 100 > ColorRect với shader
+    `dasktoon_finish.gdshader`, số của cảnh trong `<Tên>_finish.tres`). Cùng thứ tự và công thức như nhóm compositor:
+    làm trên màu sRGB cắt về 0–1, Lượng trộn trong không gian tuyến tính. Gradient ánh sáng "Theo mặt trời" tính hướng từ
+    DirectionalLight3D đầu tiên và camera mỗi khung (`dasktoon_finish.gd`). Các lớp làm nhoè hoặc đọc độ sâu không sang
+    Godot; báo cáo xuất kể tên những lớp đang bật. Chỉ ghi khi Hoàn thiện tranh đang bật; người dùng thêm cảnh đó vào
+    cảnh của mình. Đo trên 4 quả cầu: chênh tối đa 0,004.
+30. Bóng đổ: với Normal Bias 2 mặc định của Godot, mí mắt và tóc mái của tdt phủ bóng lốm đốm lên mắt mà EEVEE để sáng
+    (nhiễu ở viền bóng mềm của Godot gặp ngưỡng cứng của bóng anime). Normal Bias 4 thì khớp. Không có đèn nào được xuất,
+    nên báo cáo xuất khuyên số này; cũng khuyên bật MSAA 3D vì viền 2 mm vỡ thành chấm khi không khử răng cưa.

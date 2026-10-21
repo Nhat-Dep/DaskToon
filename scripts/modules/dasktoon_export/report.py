@@ -51,6 +51,8 @@ class Report:
     light_hint: str = ""
     ambient_hint: str = ""
     engine: str = 'UNITY_URP'
+    finish: str = ""  # Godot: the illustration finish's screen layer (<name>_finish.tscn)
+    finish_left_out: list = field(default_factory=list)  # labels of the finish's layers that are on, not in Godot
 
     def summary(self):
         if self.engine == 'GODOT_4':
@@ -73,6 +75,12 @@ class Report:
                             "imports the model)") % self.rig)
         if self.merged:
             out.append(rpt_("Merged %d meshes of the character into one: %s") % self.merged)
+        if self.finish:
+            out.append(rpt_("Illustration Finish: %s, its Painting Colors and Vignette over the screen; add it to the "
+                            "scene") % self.finish)
+        if self.finish_left_out:
+            out.append(rpt_("Illustration Finish layers not in Godot: %s")
+                       % ", ".join(iface_(label) for label in self.finish_left_out))
         out.append(rpt_("Exported materials (%d): %s") % (len(self.materials), ", ".join(self.materials) or rpt_("none")))
         out += [rpt_("Skipped material %s: %s (Godot keeps the model's own material)") % item for item in self.skipped]
         if self.baked:
@@ -85,6 +93,12 @@ class Report:
         out += self.modifier_notes
         out += [rpt_("Warning: %s") % w for w in self.warnings]
         out += [hint for hint in (self.light_hint, self.ambient_hint) if hint]
+        # Measured on tdt (2026-10-21): at Godot's Normal Bias 2 the eyelids and the fringe shade the eyes in speckles
+        # that EEVEE leaves lit; at 4 they match. Without MSAA the thin outlines break into dots.
+        out.append(rpt_("Shadows: set the DirectionalLight3D's Shadow › Normal Bias to 4; at Godot's 2, hair and "
+                        "eyelids leave speckled shadows on the face"))
+        out.append(rpt_("Outlines: turn on Project Settings › Rendering › Anti Aliasing › Quality › MSAA 3D; without "
+                        "it thin outlines break into dots"))
         out.append(rpt_("DaskToon's materials light themselves from World Ambient, not from Godot's ambient light."))
         out.append(rpt_("Exporting again overwrites any manual edits to these files in Godot."))
         return out

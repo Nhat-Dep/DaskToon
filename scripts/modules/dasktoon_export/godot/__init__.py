@@ -13,7 +13,7 @@ import os
 from bpy.app.translations import pgettext_rpt as rpt_
 
 from .. import report
-from . import clips as clip_bake, files, materials, model
+from . import clips as clip_bake, files, finish, materials, model
 
 DATA_VERSION = 1
 HULL_LIGHT = (0.5, 0.8, 0.6)  # the outline hull's light when the scene has no Sun (dasktoon_outline_nodes._FALLBACK)
@@ -155,6 +155,7 @@ def export_model(context, target, objects, options):
                 material_paths[mat.name] = writer.material(spec, users)
         if options.model_format != 'NONE':
             _write_model(context, target, objects, options, rep, material_paths)
+        finish.write(context.scene, target, rep)
     finally:
         face_shading.restore_normals(snapshots)
     rep.light_hint = report.light_hint(context.scene, target.engine)

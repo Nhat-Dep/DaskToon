@@ -92,6 +92,10 @@ def write_sheet(rows, path):
         f.write(textures.png_bytes(res * 3, height, data))
 
 
+FINISH_CASES = ("bsdf_simple", "bsdf_rim", "cel_simple", "outline_custom")
+FINISH_LAYERS = ("grade", "color", "gradient", "vignette")
+
+
 @unittest.skipUnless(harness.godot_exe(), harness.SKIP_REASON)
 class GodotRenderTest(unittest.TestCase):
     def test_godot_matches_dasktoon(self):
@@ -143,6 +147,65 @@ class GodotRenderTest(unittest.TestCase):
         print("Godot comparison sheet:", sheet)
         print(json.dumps(table, indent=2))
         self.assertEqual(failures, [], json.dumps(table, indent=2))
+
+
+@unittest.skipUnless(harness.godot_exe(), harness.SKIP_REASON)
+class GodotFinishTest(unittest.TestCase):
+    """The illustration finish's Painting Colors layers and Vignette, on in DaskToon, against the screen layer the Godot
+    export writes, over a few of the spheres."""
+
+    def test_godot_finish_matches_dasktoon(self):
+        global CASES
+        saved = CASES
+        CASES = [case for case in saved if case[0] in FINISH_CASES]
+        try:
+            root = harness.new_project("dasktoon_godot_finish")
+            scene, sun, cam, spheres = build_scene()
+            from dasktoon_finish import settings
+            finish = scene.dasktoon_finish
+            finish.enabled = True
+            for key in settings.LAYER_KEYS:
+                setattr(finish, key, key in FINISH_LAYERS)
+            finish.grade_strength, finish.saturation, finish.contrast = 0.6, 1.3, 0.15
+            finish.gradient_strength, finish.vignette_strength = 0.5, 0.6
+            blender = unity_render.render_blender(scene, cam, spheres)
+            for image in blender.values():
+                image[..., :3] = np.minimum(image[..., :3], 1.0)
+            target = targets.make_target(root, MODEL_NAME, 'GODOT_4')
+            options = dasktoon_export.ExportOptions(include_animation=False, bake_size=64, bake_samples=4,
+                                                    merge_meshes=False)
+            rep = dasktoon_export.export_model(bpy.context, target, spheres, options)
+            self.assertEqual(rep.finish, "%s/%s_finish.tscn" % (MODEL_NAME, MODEL_NAME))
+            harness.import_project(root)
+            light_dir = sun.matrix_world.to_3x3() @ Vector((0.0, 0.0, 1.0))
+            out_dir = os.path.join(tu.OUT_DIR, "godot_finish_renders")
+            os.makedirs(out_dir, exist_ok=True)
+            result, output = harness.run_script(root, "dasktoon_render", {
+                "model": "res://DaskToon/%s/%s.glb" % (MODEL_NAME, MODEL_NAME),
+                "finish": "res://DaskToon/%s/%s_finish.tscn" % (MODEL_NAME, MODEL_NAME),
+                "cases": [{"name": name, "obj": "Case_" + name,
+                           "camPos": to_godot((i * unity_render.SPACING, -5.0, 0.0))}
+                          for i, (name, _builder, _graded) in enumerate(CASES)],
+                "resolution": unity_render.RES, "orthoSize": unity_render.ORTHO_SCALE,
+                "lightDir": to_godot(light_dir.normalized()), "lightEnergy": unity_render.SUN_STRENGTH / math.pi,
+                "lightColor": [float(unity_render.srgb(c)) for c in unity_render.SUN_COLOR],
+                "outDir": out_dir.replace("\\", "/"),
+            }, headless=False)
+            self.assertTrue(result["ok"], result.get("error"))
+            self.assertEqual(harness.shader_errors(output), [], output[-4000:])
+            table, failures, rows = {}, [], []
+            for name, _builder, _graded in CASES:
+                godot = load_png(result["outputs"][name])
+                worst, used, skipped = unity_render.compare(blender[name], godot)
+                table[name] = {"max_diff": round(worst, 4), "points": used, "edge_points": skipped}
+                rows.append((blender[name], godot))
+                if worst > unity_render.TOLERANCE or used < MIN_USED * (used + skipped):
+                    failures.append(name)
+            write_sheet(rows, os.path.join(tu.OUT_DIR, "godot_finish_compare.png"))
+            print(json.dumps(table, indent=2))
+            self.assertEqual(failures, [], json.dumps(table, indent=2))
+        finally:
+            CASES = saved
 
 
 if __name__ == "__main__":
