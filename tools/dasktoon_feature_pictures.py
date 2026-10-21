@@ -222,9 +222,55 @@ def face_shading_picture():
     write_image([px_b.reshape(PANEL[1], PANEL[0], 4), px_a.reshape(PANEL[1], PANEL[0], 4)], "face-shading")
 
 
+def shader_picture():
+    """Three spheres with the Anime BSDF: Simple shading, the Anime 3-Tone ramp, the Soft Painted ramp."""
+    from bl_ui import dasktoon_shading_styles as styles
+    scene = tu.reset_scene(PANEL[0])
+    scene, cam = eevee_scene((0.12, 0.13, 0.16), 3.0, (math.radians(55.0), 0.0, math.radians(-35.0)))
+    cam.data.ortho_scale = 2.6
+    cam.rotation_euler = (math.radians(90.0), 0.0, 0.0)
+    panels = []
+    for style in (None, "Anime 3-Tone", "Soft Painted"):
+        for obj in [o for o in scene.objects if o.type == 'MESH']:
+            bpy.data.objects.remove(obj)
+        sphere = tu.add_sphere(radius=0.9)
+        mat, node = tu.node_material("Ball", 'ShaderNodeAnimeCharacter')
+        node.inputs["Base Color"].default_value = (0.9, 0.55, 0.55, 1.0)
+        if style:
+            node.shading_mode = 'RAMP'
+            styles.apply_style(node.shading_ramp, styles.BUILTIN_STYLES[style])
+        tu.assign(sphere, mat)
+        cam.location = (0.0, -10.0, 0.0)
+        panels.append(shoot(scene, "shader_%s" % style))
+    write_image(panels, "shader")
+
+
+def finish_picture():
+    """The test character as rendered, then with the Illustration Finish on in the Sunset style."""
+    from dasktoon_finish import styles as finish_styles
+    body = gt.good()
+    scene, cam = eevee_scene((0.10, 0.11, 0.16), 2.5, (math.radians(55.0), 0.0, math.radians(-35.0)))
+    cam.data.ortho_scale = 2.4
+    direction = Vector(THREE_QUARTER).normalized()
+    cam.location = Vector((0.0, 0.0, 0.95)) + direction * 10.0
+    cam.rotation_euler = (-direction).to_track_quat('-Z', 'Y').to_euler()
+    mat = body.material_slots[0].material
+    mat.node_tree.nodes['Anime BSDF'].inputs["Base Color"].default_value = (0.85, 0.55, 0.5, 1.0)
+    scene.render.use_compositing = True
+    before = shoot(scene, "finish_before")
+    finish = scene.dasktoon_finish
+    finish.enabled = True
+    for key, value in finish_styles.style_values("Sunset").items():
+        setattr(finish, key, value)
+    after = shoot(scene, "finish_after")
+    write_image([before, after], "finish")
+
+
 PICTURES = {
     "outline": outline_picture,
     "face-shading": face_shading_picture,
+    "shader": shader_picture,
+    "finish": finish_picture,
 }
 
 
