@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Export to Godot — DaskToon Guide</title>
+<link rel="stylesheet" href="../guide.css">
+</head>
+<body>
+<main>
+<nav><a href="features.html">‹ All Features</a> <a href="../vi/export-godot.html">Tiếng Việt</a></nav>
+<h1>Export to Godot</h1>
+<p class="lead">The same Engine Export for Godot 4: the model as glTF, the materials as Godot shaders, the rig and the clips, ready to drag into a scene.</p>
+<section id="run">
+<h2>Running it</h2>
+<p>Choose <b>File</b> › <b>Export</b> › <b>Engine Export…</b>, set <b>Engine</b> to Godot 4 and pick a folder. In a Godot project (a folder with <code>project.godot</code>) it writes under <code>res://DaskToon</code>, and Godot imports it; otherwise it writes <code>&lt;Name&gt;_Godot/DaskToon</code> to copy into the root of the Godot project. The options are those of the Unity export; the model is a <code>.glb</code> file. Drag it into a scene: Godot puts the materials on it, and the rig gives it swaying hair and skirts, eyes, mouth and bend fixes.</p>
+</section>
+<section id="light">
+<h2>Light and shadows</h2>
+<p>Set the DirectionalLight3D as the report says (energy is the Sun's strength divided by π). Set its Shadow Normal Bias to 4, and turn on MSAA 3D in the project's settings: with Godot's defaults the eyelids and fringe leave speckled shadows on the face and thin outlines break into dots.</p>
+</section>
+<section id="finish">
+<h2>The finish layer</h2>
+<p>When Illustration Finish is on, the export also writes <code>&lt;Name&gt;_finish.tscn</code>: add it to your scene to get the Shadow and Light Tint, Light Gradient, Saturation and Contrast and Vignette layers over the picture. The layers that blur or read the depth do not go to Godot; the report names those that are on.</p>
+</section>
+<section id="limits">
+<h2>What is different</h2>
+<p>Godot does not give the shaders ambient occlusion, so the AO switch draws nothing there. Where several lamps light one spot, Godot takes the brightest lamp's shading instead of adding them.</p>
+</section>
+</main>
+</body>
+</html>

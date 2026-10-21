@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Export to Unity — DaskToon Guide</title>
+<link rel="stylesheet" href="../guide.css">
+</head>
+<body>
+<main>
+<nav><a href="features.html">‹ All Features</a> <a href="../vi/export-unity.html">Tiếng Việt</a></nav>
+<h1>Export to Unity</h1>
+<p class="lead">Engine Export writes the model, its materials, the shaders, the rig and the clips in a form Unity reads, with the anime look kept.</p>
+<section id="run">
+<h2>Running it</h2>
+<p>Choose <b>File</b> › <b>Export</b> › <b>Engine Export…</b>, set <b>Engine</b> to Unity 6 (URP) and pick a folder. In a Unity project folder it writes under <code>Assets/DaskToon</code>, which Unity imports at once; in any other folder it writes a <code>&lt;Name&gt;_Unity</code> folder to drag into Unity's Project window. The dialog shows which of the two it will do. In a DaskToon project that is linked to Unity, <b>Export This Model</b> in the <b>Project</b> menu uses that folder.</p>
+</section>
+<section id="options">
+<h2>Options</h2>
+<p><b>Selected Objects Only</b> exports the selection. <b>Model</b> is the FBX, or <b>No Model</b> for the materials and shaders alone. <b>Include Animation</b> adds the clips (see Clips). <b>Merge the Character's Meshes</b> makes one mesh with each material kept; the file you work on stays as it is. <b>Export Materials and Shaders</b> writes the materials; <b>Bake Size</b> and <b>Bake Samples</b> set the pictures made from node setups that cannot be copied.</p>
+</section>
+<section id="unity">
+<h2>In Unity</h2>
+<p>The project must use the Linear color space (the URP default). Set Unity's Directional Light and Ambient as the export's report says: the intensity is the Sun's strength divided by π. The report is also in the Text Editor, in the text <code>DaskToon Engine Export Report</code>. With a second character, choose the Unity project folder itself when exporting (or use a DaskToon project): dragging a second <code>_Unity</code> folder in makes Unity report a duplicate GUID for the Shaders folder (the materials still work), and the Scripts folder may be in a project only once, so delete the second one. Exporting again overwrites manual edits to these assets.</p>
+</section>
+</main>
+</body>
+</html>

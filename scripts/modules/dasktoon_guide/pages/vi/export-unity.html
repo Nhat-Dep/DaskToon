@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Xuất sang Unity — Hướng dẫn DaskToon</title>
+<link rel="stylesheet" href="../guide.css">
+</head>
+<body>
+<main>
+<nav><a href="features.html">‹ Mọi chức năng</a> <a href="../en/export-unity.html">English</a></nav>
+<h1>Xuất sang Unity</h1>
+<p class="lead">Xuất sang engine ghi model, vật liệu, shader, rig và các clip theo dạng Unity đọc được, giữ nguyên nét anime.</p>
+<section id="run">
+<h2>Cách chạy</h2>
+<p>Chọn <b>Tập Tin</b> › <b>Xuất Khẩu</b> › <b>Xuất sang engine…</b>, đặt <b>Động Cơ</b> là Unity 6 (URP) và chọn một thư mục. Nếu thư mục là một dự án Unity thì nó ghi vào <code>Assets/DaskToon</code>, Unity nhập ngay; ở thư mục khác thì nó ghi một thư mục <code>&lt;Tên&gt;_Unity</code> để kéo vào cửa sổ Project của Unity. Hộp thoại cho biết nó sẽ làm cách nào. Trong dự án DaskToon đã gắn Unity, <b>Xuất model này</b> trong menu <b>Dự án</b> dùng thư mục đó.</p>
+</section>
+<section id="options">
+<h2>Các lựa chọn</h2>
+<p><b>Duy Đối Tượng được Chọn</b> chỉ xuất các object đang chọn. <b>Mô hình</b> là FBX, hoặc <b>Không xuất model</b> để chỉ xuất vật liệu và shader. <b>Kèm animation</b> thêm các clip (xem Clip). <b>Gộp lưới nhân vật thành một</b> gộp thành một lưới, vẫn giữ từng vật liệu; file bạn đang làm không đổi. <b>Xuất material và shader</b> ghi các vật liệu; <b>Cỡ ảnh bake</b> và <b>Lượng Mẫu Vật Nướng</b> đặt các ảnh làm từ bộ node không sao chép được.</p>
+</section>
+<section id="unity">
+<h2>Trong Unity</h2>
+<p>Dự án phải dùng không gian màu Linear (mặc định của URP). Đặt Directional Light và Ambient của Unity như báo cáo xuất ghi: cường độ là độ mạnh của Sun chia cho π. Báo cáo cũng nằm trong Text Editor, ở văn bản <code>DaskToon Engine Export Report</code>. Với nhân vật thứ hai, hãy chọn thẳng thư mục dự án Unity khi xuất (hoặc dùng dự án DaskToon): kéo thêm một thư mục <code>_Unity</code> thứ hai vào sẽ làm Unity báo trùng GUID ở thư mục Shaders (vật liệu vẫn chạy), và thư mục Scripts chỉ được có một lần trong dự án, nên hãy xóa bản thứ hai. Xuất lại sẽ ghi đè các sửa tay trong những tệp này.</p>
+</section>
+</main>
+</body>
+</html>

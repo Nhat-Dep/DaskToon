@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Xuất sang Godot — Hướng dẫn DaskToon</title>
+<link rel="stylesheet" href="../guide.css">
+</head>
+<body>
+<main>
+<nav><a href="features.html">‹ Mọi chức năng</a> <a href="../en/export-godot.html">English</a></nav>
+<h1>Xuất sang Godot</h1>
+<p class="lead">Cùng Xuất sang engine cho Godot 4: model dạng glTF, vật liệu thành shader Godot, rig và các clip, sẵn sàng kéo vào cảnh.</p>
+<section id="run">
+<h2>Cách chạy</h2>
+<p>Chọn <b>Tập Tin</b> › <b>Xuất Khẩu</b> › <b>Xuất sang engine…</b>, đặt <b>Động Cơ</b> là Godot 4 và chọn một thư mục. Trong một dự án Godot (thư mục có <code>project.godot</code>) nó ghi vào <code>res://DaskToon</code>, và Godot tự nhập; không thì nó ghi <code>&lt;Tên&gt;_Godot/DaskToon</code> để chép vào gốc dự án Godot. Các lựa chọn như bản Unity; model là file <code>.glb</code>. Kéo nó vào một cảnh: Godot gắn vật liệu lên, và rig cho nó tóc và váy đung đưa, mắt, miệng và sửa chỗ gập.</p>
+</section>
+<section id="light">
+<h2>Ánh sáng và bóng</h2>
+<p>Đặt DirectionalLight3D như báo cáo ghi (energy là độ mạnh của Sun chia cho π). Đặt Shadow Normal Bias của nó là 4, và bật MSAA 3D trong cài đặt dự án: với mặc định của Godot, mí mắt và tóc mái để lại bóng lốm đốm trên mặt và viền mảnh vỡ thành chấm.</p>
+</section>
+<section id="finish">
+<h2>Lớp hoàn thiện</h2>
+<p>Khi Hoàn thiện tranh đang bật, bản xuất còn ghi <code>&lt;Tên&gt;_finish.tscn</code>: thêm nó vào cảnh của bạn để có các lớp Màu bóng, màu sáng; Gradient ánh sáng; Bão hòa, tương phản và Viền Mờ phủ lên hình. Các lớp làm nhòe hoặc đọc độ sâu không sang Godot; báo cáo kể tên những lớp đang bật.</p>
+</section>
+<section id="limits">
+<h2>Chỗ khác</h2>
+<p>Godot không cho shader độ che khuất môi trường, nên công tắc AO không vẽ gì ở đó. Chỗ nhiều đèn cùng chiếu, Godot lấy bóng của đèn sáng nhất thay vì cộng chúng.</p>
+</section>
+</main>
+</body>
+</html>

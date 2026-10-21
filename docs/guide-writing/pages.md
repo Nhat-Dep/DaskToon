@@ -50,3 +50,7 @@ Mỗi đợt một lần giao, xong đợt nào thì Claude soát, chạy phép 
 4. `animation.html`, `clips.html`, `timing.html`, `fast-action.html`, `export-unity.html`, `export-godot.html`.
 
 Mỗi đợt thêm các trang của nó vào `features.html`.
+
+## Trạng thái (2026-10-22)
+
+Cả 4 đợt đã xong: đợt 1 do Antigravity viết, Claude soát; đợt 2 đến 4 do Claude viết. Cột "Tên trang" ở trên là tên tạm; tên thật là tiêu đề trong `features.html`. Chỉ còn ảnh minh hoạ cho các trang chưa có ảnh (chỉ `outline` và `face-shading` có).
