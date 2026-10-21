@@ -46,6 +46,27 @@ def light_direction(scene):
     return to_godot(direction.normalized())
 
 
+def _segment_distance(point, a, b):
+    axis = b - a
+    length2 = axis.length_squared
+    t = 0.0 if length2 < 1e-18 else min(1.0, max(0.0, (point - a).dot(axis) / length2))
+    return (point - (a + axis * t)).length
+
+
+def leave_out_inner_colliders(rig, data):
+    """Each chain of `data` (rig_json.rig_data) gets `exclude`: the colliders whose capsule its root is in. luna's hair
+    locks start at the top of the head, inside its capsule; DaskToon's sway leaves them hanging, Godot's spring bone
+    threw them 35 cm off. Godot leaves those colliders out for that chain."""
+    world = rig.matrix_world
+    bones = rig.data.bones
+    capsules = [(c["bone"], world @ bones[c["bone"]].head_local, world @ bones[c["bone"]].tail_local, c["radius"])
+                for c in data["colliders"] if bones.get(c["bone"]) is not None]
+    for chain in data["chains"]:
+        root = world @ bones[chain["bones"][0]].head_local
+        chain["exclude"] = [bone for bone, a, b, radius in capsules
+                            if _segment_distance(root, a, b) < radius + chain["radius"]]
+
+
 def shape_values(objects, renamed):
     """{mesh name in the model: {shape key: value}} of the shape keys that are on: Godot leaves glTF's default weights
     out, the import script sets them. `renamed` names the merged meshes; the bend fixes' keys follow the pose."""
@@ -75,6 +96,8 @@ def _write_model(context, target, objects, options, rep, material_paths):
     rig = rig_json.find_rig(objects)
     renamed = {obj.name: sources[0].name for obj in sources}
     rig_data = rig_json.rig_data(rig, renamed) if rig is not None else None
+    if rig_data is not None:
+        leave_out_inner_colliders(rig, rig_data)
     data = {"version": DATA_VERSION, "name": target.name, "materials": material_paths, "clips": clip_list,
             "rig": rig_data, "shapes": shape_values(objects, renamed)}
     if rig_data is not None:

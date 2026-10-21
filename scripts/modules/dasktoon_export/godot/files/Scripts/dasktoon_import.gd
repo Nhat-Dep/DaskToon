@@ -117,11 +117,26 @@ func _rig(scene, rig):
 	var skeleton = _find(scene, "", Skeleton3D)
 	if skeleton == null:
 		return
+	var capsules = []
 	var chains = rig.get("chains", []).filter(func(chain): return chain.get("unity", "runtime") != "baked")
 	if not chains.is_empty():
 		var sway = SpringBoneSimulator3D.new()
 		sway.name = "DaskToonSway"
 		_add(skeleton, sway, scene)
+		var by_bone = {}
+		for collider in rig.get("colliders", []):
+			# A capsule from the bone along its +Y for `length`.
+			var capsule = SpringBoneCollisionCapsule3D.new()
+			capsule.name = "Collider_" + collider["bone"]
+			_add(sway, capsule, scene)
+			capsule.bone_name = collider["bone"]
+			capsule.radius = collider["radius"]
+			capsule.mid_height = collider["length"]
+			# Along the bone, from its head to its tail; DaskToon's modifier sets it again when the game runs (Godot
+			# does not save it from here).
+			capsule.position_offset = Vector3(0.0, collider["length"] / 2.0, 0.0)
+			capsules.append({"node": capsule, "offset": capsule.position_offset})
+			by_bone[collider["bone"]] = capsule
 		sway.setting_count = chains.size()
 		for i in chains.size():
 			var chain = chains[i]
@@ -138,15 +153,11 @@ func _rig(scene, rig):
 			sway.set_gravity(i, chain["gravity"])
 			sway.set_gravity_direction(i, Vector3.DOWN)
 			sway.set_enable_all_child_collisions(i, true)
-		for collider in rig.get("colliders", []):
-			# A capsule from the bone along its +Y for `length`.
-			var capsule = SpringBoneCollisionCapsule3D.new()
-			capsule.name = "Collider_" + collider["bone"]
-			_add(sway, capsule, scene)
-			capsule.bone_name = collider["bone"]
-			capsule.radius = collider["radius"]
-			capsule.mid_height = collider["length"]
-			capsule.position_offset = Vector3(0.0, collider["length"] / 2.0, 0.0)
+			# Not the capsules the chain starts in (Godot's spring bone throws such a chain far off).
+			var inner = chain.get("exclude", []).filter(func(bone): return by_bone.has(bone))
+			sway.set_exclude_collision_count(i, inner.size())
+			for j in inner.size():
+				sway.set_exclude_collision_path(i, j, sway.get_path_to(by_bone[inner[j]]))
 	var eyes = []
 	for eye in rig.get("flatEyes", []):
 		var mesh = _find(scene, eye["object"], MeshInstance3D)
@@ -160,13 +171,16 @@ func _rig(scene, rig):
 			mouths.append({"mesh": mesh, "surface": _surface(mesh, mouth["material"], mouth["slot"]),
 					"rows": mouth.get("rows", 1), "columns": mouth.get("columns", 1), "bone": mouth.get("bone", "")})
 	var fixes = rig.get("correctives", [])
-	if eyes.is_empty() and mouths.is_empty() and fixes.is_empty():
+	if eyes.is_empty() and mouths.is_empty() and fixes.is_empty() and capsules.is_empty():
 		return
 	var modifier = load(RIG_SCRIPT).new()
 	modifier.name = "DaskToonRig"
 	_add(skeleton, modifier, scene)  # after the sway: it reads the final pose
 	for entry in eyes + mouths:
 		entry["mesh"] = modifier.get_path_to(entry["mesh"])
+	for entry in capsules:
+		entry["node"] = modifier.get_path_to(entry["node"])
 	modifier.fixes = fixes
 	modifier.flat_eyes = eyes
 	modifier.mouths = mouths
+	modifier.colliders = capsules

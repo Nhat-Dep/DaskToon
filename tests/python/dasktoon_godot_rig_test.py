@@ -51,6 +51,19 @@ class RigDataTest(unittest.TestCase):
         self.assertEqual([e["object"] for e in data["flatEyes"]], ["Body"])
         self.assertEqual([m["object"] for m in data["mouths"]], ["Body"])
 
+    def test_a_chain_growing_inside_a_collider_leaves_it_out(self):
+        """luna's hair locks start at the top of the head, inside its capsule: Godot's spring bone threw them 35 cm
+        off where DaskToon's sway leaves them hanging, so a chain does not collide with a capsule its root is in."""
+        rig, objs = rt.built()
+        head = next(c for c in rig.data.dasktoon_rig.colliders if c.bone == "Head")
+        head.radius = 10.0  # the whole character inside it
+        target, _rep = export([rig] + list(objs.values()), export_materials=False)
+        chains = rig_of(target)["chains"]
+        self.assertTrue(chains and all("Head" in c["exclude"] for c in chains), chains)
+        head.radius = 0.0001
+        target, _rep = export([rig] + list(objs.values()), export_materials=False)
+        self.assertTrue(all("Head" not in c["exclude"] for c in rig_of(target)["chains"]))
+
     def test_no_rig_no_rig_data(self):
         tu.reset_scene()
         body = tu.add_sphere(segments=8, rings=4)
@@ -73,7 +86,10 @@ class GodotRigTest(unittest.TestCase):
     def test_hair_and_skirts_sway_in_godot(self):
         rig, objs = rt.built()
         rig.data.dasktoon_rig.parts["Hair"].stiffness = 2.5
+        next(c for c in rig.data.dasktoon_rig.colliders if c.bone == "Head").radius = 10.0
         data = rt.rig_json.rig_data(rig)
+        from dasktoon_export import godot as godot_export
+        godot_export.leave_out_inner_colliders(rig, data)
         result, output = self.run_godot([rig] + list(objs.values()), {}, export_materials=False)
         self.assertTrue(result["sway"], output[-2000:])
         runtime = [c for c in data["chains"] if c["unity"] == "runtime"]
@@ -87,11 +103,15 @@ class GodotRigTest(unittest.TestCase):
             self.assertAlmostEqual(hair[key], chain[key], places=4, msg=key)
         self.assertAlmostEqual(hair["length"], chain["lengths"][-1], places=4)
         self.assertTrue(all(s["collisions"] for s in result["settings"]))
+        for chain in runtime:
+            self.assertEqual(sorted(settings[chain["bones"][0]]["exclude"]), sorted(chain["exclude"]))
         self.assertEqual(sorted(c["bone"] for c in result["colliders"]), sorted(c["bone"] for c in data["colliders"]))
         for got in result["colliders"]:
             want = next(c for c in data["colliders"] if c["bone"] == got["bone"])
             self.assertAlmostEqual(got["radius"], want["radius"], places=4)
             self.assertAlmostEqual(got["length"], want["length"], places=4)
+            # Along the bone, from its head to its tail (Godot does not save the offset: DaskToon's modifier sets it).
+            self.assertAlmostEqual(got["offset"], want["length"] / 2.0, places=4)
 
     def test_baked_parts_do_not_sway_in_godot(self):
         rig, objs = rt.built()

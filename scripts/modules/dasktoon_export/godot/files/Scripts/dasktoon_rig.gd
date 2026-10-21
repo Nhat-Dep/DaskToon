@@ -14,6 +14,8 @@
 # - 2D mouths (DaskToonMouthAtlas): the material shows one cell of its atlas, rows x columns from the top left; the cell
 #   is the Y scale of the bone MouthCell minus 1.
 # The UVs move through the uv_transform of DaskToon's shaders, on a copy of the material made for this character.
+# It also puts the sway's collider capsules along their bones: Godot saves a capsule's offset only once it has found the
+# skeleton, which it has not while it imports the model.
 # Written by DaskToon Engine Export; exporting again replaces it.
 extends SkeletonModifier3D
 
@@ -23,12 +25,21 @@ extends SkeletonModifier3D
 @export var flat_eyes: Array = []
 # {mesh: NodePath, surface, rows, columns, bone}
 @export var mouths: Array = []
+# {node: NodePath of a SpringBoneCollision3D, offset: Vector3}
+@export var colliders: Array = []
 
 var _ready_fixes = []
 var _ready_eyes = []
 var _ready_mouths = []
 var _set_up = false
 var _last_frame = -1
+
+
+func _ready():
+	for collider in colliders:
+		var node = get_node_or_null(collider["node"])
+		if node:
+			node.position_offset = collider["offset"]
 
 
 func _process_modification_with_delta(_delta):

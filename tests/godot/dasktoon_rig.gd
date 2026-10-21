@@ -26,6 +26,13 @@ func _all(node, type, out):
 	return out
 
 
+func _excluded(sway, setting):
+	var out = []
+	for j in sway.get_exclude_collision_count(setting):
+		out.append(str(sway.get_node(sway.get_exclude_collision_path(setting, j)).bone_name))
+	return out
+
+
 func _vec(a):
 	return Vector3(a[0], a[1], a[2])
 
@@ -40,10 +47,26 @@ func _point(skeleton, bone, direction):
 	skeleton.set_bone_pose_rotation(bone, (parent_basis.inverse() * turned).get_rotation_quaternion())
 
 
+var data
+var scene
+var frames = 0
+
+
 func _init():
-	var data = JSON.parse_string(FileAccess.get_file_as_string(OS.get_cmdline_user_args()[0]))
-	var scene = load(data["model"]).instantiate()
+	data = JSON.parse_string(FileAccess.get_file_as_string(OS.get_cmdline_user_args()[0]))
+	scene = load(data["model"]).instantiate()
 	root.add_child(scene)
+
+
+# The scene enters the tree (and its nodes run _ready) once the main loop runs: check two frames in.
+func _process(_delta):
+	frames += 1
+	if frames == 2:
+		_check()
+	return false
+
+
+func _check():
 	var skeleton = _find(scene, Skeleton3D)
 	var result = {"ok": true}
 	var sway = _find(scene, SpringBoneSimulator3D)
@@ -54,11 +77,12 @@ func _init():
 			settings.append({"root": sway.get_root_bone_name(i), "end": sway.get_end_bone_name(i),
 					"stiffness": sway.get_stiffness(i), "drag": sway.get_drag(i), "gravity": sway.get_gravity(i),
 					"radius": sway.get_radius(i), "length": sway.get_end_bone_length(i),
-					"collisions": sway.are_all_child_collisions_enabled(i)})
+					"collisions": sway.are_all_child_collisions_enabled(i), "exclude": _excluded(sway, i)})
 		result["settings"] = settings
 		var colliders = []
 		for capsule in _all(sway, SpringBoneCollisionCapsule3D, []):
-			colliders.append({"bone": capsule.bone_name, "radius": capsule.radius, "length": capsule.mid_height})
+			colliders.append({"bone": capsule.bone_name, "radius": capsule.radius, "length": capsule.mid_height,
+					"offset": capsule.position_offset.y})
 		result["colliders"] = colliders
 	var modifier = _find(scene, SkeletonModifier3D, "DaskToonRig")
 	result["modifier"] = modifier != null

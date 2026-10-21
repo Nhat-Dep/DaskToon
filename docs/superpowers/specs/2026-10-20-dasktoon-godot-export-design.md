@@ -115,3 +115,8 @@ cộng bóng anime vào `DIFFUSE_LIGHT`, ánh sáng môi trường tự tính (t
     khi mở model. Bộ xuất cũng ghi sẵn `<ảnh>.import` cạnh mỗi ảnh (giữ dòng Godot đã ghi).
 26. Godot bỏ qua giá trị biểu cảm mặc định trong glTF (tdt để "blink" 0,419 thì Godot mở mắt): giá trị các biểu cảm đang
     bật được ghi vào `<Tên>.dasktoon.json` và script nhập đặt lại.
+27. Godot không lưu độ dời của khối va chạm khi nhập (chưa tìm thấy khung xương), nên khối nằm lệch nửa xương xuống:
+    `dasktoon_rig.gd` đặt lại độ dời khi game chạy.
+28. Lọn tóc mọc từ bên trong một khối va chạm (luna: tóc mọc từ đỉnh đầu, trong khối của đầu): Live Sway của DaskToon để
+    lọn rủ yên (lệch 2–6 cm), bộ lò xo của Godot hất văng 35 cm. Chuỗi nào có gốc nằm trong khối nào thì Godot bỏ khối
+    đó cho chuỗi ấy (`exclude`). Còn lại: lọn 6 của luna lệch 16 cm do khối của cổ (DaskToon 4 cm).
