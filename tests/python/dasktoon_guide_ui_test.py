@@ -149,5 +149,60 @@ class PagesTest(unittest.TestCase):
                             self.assertIn('id="%s"' % anchor, f.read(), (language, name, target, anchor))
 
 
+PAGE = """<!doctype html>
+<html lang="%(lang)s">
+<head><meta charset="utf-8"><title>T</title><link rel="stylesheet" href="../guide.css"></head>
+<body><main>
+<nav><a href="index.html">%(home)s</a> <a href="../%(other)s/%(name)s">%(other)s</a></nav>
+<h1>T</h1>
+%(body)s
+</main></body>
+</html>
+"""
+
+
+class PageCheckTest(unittest.TestCase):
+    """The check a page writer (a person or another program) runs before handing pages in: every page in both
+    languages and reached from the index, the two languages with the same sections and pictures, and every button name
+    in <b> one the interface really shows in that language (DaskToon's or Blender's own)."""
+
+    def write(self, root, lang, name, body, real_lang=None):
+        other = "vi" if lang == "en" else "en"
+        with open(os.path.join(root, lang, name), "w", encoding="utf-8") as f:
+            f.write(PAGE % {"lang": real_lang or lang, "other": other, "name": name, "body": body,
+                            "home": "Home"})
+
+    def test_the_pages_pass_the_page_check(self):
+        from dasktoon_guide import page_check
+        self.assertEqual(page_check.problems(ui.PAGES), [])
+
+    def test_the_page_check_finds_what_a_writer_gets_wrong(self):
+        from dasktoon_guide import page_check
+        root = tempfile.mkdtemp(prefix="dt_page_check_")
+        for folder in ("en", "vi", "pictures"):
+            os.makedirs(os.path.join(root, folder))
+        open(os.path.join(root, "guide.css"), "w").close()
+        open(os.path.join(root, "pictures", "rig.png"), "wb").close()
+        for lang in ("en", "vi"):
+            self.write(root, lang, "index.html", '<a href="good.html">x</a> <a href="mixed.html">x</a>')
+        # Right in both languages.
+        self.write(root, "en", "good.html", '<section id="parts"><b>Anime Rig › Check</b>'
+                   '<img src="../pictures/rig.png"></section>')
+        self.write(root, "vi", "good.html", '<section id="parts"><b>Rig anime › Kiểm tra</b>'
+                   '<img src="../pictures/rig.png"></section>')
+        # Wrong: a made-up button, a section and a picture only in English, the wrong lang, a missing picture.
+        self.write(root, "en", "mixed.html", '<section id="a"><b>Anime Rig</b></section><section id="b"></section>'
+                   '<img src="../pictures/rig.png">')
+        self.write(root, "vi", "mixed.html", '<section id="a"><b>Nút Không Có</b></section>'
+                   '<img src="../pictures/none.png">', real_lang="en")
+        # Only in English, and nothing links to it.
+        self.write(root, "en", "lonely.html", "")
+        found = "\n".join(page_check.problems(root))
+        for expected in ("Nút Không Có", "lonely.html", '"b"', "none.png", "lang"):
+            self.assertIn(expected, found)
+        self.assertNotIn("good.html", found)
+        self.assertNotIn("Rig anime", found)
+
+
 if __name__ == "__main__":
     tu.run_tests()

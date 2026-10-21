@@ -17,5 +17,5 @@ section:target { background: var(--code); border-radius: 6px; padding: 16px; }
 figure { margin: 16px 0; }
 figure img { max-width: 100%; height: auto; border-radius: 6px; border: 1px solid var(--line); }
 figcaption { color: var(--muted); font-size: 14px; }
-kbd { background: var(--code); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; font-size: 14px; }
+kbd, code { background: var(--code); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; font-size: 14px; }
 ol.steps li { margin: 4px 0; }
