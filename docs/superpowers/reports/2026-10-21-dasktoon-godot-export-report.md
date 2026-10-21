@@ -80,6 +80,14 @@ nén cho model của DaskToon.
   đồ xương Humanoid của Godot.
 - Chưa thử bộ vẽ Compatibility của Godot.
 
+## Sau báo cáo: màu luna
+
+Bạn hỏi "màu luna?": luna trong Godot (và trong DaskToon sau khi bấm Dùng shader DaskToon) xám hơn bản gốc. Godot đúng
+như DaskToon; chỗ mất màu là nút đổi shader, vì nó chỉ lấy ảnh màu, bỏ qua hai nhóm nút toon của luna (nhân màu với chính
+nó). Đã sửa nút này: chuỗi nút riêng được chép lại với ánh sáng của cảnh cho Màu nền và Màu bóng. Luna gốc đổi shader
+xong gần như trùng bản gốc (chênh trung vị 4/255). Ảnh trong máy:
+`docs/superpowers/reports/real-model/godot/luna_original_vs_converted.png`.
+
 ## Phép thử
 
 - `dasktoon_godot_export_test` (20 bài): đích, tệp, vật liệu, ảnh, viền, cull và trong suốt, báo cáo, gộp lưới, biểu cảm;

@@ -112,5 +112,114 @@ class ConvertTest(unittest.TestCase):
         self.assertEqual(surface(obj.data.materials[0]).bl_idname, 'ShaderNodeBsdfPrincipled')
 
 
+def flat_texture(nt, value):
+    """An image texture of one colour, read as it is stored (Non-Color)."""
+    image = bpy.data.images.new("Flat %g" % value, 4, 4)
+    image.colorspace_settings.name = 'Non-Color'
+    image.pixels.foreach_set([value, value, value, 1.0] * 16)
+    tex = nt.nodes.new('ShaderNodeTexImage')
+    tex.image = image
+    return tex
+
+
+def multiply(nt, a, b):
+    mix = nt.nodes.new('ShaderNodeMix')
+    mix.data_type, mix.blend_type = 'RGBA', 'MULTIPLY'
+    mix.inputs["Factor"].default_value = 1.0
+    nt.links.new(a, mix.inputs["A"])
+    nt.links.new(b, mix.inputs["B"])
+    return next(s for s in mix.outputs if s.identifier == "Result_Color")
+
+
+def toon_group():
+    """luna's kind of toon group: Diffuse -> Shader to RGB -> a two-step ramp (dark blue below 0.3, white above), times
+    the colour."""
+    group = bpy.data.node_groups.new("Own Toon", 'ShaderNodeTree')
+    group.interface.new_socket("Color", in_out='INPUT', socket_type='NodeSocketColor')
+    group.interface.new_socket("Result", in_out='OUTPUT', socket_type='NodeSocketColor')
+    gn = group.nodes
+    inp, out = gn.new('NodeGroupInput'), gn.new('NodeGroupOutput')
+    diffuse, to_rgb, ramp = gn.new('ShaderNodeBsdfDiffuse'), gn.new('ShaderNodeShaderToRGB'), gn.new('ShaderNodeValToRGB')
+    ramp.color_ramp.interpolation = 'CONSTANT'
+    ramp.color_ramp.elements[0].color = (0.1, 0.1, 0.2, 1.0)
+    ramp.color_ramp.elements[1].position = 0.3
+    ramp.color_ramp.elements[1].color = (1.0, 1.0, 1.0, 1.0)
+    group.links.new(inp.outputs["Color"], diffuse.inputs["Color"])
+    group.links.new(diffuse.outputs["BSDF"], to_rgb.inputs["Shader"])
+    group.links.new(to_rgb.outputs["Color"], ramp.inputs["Fac"])
+    group.links.new(multiply(group, ramp.outputs["Color"], inp.outputs["Color"]), out.inputs["Result"])
+    return group
+
+
+class OwnLookTest(unittest.TestCase):
+    """A model shaded by a node setup of its own that shows a colour (luna: two toon groups, each multiplying the
+    texture by itself): the Anime BSDF gets that colour as it looks lit (Base Color) and in shadow (Shadow Color), the
+    light the setup reads replaced by the scene's Sun and World; the texture alone made luna's black dress grey."""
+
+    def setUp(self):
+        tu.reset_scene()
+        tu.add_sun(3.0)  # straight down: lights the plane with 3 / pi
+        bpy.ops.mesh.primitive_plane_add(size=4.0)
+        self.plane = bpy.context.active_object
+
+    def shown(self, mat, socket):
+        """The linear colour `socket` gives, rendered as emission on the plane facing the camera."""
+        nt = mat.node_tree
+        out = next(n for n in nt.nodes if n.bl_idname == 'ShaderNodeOutputMaterial')
+        before = out.inputs["Surface"].links[0].from_socket
+        emission = nt.nodes.new('ShaderNodeEmission')
+        nt.links.new(socket, emission.inputs["Color"])
+        nt.links.new(emission.outputs[0], out.inputs["Surface"])
+        try:
+            return tu.render_center("own_look_%s" % mat.name)[:3]
+        finally:
+            nt.links.new(before, out.inputs["Surface"])
+            nt.nodes.remove(emission)
+
+    def own(self, name, build):
+        mat = tu.new_material(name)
+        nt = mat.node_tree
+        out = nt.nodes.new('ShaderNodeOutputMaterial')
+        nt.links.new(build(nt), out.inputs["Surface"])
+        tu.assign(self.plane, mat)
+        return mat
+
+    def assert_colour(self, got, want, places=2):
+        for g, w in zip(got, want):
+            self.assertAlmostEqual(g, w, places=places, msg=(got, want))
+
+    def test_colour_times_itself_stays_dark(self):
+        def build(nt):
+            tex = flat_texture(nt, 0.6)
+            return multiply(nt, tex.outputs["Color"], tex.outputs["Color"])
+        mat = self.own("Squared", build)
+        self.assertTrue(convert.convert(mat))
+        anime = surface(mat)
+        base = anime.inputs["Base Color"].links[0].from_socket
+        self.assert_colour(self.shown(mat, base), (0.36, 0.36, 0.36))
+        shadow = anime.inputs["Shadow Color"].links[0].from_socket
+        self.assert_colour(self.shown(mat, shadow), tuple(0.36 * c for c in convert.SHADOW))
+
+    def test_an_own_toon_group_gives_its_lit_and_shadow_colours(self):
+        group = toon_group()
+
+        def build(nt):
+            node = nt.nodes.new('ShaderNodeGroup')
+            node.node_tree = group
+            nt.links.new(flat_texture(nt, 0.6).outputs["Color"], node.inputs["Color"])
+            return node.outputs["Result"]
+        mat = self.own("Toon Look", build)
+        self.assertTrue(convert.convert(mat))
+        anime = surface(mat)
+        base = anime.inputs["Base Color"].links[0].from_socket
+        shadow = anime.inputs["Shadow Color"].links[0].from_socket
+        self.assert_colour(self.shown(mat, base), (0.6, 0.6, 0.6))  # lit: 0.6 x 3/pi reads above 0.3
+        self.assert_colour(self.shown(mat, shadow), (0.06, 0.06, 0.12))  # no light: the dark blue step
+        from dasktoon_export import graph
+        self.assertIsNone(graph.light_dependency(base))  # an export can bake it
+        self.assertIsNone(graph.light_dependency(shadow))
+        self.assertTrue(any(n.bl_idname == 'ShaderNodeShaderToRGB' for n in group.nodes))  # the group as it was
+
+
 if __name__ == "__main__":
     tu.run_tests()

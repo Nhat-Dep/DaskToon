@@ -71,6 +71,20 @@ viền và bóng kiểu hoạt hình của DaskToon thì phải tự nối lại
 
 - Màu bóng: **tự tính từ màu nền** (đề xuất), hay **một màu bóng chung** người dùng chọn cho cả nhân vật?
 
+### Bổ sung 2026-10-21: giữ màu của cách tô riêng
+
+Bạn hỏi "màu luna?" khi xem luna trong Godot: váy, áo xám hơn bản gốc (72 so với 38 trên 255). Lý do: luna tô bằng hai
+nhóm nút toon riêng, cả hai nhân màu ảnh với chính nó, mà nút này chỉ lấy ảnh màu. Bạn chọn sửa nút.
+
+Nay vật liệu mà Surface nhận một màu từ chuỗi nút riêng được giữ nguyên dáng: chuỗi nút được chép hai lần, chỗ đọc ánh
+sáng (Shader to RGB) thay bằng ánh sáng của cảnh: Sun sáng nhất cộng World cho **Màu nền**, World riêng cho **Màu
+bóng**. Nhóm nút gốc giữ nguyên; bản chép có tên "(lit)", "(shadow)". Chuỗi không đọc ánh sáng thì Màu nền là chính màu
+đó (vd. màu nhân với chính nó), Màu bóng tính như trước. Chuỗi đọc ánh sáng kiểu khác (Fresnel, Layer Weight...) thì vẫn
+lấy ảnh màu như trước. Bản chép không còn nút đọc ánh sáng, nên xuất game nướng được thành ảnh.
+
+Đo trên luna gốc (mở để đọc, không lưu), cùng đèn của tệp: sau khi đổi, váy 47 so với 38 của bản gốc, chênh trung vị
+4/255 trên toàn nhân vật.
+
 ## 3. Hiệu ứng hành động nhanh khi render
 
 ### Chuyện gì xảy ra
