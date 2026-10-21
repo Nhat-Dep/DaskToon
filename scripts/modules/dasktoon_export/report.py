@@ -65,6 +65,9 @@ class Report:
         out = [rpt_("Destination: %s (%s)") % (self.root, where), rpt_(GODOT_SHADER_STATE[self.shaders])]
         if self.model:
             out.append(rpt_("Model: %s (Godot puts the DaskToon materials on it when it imports it)") % self.model)
+        if self.clips:
+            out.append(rpt_("Clips: %s") % ", ".join(rpt_("%s (loop)") % name if loop else name
+                                                      for name, loop in self.clips))
         if self.merged:
             out.append(rpt_("Merged %d meshes of the character into one: %s") % self.merged)
         out.append(rpt_("Exported materials (%d): %s") % (len(self.materials), ", ".join(self.materials) or rpt_("none")))

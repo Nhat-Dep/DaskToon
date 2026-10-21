@@ -11,7 +11,7 @@ SOURCE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "files")
 RES_ROOT = "res://DaskToon"
 SHADERS = "Shaders"
 IMPORT_SCRIPT = RES_ROOT + "/Scripts/dasktoon_import.gd"
-VERSION = 1
+VERSION = 2
 VERSION_FILE = SHADERS + "/dasktoon_shaders.version"
 ALPHA_SUFFIX = {'OPAQUE': "", 'CLIP': "_clip", 'BLEND': "_blend"}
 ALPHA_DEFINE = {'CLIP': "DT_ALPHA_CLIP", 'BLEND': "DT_ALPHA_BLEND"}
@@ -19,6 +19,9 @@ ALPHA_DEFINE = {'CLIP': "DT_ALPHA_CLIP", 'BLEND': "DT_ALPHA_BLEND"}
 # inside, so it always culls its front faces.
 VARIANTS = {
     "anime_bsdf": (("ambient_light_disabled",), ("cull_disabled", "cull_back"), ('OPAQUE', 'CLIP', 'BLEND')),
+    "anime_cel": (("ambient_light_disabled",), ("cull_disabled", "cull_back"), ('OPAQUE',)),
+    "anime_eye": (("unshaded",), ("cull_disabled", "cull_back"), ('OPAQUE',)),
+    "dask_cel": (("ambient_light_disabled",), ("cull_disabled", "cull_back"), ('OPAQUE',)),
     "anime_outline": (("ambient_light_disabled", "world_vertex_coords"), ("cull_front",), ('OPAQUE', 'CLIP')),
 }
 

@@ -10,6 +10,7 @@ import json
 import math
 import os
 import re
+import struct
 import sys
 import tempfile
 import unittest
@@ -89,6 +90,18 @@ def ext_path(sections, value):
 
 def color(value):
     return [float(v) for v in re.match(r"Color\(([^)]*)\)", value).group(1).split(",")]
+
+
+def glb_json(path):
+    """The JSON chunk of a binary glTF."""
+    with open(path, "rb") as f:
+        data = f.read()
+    length = struct.unpack_from("<I", data, 12)[0]
+    return json.loads(data[20:20 + length])
+
+
+def morph_targets(path):
+    return [t for mesh in glb_json(path)["meshes"] for p in mesh["primitives"] for t in p.get("targets", [])]
 
 
 def file_picture(name, size=8):
@@ -248,16 +261,51 @@ class MaterialTest(unittest.TestCase):
         for g, want in zip(got, (srgb(0.05), srgb(0.06), srgb(0.08))):
             self.assertAlmostEqual(g, want, places=4)
 
-    def test_other_shading_nodes_use_anime_bsdf_for_now_and_say_so(self):
+    def test_each_shading_node_has_its_shader(self):
+        for node_type, shader in (('ShaderNodeAnimeCel', "anime_cel"), ('ShaderNodeAnimeEye', "anime_eye"),
+                                  ('ShaderNodeDaskCel', "dask_cel")):
+            tu.reset_scene()
+            body = tu.add_sphere(segments=8, rings=4)
+            mat, _node = tu.node_material("Mat", node_type)
+            mat.use_backface_culling = True
+            tu.assign(body, mat)
+            target, rep = export([body])
+            sections = tres(os.path.join(target.root, "Hero", "Materials", "Mat.tres"))
+            self.assertEqual(ext_path(sections, resource(sections)["shader"]),
+                             "res://DaskToon/Shaders/%s_cull.gdshader" % shader)
+            self.assertFalse(any("Anime BSDF" in w for w in rep.warnings), rep.warnings)
+
+    def test_hair_keeps_its_angel_ring(self):
+        import dasktoon_unity_render_test as unity_render
         tu.reset_scene()
         body = tu.add_sphere(segments=8, rings=4)
-        mat, _node = tu.node_material("Cel", 'ShaderNodeAnimeCel')
-        tu.assign(body, mat)
-        target, rep = export([body])
-        sections = tres(os.path.join(target.root, "Hero", "Materials", "Cel.tres"))
-        self.assertEqual(ext_path(sections, resource(sections)["shader"]),
-                         "res://DaskToon/Shaders/anime_bsdf.gdshader")
-        self.assertTrue(any("Cel" in w and "Anime BSDF" in w for w in rep.warnings), rep.warnings)
+        tu.assign(body, unity_render.hair())
+        target, _rep = export([body])
+        res = resource(tres(os.path.join(target.root, "Hero", "Materials", "hair.tres")))
+        self.assertEqual(res["shader_parameter/use_angel_ring"], "true")
+        self.assertIn("shader_parameter/ring_intensity", res)
+
+
+class ShapeKeyTest(unittest.TestCase):
+    def test_shape_keys_change_normals(self):
+        body, _mat, _node = character(outlined=False)
+        body.shape_key_add(name="Basis")
+        body.shape_key_add(name="Smile").data[0].co.z += 0.1
+        target, _rep = export([body])
+        found = morph_targets(os.path.join(target.root, "Hero", "Hero.glb"))
+        self.assertTrue(found and all("NORMAL" in t for t in found), found)
+
+    def test_shape_keys_of_a_face_shaded_model_keep_its_normals(self):
+        from bl_ui import dasktoon_face_shading as face_shading
+        tu.reset_scene()
+        head, _rig = tu.add_test_head(with_armature=False)
+        face_shading.setup(head, selected=range(len(head.data.vertices)))
+        head.shape_key_add(name="Basis")
+        head.shape_key_add(name="Smile").data[0].co.z += 0.01
+        target, rep = export([head])
+        self.assertEqual(rep.face_meshes, [head.name])
+        found = morph_targets(os.path.join(target.root, "Hero", "Hero.glb"))
+        self.assertTrue(found and not any("NORMAL" in t for t in found), found)
 
 
 class MergeTest(unittest.TestCase):

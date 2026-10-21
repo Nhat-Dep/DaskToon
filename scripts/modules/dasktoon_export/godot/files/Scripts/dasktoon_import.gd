@@ -28,7 +28,23 @@ func _post_import(scene):
 		else:
 			push_warning("DaskToon: material %s not found" % data["materials"][name])
 	_assign(scene, materials)
+	_clips(scene, data.get("clips", []))
 	return scene
+
+
+# A looping clip loops; a clip with anime timing steps from frame to frame instead of sliding between its frames.
+func _clips(node, clips):
+	if node is AnimationPlayer:
+		for clip in clips:
+			if not node.has_animation(clip["name"]):
+				continue
+			var animation = node.get_animation(clip["name"])
+			animation.loop_mode = Animation.LOOP_LINEAR if clip.get("loop", false) else Animation.LOOP_NONE
+			if clip.get("stepped", false):
+				for track in animation.get_track_count():
+					animation.track_set_interpolation_type(track, Animation.INTERPOLATION_NEAREST)
+	for child in node.get_children():
+		_clips(child, clips)
 
 
 func _assign(node, materials):

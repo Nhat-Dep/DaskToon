@@ -27,16 +27,18 @@ GLTF_SETTINGS = dict(
     export_skins=True,
     export_def_bones=True,
     export_morph=True,
-    export_morph_normal=True,
+    export_anim_slide_to_zero=True,  # a clip starts at 0 s in Godot, whatever frame it starts on in DaskToon
 )
 IMPORT_TEMPLATE = '[remap]\n\nimporter="scene"\ntype="PackedScene"\n\n[params]\n\n%s\n'
 SCRIPT_LINE = 'import_script/path="%s"' % files.IMPORT_SCRIPT
 
 
-def write_glb(context, objects, filepath, include_animation):
+def write_glb(context, objects, filepath, include_animation, animation_mode='ACTIVE_ACTIONS', morph_normals=True):
     """Export `objects` to `filepath`; the user's selection and active object are restored. Returns the names of
     objects left out because they cannot be selected (e.g. in an excluded collection). The file is written in a
-    folder Godot skips (.gdignore) and moved into place, so the editor never imports half a file."""
+    folder Godot skips (.gdignore) and moved into place, so the editor never imports half a file. `animation_mode`:
+    NLA_TRACKS for clips (clips.baked), ACTIVE_ACTIONS for the animation playing now. `morph_normals` False keeps
+    shape keys from changing normals (face shading writes the face's normals, face spec 6)."""
     view_layer = context.view_layer
     selected = [o for o in view_layer.objects if o.select_get()]
     active = view_layer.objects.active
@@ -53,7 +55,9 @@ def write_glb(context, objects, filepath, include_animation):
             except RuntimeError:
                 left_out.append(obj.name)
         tmp = os.path.join(scratch, os.path.basename(filepath))
-        bpy.ops.export_scene.gltf(filepath=tmp, export_animations=include_animation, **GLTF_SETTINGS)
+        bpy.ops.export_scene.gltf(filepath=tmp, export_animations=include_animation,
+                                  export_animation_mode=animation_mode, export_morph_normal=morph_normals,
+                                  **GLTF_SETTINGS)
         os.replace(tmp, filepath)
         return left_out
     finally:
@@ -66,21 +70,29 @@ def write_glb(context, objects, filepath, include_animation):
         view_layer.objects.active = active
 
 
-def import_settings(existing):
-    """The .glb.import text: Godot's own settings (its uid, the user's choices) kept, the import script set."""
-    if not existing:
-        return IMPORT_TEMPLATE % SCRIPT_LINE
-    if re.search(r"^import_script/path=.*$", existing, re.M):
-        return re.sub(r"^import_script/path=.*$", SCRIPT_LINE.replace("\\", "\\\\"), existing, count=1, flags=re.M)
-    if re.search(r"^\[params\]\s*$", existing, re.M):
-        return re.sub(r"^\[params\]\s*$", "[params]\n\n" + SCRIPT_LINE, existing, count=1, flags=re.M)
-    return existing.rstrip("\n") + "\n\n[params]\n\n" + SCRIPT_LINE + "\n"
+def _set_param(text, line):
+    """`text` with the [params] line of the same name set to `line`."""
+    name = line.split("=", 1)[0]
+    pattern = r"^%s=.*$" % re.escape(name)
+    if re.search(pattern, text, re.M):
+        return re.sub(pattern, lambda _m: line, text, count=1, flags=re.M)
+    if re.search(r"^\[params\]\s*$", text, re.M):
+        return re.sub(r"^\[params\]\s*$", lambda _m: "[params]\n\n" + line, text, count=1, flags=re.M)
+    return text.rstrip("\n") + "\n\n[params]\n\n" + line + "\n"
 
 
-def write_import_settings(path):
+def import_settings(existing, fps):
+    """The .glb.import text: Godot's own settings (its uid, the user's choices) kept, the import script set, and the
+    animations read at the scene's frame rate (Godot resamples them at this rate: anime timing must land on frames)."""
+    text = existing or IMPORT_TEMPLATE % SCRIPT_LINE
+    text = _set_param(text, SCRIPT_LINE)
+    return _set_param(text, "animation/fps=%s" % ("%g" % round(fps, 3)))
+
+
+def write_import_settings(path, fps):
     try:
         with open(path, encoding="utf-8") as f:
             existing = f.read()
     except OSError:
         existing = ""
-    files.write_bytes(path, import_settings(existing).encode("utf-8"))
+    files.write_bytes(path, import_settings(existing, fps).encode("utf-8"))

@@ -75,3 +75,18 @@ cộng bóng anime vào `DIFFUSE_LIGHT`, ánh sáng môi trường tự tính (t
 12. Thư mục `res://DaskToon` là của DaskToon: xuất lại ghi đè trong đó; riêng `<Tên>.glb.import` giữ những gì Godot đã
     ghi (uid, lựa chọn của người dùng), chỉ đặt lại dòng script nhập.
 13. Dự án DaskToon gắn được project Godot (cần `project.godot`), cài shader vào `res://DaskToon`.
+
+Đợt 2:
+
+14. Anime Cel (kèm vòng sáng tóc), mắt anime, Dask Cel có shader riêng, cùng cách tô "đèn sáng nhất thắng" như Anime
+    BSDF. So với DaskToon trên 20 quả cầu mẫu: chênh tối đa 0,017 (ảnh sRGB). Ảnh DaskToon được cắt ở mức 1 trước khi
+    so, vì ảnh chụp Godot là ảnh màn hình (chỗ vượt trắng hiện trắng ở cả hai).
+15. Clip: mỗi clip được phát rồi "nướng" từng khung hình (nhịp anime và ràng buộc xương nằm sẵn trong khoá), thành một
+    hoạt cảnh tên clip trong `.glb`. Các clip được đặt ở những khoảng thời gian không chồng nhau khi xuất, vì bộ xuất glTF
+    đọc biểu cảm của lưới mà khung xương điều khiển trong lúc phát track của khung xương (mọi track biểu cảm cùng phát);
+    trong Godot mỗi clip vẫn bắt đầu từ 0 giây. Phần tóc, váy Godot tự đung đưa được giữ yên khi nướng, như Unity.
+16. Godot lấy mẫu lại hoạt cảnh khi nhập: `animation/fps` của `.glb.import` đặt bằng fps của cảnh. Script nhập cho clip
+    lặp thì lặp, clip có nhịp anime thì giữ hình từ khung này sang khung kia (nội suy NEAREST).
+17. Lưới có bóng mặt: biểu cảm không đổi pháp tuyến (như Unity).
+18. Biểu cảm sửa chỗ gập (`DT_Fix_*`) chưa chạy trong Godot cho tới đợt 3; không có bản đồ xương Humanoid của Godot (tên
+    xương là tên chuẩn DaskToon).

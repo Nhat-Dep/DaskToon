@@ -13,7 +13,7 @@ import os
 from bpy.app.translations import pgettext_rpt as rpt_
 
 from .. import report
-from . import files, materials, model
+from . import clips as clip_bake, files, materials, model
 
 DATA_VERSION = 1
 HULL_LIGHT = (0.5, 0.8, 0.6)  # the outline hull's light when the scene has no Sun (dasktoon_outline_nodes._FALLBACK)
@@ -47,19 +47,29 @@ def light_direction(scene):
 
 
 def _write_model(context, target, objects, options, rep, material_paths):
-    """<name>/<name>.dasktoon.json, then .glb.import (Godot finds both when it imports the model), then the .glb."""
-    from .. import merge
+    """<name>/<name>.dasktoon.json, then .glb.import (Godot finds both when it imports the model), then the .glb. With
+    clips, each is one animation of the model (Godot spec 3); without, the animation playing now is."""
+    from dasktoon_animation import clips, timing
+    from .. import _clip_rig, merge
     folder = os.path.join(target.root, target.name)
-    data = {"version": DATA_VERSION, "name": target.name, "materials": material_paths}
+    clip_rig = _clip_rig(objects) if options.include_animation else None
+    clip_list = [{"name": clip.name, "loop": clip.use_cyclic, "stepped": timing.has_steps(clip)}
+                 for clip in (clips.clips_of(clip_rig) if clip_rig is not None else ()) if clips.has_keys(clip)]
+    data = {"version": DATA_VERSION, "name": target.name, "materials": material_paths, "clips": clip_list}
     files.write_bytes(os.path.join(folder, target.name + ".dasktoon.json"),
                       (json.dumps(data, indent=2, ensure_ascii=False) + "\n").encode("utf-8"))
     path = os.path.join(folder, target.name + ".glb")
-    model.write_import_settings(path + ".import")
+    render = context.scene.render
+    model.write_import_settings(path + ".import", render.fps / render.fps_base)
     merging = merge.merged(context, objects) if options.merge_meshes else contextlib.nullcontext((objects, {}))
     with merging as (objects, renamed):
         if renamed:
             rep.merged = (len(renamed), next(iter(renamed.values())))
-        left_out = model.write_glb(context, objects, path, options.include_animation)
+        with clip_bake.baked(context, clip_rig, objects) as baked:
+            mode = 'NLA_TRACKS' if baked else 'ACTIVE_ACTIONS'
+            left_out = model.write_glb(context, objects, path, options.include_animation, mode,
+                                       morph_normals=not rep.face_meshes)
+        rep.clips = [(name, loop) for name, loop, _stepped in baked]
     rep.model = "%s/%s.glb" % (target.name, target.name)
     if left_out:
         rep.warnings.append(rpt_("Not in the model: %s (not in the current view layer, for example in an excluded "

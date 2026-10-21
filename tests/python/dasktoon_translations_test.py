@@ -43,6 +43,7 @@ TRANSLATED = [
     "scripts/modules/dasktoon_export/textures.py",
     "scripts/modules/dasktoon_export/unity_yaml.py",
     "scripts/modules/dasktoon_export/godot/__init__.py",
+    "scripts/modules/dasktoon_export/godot/clips.py",
     "scripts/modules/dasktoon_export/godot/files.py",
     "scripts/modules/dasktoon_export/godot/materials.py",
     "scripts/modules/dasktoon_export/godot/model.py",

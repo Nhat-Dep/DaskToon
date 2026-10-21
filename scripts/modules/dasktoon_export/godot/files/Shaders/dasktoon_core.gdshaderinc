@@ -254,6 +254,182 @@ vec3 dt_anime_bsdf(DTAnimeBSDF s, vec3 diffuse, vec3 diffuse_up, float ao, float
 	return max(c * max(s.strength, 0.0), vec3(0.0));
 }
 
+// The GGX highlight of one lamp (Unity port: DT_GGX), NdotL included: the toon specular's sharp reflection.
+float dt_ggx(vec3 N, vec3 V, vec3 L, float alpha) {
+	vec3 H = normalize(L + V);
+	float n_dot_h = clamp(dot(N, H), 0.0, 1.0);
+	float n_dot_l = clamp(dot(N, L), 0.0, 1.0);
+	float n_dot_v = max(clamp(dot(N, V), 0.0, 1.0), 0.0001);
+	float a2 = alpha * alpha;
+	float d = n_dot_h * n_dot_h * (a2 - 1.0) + 1.0;
+	float D = a2 / (DT_PI * d * d + 1e-7);
+	float k = alpha * 0.5;
+	float vis = 1.0 / (4.0 * (n_dot_l * (1.0 - k) + k) * (n_dot_v * (1.0 - k) + k));
+	return D * vis * n_dot_l;
+}
+
+// gpu_shader_material_anime_cel.glsl (Anime Cel / Classic Cel)
+
+struct DTAnimeCel {
+	vec3 base_color;
+	vec3 shadow_color;
+	float shadow_threshold;
+	float shadow_softness;
+	bool use_ramp;
+	bool ramp_constant;
+	vec4 ambient_color;
+	float ambient_blend;
+	bool ambient_shadow_only;
+	int ambient_mode;
+	float light_tint_strength;
+	int light_mode;
+	vec3 specular_color;
+	float specular_size;
+	float specular_softness;
+};
+
+// `glossy` is the luminance of the sharp reflection (the lamps through GGX and the world).
+vec3 dt_anime_cel(DTAnimeCel s, vec3 diffuse, float glossy, sampler2D ramp) {
+	vec3 base = max(s.base_color, 0.0);
+	vec3 shadow = max(s.shadow_color, 0.0);
+	vec4 ambient = max(s.ambient_color, 0.0);
+	vec3 spec_color = max(s.specular_color, 0.0);
+
+	// Ambient: tints the shadow tone, and the lit tone unless "shadow only".
+	float blend_fac = clamp(s.ambient_blend * ambient.a, 0.0, 1.0);
+	vec3 shadow_amb = mix(shadow, dt_ambient_mode(shadow, ambient.rgb, s.ambient_mode), blend_fac);
+	vec3 lit_col = base;
+	if (!s.ambient_shadow_only) {
+		lit_col = mix(lit_col, lit_col * ambient.rgb, blend_fac * 0.5);
+	}
+
+	vec3 light_col = diffuse;
+	float light = max(max(light_col.r, light_col.g), light_col.b);
+
+	float cel;
+	vec3 color;
+	if (s.use_ramp) {
+		color = dt_shade_ramp(light, lit_col, s.shadow_threshold, ramp, s.ramp_constant, cel);
+	} else {
+		color = dt_shade_simple(light, lit_col, shadow_amb, s.shadow_threshold, s.shadow_softness, cel);
+	}
+
+	// Lamp colour on the lit side.
+	color = mix(color, dt_light_mode(color, light_col, dt_light_norm(light_col), s.light_tint_strength, s.light_mode),
+			cel);
+
+	// Toon specular: glossy light level cut at (1 - size).
+	float spec = clamp((glossy - (1.0 - s.specular_size)) / max(s.specular_softness, 0.0001), 0.0, 1.0);
+	color += spec_color * spec;
+	return color;
+}
+
+// gpu_shader_material_anime_angel_ring.glsl. position_b / normal_b are in Blender world space. It takes fwidth, so
+// only fragment() calls it. Returns the ring Color output; `fac` is the Fac output.
+vec3 dt_angel_ring(vec3 highlight_color, float band_position, float band_width, float band_softness,
+		float strand_jitter, float noise_scale, float intensity, vec3 position_b, vec3 normal_b, out float fac) {
+	vec3 highlight = max(highlight_color, 0.0);
+	vec3 N = normalize(normal_b);
+	float jitter = sin(dot(position_b.xy, vec2(noise_scale * 0.7, noise_scale * 1.3))) * strand_jitter * 0.1;
+	float ring_dist = abs(N.z + jitter - clamp(band_position, 0.0, 1.0));
+	float r_fw = max(fwidth(ring_dist), 0.0005);
+	float r_soft = max(band_softness, r_fw);
+	float r_width = max(band_width, 0.001);
+	float ring_min = max(r_width - r_soft * 0.5, 0.0);
+	float ring_max = r_width + r_soft * 0.5 + 0.0001;
+	float ring_fac = 1.0 - smoothstep(ring_min, ring_max, ring_dist);
+	fac = ring_fac * max(intensity, 0.0);
+	return highlight * fac;
+}
+
+// Mix node, data type Color, blend ADD: mix(A, A + B, factor) = A + factor * B.
+vec3 dt_hair(vec3 cel, vec3 ring, float ring_fac, bool clamp_factor, bool clamp_result) {
+	float f = clamp_factor ? clamp(ring_fac, 0.0, 1.0) : ring_fac;
+	vec3 c = cel + f * ring;
+	return clamp_result ? clamp(c, 0.0, 1.0) : c;
+}
+
+// gpu_shader_material_anime_eye.glsl (unlit)
+
+vec3 dt_anime_eye(vec3 iris_color, vec3 pupil_color, vec3 glow_color, float glow_power, vec3 top_shadow_tint,
+		vec3 sparkle_color, vec2 uv) {
+	vec3 iris = max(iris_color, 0.0);
+	vec3 pupil = max(pupil_color, 0.0);
+	vec3 glow = max(glow_color, 0.0);
+	vec3 top_shadow = max(top_shadow_tint, 0.0);
+	vec3 sparkle = max(sparkle_color, 0.0);
+
+	float dist_center = length(uv - vec2(0.5, 0.5));
+	float pupil_fac = 1.0 - smoothstep(0.16, 0.22, dist_center);
+	vec3 base_iris = mix(iris, pupil, pupil_fac);
+
+	float bottom_curve = pow(clamp(1.0 - uv.y, 0.0, 1.0), 2.2) * max(glow_power, 0.0);
+	vec3 with_glow = base_iris + glow * bottom_curve;
+
+	float top_shadow_fac = smoothstep(0.45, 0.85, uv.y);
+	vec3 with_shadow = mix(with_glow, with_glow * top_shadow, top_shadow_fac);
+
+	float sp1 = 1.0 - smoothstep(0.035, 0.055, length(uv - vec2(0.38, 0.65)));
+	float sp2 = 1.0 - smoothstep(0.018, 0.032, length(uv - vec2(0.62, 0.40)));
+	float sparkle_fac = clamp(sp1 + sp2, 0.0, 1.0);
+	return mix(with_shadow, sparkle, sparkle_fac);
+}
+
+// gpu_shader_material_dask_cel.glsl. Its in-surface outline is on with use_outline.
+
+struct DTDaskCel {
+	vec3 base_color;
+	vec3 shadow_color;
+	float shadow_threshold;
+	float shadow_softness;
+	bool use_ramp;
+	bool ramp_constant;
+	bool use_outline;
+	float outline_width;
+	vec3 outline_color;
+	float outline_lighting_mix;
+	int outline_tint_mode;
+	float strength;
+};
+
+vec3 dt_dask_cel(DTDaskCel s, vec3 diffuse, float n_dot_v, sampler2D ramp) {
+	vec3 base = max(s.base_color, 0.0);
+	vec3 shadow = max(s.shadow_color, 0.0);
+	float light_intensity = max(max(diffuse.r, diffuse.g), diffuse.b);
+
+	float cel;
+	vec3 c;
+	if (s.use_ramp) {
+		c = dt_shade_ramp(light_intensity, base, s.shadow_threshold, ramp, s.ramp_constant, cel);
+	} else {
+		c = dt_shade_simple(light_intensity, base, shadow, s.shadow_threshold, s.shadow_softness, cel);
+	}
+
+	if (s.use_outline) {
+		float edge_factor = 1.0 - abs(n_dot_v);
+		float outline_thresh = 1.0 - clamp(s.outline_width * 50.0, 0.005, 0.99);
+		if (edge_factor > outline_thresh) {
+			vec3 line_col = s.outline_color;
+			vec3 base_hsv = dt_rgb_to_hsv(base);
+			if (s.outline_tint_mode == 1) {
+				float o_h = fract(base_hsv.x - 0.03 + 1.0);
+				float o_s = clamp(base_hsv.y * 1.40 + 0.10, 0.0, 1.0);
+				float o_v = base_hsv.z * 0.35;
+				line_col = dt_hsv_to_rgb(vec3(o_h, o_s, o_v));
+			} else if (s.outline_tint_mode >= 2) {
+				vec3 dark_tint = dt_hsv_to_rgb(vec3(base_hsv.x, clamp(base_hsv.y * 1.3, 0.0, 1.0), base_hsv.z * 0.35));
+				line_col = mix(dark_tint, dark_tint * diffuse * DT_PI, 0.6);
+			}
+			if (s.outline_lighting_mix > 0.01) {
+				line_col = mix(line_col, line_col * diffuse * DT_PI, s.outline_lighting_mix);
+			}
+			c = line_col;
+		}
+	}
+
+	return max(c * max(s.strength, 0.0), vec3(0.0));
+}
+
 // Dask Outline (project 1): the line colour. `n_dot_l` is the hull normal against Blender's fixed light
 // normalize(0.5, 0.8, 0.6); `diffuse_mix` is applied by the caller, which owns the lights.
 vec3 dt_outline_color(vec3 base_color, vec3 outline_color, float light_bleed, float tint_darkness,

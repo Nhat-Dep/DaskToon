@@ -16,7 +16,7 @@ from bpy.app.translations import pgettext_rpt as rpt_
 from . import files
 
 GODOT_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".tga", ".bmp", ".exr", ".hdr", ".svg"}
-SHADERS = {"AnimeBSDF": "anime_bsdf"}  # the other DaskToon shaders come in a later update; until then Anime BSDF
+SHADERS = {"AnimeBSDF": "anime_bsdf", "AnimeCel": "anime_cel", "AnimeEye": "anime_eye", "DaskCel": "dask_cel"}
 SHADER_NAMES = {"AnimeBSDF": "Anime BSDF", "AnimeCel": "Anime Cel", "AnimeEye": "Anime Eye", "DaskCel": "Dask Cel"}
 OUTLINE = "anime_outline"
 _UNIFORM = re.compile(r"^\s*uniform\s+(\w+)\s+(\w+)\s*(?::\s*([^=;]*))?", re.M)
@@ -226,6 +226,8 @@ class Writer:
         alpha = ('BLEND' if spec.render_type == "Transparent"
                  else 'CLIP' if "_DT_ALPHATEST_ON" in spec.keywords else 'OPAQUE')
         base = SHADERS.get(spec.shader, "anime_bsdf")
+        if base != "anime_bsdf":
+            alpha = 'OPAQUE'  # only the Anime BSDF has an alpha (graph._render_state)
         body.append("shader = " + resource.ext_id("Shader", files.res("%s/%s" % (
             files.SHADERS, files.shader_file(base, cull_back, alpha)))))
         body += resource.params(base, values, textures)
