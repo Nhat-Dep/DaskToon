@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tóc và váy đung đưa — Hướng dẫn DaskToon</title>
+<link rel="stylesheet" href="../guide.css">
+</head>
+<body>
+<main>
+<nav><a href="features.html">‹ Mọi chức năng</a> <a href="../en/sway.html">English</a></nav>
+<h1>Tóc và váy đung đưa</h1>
+<p class="lead">Tóc và váy làm bằng chuỗi xương tự đung đưa, nhờ lò xo, trọng lực và collider, không cần key gì.</p>
+<section id="live">
+<h2>Lắc trực tiếp</h2>
+<p>Build Rig tạo các chuỗi. Trong bảng <b>Lắc</b>, <b>Lắc trực tiếp</b> làm tóc và váy đung đưa khi hoạt cảnh chạy. Chọn một phần Tóc hay Váy để đặt cách nó đung đưa: <b>Độ Cứng</b> (độ bật về tư thế), <b>Trọng Lực</b>, <b>Lực Cản/Kéo Rê</b> (0 đung đưa mãi, 1 dừng ngay) và <b>Bán Kính</b> (mỗi khớp giữ cách collider bao xa).</p>
+</section>
+<section id="colliders">
+<h2>Collider</h2>
+<p>Tóc và váy không xuyên qua cơ thể. Build Rig tạo các viên nang dọc xương của cơ thể làm collider; mở <b>Collider</b> dưới <b>Lắc</b> để đổi bán kính từng cái.</p>
+</section>
+<section id="bake">
+<h2>Bake</h2>
+<p><b>Bake chuyển động lắc</b> key chuyển động lắc ở mọi khung của cảnh, và Live Sway tắt để các key phát đúng như vậy. Dùng nó trước khi xuất hoạt cảnh cần chạy y hệt ở nơi khác.</p>
+</section>
+<section id="game">
+<h2>Trong game</h2>
+<p><b>Lắc trong game</b> (cho từng phần) nói engine game làm thế nào: <b>Thời Gian Chạy</b> cho chuỗi đung đưa khi game chạy, bằng spring bone của Unity hoặc Godot; <b>Đã bake</b> phát chuyển động lắc đã bake trong hoạt cảnh xuất ra. Nếu xương của một phần có key lắc mà Runtime đang bật thì nó sẽ lắc hai lần, và Xuất sang engine cảnh báo bạn.</p>
+</section>
+</main>
+</body>
+</html>

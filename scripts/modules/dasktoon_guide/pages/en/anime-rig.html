@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Anime Rig — DaskToon Guide</title>
+<link rel="stylesheet" href="../guide.css">
+</head>
+<body>
+<main>
+<nav><a href="features.html">‹ All Features</a> <a href="../vi/anime-rig.html">Tiếng Việt</a></nav>
+<h1>The Anime Rig</h1>
+<p class="lead">The anime rig gives a character a standard skeleton, swaying hair and skirts, and bend fixes at the knees, elbows, hips and shoulders. One command does it all; the panel lets you adjust it.</p>
+<section id="auto">
+<h2>Rig in one go</h2>
+<p>Select the character's meshes (or select nothing to take every visible mesh) and choose <b>Add</b> › <b>Armature</b> › <b>Anime Humanoid</b>. DaskToon finds the body, fits the skeleton, makes the hair and skirt chains, paints the weights, makes the bend fixes and runs the Check (see The Rig Check). Without meshes selected the command adds just the standard skeleton.</p>
+</section>
+<section id="panel">
+<h2>The Anime Rig panel</h2>
+<p>Select the armature and open Properties › Object Data. The <b>Anime Rig</b> panel has the sub-panels <b>Check</b>, <b>Joints</b>, <b>Parts</b>, <b>Regions</b>, <b>Gaze</b>, <b>Sway</b> and <b>Build</b>. The <b>Anime Rig</b> panel in the Object Data of a mesh has two commands for Edit Mode: <b>Add Part from Selection</b> and <b>Lock from Selection</b>.</p>
+</section>
+<section id="joints">
+<h2>Joints</h2>
+<p><b>Edit Joints</b> puts the skeleton in Edit Mode with X-Axis Mirror on, so both sides move together. <b>Fit to Parts</b> moves and scales the skeleton to the meshes of the parts; the joints you placed are replaced. <b>Shoulder Follows Arm</b> sets how much the shoulders lift when the arms rise (1 is a real shoulder, 0 keeps them still), and <b>Bend Fixes</b> turns the knee, elbow, hip and shoulder fix shape keys on or off at the next build.</p>
+</section>
+<section id="parts">
+<h2>Parts</h2>
+<p>Every mesh, or the faces of one material, or a vertex group, is a part with a <b>Role</b>: Body (skin and face), Clothing (follows the body), Accessory (rigid on one bone), Hair and Skirt (chains of bones), Jaw, Flat Eye and 2D Mouth (see Eyes, Mouth and Gaze). The buttons next to the list: <b>+</b> is <b>Add Selected Meshes</b> (the role comes from the name: hair, skirt, shirt…), the material icon is <b>Add Material Part</b> and the last is <b>Remove Part</b>. For Accessory, Hair and Skirt you can set the <b>Bone</b> the part hangs from; <b>Bones per Chain</b> says how many bones each lock or strip gets, and <b>Chains</b> how many strips go round a skirt. <b>Highlight Part</b> draws the chosen part in the 3D view.</p>
+</section>
+<section id="build">
+<h2>Build</h2>
+<p><b>Build Rig</b> makes the hair and skirt chains and paints the weights of every part. It replaces the weights of every part, so press it again after you change the parts or the joints.</p>
+</section>
+</main>
+</body>
+</html>

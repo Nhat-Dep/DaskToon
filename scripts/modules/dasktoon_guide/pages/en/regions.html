@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Body Regions — DaskToon Guide</title>
+<link rel="stylesheet" href="../guide.css">
+</head>
+<body>
+<main>
+<nav><a href="features.html">‹ All Features</a> <a href="../vi/regions.html">Tiếng Việt</a></nav>
+<h1>Body Regions</h1>
+<p class="lead">The rig needs to know which part of a mesh is the head, the torso, an arm or a leg. DaskToon recognizes the regions itself; you can paint them where it is wrong.</p>
+<section id="recognize">
+<h2>Recognize</h2>
+<p>In the <b>Regions</b> panel, <b>Recognize</b> paints the head, torso, arms and legs on the Body and Clothing meshes, and turns the pieces that hang from the head (hair locks, ears) into locks of their own. <b>Show Regions</b> shows the regions in the 3D views, in Solid shading colored by region. Press <b>Build Rig</b> afterwards: the weights follow the regions.</p>
+</section>
+<section id="paint">
+<h2>Paint Regions</h2>
+<p>Under <b>Paint Regions</b> there is a button for each region: Head, Torso, Left Arm, Right Arm, Left Leg and Right Leg. Press one to go into Vertex Paint with that region's color. Select faces and press <kbd>Shift K</kbd> to fill them with it. <b>Done Painting</b> leaves Vertex Paint and selects the rig again.</p>
+</section>
+<section id="locks">
+<h2>Locks</h2>
+<p>In Edit Mode, <b>Lock from Selection</b> (in the <b>Anime Rig</b> panel of the mesh's Object Data) makes the pieces under the selected vertices one lock that is rigid on the head; give it the role Hair and it sways. <b>Add Part from Selection</b> makes the selected vertices a part of the rig, kept in a new vertex group.</p>
+</section>
+</main>
+</body>
+</html>

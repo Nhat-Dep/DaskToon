@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Rig Check — DaskToon Guide</title>
+<link rel="stylesheet" href="../guide.css">
+</head>
+<body>
+<main>
+<nav><a href="features.html">‹ All Features</a> <a href="../vi/rig-check.html">Tiếng Việt</a></nav>
+<h1>The Rig Check</h1>
+<p class="lead">The Check bends the character into test poses and lists what is wrong: joints outside the body, spots that tear, parts whose role looks wrong, a character that faces sideways.</p>
+<section id="poses">
+<h2>Test poses</h2>
+<p>In the <b>Check</b> panel, the buttons <b>Arms Up</b>, <b>Sit</b>, <b>Turn Head</b> and <b>Wave</b> put the character in a test pose to see how the rig bends; nothing is keyed. <b>Rest</b> puts every bone back.</p>
+</section>
+<section id="run">
+<h2>Check</h2>
+<p><b>Check</b> runs the check; <b>Check Again</b> runs it again, and <b>Done</b> clears the list. It needs a standard skeleton. Each spot it finds is a box with a sentence and the button that fixes it. After a fix, press <b>Build Rig</b> to check again.</p>
+</section>
+<section id="spots">
+<h2>What it finds</h2>
+<p>A joint outside the body: <b>Fix</b> selects the joint in Edit Mode, move it into the body, then press <b>Build Rig</b>. A torn or stretched spot: <b>Show</b> puts the character in the pose that tears it and lights the spot up; <b>Paint Regions</b> lights it up and lets you paint the regions on its mesh. A part whose role looks wrong: <b>Make it Hair</b> or <b>Make it a Skirt</b>, or <b>Make That Part a Skirt</b> for the part of a mesh below the waist. A character that faces sideways: <b>Turn 90° Left</b> and <b>Turn 90° Right</b> turn it on the spot, then the rig is built and checked again.</p>
+</section>
+</main>
+</body>
+</html>

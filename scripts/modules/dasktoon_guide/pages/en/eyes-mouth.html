@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Eyes, Mouth and Gaze — DaskToon Guide</title>
+<link rel="stylesheet" href="../guide.css">
+</head>
+<body>
+<main>
+<nav><a href="features.html">‹ All Features</a> <a href="../vi/eyes-mouth.html">Tiếng Việt</a></nav>
+<h1>Eyes, Mouth and Gaze</h1>
+<p class="lead">Eyes that look at a target, flat eyes drawn on the face, a mouth drawn in cells, and a voice that moves the mouth.</p>
+<section id="gaze">
+<h2>Gaze</h2>
+<p>Build Rig makes a <code>LookTarget</code> bone in front of the face and makes the two eyes track it. Move the bone and the eyes follow, within the limits of the <b>Gaze</b> panel: <b>Side Limit</b> and <b>Up and Down Limit</b>. You can also turn the eye bones yourself; the exported animation bakes the turned eyes, so the game needs no constraint.</p>
+</section>
+<section id="flat-eye">
+<h2>Flat Eye</h2>
+<p>An iris drawn on the face (an eye plate in front of the skin) gets the role <b>Flat Eye</b>. It slides on its UVs as the eye turns. <b>Side</b> says which eye it is (the side the part lies on, by default) and <b>Range</b> how far the iris slides when the eye turns all the way; a negative range turns the direction round.</p>
+</section>
+<section id="mouth">
+<h2>2D Mouth</h2>
+<p>A mouth drawn on a plate gets the role <b>2D Mouth</b>. Its picture is an atlas of cells; set <b>Rows</b> and <b>Columns</b> to match. The cells, from the top left, are closed, A, I, U, E and O. The object's <code>dt_mouth</code> property picks the cell. The <b>Jaw</b> role is for a lower jaw and chin that follow the Jaw bone.</p>
+</section>
+<section id="lipsync">
+<h2>Lip Sync from Audio</h2>
+<p><b>Lip Sync from Audio</b> (in <b>Expression Tools</b>, under the shape keys of the mesh) listens to a voice file and keys the mouth: the vowel shape keys, the jaw and the 2D mouth, in the clip being played. Choose the <b>Voice File</b> (empty takes the first sound strip of the Sequencer), the <b>Start Frame</b> of the voice and the <b>Strength</b>: 1 is the full vowel shapes.</p>
+</section>
+</main>
+</body>
+</html>

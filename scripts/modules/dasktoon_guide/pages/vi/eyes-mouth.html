@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mắt, miệng và ánh nhìn — Hướng dẫn DaskToon</title>
+<link rel="stylesheet" href="../guide.css">
+</head>
+<body>
+<main>
+<nav><a href="features.html">‹ Mọi chức năng</a> <a href="../en/eyes-mouth.html">English</a></nav>
+<h1>Mắt, miệng và ánh nhìn</h1>
+<p class="lead">Mắt nhìn theo một mục tiêu, mắt phẳng vẽ trên mặt, miệng vẽ theo ô, và giọng nói làm miệng cử động.</p>
+<section id="gaze">
+<h2>Ánh mắt</h2>
+<p>Build Rig tạo xương <code>LookTarget</code> phía trước mặt và cho hai mắt bám theo nó. Dời xương thì mắt nhìn theo, trong giới hạn của bảng <b>Ánh mắt</b>: <b>Giới hạn ngang</b> và <b>Giới hạn dọc</b>. Bạn cũng tự xoay được xương mắt; hoạt cảnh xuất ra bake sẵn mắt đã xoay, nên game không cần ràng buộc.</p>
+</section>
+<section id="flat-eye">
+<h2>Mắt phẳng</h2>
+<p>Tròng mắt vẽ trên mặt (một tấm mắt đặt trước da) có vai trò <b>Mắt phẳng</b>. Nó trượt trên UV khi mắt xoay. <b>Bên</b> nói đó là mắt nào (mặc định là bên mà phần nằm) và <b>Phạm Vi</b> là tròng mắt trượt bao xa khi mắt xoay hết cỡ; số âm đảo chiều.</p>
+</section>
+<section id="mouth">
+<h2>Miệng 2D</h2>
+<p>Miệng vẽ trên một tấm có vai trò <b>Miệng 2D</b>. Ảnh của nó là một atlas gồm các ô; đặt <b>Số hàng</b> và <b>Các Cột</b> cho khớp. Các ô, từ góc trên trái, là ngậm, A, I, U, E và O. Thuộc tính <code>dt_mouth</code> của object chọn ô. Vai trò Hàm dành cho hàm dưới và cằm đi theo xương Jaw.</p>
+</section>
+<section id="lipsync">
+<h2>Khẩu hình từ âm thanh</h2>
+<p><b>Khẩu hình từ âm thanh</b> (trong <b>Công cụ biểu cảm</b>, dưới hình mẫu của lưới) nghe một file giọng nói và key cái miệng: các hình mẫu nguyên âm, hàm và miệng 2D, trong clip đang phát. Chọn <b>File giọng nói</b> (để trống thì lấy dải âm thanh đầu tiên của Sequencer), <b>Khung Hình Đầu</b> của giọng và <b>Cường Độ</b>: 1 là đủ hình nguyên âm.</p>
+</section>
+</main>
+</body>
+</html>

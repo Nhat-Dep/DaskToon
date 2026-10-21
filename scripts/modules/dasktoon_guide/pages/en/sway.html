@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hair and Skirt Sway — DaskToon Guide</title>
+<link rel="stylesheet" href="../guide.css">
+</head>
+<body>
+<main>
+<nav><a href="features.html">‹ All Features</a> <a href="../vi/sway.html">Tiếng Việt</a></nav>
+<h1>Hair and Skirt Sway</h1>
+<p class="lead">Hair and skirts made of chains of bones swing by themselves, with springs, gravity and colliders, without keying anything.</p>
+<section id="live">
+<h2>Live Sway</h2>
+<p>Build Rig makes the chains. In the <b>Sway</b> panel, <b>Live Sway</b> makes hair and skirts sway while the animation plays. Select a Hair or Skirt part to set how it sways: <b>Stiffness</b> (how strongly it springs back to its pose), <b>Gravity</b>, <b>Drag</b> (0 keeps swinging, 1 stops at once) and <b>Radius</b> (how far each joint keeps from the colliders).</p>
+</section>
+<section id="colliders">
+<h2>Colliders</h2>
+<p>Hair and skirts do not go through the body. Build Rig makes capsules along the body bones as colliders; open <b>Colliders</b> under <b>Sway</b> to change the radius of each.</p>
+</section>
+<section id="bake">
+<h2>Baking</h2>
+<p><b>Bake Sway</b> keys the sway on every frame of the scene, and Live Sway turns off so the keys play as they are. Use it before exporting animation that must play exactly the same elsewhere.</p>
+</section>
+<section id="game">
+<h2>In the game</h2>
+<p><b>Sway in the Game</b> (per part) says how the game engine does it: <b>Runtime</b> sways the chain while the game runs, with the spring bone of Unity or Godot; <b>Baked</b> plays the sway baked into the exported animation. If the bones of a part have sway keys and Runtime is on, it would sway twice, and the Engine Export warns you.</p>
+</section>
+</main>
+</body>
+</html>
