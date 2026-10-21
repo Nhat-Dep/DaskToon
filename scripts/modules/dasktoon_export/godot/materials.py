@@ -22,11 +22,10 @@ OUTLINE = "anime_outline"
 _UNIFORM = re.compile(r"^\s*uniform\s+(\w+)\s+(\w+)\s*(?::\s*([^=;]*))?", re.M)
 _WORD_BREAK = re.compile(r"(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])")
 
-# Texture import settings Godot keeps (it adds the rest): the ramp strip stays lossless and without mipmaps, so its
-# hard steps stay hard; a normal map is imported as one.
-RAMP_IMPORT = ('[remap]\n\nimporter="texture"\ntype="CompressedTexture2D"\n\n[params]\n\ncompress/mode=0\n'
-               'mipmaps/generate=false\ndetect_3d/compress_to=0\n')
-NORMAL_IMPORT = '[remap]\n\nimporter="texture"\ntype="CompressedTexture2D"\n\n[params]\n\ncompress/normal_map=1\n'
+# Texture import settings (Godot adds the rest): the ramp strip stays lossless and without mipmaps, so its hard steps
+# stay hard; a normal map is imported as one.
+RAMP_IMPORT = ("compress/mode=0", "mipmaps/generate=false", "detect_3d/compress_to=0")
+NORMAL_IMPORT = ("compress/normal_map=1",)
 
 
 def godot_name(prop):
@@ -143,8 +142,7 @@ class Writer:
             pixels = np.array(src.image.pixels[:], dtype=np.float32)
             ext, data = ".png", textures.float_to_png(pixels, width, height, src.image.is_float and src.color)
         rel = rel_stem + ext
-        if src.kind == 'NORMAL':
-            files.write_bytes(self.path(rel + ".import"), NORMAL_IMPORT.encode("utf-8"))
+        files.write_texture_import(self.path(rel + ".import"), NORMAL_IMPORT if src.kind == 'NORMAL' else ())
         files.write_bytes(self.path(rel), data)
         self.written[key] = rel
         return rel
@@ -172,6 +170,7 @@ class Writer:
             rel, data = rel_stem + ".exr", textures.exr_bytes(pixels, size, size)
         else:
             rel, data = rel_stem + ".png", textures.float_to_png(pixels, size, size, src.color)
+        files.write_texture_import(self.path(rel + ".import"))
         files.write_bytes(self.path(rel), data)
         self.rep.baked.append("%s › %s" % (spec.material.name, src.socket))
         if len(users) > 1:
@@ -182,7 +181,7 @@ class Writer:
     def _ramp(self, spec, stem):
         from .. import textures
         rel = "%s/Textures/%s_Ramp.png" % (self.target.name, stem)
-        files.write_bytes(self.path(rel + ".import"), RAMP_IMPORT.encode("utf-8"))
+        files.write_texture_import(self.path(rel + ".import"), RAMP_IMPORT)
         files.write_bytes(self.path(rel), textures.ramp_png(spec.ramp))
         return rel
 

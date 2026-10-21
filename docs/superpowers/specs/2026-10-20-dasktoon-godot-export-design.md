@@ -107,3 +107,11 @@ cộng bóng anime vào `DIFFUSE_LIGHT`, ánh sáng môi trường tự tính (t
     tắt trong `.glb.import`. Nếu cài đặt từng nút của người dùng không đọc được, báo cáo xuất nhắc tắt tay.
 23. Cần Godot 4.4 trở lên (SpringBoneSimulator3D có từ 4.4).
 24. Không thêm mắt nhìn theo (LookAtModifier3D): bản Unity cũng không có; người dùng tự thêm nút đó của Godot.
+
+Đợt 4 (model thật luna, tdt):
+
+25. Trong dự án Godot mới, Godot 4.7 nhập model trước ảnh, nên vật liệu nạp trong script nhập mất ảnh (lỗi "Failed
+    loading resource"). Script nhập gắn vật liệu theo đường dẫn (`set_path_cache`), không nạp; Godot nạp vật liệu thật
+    khi mở model. Bộ xuất cũng ghi sẵn `<ảnh>.import` cạnh mỗi ảnh (giữ dòng Godot đã ghi).
+26. Godot bỏ qua giá trị biểu cảm mặc định trong glTF (tdt để "blink" 0,419 thì Godot mở mắt): giá trị các biểu cảm đang
+    bật được ghi vào `<Tên>.dasktoon.json` và script nhập đặt lại.

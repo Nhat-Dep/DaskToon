@@ -6,6 +6,7 @@
 4). Everything goes under res://DaskToon, which is DaskToon's own: files there are overwritten."""
 
 import os
+import re
 
 SOURCE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "files")
 RES_ROOT = "res://DaskToon"
@@ -49,6 +50,34 @@ def write_if_changed(path, data):
         pass
     write_bytes(path, data)
     return True
+
+
+def set_param(text, line):
+    """Godot import settings `text` with the [params] line of the same name set to `line`, the other lines kept."""
+    name = line.split("=", 1)[0]
+    pattern = r"^%s=.*$" % re.escape(name)
+    if re.search(pattern, text, re.M):
+        return re.sub(pattern, lambda _m: line, text, count=1, flags=re.M)
+    if re.search(r"^\[params\]\s*$", text, re.M):
+        return re.sub(r"^\[params\]\s*$", lambda _m: "[params]\n\n" + line, text, count=1, flags=re.M)
+    return text.rstrip("\n") + "\n\n[params]\n\n" + line + "\n"
+
+
+TEXTURE_IMPORT = '[remap]\n\nimporter="texture"\ntype="CompressedTexture2D"\n'
+
+
+def write_texture_import(path, params=()):
+    """<texture>.import beside a written texture. Godot imports the textures that have one before the models, so the
+    import script finds them (without, Godot 4.7 imported the model first and the materials lost their textures).
+    Godot's own lines (its uid, the user's choices) are kept, `params` are set."""
+    try:
+        with open(path, encoding="utf-8") as f:
+            text = f.read()
+    except OSError:
+        text = TEXTURE_IMPORT
+    for line in params:
+        text = set_param(text, line)
+    write_bytes(path, text.encode("utf-8"))
 
 
 def shader_file(base, cull_back=False, alpha='OPAQUE'):

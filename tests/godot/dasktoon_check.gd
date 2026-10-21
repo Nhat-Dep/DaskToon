@@ -32,6 +32,16 @@ func _material_info(material, names):
 	return info
 
 
+func _shape_values(node, names, out):
+	if node is MeshInstance3D and node.mesh:
+		for name in names:
+			var index = node.find_blend_shape_by_name(name)
+			if index >= 0:
+				out[str(node.name) + "/" + name] = node.get_blend_shape_value(index)
+	for child in node.get_children():
+		_shape_values(child, names, out)
+
+
 func _collect(node, names, out):
 	if node is MeshInstance3D and node.mesh:
 		var surfaces = []
@@ -112,7 +122,9 @@ func _init():
 	var scene = packed.instantiate()
 	var meshes = {}
 	_collect(scene, data.get("params", []), meshes)
-	var result = {"ok": true, "meshes": meshes}
+	var shapes = {}
+	_shape_values(scene, data.get("shapes", []), shapes)
+	var result = {"ok": true, "meshes": meshes, "shapes": shapes}
 	if data.has("outline"):
 		var outline = data["outline"]
 		result["outline"] = _outline_normals(_find(scene, outline["mesh"]), int(outline["uv"]), outline["normals"])

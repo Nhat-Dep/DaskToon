@@ -5,6 +5,7 @@
 # DaskToon import script: Godot runs it after importing a model DaskToon Engine Export wrote (the model's .glb.import
 # names it). It reads <model>.dasktoon.json beside the model and
 # - puts the DaskToon materials on the surfaces whose glTF material has the same name;
+# - sets the shape keys that were on in DaskToon (Godot leaves glTF's default weights out);
 # - makes the looping clips loop and the clips with anime timing step from frame to frame;
 # - gives the Skeleton3D a SpringBoneSimulator3D for the hair and skirts Godot sways (with a capsule on each collider
 #   bone) and DaskToon's modifier (dasktoon_rig.gd) for the bend fixes, flat eyes and 2D mouths.
@@ -28,16 +29,28 @@ func _post_import(scene):
 	var folder = source.get_base_dir()
 	var materials = {}
 	for name in data.get("materials", {}):
-		var material = load(folder.path_join(data["materials"][name]))
-		if material:
-			materials[name] = material
+		var path = folder.path_join(data["materials"][name])
+		if FileAccess.file_exists(path):
+			materials[name] = _material(path, name)
 		else:
-			push_warning("DaskToon: material %s not found" % data["materials"][name])
+			push_warning("DaskToon: material %s not found" % path)
 	_assign(scene, materials)
+	_shapes(scene, data.get("shapes", {}))
 	_clips(scene, data.get("clips", []))
 	if typeof(data.get("rig")) == TYPE_DICTIONARY:
 		_rig(scene, data["rig"])
 	return scene
+
+
+# The material file, by reference: Godot loads it when it opens the model. It is not loaded here: in a new project Godot
+# imports the model before the textures, and a material loaded now would lose them.
+func _material(path, name):
+	if ResourceLoader.has_cached(path):
+		return load(path)
+	var reference = ShaderMaterial.new()
+	reference.resource_name = name
+	reference.set_path_cache(path)
+	return reference
 
 
 func _assign(node, materials):
@@ -48,6 +61,17 @@ func _assign(node, materials):
 				node.mesh.surface_set_material(i, materials[current.resource_name])
 	for child in node.get_children():
 		_assign(child, materials)
+
+
+func _shapes(node, shapes):
+	if node is MeshInstance3D and node.mesh and shapes.has(str(node.name)):
+		var values = shapes[str(node.name)]
+		for shape in values:
+			var index = node.find_blend_shape_by_name(shape)
+			if index >= 0:
+				node.set_blend_shape_value(index, values[shape])
+	for child in node.get_children():
+		_shapes(child, shapes)
 
 
 # A looping clip loops; a clip with anime timing steps from frame to frame instead of sliding between its frames.

@@ -46,6 +46,21 @@ def light_direction(scene):
     return to_godot(direction.normalized())
 
 
+def shape_values(objects, renamed):
+    """{mesh name in the model: {shape key: value}} of the shape keys that are on: Godot leaves glTF's default weights
+    out, the import script sets them. `renamed` names the merged meshes; the bend fixes' keys follow the pose."""
+    from dasktoon_rig import correctives
+    out = {}
+    for obj in objects:
+        key = obj.data.shape_keys if obj.type == 'MESH' else None
+        if key is None:
+            continue
+        for block in key.key_blocks:
+            if block != key.reference_key and abs(block.value) > 1e-6 and not block.name.startswith(correctives.PREFIX):
+                out.setdefault(renamed.get(obj.name, obj.name), {})[block.name] = round(block.value, 6)
+    return out
+
+
 def _write_model(context, target, objects, options, rep, material_paths):
     """<name>/<name>.dasktoon.json, then .glb.import (Godot finds both when it imports the model), then the .glb. With
     clips, each is one animation of the model (Godot spec 3); without, the animation playing now is."""
@@ -58,9 +73,10 @@ def _write_model(context, target, objects, options, rep, material_paths):
     # The meshes the export merges take the Body's name (merge.merged): the rig data names them so.
     sources = merge.sources(objects) if options.merge_meshes else []
     rig = rig_json.find_rig(objects)
-    rig_data = rig_json.rig_data(rig, {obj.name: sources[0].name for obj in sources}) if rig is not None else None
+    renamed = {obj.name: sources[0].name for obj in sources}
+    rig_data = rig_json.rig_data(rig, renamed) if rig is not None else None
     data = {"version": DATA_VERSION, "name": target.name, "materials": material_paths, "clips": clip_list,
-            "rig": rig_data}
+            "rig": rig_data, "shapes": shape_values(objects, renamed)}
     if rig_data is not None:
         rep.rig = "%s/%s.dasktoon.json" % (target.name, target.name)
         for part in keyed_runtime_parts(rig):

@@ -240,6 +240,13 @@ class MaterialTest(unittest.TestCase):
         self.assertEqual(path, "res://DaskToon/Hero/Textures/Skin_Base.png")
         self.assertTrue(os.path.isfile(os.path.join(target.root, "Hero", "Textures", "Skin_Base.png")))
         self.assertEqual(res["shader_parameter/base_map_on"], "true")
+        # Written beside it, so Godot imports it before the model (the import script loads the material).
+        settings = os.path.join(target.root, "Hero", "Textures", "Skin_Base.png.import")
+        self.assertIn('importer="texture"', read(settings))
+        with open(settings, "w", encoding="utf-8") as f:
+            f.write(read(settings) + '\nuid="uid://keepme"\n')
+        export([body], os.path.dirname(os.path.dirname(target.root)))
+        self.assertIn('uid="uid://keepme"', read(settings))
 
     def test_ramp_is_a_strip_godot_keeps_sharp(self):
         body, _mat, node = character(outlined=False)
@@ -328,8 +335,18 @@ class MergeTest(unittest.TestCase):
 class GodotImportTest(unittest.TestCase):
     def test_godot_imports_the_model_with_the_DaskToon_materials(self):
         root = harness.new_project()
-        body, mat, _node = character()
+        body, mat, node = character()
+        tex = mat.node_tree.nodes.new("ShaderNodeTexImage")
+        tex.image = file_picture("Skin Paint")
+        mat.node_tree.links.new(tex.outputs["Color"], node.inputs["Base Color"])
         body.data.uv_layers.new(name="Second")
+        body.shape_key_add(name="Basis")
+        blink = body.shape_key_add(name="Blink")
+        blink.data[0].co.z += 0.01
+        blink.value = 0.4  # on in DaskToon: Godot leaves glTF's default weights out
+        smile = body.shape_key_add(name="Smile")
+        smile.data[1].co.z += 0.01
+        smile.value = 0.0
         cloth, _cloth_node = tu.node_material("Cloth", 'ShaderNodeAnimeCharacter')
         cloth.use_backface_culling = True
         body.data.materials.append(cloth)
@@ -344,17 +361,23 @@ class GodotImportTest(unittest.TestCase):
         smooth = gamedata.smoothed_vertex_normals(mesh)
         normals = [{"p": to_godot(v.co), "n": to_godot(s)} for v, s in zip(mesh.vertices, smooth)]
         output = harness.import_project(root)
+        self.assertNotIn("Failed loading resource", output)  # the textures were imported before the model
         result, _output = harness.run_script(root, "dasktoon_check", {
-            "model": "res://DaskToon/Hero/Hero.glb", "params": ["base_color", "outline_width", "outline_uv"],
+            "model": "res://DaskToon/Hero/Hero.glb", "params": ["base_color", "base_map", "outline_width",
+                                                                 "outline_uv"],
+            "shapes": ["Blink", "Smile"],
             "outline": {"mesh": "Body", "uv": uv_index, "normals": normals}})
         self.assertTrue(result["ok"], result.get("error"))
         surfaces = {s.get("name"): s for s in result["meshes"]["Body"]}
         self.assertEqual(set(surfaces), {"Skin", "Cloth"}, output[-2000:])
         self.assertEqual(surfaces["Skin"]["material"], "res://DaskToon/Hero/Materials/Skin.tres")
         self.assertEqual(surfaces["Skin"]["shader"], "res://DaskToon/Shaders/anime_bsdf.gdshader")
+        self.assertEqual(surfaces["Skin"]["params"]["base_map"], "res://DaskToon/Hero/Textures/Skin_Base.png")
         self.assertEqual(surfaces["Skin"]["next_pass"], "res://DaskToon/Shaders/anime_outline.gdshader")
         self.assertEqual(surfaces["Cloth"]["shader"], "res://DaskToon/Shaders/anime_bsdf_cull.gdshader")
         self.assertEqual(surfaces["Cloth"]["next_pass"], "")
+        self.assertAlmostEqual(result["shapes"]["Body/Blink"], 0.4, places=5)
+        self.assertEqual(result["shapes"]["Body/Smile"], 0.0)
         decoded = result["outline"]
         self.assertGreater(decoded["matched"], 0.9 * decoded["vertices"])
         self.assertLess(decoded["maxNormalAngle"], 2.0)

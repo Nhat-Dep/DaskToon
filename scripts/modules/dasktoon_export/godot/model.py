@@ -71,17 +71,6 @@ def write_glb(context, objects, filepath, include_animation, animation_mode='ACT
         view_layer.objects.active = active
 
 
-def _set_param(text, line):
-    """`text` with the [params] line of the same name set to `line`."""
-    name = line.split("=", 1)[0]
-    pattern = r"^%s=.*$" % re.escape(name)
-    if re.search(pattern, text, re.M):
-        return re.sub(pattern, lambda _m: line, text, count=1, flags=re.M)
-    if re.search(r"^\[params\]\s*$", text, re.M):
-        return re.sub(r"^\[params\]\s*$", lambda _m: "[params]\n\n" + line, text, count=1, flags=re.M)
-    return text.rstrip("\n") + "\n\n[params]\n\n" + line + "\n"
-
-
 _SUBRESOURCES = re.compile(r"^_subresources=(.*?)(?=^[A-Za-z_][\w/]*=|\Z)", re.M | re.S)
 
 
@@ -101,7 +90,7 @@ def _unoptimized(text):
     line = "_subresources=%s" % json.dumps(data, ensure_ascii=False)
     if found:
         return text[:found.start()] + line + "\n" + text[found.end():]
-    return _set_param(text, line)
+    return files.set_param(text, line)
 
 
 def import_settings(existing, fps, animated=False):
@@ -109,8 +98,8 @@ def import_settings(existing, fps, animated=False):
     user's choices) kept, the import script set, the animations read at the scene's frame rate (Godot resamples them at
     this rate: anime timing must land on frames) and kept as they are."""
     text = existing or IMPORT_TEMPLATE % SCRIPT_LINE
-    text = _set_param(text, SCRIPT_LINE)
-    text = _set_param(text, "animation/fps=%s" % ("%g" % round(fps, 3)))
+    text = files.set_param(text, SCRIPT_LINE)
+    text = files.set_param(text, "animation/fps=%s" % ("%g" % round(fps, 3)))
     if not animated:
         return text, True
     unoptimized = _unoptimized(text)
