@@ -10,7 +10,7 @@ namespace nodes::node_shader_anime_warm_cool_grade_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Color>("Base Color"_ustr).default_value({0.92f, 0.84f, 0.80f, 1.0f});
+  b.add_input<decl::Color>("Base Color"_ustr).default_value({0.6f, 0.6f, 0.6f, 1.0f});
   b.add_input<decl::Color>("Lit Warm Tint"_ustr).default_value({1.05f, 1.00f, 0.92f, 1.0f});
   b.add_input<decl::Color>("Shadow Cool Tint"_ustr).default_value({0.82f, 0.86f, 1.08f, 1.0f});
   b.add_input<decl::Float>("Penumbra Saturation"_ustr)

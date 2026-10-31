@@ -124,8 +124,8 @@ def tool_create_anime_material(args):
     payload = {
         "action": "create_anime_material",
         "name": args.get("name", "Anime_Character_Mat"),
-        "base_color": args.get("base_color", [0.98, 0.88, 0.82, 1.0]),
-        "shadow_color": args.get("shadow_color", [0.88, 0.65, 0.66, 1.0]),
+        "base_color": args.get("base_color", [0.6, 0.6, 0.6, 1.0]),
+        "shadow_color": args.get("shadow_color", [0.35, 0.35, 0.35, 1.0]),
         "rim_color": args.get("rim_color", [1.0, 0.95, 0.85, 1.0]),
         "rim_intensity": args.get("rim_intensity", 0.6),
         "target_object": args.get("target_object", None),

@@ -18,9 +18,9 @@ static void node_declare(NodeDeclarationBuilder &b)
   const bNodeTree *ntree = b.tree_or_null();
   const bool is_gpu_internal = ntree && (ntree->flag & NTREE_IS_GPU_SHADER_INTERNAL);
 
-  b.add_input<decl::Color>("Base Color"_ustr).default_value({0.90f, 0.82f, 0.78f, 1.0f});
+  b.add_input<decl::Color>("Base Color"_ustr).default_value({0.6f, 0.6f, 0.6f, 1.0f});
   b.add_input<decl::Color>("Shadow Color"_ustr)
-      .default_value({0.60f, 0.50f, 0.55f, 1.0f});
+      .default_value({0.35f, 0.35f, 0.35f, 1.0f});
   b.add_input<decl::Float>("Shadow Threshold"_ustr)
       .default_value(0.48f)
       .min(0.0f)

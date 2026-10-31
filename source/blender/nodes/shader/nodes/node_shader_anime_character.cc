@@ -23,10 +23,10 @@ static void node_declare(NodeDeclarationBuilder &b)
   // Group 1: Core Discrete 2-Tone Cel Shading (Always Visible)
   b.add_input<decl::Vector>("Normal"_ustr).min(-1.0f).max(1.0f).hide_value();
   b.add_input<decl::Color>("Base Color"_ustr)
-      .default_value({0.98f, 0.88f, 0.82f, 1.0f})
+      .default_value({0.6f, 0.6f, 0.6f, 1.0f})
       .description("Base surface anime albedo color (Lit area)");
   b.add_input<decl::Color>("Shadow Color"_ustr)
-      .default_value({0.88f, 0.65f, 0.66f, 1.0f})
+      .default_value({0.35f, 0.35f, 0.35f, 1.0f})
       .description("Shadow tone color (Unlit area - Warm Kyoto Anime blush shadow)");
   b.add_input<decl::Float>("Shadow Threshold"_ustr)
       .default_value(0.46f)
