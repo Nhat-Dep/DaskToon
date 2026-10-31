@@ -91,9 +91,9 @@ def is_humanoid(obj):
     return obj is not None and obj.type == 'ARMATURE' and not missing_bones(obj.data)
 
 
-def bounds(objects):
-    """(low, high) world corners around `objects` (a mesh by its vertices, anything else by its bounding box), or None
-    when there is none."""
+def bounds(objects, skip=None):
+    """(low, high) world corners around `objects` (a mesh by its vertices, leaving out those of its mask in `skip`
+    {object: vertex mask}, anything else by its bounding box), or None when there is none."""
     lows, highs = [], []
     for obj in objects:
         if obj.type == 'MESH':
@@ -103,6 +103,11 @@ def bounds(objects):
             obj.data.vertices.foreach_get("co", co)
             matrix = np.array(obj.matrix_world)
             world = co.reshape(-1, 3).astype(float) @ matrix[:3, :3].T + matrix[:3, 3]
+            mask = skip.get(obj) if skip else None
+            if mask is not None:
+                world = world[~mask]
+                if not len(world):
+                    continue
         else:
             world = np.array([tuple(obj.matrix_world @ Vector(corner)) for corner in obj.bound_box])
         lows.append(world.min(axis=0))
@@ -112,10 +117,10 @@ def bounds(objects):
     return Vector(np.min(lows, axis=0)), Vector(np.max(highs, axis=0))
 
 
-def placement(objects, fallback_location):
+def placement(objects, fallback_location, skip=None):
     """(height, location of the feet) of a skeleton for `objects` (spec 4.3): the height of their bounding box and the
-    middle of its bottom, or DEFAULT_HEIGHT at `fallback_location`."""
-    box = bounds(objects)
+    middle of its bottom, or DEFAULT_HEIGHT at `fallback_location`. `skip` as for bounds."""
+    box = bounds(objects, skip)
     if box is None or box[1].z - box[0].z < 1e-4:
         return DEFAULT_HEIGHT, Vector(fallback_location)
     low, high = box
@@ -191,18 +196,19 @@ def create_humanoid(context, height=DEFAULT_HEIGHT, location=(0.0, 0.0, 0.0), na
     return rig
 
 
-def fit(context, rig, objects, body=None, skin=None, eyes=None):
+def fit(context, rig, objects, body=None, skin=None, eyes=None, skip=None):
     """Move the standard bones of `rig` onto the character made of `objects` (the object itself stays, so meshes bound
     to it do not move; bones the user deleted stay deleted): the height and feet of their bounding box; the middle of
     the body, the arms, the legs and the heights of the hips and shoulders from the front silhouette of `body` (the Body
     and Clothing parts; default `objects`), the depth of the elbows and knees from `skin` (the Body parts) where it has
     the limb, see body_shape; the eyes at the middles of `eyes` (objects, or arrays of world points, of the eyes) on
-    each side. Returns the height used."""
+    each side. The vertices of the masks in `skip` {object: vertex mask} count for nothing: an accessory is no limb.
+    Returns the height used."""
     from . import body_shape
-    height, location = placement(objects, rig.matrix_world.translation)
+    height, location = placement(objects, rig.matrix_world.translation, skip)
     joints = None
-    if bounds(objects) is not None:
-        joints = body_shape.joints(context, body or objects, location, height, skin=skin, eyes=eyes)
+    if bounds(objects, skip) is not None:
+        joints = body_shape.joints(context, body or objects, location, height, skin=skin, eyes=eyes, skip=skip)
     if joints is None:
         joints = layout(Matrix.Translation(location) @ Matrix.Scale(height, 4))
     to_rig = rig.matrix_world.inverted()

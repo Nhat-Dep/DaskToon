@@ -30,6 +30,8 @@ FINGERS = ("Thumb", "Index", "Middle", "Ring", "Little")
 SEGMENTS = ("Proximal", "Intermediate", "Distal")
 ROOTS = {'ARM_L': "LeftUpperArm", 'ARM_R': "RightUpperArm", 'LEG_L': "LeftUpperLeg", 'LEG_R': "RightUpperLeg"}
 FALLBACK = {'ARM': 0.03, 'LEG': 0.05, 'TRUNK': 0.1}  # half widths (x height) when the front view tells nothing
+TRUNK_WIDE = 1.5  # (x the shoulders' distance from the middle) a trunk read wider is what is worn on it (real trunks: up
+# to 1.7 at the hips in a skirt; a wide cloak: 4)
 NECK_BAND = 0.05  # (x height) a piece surrounding the neck this near the neck joint's height is skin, not a lock
 SIDE_MARGIN = 0.01  # (x height) how far past the neck joint a vertex is on that side of it
 LOCK_GAP = 0.005  # (x height) pieces this near are one lock
@@ -92,14 +94,17 @@ def _run_half(shape, x, z):
     return (end - start + 1) * shape.step / 2.0
 
 
-def half_widths(context, rig, objects, height, feet):
+def half_widths(context, rig, objects, height, feet, skip=None, skin=None):
     """{bone: half the width of the body there} for the bones of region_bones(rig), read from the front view of
     `objects` at rest: a trunk bone from the run through the body's middle at its middle height (UpperChest and Neck no
-    wider than the trunk below the arms, where the arms join the run), an arm or leg from the limb found."""
+    wider than the trunk below the arms, where the arms join the run), an arm or leg from the limb found. A trunk far
+    wider than the shoulders is a wide cloak or skirt: read so, it takes in the arms, which then stay behind when their
+    bones move. It is read from the Body meshes `skin` where they have it, else held at TRUNK_WIDE; with no arm found
+    anywhere the shoulders are only the template's and say nothing."""
     bones = region_bones(rig)
     middle = float(rig_parts.bone_segment(rig, "Hips")[0][0])
     with resting(context, rig):
-        shape = body_shape.Shape(context, objects, feet, height)
+        shape = body_shape.Shape(context, objects, feet, height, skip)
     found = {}
     if shape.mask is not None:
         for region in LIMBS:
@@ -116,6 +121,20 @@ def half_widths(context, rig, objects, height, feet):
         head, tail = rig_parts.bone_segment(rig, name)
         half = _run_half(shape, middle, (head[2] + tail[2]) / 2.0) if shape.mask is not None else 0.0
         out[name] = half if half > 0.0 else FALLBACK['TRUNK'] * height
+    shoulders = max(abs(float(rig_parts.bone_segment(rig, side + "UpperArm")[0][0]) - middle)
+                    for side in ("Left", "Right"))
+    wide = [name for name in bones['TORSO'] if out[name] > TRUNK_WIDE * shoulders]
+    if wide:
+        with resting(context, rig):
+            bare = body_shape.Shape(context, skin, feet, height, skip) if skin else None
+        if bare is not None and bare.mask is None:
+            bare = None
+        armed = any(found.get(region) for region in ('ARM_L', 'ARM_R'))
+        if armed or (bare and (bare.arm(1, middle) or bare.arm(-1, middle))):
+            for name in wide:
+                head, tail = rig_parts.bone_segment(rig, name)
+                own = _run_half(bare, middle, (head[2] + tail[2]) / 2.0) if bare else 0.0
+                out[name] = own if own > 0.0 else TRUNK_WIDE * shoulders
     below = [out[name] for name in ("Hips", "Spine", "Chest") if name in out]
     for name in ("UpperChest", "Neck"):
         if name in out and below:
@@ -129,6 +148,20 @@ def surface_distance(rig, world, names, half):
         return np.full(len(world), np.inf)
     return np.min(np.stack([chains.segment_distance(world, *rig_parts.bone_segment(rig, name)) - half[name]
                             for name in names], axis=1), axis=1)
+
+
+def trunk_distance(rig, world, names, half):
+    """Distance of each world point to the trunk's surface: round its bones, narrowing below the root of the Hips to
+    nothing one half width down (as wide all the way down, the round end of wide hips took the top of the thighs, and
+    what is worn on them: they stayed behind when the legs rose)."""
+    if "Hips" not in names:
+        return surface_distance(rig, world, names, half)
+    start, end = rig_parts.bone_segment(rig, "Hips")
+    axis = (end - start) / np.linalg.norm(end - start)
+    drop = np.clip((start - world) @ axis, 0.0, None)
+    return np.min(np.stack([chains.segment_distance(world, *rig_parts.bone_segment(rig, name))
+                            - half[name] * np.clip(1.0 - drop / half[name], 0.0, None) for name in names], axis=1),
+                  axis=1)
 
 
 def head_distance(rig, world, half):
@@ -146,6 +179,7 @@ def labels(rig, world, half, head=None):
     points of the mask `head` are HEAD."""
     bones = region_bones(rig)
     distance = np.stack([head_distance(rig, world, half) if region == 'HEAD' else
+                         trunk_distance(rig, world, bones[region], half) if region == 'TORSO' else
                          surface_distance(rig, world, bones[region], half) for region in REGIONS], axis=1)
     out = distance.argmin(axis=1).astype(np.int8)
     if head is not None:
@@ -282,14 +316,16 @@ def analyse(context, rig, parts, owners=None):
     if not vertices_of:
         return found
     objects = list(vertices_of)
-    height, feet = skeleton.placement(objects, rig.matrix_world.translation)
+    skip = {obj: rig_parts.role_mask(parts, owners[obj], 'ACCESSORY') for obj in objects}
+    height, feet = skeleton.placement(objects, rig.matrix_world.translation, skip)
     found.height = height
-    found.half = half_widths(context, rig, objects, height, feet)
+    skin = list(dict.fromkeys(part.object for part in parts if part.role == 'BODY' and part.object in vertices_of))
+    found.half = half_widths(context, rig, objects, height, feet, skip, skin)
     middle = float(rig_parts.bone_segment(rig, "Hips")[0][0])
     shoulder_z = max(float(rig_parts.bone_segment(rig, side + "UpperArm")[0][2]) for side in ("Left", "Right"))
     named = []
     for obj, vertices in vertices_of.items():
-        world, edges = rig_parts.mesh_arrays(obj)
+        world, edges = rig_parts.welded_arrays(obj)
         pieces = head_pieces(rig, world, edges, vertices, height)
         head = np.zeros(len(world), bool)
         for piece in pieces:
@@ -451,7 +487,8 @@ def keep_factors(rig, world, labelled, edges, band):
     blend between the limb and the torso stays smooth (cut short, the hips and shoulders tore in the test poses of the
     real models), while a piece apart (an ear, a hair lock, a strap) and a vertex far along the mesh (a waist beside a
     hanging forearm) keep none. Nothing on the head. An arm's shoulder bone keeps its weight within SHOULDER_KEEP of
-    its own length round itself, out of the head. The head's bone keeps its weight as a limb's does, about the head (a
+    its own length round itself, out of the head, a piece apart keeping none here too (a strap on the chest does not rise
+    with the arm). The head's bone keeps its weight as a limb's does, about the head (a
     strap on the chest, a piece of the shirt, saw the head bone alone through the collar and turned with the head)."""
     bones = region_bones(rig)
     head = labelled == REGIONS.index('HEAD')
@@ -467,8 +504,9 @@ def keep_factors(rig, world, labelled, edges, band):
             start, end = rig_parts.bone_segment(rig, shoulder)
             length = float(np.linalg.norm(end - start))
             near = chains.segment_distance(world, start, end)
-            out[shoulder] = np.where(head, 0.0, 1.0 - _smoothstep(SHOULDER_KEEP[0] * length,
-                                                                  SHOULDER_KEEP[1] * length, near))
+            inner, outer = SHOULDER_KEEP[0] * length, SHOULDER_KEEP[1] * length
+            joined = np.isfinite(_along(world, edges, near <= inner, 2.0 * outer))
+            out[shoulder] = np.where(head | ~joined, 0.0, 1.0 - _smoothstep(inner, outer, near))
     if rig.data.bones.get("Head") is not None:
         out["Head"] = 1.0 - _smoothstep(0.0, band, _along(world, edges, head, band))
     return out
@@ -493,7 +531,7 @@ def restrict(context, rig, parts, owners, found=None, roles=BODY_ROLES):
         chosen = np.isin(owners[obj][vertices], ids)
         if not chosen.any():
             continue
-        world, edges = rig_parts.mesh_arrays(obj)
+        world, edges = rig_parts.welded_arrays(obj)
         labelled = read(obj)[vertices]
         automatic = labelled == AUTO
         labelled[automatic] = recognized[automatic]
@@ -557,7 +595,7 @@ def lock_from_selection(rig, obj, selected):
     it in Object Mode. Returns the new part; PartError when nothing is selected."""
     if len(selected) == 0:
         raise rig_parts.PartError(rpt_("Select a vertex of each piece first"))
-    world, edges = rig_parts.mesh_arrays(obj)
+    world, edges = rig_parts.welded_arrays(obj)
     chosen = set(int(v) for v in selected)
     vertices = np.unique(np.concatenate([piece for piece in rig_parts.pieces(edges, np.arange(len(world)))
                                          if chosen.intersection(piece.tolist())]))

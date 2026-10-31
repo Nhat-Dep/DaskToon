@@ -1149,6 +1149,13 @@ class DASKTOON_UL_shape_mappings(UIList):
 # VRM ShapeKey Toolset (ARKit & VRM Standard Blendshape Suite)
 # =============================================================================
 
+def _new_key(obj, name):
+    """A new shape key, off: Blender starts it at 1, which shows it as soon as it holds a shape."""
+    block = obj.shape_key_add(name=name, from_mix=False)
+    block.value = 0.0
+    return block
+
+
 class DASKTOON_OT_vrm_init_standard(Operator):
     """Add the VRM expression shape keys the mesh does not have yet, empty, ready to sculpt"""
     bl_idname = "dasktoon.vrm_init_standard"
@@ -1192,7 +1199,7 @@ class DASKTOON_OT_vrm_init_standard(Operator):
         added = 0
         for name in target_names:
             if name not in sk.key_blocks:
-                obj.shape_key_add(name=name, from_mix=False)
+                _new_key(obj, name)
                 added += 1
 
         self.report({'INFO'}, rpt_("Added %d VRM shape keys") % added)
@@ -1250,8 +1257,8 @@ class DASKTOON_OT_vrm_split_shape_key(Operator):
             l_name = f"{self.source_shape}_l"
             r_name = f"{self.source_shape}_r"
 
-        left_kb = sk.key_blocks.get(l_name) or obj.shape_key_add(name=l_name, from_mix=False)
-        right_kb = sk.key_blocks.get(r_name) or obj.shape_key_add(name=r_name, from_mix=False)
+        left_kb = sk.key_blocks.get(l_name) or _new_key(obj, l_name)
+        right_kb = sk.key_blocks.get(r_name) or _new_key(obj, r_name)
 
         fall = max(1e-5, self.falloff)
         for i, v in enumerate(obj.data.vertices):
@@ -1293,7 +1300,7 @@ class DASKTOON_OT_vrm_bake_expression(Operator):
 
         sk = obj.data.shape_keys
         basis_kb = sk.key_blocks[0]
-        new_kb = sk.key_blocks.get(self.new_name) or obj.shape_key_add(name=self.new_name, from_mix=False)
+        new_kb = sk.key_blocks.get(self.new_name) or _new_key(obj, self.new_name)
 
         deltas = [mathutils.Vector((0.0, 0.0, 0.0)) for _ in obj.data.vertices] if 'mathutils' in globals() else [v.co.copy() * 0.0 for v in obj.data.vertices]
 
@@ -1429,7 +1436,7 @@ class DASKTOON_OT_vrm_synthesize_arkit52(Operator):
             if arkit_name in sk.key_blocks and not self.overwrite_existing:
                 continue
 
-            target_kb = sk.key_blocks.get(arkit_name) or obj.shape_key_add(name=arkit_name, from_mix=False)
+            target_kb = sk.key_blocks.get(arkit_name) or _new_key(obj, arkit_name)
             deltas = [v.co.copy() * 0.0 for v in obj.data.vertices]
 
             for src_kb, weight, side in ingredients:
@@ -1520,18 +1527,6 @@ class DASKTOON_OT_fill_empty_expressions(Operator):
         return {'FINISHED'}
 
 
-def _character_rig(obj):
-    """The humanoid rig of `obj`: itself, or the armature an Armature modifier of the mesh uses; None without one."""
-    if obj is None:
-        return None
-    if obj.type == 'ARMATURE':
-        return obj if obj.data.bones.get("Head") is not None else None
-    for modifier in obj.modifiers if obj.type == 'MESH' else ():
-        if modifier.type == 'ARMATURE' and modifier.object is not None and modifier.object.data.bones.get("Head"):
-            return modifier.object
-    return None
-
-
 class DASKTOON_OT_sculpt_eye_expressions(Operator):
     """Make blink, blink_L, blink_R, joy and surprised for eyes built from loose pieces in front of the face"""
     bl_idname = "dasktoon.sculpt_eye_expressions"
@@ -1540,11 +1535,12 @@ class DASKTOON_OT_sculpt_eye_expressions(Operator):
 
     @classmethod
     def poll(cls, context):
-        return _character_rig(context.object) is not None
+        from dasktoon_rig import auto_expressions
+        return auto_expressions.rig_of(context.object) is not None
 
     def execute(self, context):
-        from dasktoon_rig import eye_shapes
-        rig = _character_rig(context.object)
+        from dasktoon_rig import auto_expressions, eye_shapes
+        rig = auto_expressions.rig_of(context.object)
         made = eye_shapes.sculpt(rig, list(context.view_layer.objects))
         if made:
             self.report({'INFO'}, rpt_("Sculpted %s on %s") % (
@@ -1619,14 +1615,44 @@ class DASKTOON_OT_vrm_convert_naming(Operator):
         return {'FINISHED'}
 
 
+LIVE_SLOTS = {'AIUEO_TALK': ("A", "I", "U", "E", "O"), 'EMOTIONS': ("JOY", "SURPRISED", "SORROW", "ANGRY"),
+              'AUTO_BLINK': ("BLINK",)}
+
+
+def _live_values(mode, step):
+    """{expression: value} of the looping preview `mode` at time `step`."""
+    if mode == 'AUTO_BLINK':
+        cycle = step % 3.0  # a blink every 3
+        return {"BLINK": max(0.0, math.sin(cycle * math.pi / 0.25)) if cycle < 0.25 else 0.0}
+    slots = LIVE_SLOTS[mode]
+    phase = (step * (1.5 if mode == 'AIUEO_TALK' else 0.5)) % len(slots)
+    index = int(phase)
+    return {slot: math.sin((phase - index) * math.pi) if i == index else 0.0 for i, slot in enumerate(slots)}
+
+
+def _live_keys(obj):
+    """{expression: [(mesh name, key name)]} of the keys showing each expression on the whole character of `obj`."""
+    from dasktoon_rig import auto_expressions
+    meshes = auto_expressions.meshes_of(obj)
+    return {slot: [(mesh.name, block.name) for mesh in meshes for block in auto_expressions.slot_keys(mesh, slot)]
+            for slots in LIVE_SLOTS.values() for slot in slots}
+
+
+def _live_show(keys, values):
+    for slot, value in values.items():
+        for mesh, name in keys.get(slot, ()):
+            bpy.data.objects[mesh].data.shape_keys.key_blocks[name].value = value
+
+
 class DASKTOON_OT_vrm_live_preview(Operator):
-    """Play a blink, speech or emotion test on the mesh in a loop, until Esc or right click"""
+    """Play a blink, speech or emotion test on the character in a loop, until Esc or right click"""
     bl_idname = "dasktoon.vrm_live_preview"
     bl_label = "Live Preview"
     bl_options = {'REGISTER'}
 
     _timer = None
     _step = 0.0
+    _keys = {}
     preview_mode: EnumProperty(
         name="Mode",
         items=[
@@ -1644,48 +1670,14 @@ class DASKTOON_OT_vrm_live_preview(Operator):
 
         if event.type == 'TIMER':
             self._step += 0.08
-            obj = context.object
-            if not obj or not obj.data or not obj.data.shape_keys:
-                return {'PASS_THROUGH'}
-
-            sk = obj.data.shape_keys
-            def set_val(pat, val):
-                for name, kb in sk.key_blocks.items():
-                    if re.search(pat, name, re.IGNORECASE):
-                        kb.value = val
-
-            if self.preview_mode == 'AUTO_BLINK':
-                # Blink pulse every ~2.5 seconds
-                cycle = self._step % 3.0
-                blink_val = math.sin(cycle * math.pi / 0.25) if cycle < 0.25 else 0.0
-                set_val(r'blink|Fcl_EYE_Close', max(0.0, blink_val))
-
-            elif self.preview_mode == 'AIUEO_TALK':
-                # 5 vowels sequentially
-                phase = (self._step * 1.5) % 5.0
-                idx = int(phase)
-                frac = phase - idx
-                vowels = [r'Fcl_MTH_A|^a$|^aa$', r'Fcl_MTH_I|^i$|^ih$', r'Fcl_MTH_U|^u$|^ou$', r'Fcl_MTH_E|^e$|^ee$', r'Fcl_MTH_O|^o$|^oh$']
-                for j, pat in enumerate(vowels):
-                    w = math.sin(frac * math.pi) if j == idx else 0.0
-                    set_val(pat, max(0.0, w))
-
-            elif self.preview_mode == 'EMOTIONS':
-                # Smooth emotion waves
-                e_phase = (self._step * 0.5) % 4.0
-                e_idx = int(e_phase)
-                e_frac = e_phase - e_idx
-                emotes = [r'Joy|happy', r'Surprised', r'Sorrow|sad', r'Angry']
-                for j, pat in enumerate(emotes):
-                    w = math.sin(e_frac * math.pi) if j == e_idx else 0.0
-                    set_val(pat, max(0.0, w))
-
+            _live_show(self._keys, _live_values(self.preview_mode, self._step))
             context.area.tag_redraw()
 
         return {'PASS_THROUGH'}
 
     def execute(self, context):
         wm = context.window_manager
+        self._keys = _live_keys(context.object)
         self._timer = wm.event_timer_add(0.033, window=context.window)
         wm.modal_handler_add(self)
         self.report({'INFO'}, rpt_("Live preview running: press Esc or right click to stop"))
@@ -1695,12 +1687,7 @@ class DASKTOON_OT_vrm_live_preview(Operator):
         if self._timer:
             context.window_manager.event_timer_remove(self._timer)
             self._timer = None
-        # Reset shapes
-        obj = context.object
-        if obj and obj.data and obj.data.shape_keys:
-            for kb in obj.data.shape_keys.key_blocks:
-                if kb != obj.data.shape_keys.key_blocks[0]:
-                    kb.value = 0.0
+        _live_show(self._keys, dict.fromkeys(self._keys, 0.0))
         context.area.tag_redraw()
         self.report({'INFO'}, rpt_("Live preview stopped"))
 
@@ -1804,8 +1791,123 @@ VRM_GUIDE_CARDS = {
 }
 
 
+CARD_NAMES = {name.lower() for card in VRM_GUIDE_CARDS.values() for name in card['targets']}
+
+
+def _face_keys(obj):
+    """The shape keys of `obj` that are expressions; a shape of the body (a slimmer waist) is left as you set it."""
+    from dasktoon_rig import expressions
+    key = obj.data.shape_keys
+    if key is None:
+        return []
+    return [block for block in key.key_blocks if block != key.reference_key
+            and (expressions.slot_of(block.name) is not None or block.name in ARKIT_52_ALL_NAMES
+                 or block.name.lower() in CARD_NAMES)]
+
+
+def _show(obj, picked, value):
+    """On the whole character of `obj`: the keys `picked` gives for each mesh go to `value`, the other expressions to 0.
+    Returns the names shown, None when the character has no shape key."""
+    from dasktoon_rig import auto_expressions
+    meshes = [mesh for mesh in auto_expressions.meshes_of(obj) if mesh.data.shape_keys is not None]
+    if not meshes:
+        return None
+    shown = []
+    for mesh in meshes:
+        for block in _face_keys(mesh):
+            block.value = 0.0
+        for block in picked(mesh):
+            block.value = value
+            if block.name not in shown:
+                shown.append(block.name)
+    return shown
+
+
+def _card_keys(mesh, targets):
+    """The keys of `mesh` showing a card: its key of the whole expression, else the ARKit shapes that make it up. The
+    shapes built from a key would add to it."""
+    from dasktoon_rig import auto_expressions, expressions
+    slot = expressions.slot_of(targets[0])
+    whole = auto_expressions.slot_keys(mesh, slot) if slot is not None else []
+    if whole:
+        return whole
+    names = {name.lower() for name in targets}
+    key = mesh.data.shape_keys
+    return [block for block in key.key_blocks if block != key.reference_key and block.name.lower() in names]
+
+
+class DASKTOON_OT_expression_try(Operator):
+    """Show this expression on every mesh of the character, with the others off"""
+    bl_idname = "dasktoon.expression_try"
+    bl_label = "Try Expression"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    slot: StringProperty(name="Expression", default="BLINK", options={'HIDDEN'})
+
+    def execute(self, context):
+        from dasktoon_rig import auto_expressions
+        if not _show(context.object, lambda mesh: auto_expressions.slot_keys(mesh, self.slot), 1.0):
+            self.report({'WARNING'}, rpt_("The character has no shape key for this expression yet"))
+        return {'FINISHED'}
+
+
+class DASKTOON_OT_expression_rest(Operator):
+    """Turn every expression of the character off"""
+    bl_idname = "dasktoon.expression_rest"
+    bl_label = "Back to Rest Face"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        _show(context.object, lambda _mesh: (), 0.0)
+        return {'FINISHED'}
+
+
+class DASKTOON_OT_auto_expressions(Operator):
+    """Make the character's expressions on all its meshes; shape keys that already move are kept"""
+    bl_idname = "dasktoon.auto_expressions"
+    bl_label = "Auto Expressions"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        from dasktoon_rig import auto_expressions
+        return bool(auto_expressions.meshes_of(context.object))
+
+    def execute(self, context):
+        from dasktoon_rig import auto_expressions
+        obj = context.object
+        result = auto_expressions.run(auto_expressions.rig_of(obj), auto_expressions.meshes_of(obj))
+        done = len(auto_expressions.LISTED) - len(result.left)
+        self.report({'INFO'}, rpt_("Auto Expressions: %d sculpted, %d filled, %d of %d ready") % (
+            len(result.sculpted), len(result.filled), done, len(auto_expressions.LISTED)))
+        return {'FINISHED'}
+
+
+class DASKTOON_OT_redo_eye_expressions(Operator):
+    """Write blink, joy and surprised again from the eyes found now, over what those shape keys hold"""
+    bl_idname = "dasktoon.redo_eye_expressions"
+    bl_label = "Redo Eye Expressions"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        from dasktoon_rig import auto_expressions
+        return auto_expressions.rig_of(context.object) is not None
+
+    def invoke(self, context, event):
+        return context.window_manager.invoke_confirm(self, event)
+
+    def execute(self, context):
+        from dasktoon_rig import auto_expressions
+        obj = context.object
+        result = auto_expressions.run(auto_expressions.rig_of(obj), auto_expressions.meshes_of(obj), replace=True)
+        if not result.sculpted:
+            self.report({'WARNING'}, rpt_("No eyes found: the shape keys stay as they are"))
+        return {'FINISHED'}
+
+
 class DASKTOON_OT_vrm_guide_solo_preview(Operator):
-    """Show this expression on the mesh: its shape keys go to the intensity, all others to 0"""
+    """Show this expression on the character: its shape key goes to the intensity, the other expressions to 0"""
     bl_idname = "dasktoon.vrm_guide_solo_preview"
     bl_label = "Test Expression on Model"
     bl_options = {'REGISTER', 'UNDO'}
@@ -1814,26 +1916,13 @@ class DASKTOON_OT_vrm_guide_solo_preview(Operator):
     intensity: FloatProperty(name="Intensity", default=1.0, min=0.0, max=1.0)
 
     def execute(self, context):
-        obj = context.object
-        if not obj or not obj.data or not obj.data.shape_keys:
-            self.report({'ERROR'}, rpt_("Select a mesh with shape keys"))
-            return {'CANCELLED'}
-
-        sk = obj.data.shape_keys
-        for kb in sk.key_blocks:
-            kb.value = 0.0
-
         card = VRM_GUIDE_CARDS.get(self.card_key)
         if not card:
             return {'CANCELLED'}
-
-        applied = []
-        for pat in card['targets']:
-            for name, kb in sk.key_blocks.items():
-                if name.lower() == pat.lower() or re.search(f'^{pat}$', name, re.IGNORECASE):
-                    kb.value = self.intensity
-                    applied.append(name)
-                    break
+        applied = _show(context.object, lambda mesh: _card_keys(mesh, card['targets']), self.intensity)
+        if applied is None:
+            self.report({'ERROR'}, rpt_("Select a mesh with shape keys"))
+            return {'CANCELLED'}
 
         if applied:
             self.report({'INFO'}, rpt_("Showing %s: %s") % (iface_(card['name']), ", ".join(applied)))
@@ -1947,7 +2036,7 @@ class DASKTOON_OT_arkit_init_placeholders(Operator):
         added = 0
         for name in ARKIT_52_ALL_NAMES:
             if name not in sk.key_blocks:
-                obj.shape_key_add(name=name, from_mix=False)
+                _new_key(obj, name)
                 added += 1
 
         self.report({'INFO'}, rpt_("Added %d ARKit shape keys to %s") % (added, obj.name))
@@ -1955,7 +2044,7 @@ class DASKTOON_OT_arkit_init_placeholders(Operator):
 
 
 class DASKTOON_OT_arkit_solo_preview(Operator):
-    """Show this ARKit shape key on the mesh: it goes to the intensity, all others to 0"""
+    """Show this ARKit shape key on the character: it goes to the intensity, the other expressions to 0"""
     bl_idname = "dasktoon.arkit_solo_preview"
     bl_label = "Test ARKit Shape on Model"
     bl_options = {'REGISTER', 'UNDO'}
@@ -1964,18 +2053,13 @@ class DASKTOON_OT_arkit_solo_preview(Operator):
     intensity: FloatProperty(name="Intensity", default=1.0, min=0.0, max=1.0)
 
     def execute(self, context):
-        obj = context.object
-        if not obj or not obj.data or not obj.data.shape_keys:
+        name = self.shape_name
+        applied = _show(context.object, lambda mesh: [b for b in mesh.data.shape_keys.key_blocks if b.name == name],
+                        self.intensity)
+        if applied is None:
             self.report({'ERROR'}, rpt_("Select a mesh with shape keys"))
             return {'CANCELLED'}
-
-        sk = obj.data.shape_keys
-        for kb in sk.key_blocks:
-            kb.value = 0.0
-
-        kb = sk.key_blocks.get(self.shape_name)
-        if kb:
-            kb.value = self.intensity
+        if applied:
             self.report({'INFO'}, rpt_("Showing %s") % self.shape_name)
         else:
             self.report({'WARNING'}, rpt_("Shape key %s not found: synthesize ARKit 52 first") % self.shape_name)
@@ -2020,6 +2104,45 @@ def _card(layout, context, title, region, text, translate_title=True):
         col.label(text=line, translate=False)
 
 
+EXPRESSION_NAMES = {
+    "BLINK": n_("Blink"), "BLINK_L": n_("Wink Left"), "BLINK_R": n_("Wink Right"), "JOY": n_("Joy"),
+    "ANGRY": n_("Angry"), "SORROW": n_("Sorrow"), "FUN": n_("Relaxed"), "SURPRISED": n_("Surprised"),
+    "A": "A", "I": "I", "U": "U", "E": "E", "O": "O",
+}
+
+
+def draw_auto_expressions(layout, obj):
+    """The button, the list of what the character of `obj` has, the way back; here and in the rig's panel."""
+    from dasktoon_rig import auto_expressions
+    row = layout.row()
+    row.scale_y = 1.4
+    row.operator("dasktoon.auto_expressions", icon='SHAPEKEY_DATA')
+    states = auto_expressions.states(auto_expressions.meshes_of(obj))
+    ready = sum(1 for state in states.values() if state == 'READY')
+    layout.label(text=iface_("%d of %d ready: press one to try it") % (ready, len(states)), translate=False)
+    grid = layout.grid_flow(columns=2, align=True)
+    for slot, state in states.items():
+        moves = state == 'READY'
+        cell = grid.row(align=True)
+        cell.enabled = moves
+        cell.operator("dasktoon.expression_try", text=iface_(EXPRESSION_NAMES[slot]), translate=False,
+                      icon='CHECKBOX_HLT' if moves else 'CHECKBOX_DEHLT').slot = slot
+    if states["A"] != 'READY':
+        layout.label(text="A I U E O: sculpt \"a\" or use a 2D Mouth", icon='INFO')
+    row = layout.row(align=True)
+    row.operator("dasktoon.expression_rest", icon='LOOP_BACK')
+    row.operator("dasktoon.redo_eye_expressions", icon='FILE_REFRESH')
+
+
+class DATA_PT_dasktoon_auto_expressions(DaskExpressionPanel, Panel):
+    bl_label = "Auto Expressions"
+    bl_options = set()
+    needs_shape_keys = False
+
+    def draw(self, context):
+        draw_auto_expressions(self.layout, context.object)
+
+
 class DATA_PT_dasktoon_expression_sets(DaskExpressionPanel, Panel):
     bl_label = "Expression Sets"
     needs_shape_keys = False
@@ -2031,8 +2154,6 @@ class DATA_PT_dasktoon_expression_sets(DaskExpressionPanel, Panel):
         row.operator("dasktoon.vrm_init_standard", text="VRM 1.0 Set", icon='ADD').standard_type = 'VRM_1'
         col = layout.column(align=True)
         col.operator("dasktoon.vrm_synthesize_arkit52", icon='SOLO_ON')
-        col.operator("dasktoon.fill_empty_expressions", icon='SHAPEKEY_DATA')
-        col.operator("dasktoon.sculpt_eye_expressions", icon='HIDE_OFF')
         col.operator("dasktoon.arkit_init_placeholders", icon='ADD')
         col.operator("dasktoon.vrm_convert_naming", icon='SYNTAX_OFF')
         keys = context.object.data.shape_keys
@@ -2108,6 +2229,8 @@ class DATA_PT_dasktoon_expression_tools(DaskExpressionPanel, Panel):
 
     def draw(self, _context):
         col = self.layout.column(align=True)
+        col.operator("dasktoon.sculpt_eye_expressions", icon='HIDE_OFF')
+        col.operator("dasktoon.fill_empty_expressions", icon='SHAPEKEY_DATA')
         col.operator("dasktoon.vrm_split_shape_key", icon='ARROW_LEFTRIGHT')
         col.operator("dasktoon.vrm_bake_expression", icon='EXPERIMENTAL')
         col.operator("dasktoon.vrm_remove_empty_shapes", icon='TRASH')
@@ -2126,7 +2249,7 @@ class DATA_PT_dasktoon_expression_preview(DaskExpressionPanel, Panel):
         row = layout.row(align=True)
         row.operator("dasktoon.vrm_guide_solo_preview", text="Test on Model", icon='VIEWZOOM').card_key = \
             scene.dask_guide_card_key
-        row.operator("object.shape_key_clear", text="Clear Values", icon='LOOP_BACK')
+        row.operator("dasktoon.expression_rest", text="Clear Values", icon='LOOP_BACK')
         layout.separator()
         layout.prop(scene, "dask_arkit_selected_shape", text="ARKit")
         name = scene.dask_arkit_selected_shape
@@ -2134,7 +2257,7 @@ class DATA_PT_dasktoon_expression_preview(DaskExpressionPanel, Panel):
         _card(layout, context, name, region, text, translate_title=False)
         row = layout.row(align=True)
         row.operator("dasktoon.arkit_solo_preview", text="Test on Model", icon='VIEWZOOM').shape_name = name
-        row.operator("object.shape_key_clear", text="Clear Values", icon='LOOP_BACK')
+        row.operator("dasktoon.expression_rest", text="Clear Values", icon='LOOP_BACK')
         layout.separator()
         row = layout.row(align=True)
         row.operator("dasktoon.vrm_live_preview", text="Blink", icon='HIDE_OFF').preview_mode = 'AUTO_BLINK'
@@ -2263,11 +2386,16 @@ classes = (
     DASKTOON_OT_sculpt_eye_expressions,
     DASKTOON_OT_vrm_convert_naming,
     DASKTOON_OT_vrm_live_preview,
+    DASKTOON_OT_expression_try,
+    DASKTOON_OT_expression_rest,
+    DASKTOON_OT_auto_expressions,
+    DASKTOON_OT_redo_eye_expressions,
     DASKTOON_OT_vrm_guide_solo_preview,
     DASKTOON_OT_arkit_init_placeholders,
     DASKTOON_OT_arkit_solo_preview,
     DASKTOON_UL_shape_groups,
     DASKTOON_UL_shape_mappings,
+    DATA_PT_dasktoon_auto_expressions,
     DATA_PT_dasktoon_expression_sets,
     DATA_PT_dasktoon_expression_tools,
     DATA_PT_dasktoon_expression_preview,

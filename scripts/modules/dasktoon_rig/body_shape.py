@@ -37,6 +37,11 @@ HIP_ABOVE = 0.1  # the hip joint is this part of the leg's length above where th
 ARM_UP = 0.57  # an arm is modelled hanging or level: a limb pointing up more than this (sine, 35 deg) is an ear or a
 #                twin tail reaching out wider than the hand (RGforGame), and the hand is looked for lower down
 ARM_TRIES = 3
+ARM_AGREES = 0.94  # (cosine, 20 deg) the arm of the clothes and of the skin agree this well, or the skin is right ...
+ARM_SKIN = 0.2  # (of the height) ... if its arm is this long: shorter is a wrist, or hair at the temple
+ARM_TRUNK = 0.15  # (of the height) the side of the trunk is read on the rows this far below a shoulder
+ARM_FALLS = 0.7  # the trunk is at most this wide of the row where the arm leaves it (ten characters: 0.34 to 0.65)
+ARM_SLIDE = 0.3  # (of the arm) how far a shoulder inside the trunk may move out along its arm
 # Template heights (x height) of the hip and shoulder joints: the spine is stretched between the heights found.
 HIP_Z, SHOULDER_Z = 0.52, 0.78
 NECK_Z, HEAD_Z = 0.80, 0.85  # the template's bottom of the neck and of the head
@@ -124,12 +129,23 @@ def _line(points):
     return centre, vectors[:, -1]
 
 
-class Shape:
-    """The front silhouette of `objects` (meshes) on a grid over a character `height` tall standing at `feet`."""
+def _without(vertices, triangles, mask):
+    """`vertices` and `triangles` without the vertices of `mask` and the triangles touching them. A mesh that shows more
+    vertices than it has (a Mirror) stays whole."""
+    if mask is None or len(mask) != len(vertices) or not mask.any():
+        return vertices, triangles
+    new = np.cumsum(~mask) - 1
+    return vertices[~mask], new[triangles[~mask[triangles].any(axis=1)]]
 
-    def __init__(self, context, objects, feet, height):
+
+class Shape:
+    """The front silhouette of `objects` (meshes) on a grid over a character `height` tall standing at `feet`, without
+    the vertices of the masks in `skip` {object: vertex mask}."""
+
+    def __init__(self, context, objects, feet, height, skip=None):
         self.height, self.step = height, height / GRID
-        meshes = [evaluated(context, obj) for obj in objects if obj.type == 'MESH']
+        skip = skip or {}
+        meshes = [_without(*evaluated(context, obj), skip.get(obj)) for obj in objects if obj.type == 'MESH']
         meshes = [(v, t) for v, t in meshes if len(t)]
         self.mask = None
         if not meshes:
@@ -292,6 +308,59 @@ def _legs(context, shape, skin, feet, height, middle):
     return {side: shape.leg(side, middle) for side in (1, -1)}
 
 
+def _trunk_side(shape, side, middle, z):
+    """How far from the middle the trunk reaches on `side` of the silhouette `shape`, read on the rows ARM_TRUNK below the
+    height `z` of a shoulder: going down them it widens along the arm, then falls back to the trunk at the armpit. The
+    lower quartile of the rows after the widest (a stray hole narrows a row, the hips widen the last). None without such a
+    fall: arms close to the body hide the trunk."""
+    col = shape.pixel((middle, z))[1]
+    reaches = []
+    for row in range(shape.pixel((middle, z))[0], shape.pixel((middle, z - ARM_TRUNK * shape.height))[0] - 1, -1):
+        line = shape.mask[row]
+        if line[col]:
+            ahead = line[col:] if side > 0 else line[col::-1]
+            reaches.append(len(ahead) if ahead.all() else int(np.argmin(ahead)))
+    widest = int(np.argmax(reaches)) if reaches else 0
+    below = reaches[widest + 1:]
+    if not below:
+        return None
+    trunk = float(np.percentile(below, 25))
+    return trunk * shape.step if trunk <= ARM_FALLS * reaches[widest] else None
+
+
+def _off_the_trunk(shape, arm, side, middle):
+    """`arm` starting at the side of the trunk at least. Walking in from the hand, a trunk as narrow as a wide sleeve is
+    passed through as if it were one (Shape.limb), which leaves the shoulder inside the chest: arms raised from there
+    meet over the head."""
+    root = arm.base - arm.axis * arm.width / 2.0
+    trunk = _trunk_side(shape, side, middle, float(root[1]))
+    outward = side * float(arm.axis[0])
+    if trunk is None or outward <= 0.0:
+        return arm
+    inside = trunk - side * float(root[0] - middle)
+    if inside <= 0.0:
+        return arm
+    slide = min(inside / outward, ARM_SLIDE * float(np.linalg.norm(arm.end - arm.base)))
+    return arm._replace(base=arm.base + arm.axis * slide)
+
+
+def _arms(context, shape, skin, feet, height, middle, skip):
+    """({side: arm or None}, {side: the silhouette read}): the arm of the silhouette `shape` where the Body meshes `skin`
+    agree (a glove or a sleeve carries it on past the skin), else the arm of the skin: what is worn hides an arm, it does
+    not move it. Skin with no arm in it (all sleeves) has nothing to say."""
+    found = {side: shape.arm(side, middle) for side in (1, -1)}
+    read = dict.fromkeys(found, shape)
+    bare = Shape(context, skin, feet, height, skip) if skin else None
+    if bare is not None and bare.mask is not None:
+        for side, arm in found.items():
+            own = bare.arm(side, middle)
+            if own is None or np.linalg.norm(own.end - own.base) < ARM_SKIN * height:
+                continue
+            if arm is None or float(arm.axis @ own.axis) < ARM_AGREES:
+                found[side], read[side] = own, bare
+    return found, read
+
+
 def _mirrored(found, middle):
     """{side: limb}: a side not found mirrors the other one."""
     def mirror(limb):
@@ -313,27 +382,32 @@ def _similar(a_from, b_from, a_to, b_to):
     return (lambda p: a_to + rotation @ ((p - a_from) * scale)), rotation
 
 
-def joints(context, objects, feet, height, skin=None, eyes=None):
+def joints(context, objects, feet, height, skin=None, eyes=None, skip=None):
     """{bone: (head, tail, z axis)} in world space of the standard skeleton fitted to the silhouette of `objects`, for
     a character `height` tall with its feet at `feet`; None when they have no faces. What is not found (arms, legs)
     stays as in the template, at the heights found. The joints of the arms and legs then lie on the middle lines of the
     limbs of `skin` (the Body meshes) where it has them, else of `objects`; the spine and neck in the middle of the
     body, front to back."""
     from . import skeleton
-    shape = Shape(context, objects, feet, height)
+    shape = Shape(context, objects, feet, height, skip)
     if shape.mask is None:
         return None
     middle = float(np.median(shape.vertices[:, 0]))
-    arms = _mirrored({side: shape.arm(side, middle) for side in (1, -1)}, middle)
+    found, read = _arms(context, shape, skin, feet, height, middle, skip)
+    arms = _mirrored(found, middle)
     legs = _mirrored(_legs(context, shape, skin, feet, height, middle), middle)
     top = feet.z + height
     hip_z, shoulder_z = feet.z + HIP_Z * height, feet.z + SHOULDER_Z * height
-    shoulders = {side: arm.base - arm.axis * arm.width / 2.0 for side, arm in arms.items() if arm is not None}
+    tops = [arm.base[1] - arm.axis[1] * arm.width / 2.0 for arm in arms.values() if arm is not None]
     hips = {side: leg.base[1] + HIP_ABOVE * (leg.base[1] - feet.z) for side, leg in legs.items() if leg is not None}
     if hips:
         hip_z = float(np.mean(list(hips.values())))
-    if shoulders:
-        shoulder_z = float(np.mean([point[1] for point in shoulders.values()]))
+    if tops:
+        shoulder_z = float(np.mean(tops))
+    # After the height of the shoulders is read: moved out along a sloping arm a shoulder comes lower, and the neck,
+    # which goes by that height, would sink with it.
+    arms = {side: arm and _off_the_trunk(read[side], arm, side, middle) for side, arm in arms.items()}
+    shoulders = {side: arm.base - arm.axis * arm.width / 2.0 for side, arm in arms.items() if arm is not None}
     if not feet.z < hip_z < shoulder_z < top:  # a shape this method misreads: the template's heights
         arms = legs = {1: None, -1: None}
         hip_z, shoulder_z = feet.z + HIP_Z * height, feet.z + SHOULDER_Z * height

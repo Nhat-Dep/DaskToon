@@ -163,11 +163,13 @@ class AddTest(unittest.TestCase):
         # The chibi's arms and legs are tubes pushed into its torso: Bone Heat blends their first rings with the chest
         # and the hips, and raising the arms or sitting tears them there (by 7 and 20 cm), which the Check rightly
         # finds; nothing else (not the strap on the shirt, which turned with the head under a head region reaching
-        # down over the chest).
+        # down over the chest). The torso's tube ends below the hip joints: sitting tears that same join at either side
+        # of it, at the first rings of the legs or the last of the torso.
         found = {(item.kind, item.pose, item.region) for item in data.issues}
         self.assertTrue(found)
         self.assertLessEqual(found, {('STRETCH', 'ARMS_UP', 'ARM_L'), ('STRETCH', 'ARMS_UP', 'ARM_R'),
-                                     ('STRETCH', 'SIT', 'LEG_L'), ('STRETCH', 'SIT', 'LEG_R')})
+                                     ('STRETCH', 'SIT', 'LEG_L'), ('STRETCH', 'SIT', 'LEG_R'),
+                                     ('STRETCH', 'SIT', 'TORSO')})
         self.assertTrue(properties_spaces())
         self.assertEqual({space.context for space in properties_spaces()}, {'DATA'})
         self.assertTrue(rig.select_get())
@@ -734,7 +736,7 @@ class TextTest(unittest.TestCase):
         strings = {ui.DaskRigPart.bl_rna.description, ui.DaskRig.bl_rna.description,
                    ui.DaskRigCollider.bl_rna.description}
         operators = [cls for cls in ui.classes if issubclass(cls, bpy.types.Operator)]
-        self.assertEqual(len(operators), 22)
+        self.assertEqual(len(operators), 23)
         for struct in operators:
             strings.update((struct.bl_label, struct.__doc__))
         for struct in [ui.DaskRigPart, ui.DaskRigCollider, ui.DaskRig] + operators:

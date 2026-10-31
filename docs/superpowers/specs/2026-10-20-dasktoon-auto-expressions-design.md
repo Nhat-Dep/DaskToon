@@ -65,6 +65,37 @@ for A I U E O on "a model with mouth pieces", and none of the user's characters 
 A key of the same expression that already moves is left alone; an empty one is filled; a missing one is added under its
 VRM 0.x name. The report names the keys made and the meshes.
 
+## Part C: Auto Expressions (2026-10-31)
+
+The user found the two buttons hard to follow, and on a detailed character a blink that did the opposite. One button now
+does the work, for the whole character:
+
+- **Auto Expressions** (`auto_expressions.run`): fill, sculpt what is still missing, fill again. A blink made by hand stays
+  and gets its two sides from it; a key under another name (happy) comes from what was sculpted (joy). An expression moving
+  on any mesh of the character is left to that key: the skin closing over the eyes by a key of its own would close them
+  twice. Every mesh of the rig is included; a mesh without a rig is on its own and can only be filled.
+- **A list** of 13 expressions (blink, its sides, joy, angry, sorrow, relaxed, surprised, A I U E O): ticked if a key moves
+  on some mesh, greyed if not. Pressing one shows it on every mesh with the other expressions off. **Back to Rest Face**
+  turns them off. Keys that are no expression (a slimmer waist) keep their value; the two previews and their Clear Values
+  now work the same way, on the whole character, since the eyes are often a mesh of their own.
+- **Redo Eye Expressions** writes the eye keys again from the eyes found now, after asking. Keys that move are kept by
+  everything else, so a key from an older version stays until this button is pressed.
+
+The panel comes first under Shape Keys, open, without needing a shape key, and the same buttons are in **Expressions** in
+the Anime Rig panel, since after Anime Humanoid the rig is the active object. Sculpt and Fill stay as tools of their own
+under Expression Tools. The Model Guide's fix and its checks use Auto Expressions.
+
+Every new shape key starts off: Blender starts one at 1, and VRM Set, ARKit Placeholders, Split, Bake and Synthesize left
+theirs on (only Sculpt and Fill were tested for it).
+
+Eyes set in holes (Part B's socket rule, changed 2026-10-30): the eye was looked for no deeper than a fixed distance from
+the head's centre, which dropped the real eye pieces of a character with eyes set behind the face and kept the brows and a
+few lashes, so that the line a blink closes onto fell between them, and the blink went the wrong way. Now the front of the
+face is found first and the eye may lie `DEEP` (0.25 head) behind it. Each eye is the band of height most pieces share, a
+piece counting when at least half inside it (brows are left out), and mirror twins find the middle of a face off the Head
+bone. Open edges of a **Body** part all round an eye are the eye's own outline, and the skin round them closes with it; open
+edges in any other mesh still mean a socket, left alone.
+
 ## On the user's characters (copies, 2026-10-20)
 
 - filie: both eyes found (eye "mat" and lashes "mi"); closed, the eyes leave the lash line on her skin; joy arcs;

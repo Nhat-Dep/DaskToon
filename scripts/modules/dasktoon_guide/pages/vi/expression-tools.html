@@ -11,13 +11,20 @@
 <nav><a href="features.html">‹ Mọi chức năng</a> <a href="../en/expression-tools.html">English</a></nav>
 <h1>Công cụ biểu cảm</h1>
 <p class="lead">Công cụ để tạo, lấp, tách, đổi tên và thử các biểu cảm của khuôn mặt, giữ dưới dạng hình mẫu. Chúng nằm dưới Hình Mẫu trong Object Data của lưới.</p>
-<figure><img src="../pictures/expressions.png" alt="Biểu cảm mắt do Nặn biểu cảm mắt làm ra: lúc nghỉ, chớp mắt và vui."><figcaption>Biểu cảm mắt do Nặn biểu cảm mắt làm ra: lúc nghỉ, chớp mắt và vui.</figcaption></figure>
+<figure><img src="../pictures/expressions.png" alt="Biểu cảm mắt do Biểu cảm tự động làm ra: lúc nghỉ, chớp mắt và vui."><figcaption>Biểu cảm mắt do Biểu cảm tự động làm ra: lúc nghỉ, chớp mắt và vui.</figcaption></figure>
+<section id="auto">
+<h2>Biểu cảm tự động</h2>
+<p>Bảng này nằm đầu tiên dưới Hình Mẫu, và các nút đó cũng có ở <b>Biểu cảm</b> trong bảng Rig anime. <b>Biểu cảm tự động</b> làm trên mọi lưới của nhân vật: lấp các hình mẫu còn trống, làm các biểu cảm mắt còn thiếu, và giữ nguyên hình mẫu đã dịch chuyển. Hình mẫu mới bắt đầu ở 0, nên mặt không đổi cho đến khi bạn dùng tới.</p>
+<p>Danh sách dưới nút cho biết từng biểu cảm. Mục có dấu tích là đã dịch chuyển được: bấm vào để xem trên cả nhân vật, các biểu cảm khác tắt. Mục mờ là chưa có hình dạng. <b>Về mặt bình thường</b> tắt các biểu cảm; những hình mẫu khác, như eo thon hơn, giữ nguyên như bạn đặt.</p>
+<p><b>Làm lại biểu cảm mắt</b> viết lại chớp mắt, vui và ngạc nhiên từ đôi mắt tìm được lúc này, đè lên nội dung cũ của các hình mẫu đó. Dùng nút này cho hình mẫu từ bản cũ: <b>Biểu cảm tự động</b> giữ chúng vì chúng có dịch chuyển. Nút sẽ hỏi trước khi ghi đè.</p>
+</section>
 <section id="sets">
 <h2>Bộ biểu cảm</h2>
 <p><b>Bộ VRM 0.x</b> và <b>Bộ VRM 1.0</b> thêm các hình mẫu biểu cảm mà lưới chưa có, để trống, sẵn sàng để nặn. <b>Dựng ARKit 52 từ VRM</b> dựng 52 hình mẫu theo dõi khuôn mặt ARKit từ các hình mẫu VRM hoặc VRoid, còn <b>Thêm 52 hình mẫu ARKit trống</b> thêm chúng để trống. <b>Đổi chuẩn tên</b> đổi tên hình mẫu từ chuẩn này sang chuẩn khác (VRoid, VRM 0.x, VRM 1.0).</p>
 </section>
 <section id="fill">
 <h2>Lấp và nặn</h2>
+<p>Hai bước của <b>Biểu cảm tự động</b>, làm riêng từng bước, trong bảng Công cụ biểu cảm.</p>
 <p><b>Lấp biểu cảm còn trống</b> dựng các hình mẫu biểu cảm còn trống từ những hình mẫu khác: <code>e</code> từ <code>a</code> và <code>i</code>, hai bên của cái chớp mắt, môi trên, các tên VRM. <b>Nặn biểu cảm mắt</b> làm chớp mắt, chớp từng bên, vui và ngạc nhiên cho mắt làm từ những mảnh rời đặt trước mặt, và cho da bên dưới; lưới cần có rig DaskToon.</p>
 </section>
 <section id="tools">
@@ -26,7 +33,7 @@
 </section>
 <section id="preview">
 <h2>Xem trước biểu cảm</h2>
-<p>Chọn một biểu cảm rồi bấm <b>Thử trên model</b> để xem riêng nó; <b>Xóa giá trị</b> đặt các hình mẫu về 0. <b>Chớp mắt</b>, <b>Nói</b> và <b>Cảm xúc</b> chạy một bài thử lặp lại đến khi bấm Esc hoặc chuột phải.</p>
+<p>Chọn một biểu cảm rồi bấm <b>Thử trên model</b> để xem riêng nó trên cả nhân vật; <b>Xóa giá trị</b> tắt các biểu cảm. <b>Chớp mắt</b>, <b>Nói</b> và <b>Cảm xúc</b> chạy một bài thử lặp lại đến khi bấm Esc hoặc chuột phải.</p>
 </section>
 </main>
 </body>

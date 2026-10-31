@@ -11,13 +11,20 @@
 <nav><a href="features.html">‹ All Features</a> <a href="../vi/expression-tools.html">Tiếng Việt</a></nav>
 <h1>Expression Tools</h1>
 <p class="lead">Tools that make, fill, split, rename and test the expressions of a face, kept as shape keys. They are under Shape Keys in the mesh's Object Data.</p>
-<figure><img src="../pictures/expressions.png" alt="Eye expressions made by Sculpt Eye Expressions: at rest, blink and joy."><figcaption>Eye expressions made by Sculpt Eye Expressions: at rest, blink and joy.</figcaption></figure>
+<figure><img src="../pictures/expressions.png" alt="Eye expressions made by Auto Expressions: at rest, blink and joy."><figcaption>Eye expressions made by Auto Expressions: at rest, blink and joy.</figcaption></figure>
+<section id="auto">
+<h2>Auto Expressions</h2>
+<p>This panel comes first under Shape Keys, and the same buttons are in <b>Expressions</b> in the Anime Rig panel. <b>Auto Expressions</b> works on every mesh of the character: it fills the empty shape keys, makes the eye expressions that are missing, and leaves shape keys that already move as they are. New shape keys start at 0, so the face does not change until you use them.</p>
+<p>The list under the button shows each expression. A ticked one moves something: press it to see it on the whole character, with the others off. A greyed one has no shape yet. <b>Back to Rest Face</b> turns the expressions off; other shape keys, such as a slimmer waist, stay as you set them.</p>
+<p><b>Redo Eye Expressions</b> writes blink, joy and surprised again from the eyes found now, over what those shape keys hold. Use it on keys from an older version: <b>Auto Expressions</b> keeps them because they move. It asks before it overwrites anything.</p>
+</section>
 <section id="sets">
 <h2>Expression Sets</h2>
 <p><b>VRM 0.x Set</b> and <b>VRM 1.0 Set</b> add the expression shape keys the mesh does not have yet, empty and ready to sculpt. <b>Synthesize ARKit 52 from VRM</b> builds the 52 ARKit face tracking shape keys from the VRM or VRoid ones, and <b>Add ARKit 52 Placeholders</b> adds them empty. <b>Convert Naming</b> renames shape keys from one standard to another (VRoid, VRM 0.x, VRM 1.0).</p>
 </section>
 <section id="fill">
 <h2>Fill and sculpt</h2>
+<p>The two steps of <b>Auto Expressions</b>, one at a time, in the Expression Tools panel.</p>
 <p><b>Fill Empty Expressions</b> builds empty expression shape keys from the others: <code>e</code> from <code>a</code> and <code>i</code>, the sides of a blink, the upper lip, the VRM names. <b>Sculpt Eye Expressions</b> makes blink, blink on each side, joy and surprised for eyes built from loose pieces in front of the face, and for the skin under them; the mesh needs a DaskToon rig.</p>
 </section>
 <section id="tools">
@@ -26,7 +33,7 @@
 </section>
 <section id="preview">
 <h2>Expression Preview</h2>
-<p>Pick an expression and press <b>Test on Model</b> to see it alone; <b>Clear Values</b> sets the shape keys back to 0. <b>Blink</b>, <b>Speech</b> and <b>Emotions</b> play a test in a loop until Esc or right click.</p>
+<p>Pick an expression and press <b>Test on Model</b> to see it alone on the whole character; <b>Clear Values</b> turns the expressions off. <b>Blink</b>, <b>Speech</b> and <b>Emotions</b> play a test in a loop until Esc or right click.</p>
 </section>
 </main>
 </body>

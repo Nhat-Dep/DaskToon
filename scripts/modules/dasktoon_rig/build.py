@@ -19,6 +19,7 @@ COLLIDER_BONES = ("Head", "Neck", "UpperChest", "Chest", "Spine", "Hips", "LeftU
 COLLIDER_SHARE = 0.9
 COLLIDER_FALLBACK = 0.03  # of the skeleton's height, for a bone no Body vertex follows
 INWARD_RATIO = -0.5  # signed over unsigned volume of a Body below this: its faces point inward (about -1)
+SHORT_LOCK = 0.05  # (x the height) a piece of hair shorter than this gets no chain
 MIRROR_GAP = 1e-5  # (x height) a vertex this near the mirror image of another is its mirror image (taking those 3 or
 # 6 mm off as well, as on tdt's collar, mixed weights of vertices placed differently: its shoulders tore 7 times)
 JAW_RINGS = (2.0 / 3.0, 1.0 / 3.0)  # share of the Jaw bone in the rings of Body vertices around a Jaw part (spec 10.3)
@@ -139,6 +140,18 @@ class _Plan:
         self.bones = []
         self.paint = []
         self.chains = 0
+        self.bases = set()
+
+    def base(self, part):
+        """The start of the names of the bones of `part`, its own: names in Chinese or Japanese all come to "Part", and
+        bones of one name are one bone: the first part's would pass for bones of the body."""
+        plain = name = rig_parts.ascii_name(part.name)
+        number = 1
+        while name in self.bases:
+            number += 1
+            name = "%sV%d" % (plain, number)
+        self.bases.add(name)
+        return name
 
 
 def _local_x(rig, point):
@@ -148,16 +161,19 @@ def _local_x(rig, point):
 def _plan_hair(rig, index, part, vertices, plan):
     attach = part.bone or rig_parts.DEFAULT_BONE['HAIR']
     head, tail = rig_parts.bone_segment(rig, attach)
-    world, edges = rig_parts.mesh_arrays(part.object)
+    world, edges = rig_parts.welded_arrays(part.object)
+    shortest = SHORT_LOCK * rig_parts.rig_height(rig)
     locks = []
     for piece in rig_parts.pieces(edges, vertices):
-        chain = chains.hair_chain(world[piece], rig_parts.local_edges(edges, piece), head, tail, part.bone_count)
+        chain = None
+        if np.ptp(world[piece], axis=0).max() >= shortest:  # a tuft or a stud does not swing, and bones cost the game
+            chain = chains.hair_chain(world[piece], rig_parts.local_edges(edges, piece), head, tail, part.bone_count)
         if chain is None:
             plan.paint.append((index, piece, [attach], np.ones((len(piece), 1))))
         else:
             locks.append((piece, chain))
     locks.sort(key=lambda lock: _local_x(rig, lock[1].joints[0]))
-    base = rig_parts.ascii_name(part.name)
+    base = plan.base(part)
     for number, (piece, chain) in enumerate(locks, 1):
         prefix = base if len(locks) == 1 else "%s%d" % (base, number)
         names = ["%s_%d" % (prefix, k) for k in range(1, part.bone_count + 1)]
@@ -173,7 +189,7 @@ def _plan_skirt(rig, index, part, vertices, plan):
     attach = part.bone or rig_parts.DEFAULT_BONE['SKIRT']
     world, _edges = rig_parts.mesh_arrays(part.object)
     skirt = chains.skirt_chains(world[vertices], part.bone_count, part.chain_count)
-    base = rig_parts.ascii_name(part.name)
+    base = plan.base(part)
     names = [attach]
     for c, joints in enumerate(skirt.strips):
         strip = ["%s%d_%d" % (base, c + 1, k) for k in range(1, part.bone_count + 1)]
@@ -218,7 +234,7 @@ def _make_bones(context, rig, plan):
 
 
 def _paint(context, rig, parts, owners, plan, actual, result):
-    from . import regions
+    from . import accessories, regions
     from .look import FACE_MARK
     deform = [b.name for b in rig.data.bones if b.use_deform]
     generated = set(actual.values())
@@ -266,10 +282,13 @@ def _paint(context, rig, parts, owners, plan, actual, result):
             weights.write(obj, vertices, [part.bone or "Head"], np.ones((len(vertices), 1)))
         elif not part.bone and rig_parts.is_eye(part.name) and {"LeftEye", "RightEye"} <= set(deform):
             _paint_eyes(rig, obj, vertices)
+        elif part.bone:
+            weights.write(obj, vertices, [part.bone], np.ones((len(vertices), 1)))
         else:
-            world, _edges = rig_parts.mesh_arrays(obj)
-            bone = part.bone or rig_parts.nearest_bone(rig, world[vertices].mean(axis=0), fixed_bones)
-            weights.write(obj, vertices, [bone], np.ones((len(vertices), 1)))
+            world, edges = rig_parts.welded_arrays(obj)
+            for group in accessories.groups(world, edges, vertices, found.height):
+                bone = accessories.bone_for(rig, world[group], found.half, found.height, fixed_bones)
+                weights.write(obj, group, [bone], np.ones((len(group), 1)))
     regions.restrict(context, rig, parts, owners, found, ('CLOTHING',))
     for index, vertices, names, matrix in plan.paint:
         obj = parts[index].object
@@ -326,6 +345,24 @@ def _other_side(name):
     if name.startswith("Right"):
         return "Left" + name[len("Right"):]
     return None
+
+
+def _seams(rig, owners):
+    """Vertices of a part lying at one place weigh the same: a seam of a model from a game does not open when it bends
+    (bone heat works each piece on its own)."""
+    names = [b.name for b in rig.data.bones if b.use_deform]
+    for obj, owner in owners.items():
+        world, _edges = rig_parts.mesh_arrays(obj)
+        groups = [group for group in rig_parts.same_place(world) if owner[group[0]] >= 0
+                  and (owner[group] == owner[group[0]]).all()]
+        if not groups:
+            continue
+        rows = np.concatenate(groups)
+        matrix = weights.read(obj, names)
+        for group in groups:
+            matrix[group] = matrix[group].mean(axis=0)
+        weights.clear(obj, rows, names)
+        weights.write(obj, rows, names, matrix[rows])
 
 
 def _symmetric(rig, owners):
@@ -470,6 +507,7 @@ def build(context, rig, parts):
         mouth.apply(context, rig, parts, result)
         _paint(context, rig, parts, owners, plan, actual, result)
         _drop_stale_groups(owners, removed, set(actual.values()))
+        _seams(rig, owners)
         _symmetric(rig, owners)
         _tidy(rig, owners)
         _mirror_groups(rig, owners, result)

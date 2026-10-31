@@ -251,8 +251,9 @@ def add_part(rig, obj, role, name=None, scope='OBJECT', material="", vertex_grou
 def fit_to_parts(context, rig):
     """Fit the skeleton of `rig` to the meshes of its parts, reading the body's shape from the Body and Clothing parts
     (hair, a skirt or a held staff is no limb). A character whose feet face another way than the skeleton's front (-Y)
-    is turned round on the spot first. Returns that turn (radians about +Z, 0 when none)."""
-    from dasktoon_rig import facing, parts as rig_parts, skeleton
+    is turned round on the spot first. Accessories count for nothing, also those in a Clothing mesh. Returns that turn
+    (radians about +Z, 0 when none)."""
+    from dasktoon_rig import accessories, facing, parts as rig_parts, skeleton
     parts = [part for part in rig.data.dasktoon_rig.parts if part.object is not None and part.object.type == 'MESH']
     meshes = list(dict.fromkeys(part.object for part in parts))
     body = list(dict.fromkeys(part.object for part in parts if part.role in {'BODY', 'CLOTHING'}))
@@ -266,7 +267,8 @@ def fit_to_parts(context, rig):
                 eyes.append(world[rig_parts.part_vertices(part)])
             except rig_parts.PartError:
                 continue
-    skeleton.fit(context, rig, meshes, body=body or None, skin=skin or None, eyes=eyes or None)
+    skeleton.fit(context, rig, meshes, body=body or None, skin=skin or None, eyes=eyes or None,
+                 skip=accessories.masks(parts))
     return turn
 
 
@@ -386,7 +388,7 @@ class DASKTOON_OT_rig_add_humanoid(Operator):
         return context.mode == 'OBJECT'
 
     def execute(self, context):
-        from dasktoon_rig import build, skeleton
+        from dasktoon_rig import accessories, build, skeleton
         meshes = [obj for obj in context.selected_objects if obj.type == 'MESH']
         height, location = skeleton.placement(meshes, context.scene.cursor.location)
         rig = skeleton.create_humanoid(context, height, location)
@@ -402,9 +404,11 @@ class DASKTOON_OT_rig_add_humanoid(Operator):
         progress.progress_begin(0, 3)
         try:
             add_meshes(rig, meshes)
+            accessories.find_far(rig)
             report_turn(self, fit_to_parts(context, rig))
             for name in eyes_off_the_head(rig):
                 self.report({'INFO'}, rpt_("%s is not on the head: Clothing, not eyes") % name)
+            accessories.find(context, rig)
             made = skirts_below_waist(rig)
             if made:
                 self.report({'INFO'}, rpt_("The part below the waist became a skirt: %s") % ", ".join(made))
@@ -1217,6 +1221,36 @@ class DASKTOON_OT_rig_change_role(Operator):
         return {'FINISHED'}
 
 
+class DASKTOON_OT_rig_find_accessories(Operator):
+    """Make Accessories of what lies on the head and of the pieces standing off the body, then build the rig and check it again"""
+    bl_idname = "dasktoon.rig_find_accessories"
+    bl_label = "Find Accessories"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        return _check_poll(context)
+
+    def execute(self, context):
+        from dasktoon_rig import accessories, build, regions
+        rig = rig_of(context)
+        found = accessories.find_far(rig) + accessories.find(context, rig)
+        for name in found:
+            part = next(part for part in rig.data.dasktoon_rig.parts if part.name == name)
+            if part.scope == 'OBJECT':
+                regions.remove_locks(rig, part.object)
+        self.report({'INFO'}, rpt_("Accessories found: %d") % len(set(found)))
+        try:
+            result, _recognized = build_rig(context, rig)
+        except build.BuildError as ex:
+            self.report({'ERROR'}, str(ex))
+            return {'FINISHED'}  # the roles are changed
+        for warning in result.warnings:
+            self.report({'WARNING'}, warning)
+        self.report({'INFO'}, check_summary(run_check(context, rig)))
+        return {'FINISHED'}
+
+
 class DASKTOON_OT_rig_skirt_below_waist(Operator):
     """Make the part of this mesh below the waist a skirt of its own, then build the rig and check it again"""
     bl_idname = "dasktoon.rig_skirt_below_waist"
@@ -1340,14 +1374,38 @@ def draw_issue(layout, rig, index, issue):
         op.part, op.role = issue.part, issue.role
 
 
-class DASKTOON_UL_rig_parts(UIList):
-    """Parts of the anime rig"""
+class _PartList:
+    """A list of the parts of the anime rig: the accessories, or the others (a registered list cannot be subclassed)."""
+    accessories = False
+
+    @classmethod
+    def shown(cls, parts):
+        return [part for part in parts if (part.role == 'ACCESSORY') == cls.accessories]
+
+    def filter_items(self, _context, data, propname):
+        return [self.bitflag_filter_item if (part.role == 'ACCESSORY') == self.accessories else 0
+                for part in getattr(data, propname)], []
+
+
+class DASKTOON_UL_rig_parts(_PartList, UIList):
+    """Parts of the anime rig; the accessories have a list of their own"""
 
     def draw_item(self, _context, layout, _data, item, _icon, _active_data, _active_propname, _index):
         row = layout.row(align=True)
         row.prop(item, "name", text="", emboss=False, icon=ROLE_ICONS[item.role])
         if item.object is not None and item.object.name != item.name:
             row.label(text=item.object.name, translate=False)
+
+
+class DASKTOON_UL_rig_accessories(_PartList, UIList):
+    """Accessories of the anime rig"""
+    accessories = True
+
+    def draw_item(self, _context, layout, _data, item, _icon, _active_data, _active_propname, _index):
+        row = layout.row(align=True)
+        row.prop(item, "name", text="", emboss=False, icon=ROLE_ICONS[item.role])
+        if item.bone:
+            row.label(text=item.bone, icon='BONE_DATA', translate=False)
 
 
 class DaskRigPanel:
@@ -1436,7 +1494,7 @@ class DATA_PT_dasktoon_rig_parts(DaskRigPanel, Panel):
         col.operator("dasktoon.rig_add_material_part", text="", icon='MATERIAL')
         col.operator("dasktoon.rig_remove_part", text="", icon='REMOVE')
         part = _active_part(rig)
-        if part is None:
+        if part is None or part.role == 'ACCESSORY':
             layout.label(text="Select meshes and press + to add them as parts")
             return
         layout.use_property_split = True
@@ -1464,6 +1522,40 @@ class DATA_PT_dasktoon_rig_parts(DaskRigPanel, Panel):
             col = layout.column(align=True)
             col.label(text="Cells from the top left: closed, A, I, U, E, O", icon='INFO')
             col.label(text="The object's dt_mouth picks the cell; lip sync keys it")
+
+
+class DATA_PT_dasktoon_rig_accessories(DaskRigPanel, Panel):
+    bl_label = "Accessories"
+    bl_parent_id = "DATA_PT_dasktoon_rig"
+
+    def draw(self, context):
+        layout = self.layout
+        rig = rig_of(context)
+        data = rig.data.dasktoon_rig
+        layout.operator("dasktoon.rig_find_accessories", icon='VIEWZOOM')
+        row = layout.row()
+        row.template_list("DASKTOON_UL_rig_accessories", "", data, "parts", data, "active_part_index", rows=3)
+        row.column(align=True).operator("dasktoon.rig_remove_part", text="", icon='REMOVE')
+        part = _active_part(rig)
+        if part is None or part.role != 'ACCESSORY':
+            layout.label(text="An accessory follows one bone and does not bend", icon='INFO')
+            return
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+        layout.prop(part, "object")
+        layout.prop(part, "role")
+        layout.prop_search(part, "bone", rig.data, "bones")
+        if not part.bone:
+            layout.label(text="No bone chosen: each piece follows the bone it sits on", icon='INFO')
+
+
+class DATA_PT_dasktoon_rig_expressions(DaskRigPanel, Panel):
+    bl_label = "Expressions"
+    bl_parent_id = "DATA_PT_dasktoon_rig"
+
+    def draw(self, context):
+        from bl_ui.dasktoon_shape_key_manager import draw_auto_expressions
+        draw_auto_expressions(self.layout, rig_of(context))
 
 
 class DATA_PT_dasktoon_rig_regions(DaskRigPanel, Panel):
@@ -1615,13 +1707,17 @@ classes = (
     DASKTOON_OT_rig_show_spot,
     DASKTOON_OT_rig_paint_spot,
     DASKTOON_OT_rig_change_role,
+    DASKTOON_OT_rig_find_accessories,
     DASKTOON_OT_rig_skirt_below_waist,
     DASKTOON_OT_rig_turn_character,
     DASKTOON_UL_rig_parts,
+    DASKTOON_UL_rig_accessories,
     DATA_PT_dasktoon_rig,
     DATA_PT_dasktoon_rig_check,
     DATA_PT_dasktoon_rig_joints,
     DATA_PT_dasktoon_rig_parts,
+    DATA_PT_dasktoon_rig_accessories,
+    DATA_PT_dasktoon_rig_expressions,
     DATA_PT_dasktoon_rig_regions,
     DATA_PT_dasktoon_rig_look,
     DATA_PT_dasktoon_rig_sway,

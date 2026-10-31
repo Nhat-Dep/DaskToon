@@ -65,6 +65,13 @@ def slot_of(name):
     return next((slot for slot, names in SLOTS.items() if low in names), None)
 
 
+def key_moves(block, base):
+    """True when the shape key `block` moves a vertex off `base` (the reference key's "co", float32)."""
+    co = np.empty_like(base)
+    block.data.foreach_get("co", co)
+    return bool(np.abs(co - base).max() > NOTHING) if len(co) else False
+
+
 def _offsets(key, block):
     base = np.empty(len(key.reference_key.data) * 3)
     key.reference_key.data.foreach_get("co", base)

@@ -7,10 +7,16 @@ characters build each eye from loose pieces in front of the face (eye white, iri
 lids; closing such an eye is squashing its pieces onto a line.
 
 The head's frame: the centre of the Head bone, its length as the unit, the character facing -Y with its left at +X
-(the standard skeleton, armature space). A loose piece (vertices joined by edges) of a mesh the rig deforms is part of
-an eye when its centre is in front, to the side, at eye height and it is small; the pieces of one side make that eye,
-and both eyes are needed. Hair parts are left out (a lock hanging in front of an eye). Open edges of other pieces all
-around an eye (an eye in a socket) leave the face alone; the edge of the hair crossing it is no socket.
+(the standard skeleton, armature space). A loose piece (vertices joined by edges) of a mesh the rig deforms may be part
+of an eye when it is in the front of the face, to the side, at eye height and small, and has a mirror twin on the other
+side (the Head bone can sit off the face's middle, so the twins tell the middle: Encore). Of those, the eye is what
+most pieces share: the band across and up that at least half as many pieces cover as cover its busiest place, and the
+pieces mostly inside it. A brow lies above that band (Encore's brows, taken for the eye, put the close line above the
+real eye, and blink opened it). Both eyes are needed. Hair parts are left out (a lock hanging in front of an eye).
+
+Open edges of a Body part all around an eye (Encore's face has a hole at each eye) are the eye's opening: the eye's
+outline is then the hole's, and the lids close as the skin does below. Open edges all around an eye in anything else
+leave the face alone; the edge of the hair crossing it is no socket.
 
 Eye whites painted on the face (pl1) would stay open, so the skin under each eye moves with it: the vertices of the
 Body parts' meshes in front of the head inside the eye's outline (across and up) move as the eye does, fading back to
@@ -27,7 +33,8 @@ crease of a closed face): their outline gives the mouth instead.
 Keys, on each mesh holding eye pieces or skin under them: blink (both eyes onto the close line, a third of the way up,
 keeping KEEP of their height), blink_L and blink_R, joy (closed as an arc, its middle raised by ARCH of the eye's
 height) and surprised (WIDEN times bigger about the eye's centre, across and up). A key of the same expression
-(expressions.SLOTS) that moves is kept, an empty one filled, a missing one added under its VRM 0.x name."""
+(expressions.SLOTS) that moves is kept, an empty one filled, a missing one added under its VRM 0.x name; asked to
+replace, every key of the expression is written again, and those on meshes that are no longer part of it cleared."""
 
 from typing import NamedTuple
 
@@ -36,9 +43,15 @@ import numpy as np
 from . import expressions
 
 FRONT = -0.15  # the piece's centre at most this far forward of the head's centre (facing -Y)
+DEEP = 0.25  # or at most this far behind the front of the face: eyes set in holes (Encore)
 SIDE = (0.06, 0.5)  # how far from the middle
 HEIGHT = (-0.5, 0.2)  # how high, from the head's centre
 WIDEST = 0.45  # a piece wider, taller or deeper than this is not part of an eye (a bang, a face)
+TWIN_OFF = 0.05  # (of the head) how far apart in height and depth the two pieces of a pair lie, and their middles
+TWIN_SIZE = 0.3  # how much the sizes of the two pieces of a pair differ
+OFF_MIDDLE = 0.15  # (of the head) how far from the Head bone the face's middle may be
+BAND_SHARE = 0.5  # the eye's band: at least this share as many pieces as cover its busiest place
+INSIDE = 0.5  # a piece at least this much in the band, both ways, is part of the eye
 CLOSE_AT = 1.0 / 3.0
 KEEP = 0.04
 ARCH = 0.35
@@ -116,57 +129,147 @@ def _is_mesh_of(rig, obj):
     return obj.type == 'MESH' and any(m.type == 'ARMATURE' and m.object == rig for m in obj.modifiers)
 
 
+def _band(spans):
+    """(low, high) of the stretch of `spans` (n x 2) most of them share: from the place most cover, on both ways for as
+    long as BAND_SHARE as many go on covering it."""
+    edges = np.unique(spans)
+    if len(edges) < 2:
+        return float(spans[:, 0].min()), float(spans[:, 1].max())
+    middles = (edges[:-1] + edges[1:]) / 2.0
+    cover = ((spans[:, 0, None] <= middles) & (middles <= spans[:, 1, None])).sum(axis=0)
+    busiest = int(np.argmax(cover))
+    need = BAND_SHARE * cover[busiest]
+    low = high = busiest
+    while low > 0 and cover[low - 1] >= need:
+        low -= 1
+    while high < len(cover) - 1 and cover[high + 1] >= need:
+        high += 1
+    return float(edges[low]), float(edges[high + 1])
+
+
+def _inside(low, high, band):
+    """True when at least INSIDE of the stretch low to high lies in `band`."""
+    size = high - low
+    return min(high, band[1]) - max(low, band[0]) >= INSIDE * size
+
+
+def _twins(found):
+    """(the face's middle, the pieces on its left, on its right) of `found` [(object, piece, low, high)] that have a
+    mirror twin; head frame. (None, [], []) without one."""
+    pairs = []
+    for i, a in enumerate(found):
+        mid_a, size_a = (a[2] + a[3]) / 2.0, a[3] - a[2]
+        for b in found[i + 1:]:
+            mid_b, size_b = (b[2] + b[3]) / 2.0, b[3] - b[2]
+            middle = (mid_a[0] + mid_b[0]) / 2.0
+            if (abs(middle) < OFF_MIDDLE and abs(mid_a[1] - mid_b[1]) < TWIN_OFF and abs(mid_a[2] - mid_b[2]) < TWIN_OFF
+                    and np.all(np.abs(size_a - size_b) <= TWIN_SIZE * np.maximum(size_a, size_b) + 1e-9)):
+                pairs.append((middle, a, b) if mid_a[0] > mid_b[0] else (middle, b, a))
+    if not pairs:
+        return None, [], []
+    centre = float(np.median([middle for middle, _a, _b in pairs]))
+    pairs = [pair for pair in pairs if abs(pair[0] - centre) < TWIN_OFF]
+    left, right = {}, {}
+    for _middle, a, b in pairs:
+        left[id(a)], right[id(b)] = a, b
+    return centre, list(left.values()), list(right.values())
+
+
+def _eye_of(pieces, middle):
+    """The pieces of one eye of `pieces` [(object, piece, low, high)] and its band (low, high) across and up, head
+    frame; ([], None) with none at the eye's distance from the middle."""
+    pieces = [p for p in pieces if SIDE[0] < abs((p[2][0] + p[3][0]) / 2.0 - middle) < SIDE[1]]
+    if not pieces:
+        return [], None
+    across = _band(np.array([(p[2][0], p[3][0]) for p in pieces]))
+    up = _band(np.array([(p[2][2], p[3][2]) for p in pieces]))
+    kept = [p for p in pieces if _inside(p[2][0], p[3][0], across) and _inside(p[2][2], p[3][2], up)]
+    return kept, (across, up)
+
+
+def _round_the_eye(eye, middles, centre_y):
+    """The entries of `middles` (open edges' middles, armature space) that go all around `eye`, as a mask; None when
+    they do not."""
+    pad = 0.25 * (eye.high - eye.low)
+    inside = ((middles[:, 0] > eye.low[0] - pad[0]) & (middles[:, 0] < eye.high[0] + pad[0])
+              & (middles[:, 2] > eye.low[2] - pad[2]) & (middles[:, 2] < eye.high[2] + pad[2])
+              & (middles[:, 1] < centre_y))
+    if inside.sum() < 3:
+        return None
+    middle = (eye.low + eye.high) / 2.0
+    turns = np.sort(np.arctan2(middles[inside, 2] - middle[2], middles[inside, 0] - middle[0]))
+    gaps = np.diff(np.append(turns, turns[0] + 2.0 * np.pi))
+    return inside if gaps.max() < SOCKET_GAP else None
+
+
+def _face_front(rig, meshes, centre, size):
+    """How far forward (head frame) the face of the Body parts comes; None without one near the head."""
+    front = None
+    for obj in _bodies(rig, meshes):
+        rel = (_rest(rig, obj) - centre) / size
+        near = rel[(np.abs(rel[:, 0]) < 1.0) & (np.abs(rel[:, 2]) < 1.0)]
+        if len(near):
+            front = min(front, near[:, 1].min()) if front is not None else near[:, 1].min()
+    return front
+
+
 def find_eyes(rig, meshes):
-    """{"LEFT": Eye, "RIGHT": Eye} of the character, or {} without both eyes or with eye sockets."""
+    """{"LEFT": Eye, "RIGHT": Eye} of the character, or {} without both eyes or with eye sockets in no Body part."""
     head = _head(rig)
     if head is None:
         return {}
     centre, size = head
-    found = {"LEFT": [], "RIGHT": []}
-    others = []  # (object, rest, the pieces that are not eyes)
     data = getattr(rig.data, "dasktoon_rig", None)
     hair = {part.object for part in (data.parts if data is not None else ()) if part.role == 'HAIR'}
-    for obj in meshes:
-        if not _is_mesh_of(rig, obj) or not len(obj.data.vertices):
-            continue
+    front = _face_front(rig, meshes, centre, size)
+    deepest = max(FRONT, front + DEEP) if front is not None else FRONT
+    bound = [obj for obj in meshes if _is_mesh_of(rig, obj) and len(obj.data.vertices)]
+    rests = {obj: _rest(rig, obj) for obj in bound}
+    found = []
+    for obj in bound:
         if obj in hair:
-            others.append((obj, _rest(rig, obj), np.ones(len(obj.data.vertices), dtype=bool)))
             continue
-        rest = _rest(rig, obj)
-        rel = (rest - centre) / size
-        not_eyes = np.ones(len(rest), dtype=bool)
+        rel = (rests[obj] - centre) / size
         for piece in _pieces(obj.data):
             p = rel[piece]
-            middle = (p.min(axis=0) + p.max(axis=0)) / 2.0
-            if (len(piece) >= FEWEST and middle[1] < FRONT and SIDE[0] < abs(middle[0]) < SIDE[1]
+            low, high = p.min(axis=0), p.max(axis=0)
+            middle = (low + high) / 2.0
+            if (len(piece) >= FEWEST and middle[1] < deepest and abs(middle[0]) < SIDE[1] + OFF_MIDDLE
                     and HEIGHT[0] < middle[2] < HEIGHT[1] and np.ptp(p, axis=0).max() < WIDEST):
-                found["LEFT" if middle[0] > 0.0 else "RIGHT"].append((obj, piece))
-                not_eyes[piece] = False
-        others.append((obj, rest, not_eyes))
-    if not found["LEFT"] or not found["RIGHT"]:
+                found.append((obj, piece, low, high))
+    middle, left, right = _twins(found)
+    if middle is None:
         return {}
-    eyes = {}
-    for side, pieces in found.items():
-        points = np.concatenate([_rest(rig, obj)[piece] for obj, piece in pieces])
-        eyes[side] = Eye(side, pieces, points.min(axis=0), points.max(axis=0))
-    for obj, rest, not_eyes in others:  # a socket: another piece's open edges around an eye
+    eyes, taken = {}, {obj: np.zeros(len(rests[obj]), dtype=bool) for obj in bound}
+    for side, pieces in (("LEFT", left), ("RIGHT", right)):
+        kept, band = _eye_of(pieces, middle)
+        if not kept:
+            return {}
+        points = np.concatenate([rests[obj][piece] for obj, piece, _low, _high in kept])
+        low, high = points.min(axis=0), points.max(axis=0)
+        low[0], high[0] = (np.array(band[0]) * size + centre[0])
+        low[2], high[2] = (np.array(band[1]) * size + centre[2])
+        eyes[side] = Eye(side, [(obj, piece) for obj, piece, _low, _high in kept], low, high)
+        for obj, piece, _low, _high in kept:
+            taken[obj][piece] = True
+    bodies = set(_bodies(rig, meshes))
+    for obj in bound:  # a socket: another piece's open edges around an eye
         pairs = _boundary_points(obj.data)
-        pairs = pairs[not_eyes[pairs[:, 0]] & not_eyes[pairs[:, 1]]]
+        pairs = pairs[~taken[obj][pairs[:, 0]] & ~taken[obj][pairs[:, 1]]]
         if not len(pairs):
             continue
+        rest = rests[obj]
         middles = (rest[pairs[:, 0]] + rest[pairs[:, 1]]) / 2.0
-        for eye in eyes.values():
-            pad = 0.25 * (eye.high - eye.low)
-            inside = ((middles[:, 0] > eye.low[0] - pad[0]) & (middles[:, 0] < eye.high[0] + pad[0])
-                      & (middles[:, 2] > eye.low[2] - pad[2]) & (middles[:, 2] < eye.high[2] + pad[2])
-                      & (middles[:, 1] < centre[1]))
-            if inside.sum() < 3:
+        for side, eye in eyes.items():
+            around = _round_the_eye(eye, middles, centre[1])
+            if around is None:
                 continue
-            middle = (eye.low + eye.high) / 2.0
-            turns = np.sort(np.arctan2(middles[inside, 2] - middle[2], middles[inside, 0] - middle[0]))
-            gaps = np.diff(np.append(turns, turns[0] + 2.0 * np.pi))
-            if gaps.max() < SOCKET_GAP:  # open edges all around the eye
+            if obj not in bodies:
                 return {}
+            rim = rest[pairs[around].ravel()]
+            low, high = eye.low.copy(), eye.high.copy()
+            low[[0, 2]], high[[0, 2]] = rim[:, [0, 2]].min(axis=0), rim[:, [0, 2]].max(axis=0)
+            eyes[side] = eye._replace(low=low, high=high)
     return eyes
 
 
@@ -191,17 +294,13 @@ def _moved(eye, points, how):
 def _skin(rig, eyes, meshes):
     """{Body mesh: {side: (vertex indices, fade)}}: the face skin under each eye (module docstring)."""
     head = _head(rig)
-    data = getattr(rig.data, "dasktoon_rig", None)
-    bodies = {part.object for part in (data.parts if data is not None else ())
-              if part.role == 'BODY' and part.object is not None}
+    bodies = _bodies(rig, meshes)
     pieces = {}
     for eye in eyes.values():
         for obj, piece in eye.pieces:
             pieces.setdefault(obj, set()).update(piece.tolist())
     out = {}
-    for obj in meshes:
-        if obj not in bodies or not _is_mesh_of(rig, obj):
-            continue
+    for obj in bodies:
         rest = _rest(rig, obj)
         free = np.ones(len(rest), dtype=bool)
         free[list(pieces.get(obj, ()))] = False
@@ -365,7 +464,7 @@ def piece_mouth(rig, meshes, eyes):
             p = rest[piece]
             middle = (p.min(axis=0) + p.max(axis=0)) / 2.0
             if (abs(middle[0] - middle_x) < 0.06 * size and middle[1] < centre[1] and top - 0.6 * size < middle[2] < top
-                    and np.ptp(p, axis=0).max() < WIDEST * size):
+                    and np.ptp(p, axis=0).max() < WIDEST * size and np.ptp(p[:, 0]) >= 0.05 * size):  # a nose is none
                 found.append(p)
     if not found:
         return None
@@ -388,29 +487,57 @@ def _smile(rest, mouth, front):
     return out
 
 
-def _target(obj, slot, name):
-    """The key to write `name`'s shape into: a key of its slot that moves nothing, or None when one moves; a new key
-    under `name` when the slot has none."""
+def _targets(obj, slot, name, replace):
+    """The keys to write `name`'s shape into. Asked to `replace`, every key of its slot. Otherwise a key of its slot
+    that moves nothing, or none when one moves. A new key under `name` when the slot has none."""
     key = obj.data.shape_keys
     if key is None:
         obj.shape_key_add(name="Basis", from_mix=False)
         key = obj.data.shape_keys
+    blocks = [b for b in key.key_blocks if b != key.reference_key and expressions.slot_of(b.name) == slot]
+    if replace:
+        return blocks or [obj.shape_key_add(name=name, from_mix=False)]
+    base = np.empty(len(key.reference_key.data) * 3, np.float32)
+    key.reference_key.data.foreach_get("co", base)
+    if any(expressions.key_moves(block, base) for block in blocks):
+        return []
+    return blocks[:1] or [obj.shape_key_add(name=name, from_mix=False)]
+
+
+def _done(meshes):
+    """The slots of KEYS a key moves on one of `meshes`."""
+    out = set()
+    for obj in meshes:
+        key = obj.data.shape_keys
+        if key is None:
+            continue
+        base = np.empty(len(key.reference_key.data) * 3, np.float32)
+        key.reference_key.data.foreach_get("co", base)
+        for block in key.key_blocks:
+            if block != key.reference_key and expressions.slot_of(block.name) is not None \
+                    and expressions.key_moves(block, base):
+                out.add(expressions.slot_of(block.name))
+    return out
+
+
+def _clear(obj, slots):
+    """The keys of `slots` on `obj` go back to moving nothing, and off."""
+    key = obj.data.shape_keys
+    if key is None:
+        return
     base = np.empty(len(key.reference_key.data) * 3)
     key.reference_key.data.foreach_get("co", base)
-    empty = None
     for block in key.key_blocks:
-        if block == key.reference_key or expressions.slot_of(block.name) != slot:
-            continue
-        co = np.empty_like(base)
-        block.data.foreach_get("co", co)
-        if np.abs(co - base).max() > expressions.NOTHING:
-            return None
-        empty = empty or block
-    return empty or obj.shape_key_add(name=name, from_mix=False)
+        if block != key.reference_key and expressions.slot_of(block.name) in slots:
+            block.data.foreach_set("co", base)
+            block.value = 0.0
 
 
-def sculpt(rig, meshes):
-    """Make the eye keys on the meshes holding eye pieces; returns [(key name, [mesh names])], nothing without eyes."""
+def sculpt(rig, meshes, replace=False):
+    """Make the eye keys on the meshes holding eye pieces; returns [(key name, [mesh names])], nothing without eyes. An
+    expression moving on any mesh of the character is left to that key: the skin closing over the eyes by a key of its
+    own would close them twice. With `replace` the keys of those expressions are written again, whatever they held
+    (module docstring)."""
     eyes = find_eyes(rig, meshes)
     if not eyes:
         return []
@@ -422,17 +549,17 @@ def sculpt(rig, meshes):
         for obj, _piece in eye.pieces:
             if obj not in holders:
                 holders.append(obj)
-    holders += [obj for obj in list(skin) + smiling if obj not in holders]
+    holders = list(dict.fromkeys(holders + list(skin) + smiling))
+    if replace:
+        for obj in meshes:
+            if _is_mesh_of(rig, obj) and obj not in holders:
+                _clear(obj, {slot for _name, slot, _sides, _how in KEYS})
+    done = set() if replace else _done([obj for obj in meshes if _is_mesh_of(rig, obj)])
     made = {}
     for name, slot, sides, how in KEYS:
+        if slot in done:
+            continue
         for obj in holders:
-            block = _target(obj, slot, name)
-            if block is None:
-                continue
-            key = obj.data.shape_keys
-            base = np.empty(len(key.reference_key.data) * 3)
-            key.reference_key.data.foreach_get("co", base)
-            base = base.reshape(-1, 3)
             rest = _rest(rig, obj)
             moved = np.zeros_like(rest)
             for side in sides:
@@ -444,8 +571,20 @@ def sculpt(rig, meshes):
                     moved[near] = (_moved(eyes[side], rest[near], how) - rest[near]) * fade[:, None]
             if how == 'ARC' and obj in smiling:
                 moved += _smile(rest, mouth, _head(rig)[0][1])
+            if not moved.any():  # the body under a face of its own: no key that moves nothing
+                if replace:
+                    _clear(obj, {slot})
+                continue
+            blocks = _targets(obj, slot, name, replace)
+            if not blocks:
+                continue
+            key = obj.data.shape_keys
+            base = np.empty(len(key.reference_key.data) * 3)
+            key.reference_key.data.foreach_get("co", base)
+            base = base.reshape(-1, 3)
             to_arm = np.array((rig.matrix_world.inverted() @ obj.matrix_world).to_3x3())
-            block.data.foreach_set("co", (base + moved @ np.linalg.inv(to_arm).T).ravel())
-            block.value = 0.0  # off until used: a new shape key starts at 1
-            made.setdefault(block.name, []).append(obj.name)
+            for block in blocks:
+                block.data.foreach_set("co", (base + moved @ np.linalg.inv(to_arm).T).ravel())
+                block.value = 0.0  # off until used: a new shape key starts at 1
+                made.setdefault(block.name, []).append(obj.name)
     return list(made.items())

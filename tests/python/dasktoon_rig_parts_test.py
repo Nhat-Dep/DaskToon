@@ -44,6 +44,24 @@ class NameTest(unittest.TestCase):
         self.assertEqual(parts.initial_roles([short, tall, hair]), {tall: 'BODY', short: 'CLOTHING', hair: 'HAIR'})
         self.assertEqual(parts.initial_roles([short, tall], has_body=True), {tall: 'CLOTHING', short: 'CLOTHING'})
 
+    def test_with_plain_names_the_body_reaches_the_head(self):
+        """Skin stopping at the knee, an outfit down to the floor (shoes) and up to the chest: the outfit is the taller,
+        and every fixture had skin down to the floor."""
+        bpy.ops.wm.read_factory_settings(use_empty=True)
+        skin = fx.mesh_object("A", *fx.tube(2.0, 0.55, 0.1, 0.1))
+        outfit = fx.mesh_object("B", *fx.tube(1.52, 0.0, 0.2, 0.2))
+        hair = fx.mesh_object("C", *fx.tube(2.05, 1.8, 0.3, 0.3))
+        self.assertEqual(parts.initial_roles([outfit, hair, skin]), {skin: 'BODY', outfit: 'CLOTHING', hair: 'CLOTHING'})
+
+    def test_with_plain_names_a_head_of_its_own_is_not_the_body(self):
+        """The head a mesh of its own: the body stops at the neck, and only the head reaches the top. Tried on real
+        characters, a rule asking the Body to reach the head took the head for it, and a skirt was lost."""
+        bpy.ops.wm.read_factory_settings(use_empty=True)
+        body = fx.mesh_object("A", *fx.tube(1.6, 0.0, 0.2, 0.2))
+        dress = fx.mesh_object("B", *fx.tube(1.62, 0.5, 0.3, 0.3))
+        head = fx.mesh_object("C", *fx.tube(2.0, 1.55, 0.3, 0.3))
+        self.assertEqual(parts.initial_roles([head, dress, body]), {body: 'BODY', dress: 'CLOTHING', head: 'CLOTHING'})
+
     def test_part_defaults(self):
         self.assertEqual(parts.Part("S", None, role='SKIRT').bone_count, 3)
         self.assertEqual(parts.Part("H", None, role='HAIR').bone_count, 4)

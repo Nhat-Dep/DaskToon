@@ -211,9 +211,6 @@ class AfterRigTest(unittest.TestCase):
         found = results([body])
         self.assertEqual(found["rig"].status, 'OK')
         self.assertNotEqual(found["rig_check"].status, 'LATER')  # the auto rig ran the rig's Check
-        # its thin arm tubes blend over one ring at the elbow (6 or 7 vertices): too few to round it
-        self.assertEqual(found["joints"].status, 'WARN')
-        self.assertIn("Elbow", found["joints"].text)
         self.assertNotIn("Knee", found["joints"].text)  # 24 vertices at each knee
         self.assertEqual(found["eyes"].status, 'WARN')  # the test chibi has no eye pieces
         self.assertEqual(found["mouth"].status, 'WARN')

@@ -22,21 +22,31 @@ DEFAULT_BONE = {'HAIR': "Head", 'SKIRT': "Hips"}
 BONE_COUNT = 4
 DEFAULT_BONE_COUNT = {'SKIRT': 3}
 CHAIN_COUNT = 8
+# Names are hints, the shape of the mesh has the last word (accessories.py). What is worn or carried comes before Hair:
+# a HairClip is no hair.
 WORDS = (
     ('FLAT_EYE', {"iris", "pupil", "hitomi"}),
+    ('ACCESSORY', {"ribbon", "hairpin", "clip", "earring", "hat", "cap", "bow", "ornament", "ornaments", "accessory",
+                   "accessories", "crystal", "gem", "jewel", "necklace", "crown", "tiara", "halo", "horn", "horns",
+                   "wing", "wings", "cloak", "cape", "mantle", "weapon", "sword", "blade", "gun", "shield", "staff",
+                   "spear", "bag", "pouch", "tassel", "bell", "badge"}),
     ('HAIR', {"hair", "bang", "bangs", "fringe", "ponytail", "twintail", "twintails", "tail", "tails", "ahoge",
               "braid", "toc", "kami"}),
     ('SKIRT', {"skirt", "vay"}),
-    ('ACCESSORY', {"eye", "eyes", "eyeball", "mat", "glass", "glasses", "ribbon", "hairpin", "clip", "earring", "hat",
-                   "cap", "bow"}),
+    ('ACCESSORY', {"eye", "eyes", "eyeball", "mat", "glass", "glasses"}),
     ('CLOTHING', {"cloth", "clothes", "shirt", "tshirt", "jacket", "coat", "dress", "pant", "pants", "shoe",
                   "shoes", "sock", "socks", "glove", "gloves", "uniform"}),
     ('BODY', {"body", "skin", "face", "head"}),
 )
+WELD = 2e-4  # of the size of a mesh: vertices this near lie at one place
+ABOUT_AS_TALL = 0.1  # two meshes differing by less than this share of the taller are about as tall
 EYE_WORDS = {"eye", "eyes", "eyeball", "mat"}  # an Accessory so named is the eyes ("mat": Vietnamese "eye")
 FACE_MARKS = (chr(0x1EB7), chr(0x1EB6))  # "a" with a dot below and a breve: the face, "mat" too unaccented; no eyes
-MARKS = (('HAIR', "\u9aea"), ('SKIRT', "\u30b9\u30ab\u30fc\u30c8"), ('ACCESSORY', "\u76ee"), ('CLOTHING', "\u670d"),
-         ('BODY', "\u4f53"))
+# Chinese and Japanese names, in the order they are tried; an ornament in the hair is an ornament first.
+MARKS = (('ACCESSORY', "\u9970\u98fe\u7f0e\u7ed3\u7d50\u82b1\u661f\u94c3\u9234\u5251\u5263\u5200\u5f13\u67aa\u76fe\u7fc5\u5e3d\u62ab\u7bf7\u6676"),
+         ('HAIR', "\u9aea\u9aee\u53d1"), ('SKIRT', ("\u88d9", "\u30b9\u30ab\u30fc\u30c8")), ('ACCESSORY', "\u76ee"),
+         ('CLOTHING', "\u670d\u8863\u8896\u9886\u9818\u889c\u9774\u978b\u88e4\u8932\u5957"),
+         ('BODY', "\u4f53\u9ad4\u8eab\u808c\u8138\u9854\u76ae"))
 
 
 class PartError(Exception):
@@ -96,8 +106,8 @@ def guess_role(name):
     for role, keys in WORDS:
         if found & keys:
             return role
-    for role, mark in MARKS:
-        if mark in name:
+    for role, marks in MARKS:
+        if any(mark in name for mark in marks):
             return role
     return None
 
@@ -116,7 +126,7 @@ def eye_by_mat_only(name):
 def on_head_in_small_pieces(rig, obj):
     """True when the mesh of `obj` lies on the head of `rig` (fitted) in pieces small beside the head, as eyes do; a
     face or a patch elsewhere does not."""
-    world, edges = mesh_arrays(obj)
+    world, edges = welded_arrays(obj)
     if not len(world):
         return False
     base, top = bone_segment(rig, "Head")
@@ -131,14 +141,22 @@ def _height(obj):
     return box[1].z - box[0].z if box else 0.0
 
 
+def _top(obj):
+    box = skeleton.bounds([obj])
+    return box[1].z if box else 0.0
+
+
 def initial_roles(objects, has_body=False):
     """{object: role} for new whole-object parts: the role the name suggests; otherwise the tallest object is the Body
-    when the rig has none yet, and the rest Clothing (spec 5.3)."""
+    when the rig has none yet, of two about as tall the one reaching higher (skin may stop at the knee, above an outfit
+    down to the floor; a body may stop at the neck, under a head of its own), and the rest Clothing (spec 5.3)."""
     roles = {obj: guess_role(obj.name) for obj in objects}
     if not has_body and 'BODY' not in roles.values():
         unknown = [obj for obj in objects if roles[obj] is None]
         if unknown:
-            roles[max(unknown, key=_height)] = 'BODY'
+            tallest = max(_height(obj) for obj in unknown)
+            close = [obj for obj in unknown if _height(obj) >= (1.0 - ABOUT_AS_TALL) * tallest]
+            roles[max(close, key=_top)] = 'BODY'
     return {obj: role or 'CLOTHING' for obj, role in roles.items()}
 
 
@@ -152,6 +170,35 @@ def mesh_arrays(obj):
     matrix = np.array(obj.matrix_world)
     world = co.reshape(-1, 3).astype(float) @ matrix[:3, :3].T + matrix[:3, 3]
     return world, edges.reshape(-1, 2).astype(np.int64)
+
+
+def same_place(world):
+    """Index arrays of the vertices lying at one place: a model from a game has its vertices doubled along its texture
+    seams. Within WELD of the size of the points (n x 3)."""
+    if not len(world):
+        return []
+    size = float(np.ptp(world, axis=0).max())
+    if size <= 0.0:
+        return []
+    cells = np.round(world / (WELD * size)).astype(np.int64)
+    _unique, which, counts = np.unique(cells, axis=0, return_inverse=True, return_counts=True)
+    which = np.asarray(which).ravel()
+    order = np.argsort(which, kind="stable")
+    ends = np.cumsum(counts)
+    return [order[end - count:end] for end, count in zip(ends, counts) if count > 1]
+
+
+def welded_edges(world, edges):
+    """`edges` (m x 2) and a link between the vertices at one place: what is one surface is one piece, whatever the
+    seams cut (Evita's arm, a piece of its own that only touches her shoulder, had its bones taken off the shoulder)."""
+    links = [np.stack([group[:-1], group[1:]], axis=1) for group in same_place(world)]
+    return np.concatenate([edges] + links) if links else edges
+
+
+def welded_arrays(obj):
+    """mesh_arrays with the links of welded_edges."""
+    world, edges = mesh_arrays(obj)
+    return world, welded_edges(world, edges)
 
 
 def part_vertices(part):
@@ -232,10 +279,23 @@ def pieces(edges, vertices):
     return [vertices[c] for c in chains.components(len(vertices), local_edges(edges, vertices))]
 
 
+def role_mask(parts, owner, role):
+    """Which vertices of the mesh of `owner` (build.ownership: the part owning each vertex) are of parts with `role`."""
+    ids = [i for i, part in enumerate(parts) if part.role == role]
+    return np.isin(owner, ids)
+
+
 def bone_segment(rig, name):
     """World (head, tail) of a bone of `rig` at rest."""
     bone = rig.data.bones[name]
     return np.array(rig.matrix_world @ bone.head_local), np.array(rig.matrix_world @ bone.tail_local)
+
+
+def rig_height(rig):
+    """The height of the character of a standard skeleton: from its feet to the top of its Head bone."""
+    top = bone_segment(rig, "Head")[1][2]
+    bottom = min(bone_segment(rig, name)[0][2] for name in ("LeftFoot", "RightFoot") if name in rig.data.bones)
+    return float(top - bottom)
 
 
 def nearest_bone(rig, point, names):

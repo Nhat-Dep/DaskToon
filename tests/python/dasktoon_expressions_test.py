@@ -76,7 +76,7 @@ class ExpressionPanelsTest(unittest.TestCase):
         for name in PANELS:
             self.assertTrue(draw(getattr(bpy.types, name)), name)
         operators = {entry[1] for entry in draw(bpy.types.DATA_PT_dasktoon_expression_preview) if entry[0] == "operator"}
-        self.assertIn("object.shape_key_clear", operators)
+        self.assertIn("dasktoon.expression_rest", operators)  # the whole character, not only this mesh
         self.assertNotIn("dasktoon.vrm_zero_all_shapes", operators)
 
     def test_arkit_groups_cover_the_52_shapes(self):

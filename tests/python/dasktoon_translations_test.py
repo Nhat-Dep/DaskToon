@@ -63,6 +63,8 @@ TRANSLATED = [
     "scripts/modules/dasktoon_rig/skeleton.py",
     "scripts/modules/dasktoon_rig/body_shape.py",
     "scripts/modules/dasktoon_rig/regions.py",
+    "scripts/modules/dasktoon_rig/accessories.py",
+    "scripts/modules/dasktoon_rig/auto_expressions.py",
     "scripts/modules/dasktoon_rig/check.py",
     "scripts/modules/dasktoon_rig/shoulders.py",
     "scripts/modules/dasktoon_rig/sections.py",

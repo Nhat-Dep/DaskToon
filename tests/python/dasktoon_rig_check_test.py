@@ -137,6 +137,17 @@ class CheckTest(unittest.TestCase):
         found = check.stretch_issues(bpy.context, self.rig, [part])
         self.assertEqual({(obj.name, pose) for obj, pose, _region, _spot in found}, {("Thigh", 'SIT')})  # both ends
 
+    def test_a_collar_just_past_the_neck_is_no_hair(self):
+        """A shirt reaching past the neck joint at the back only: it is open round the neck, as hair is, and hangs from
+        above the joint. Only hair goes on up the head (a real shirt was offered to become Hair)."""
+        from bl_ui import dasktoon_rig as ui
+        neck, top = rt.rig_parts.bone_segment(self.rig, "Head")
+        collar_top = float(neck[2] + 0.2 * (top[2] - neck[2]))
+        verts, faces = rt.st.tube((0.0, 0.3, collar_top), (0.0, 0.3, collar_top - 0.5), 0.08)
+        ui.add_part(self.rig, rt.merged("Plain", [(verts, faces)]), 'CLOTHING')
+        parts = list(self.rig.data.dasktoon_rig.parts)
+        self.assertNotIn("Plain", [name for name, _role, _below in check.role_issues(self.rig, parts)])
+
     def test_a_wrist_outside_the_arm(self):
         from dasktoon_rig import skeleton
         parts = list(self.rig.data.dasktoon_rig.parts)

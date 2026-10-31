@@ -37,13 +37,13 @@ def head_frame(rig):
     return (head.head_local + head.tail_local) / 2.0, head.length
 
 
-def eyes_object(rig, name="Eyes", sides=(1.0, -1.0), pieces=PIECES, socket=False):
+def eyes_object(rig, name="Eyes", sides=(1.0, -1.0), pieces=PIECES, socket=False, depth=-0.7):
     """A mesh of the eye pieces of both sides (head frame mapped to the rig's space), deformed by the rig."""
     centre, size = head_frame(rig)
     verts, faces = [], []
     for s in sides:
         for _name, x, z, hw, hh in pieces:
-            v, f = grid(centre.x + s * x * size, centre.z + z * size, hw * size, hh * size, centre.y - 0.7 * size)
+            v, f = grid(centre.x + s * x * size, centre.z + z * size, hw * size, hh * size, centre.y + depth * size)
             faces += [tuple(i + len(verts) for i in face) for face in f]
             verts += v
     if socket:  # a face sheet in front with a hole where each eye is
@@ -332,8 +332,158 @@ class ExistingKeysTest(unittest.TestCase):
         self.assertEqual(len(names), len(set(names)))
 
 
+HOLE = (0.25, -0.15, 0.1, 0.075)  # centre across, centre up, half width, half height
+BROW = (("brow", 0.25, 0.0, 0.11, 0.02),)
+
+
+def holed_face(rig, offset=0.0):
+    """A Body part: a face sheet 0.28 head in front of the head's centre with a hole at each eye, as the white and the
+    iris of Encore (a real model) sit in holes in her face. `offset` moves the face across."""
+    from bl_ui import dasktoon_rig as ui
+    centre, size = head_frame(rig)
+    n = 37
+    us = np.linspace(-0.6, 0.6, n)
+    vs = np.linspace(-0.55, 0.25, n)
+    verts = [(centre.x + size * (u + offset), centre.y - 0.28 * size, centre.z + size * v) for v in vs for u in us]
+    faces = []
+    for r in range(n - 1):
+        for c in range(n - 1):
+            u, v = (us[c] + us[c + 1]) / 2.0, (vs[r] + vs[r + 1]) / 2.0
+            if ((abs(u) - HOLE[0]) / HOLE[2]) ** 2 + ((v - HOLE[1]) / HOLE[3]) ** 2 < 1.0:
+                continue
+            faces.append((r * n + c, r * n + c + 1, (r + 1) * n + c + 1, (r + 1) * n + c))
+    mesh = bpy.data.meshes.new("Face")
+    mesh.from_pydata(verts, [], faces)
+    obj = bpy.data.objects.new("Face", mesh)
+    bpy.context.scene.collection.objects.link(obj)
+    obj.modifiers.new("Armature", 'ARMATURE').object = rig
+    ui.add_part(rig, obj, 'BODY')
+    return obj
+
+
+def rim_of(obj):
+    """Vertices on the open edges round the holes (the sheet's own outer edge left out)."""
+    mesh = obj.data
+    uses = {}
+    for poly in mesh.polygons:
+        for a, b in poly.edge_keys:
+            uses[(a, b)] = uses.get((a, b), 0) + 1
+    open_verts = {v for edge, count in uses.items() if count == 1 for v in edge}
+    co = np.array([v.co for v in mesh.vertices])
+    low, high = co.min(axis=0), co.max(axis=0)
+    span = high - low
+    return np.array([v for v in sorted(open_verts)
+                     if low[0] + 0.01 * span[0] < co[v, 0] < high[0] - 0.01 * span[0]
+                     and low[2] + 0.01 * span[2] < co[v, 2] < high[2] - 0.01 * span[2]])
+
+
+class EyesInHolesTest(unittest.TestCase):
+    """Encore (a real model): her face has a hole at each eye, the eye pieces sit deep in them (behind the depth the
+    eyes were looked for at), and her brows are loose pieces above them. Only the brows and a few lashes were taken for
+    the eyes, so the close line fell above the real eye: blink pulled the lashes up and the brows down."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.rig, cls.objs = rt.rigged()
+        cls.face = holed_face(cls.rig)
+        cls.eyes = eyes_object(cls.rig, depth=-0.14)
+        cls.brows = eyes_object(cls.rig, name="Brows", pieces=BROW, depth=-0.2)
+        cls.meshes = [cls.eyes, cls.brows, cls.face]
+        cls.found = eye_shapes.find_eyes(cls.rig, cls.meshes)
+        cls.made = dict(eye_shapes.sculpt(cls.rig, cls.meshes))
+
+    def test_the_eyes_are_found_deep_in_the_face(self):
+        self.assertEqual(sorted(self.found), ["LEFT", "RIGHT"])
+
+    def test_a_brow_above_the_eye_is_not_the_eye(self):
+        for eye in self.found.values():
+            self.assertEqual({obj.name for obj, _piece in eye.pieces}, {"Eyes"})
+        self.assertIsNone(self.brows.data.shape_keys)
+
+    def test_blink_brings_the_upper_lash_down_and_the_lower_one_up(self):
+        co = rest(self.eyes)
+        z = offsets(self.eyes, "blink")[:, 2]
+        centre, size = head_frame(self.rig)
+        rel = (co[:, 2] - centre.z) / size
+        self.assertLess(z[np.abs(rel + 0.07) < 0.02].max(), 0.0)  # the upper lash
+        self.assertGreater(z[np.abs(rel + 0.22) < 0.01].min(), 0.0)  # the lower lash
+
+    def test_the_lids_close_over_the_hole(self):
+        self.assertIn("Face", self.made["blink"])
+        rim = rim_of(self.face)
+        closed = rest(self.face) + offsets(self.face, "blink")
+        for sign in (1.0, -1.0):
+            side = rim[(rest(self.face)[rim, 0] - head_frame(self.rig)[0].x) * sign > 0]
+            low, high = rest(self.face)[side, 2].min(), rest(self.face)[side, 2].max()
+            line = low + (high - low) / 3.0
+            self.assertLess(np.abs(closed[side, 2] - line).max(), 0.06 * (high - low))
+
+    def test_the_eye_opening_is_the_hole(self):
+        centre, size = head_frame(self.rig)
+        for eye in self.found.values():
+            self.assertAlmostEqual((eye.low[2] + eye.high[2]) / 2.0, centre.z + HOLE[1] * size, delta=0.03 * size)
+            self.assertAlmostEqual((eye.high[2] - eye.low[2]) / size, 2.0 * HOLE[3], delta=0.04)
+            self.assertAlmostEqual(abs((eye.low[0] + eye.high[0]) / 2.0 - centre.x) / size, HOLE[0], delta=0.03)
+
+    def test_the_forehead_and_the_rest_of_the_face_stay(self):
+        co = rest(self.face)
+        centre, size = head_frame(self.rig)
+        far = (co[:, 2] - centre.z) / size > 0.05
+        self.assertLess(np.abs(offsets(self.face, "blink")[far]).max(), 1e-7)
+
+
+class OffCentreTest(unittest.TestCase):
+    """The Head bone of Encore came out a little to one side of her face; the eyes go by the face's own middle."""
+
+    def test_a_head_bone_off_the_middle(self):
+        rig, _objs = rt.rigged()
+        face = holed_face(rig, offset=0.05)
+        eyes = eyes_object(rig, depth=-0.14)
+        for vertex in eyes.data.vertices:
+            vertex.co.x += 0.05 * head_frame(rig)[1]
+        found = eye_shapes.find_eyes(rig, [eyes, face])
+        self.assertEqual(sorted(found), ["LEFT", "RIGHT"])
+        self.assertEqual(len(found["LEFT"].pieces), len(found["RIGHT"].pieces))
+
+
+class RedoTest(unittest.TestCase):
+    """Keys sculpted wrong (or sculpted before the eyes were found properly) are replaced on request; the moving keys
+    stay otherwise. A mesh no longer part of the eyes loses what it had."""
+
+    def test_replace_rewrites_the_keys_and_clears_the_others(self):
+        rig, _objs = rt.rigged()
+        face = holed_face(rig)
+        eyes = eyes_object(rig, depth=-0.14)
+        brows = eyes_object(rig, name="Brows", pieces=BROW, depth=-0.2)
+        meshes = [eyes, brows, face]
+        for obj in (eyes, brows):
+            obj.shape_key_add(name="Basis", from_mix=False)
+            wrong = obj.shape_key_add(name="blink", from_mix=False)
+            for point in wrong.data:
+                point.co.z += 0.01
+            obj.shape_key_add(name="blinkLeft", from_mix=False).data[0].co.z += 0.01
+        made = dict(eye_shapes.sculpt(rig, meshes, replace=True))
+        self.assertIn("blink", made)
+        self.assertEqual(np.abs(offsets(brows, "blink")).max(), 0.0)
+        self.assertEqual(np.abs(offsets(brows, "blinkLeft")).max(), 0.0)
+        z = offsets(eyes, "blink")[:, 2]
+        self.assertGreater(z.max(), 1e-4)
+        self.assertLess(z.min(), -1e-4)  # both lids, not everything up by 0.01
+        left = side_mask(rig, eyes, 1.0)  # the expression of the key, under the name it had
+        np.testing.assert_allclose(offsets(eyes, "blinkLeft")[left], offsets(eyes, "blink")[left], atol=1e-6)
+        self.assertEqual(np.abs(offsets(eyes, "blinkLeft")[~left]).max(), 0.0)
+
+    def test_without_replace_the_keys_that_move_stay(self):
+        rig, _objs = rt.rigged()
+        eyes = eyes_object(rig)
+        eyes.shape_key_add(name="Basis", from_mix=False)
+        eyes.shape_key_add(name="blink", from_mix=False).data[0].co.z += 0.01
+        self.assertNotIn("blink", dict(eye_shapes.sculpt(rig, [eyes])))
+
+
 class NoEyesTest(unittest.TestCase):
     def test_eye_sockets_are_left_alone(self):
+        """A hole in something that is no Body part (the sheet here is in the eyes' own mesh): nothing to close."""
         rig, _objs, eyes = character(socket=True)
         self.assertEqual(eye_shapes.find_eyes(rig, [eyes]), {})
         self.assertEqual(eye_shapes.sculpt(rig, [eyes]), [])

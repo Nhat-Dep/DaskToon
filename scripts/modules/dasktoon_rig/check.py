@@ -233,10 +233,10 @@ def _surrounds(points, centre, margin):
     return bool((x < -margin).any() and (x > margin).any() and (y < -margin).any() and (y > margin).any())
 
 
-def _looks_like_hair(world, neck, hip, height):
+def _looks_like_hair(world, neck, hip, height, crown):
     z = world[:, 2]
-    if not (z.max() > neck[2] and z.min() < neck[2] and z.min() > hip[2]):
-        return False  # hair reaches above the head joint and hangs below it, not down to the legs
+    if not (z.max() > crown and z.min() < neck[2] and z.min() > hip[2]):
+        return False  # hair reaches up the head (a collar only past its joint) and hangs below it, not down to the legs
     return not _surrounds(world[np.abs(z - neck[2]) < BAND * height], neck, MARGIN * height)
 
 
@@ -272,7 +272,8 @@ def role_issues(rig, parts):
     """[(part name, role, below the waist)] of the whole-object Clothing parts that look like hair or a skirt, or whose
     part below the waist looks like a skirt (a dress, a long coat: real models) when it is no skirt part yet (spec
     4.3)."""
-    neck = rig_parts.bone_segment(rig, "Head")[0]
+    neck, top = rig_parts.bone_segment(rig, "Head")
+    crown = float((neck[2] + top[2]) / 2.0)
     hip = rig_parts.bone_segment(rig, "Hips")[0]
     waist_z = waist(rig)
     knee_z = float(np.mean([rig_parts.bone_segment(rig, side + "LowerLeg")[0][2] for side in ("Left", "Right")]))
@@ -287,7 +288,7 @@ def role_issues(rig, parts):
         if not len(world):
             continue
         low = world[world[:, 2] < waist_z]
-        if _looks_like_hair(world, neck, hip, height):
+        if _looks_like_hair(world, neck, hip, height, crown):
             out.append((part.name, 'HAIR', False))
         elif _looks_like_skirt(world, hip, knee_z, waist_z, height):
             out.append((part.name, 'SKIRT', False))

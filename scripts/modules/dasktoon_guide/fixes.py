@@ -157,13 +157,9 @@ def fix_rig_check(context, meshes, rig):
 
 
 def fix_expressions(context, meshes, rig):
-    """Fill Empty Expressions on every mesh, then Sculpt Eye Expressions when there is no blink yet."""
-    from dasktoon_rig import expressions, eye_shapes
-    for obj in meshes:
-        if obj.data.shape_keys is not None:
-            expressions.fill(obj)
-    if not checks._moving_key(meshes, "BLINK"):
-        eye_shapes.sculpt(rig, meshes)
+    """Auto Expressions."""
+    from dasktoon_rig import auto_expressions
+    auto_expressions.run(rig, meshes)
 
 
 FIXES = {"size": fix_size, "floor": fix_floor, "middle": fix_middle, "facing": fix_facing, "scale": fix_scale,

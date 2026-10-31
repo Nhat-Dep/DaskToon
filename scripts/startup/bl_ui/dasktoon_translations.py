@@ -399,8 +399,8 @@ VI = {
     "Too few edge loops round %s: add 2 or 3 loops so the joint bends round":
         "Quá ít vòng cạnh quanh %s: thêm 2 hoặc 3 vòng để khớp gập được tròn",
     "Enough edge loops round the knees and elbows": "Đủ vòng cạnh quanh gối và khuỷu tay",
-    "Eyes of loose pieces in front of the face: Sculpt Eye Expressions closes them":
-        "Mắt làm bằng mảnh rời trước mặt: Nặn biểu cảm mắt nhắm được",
+    "Eyes of loose pieces in front of the face: Auto Expressions closes them":
+        "Mắt làm bằng mảnh rời trước mặt: Biểu cảm tự động nhắm được",
     "The eyes close by a shape key of their own": "Mắt nhắm bằng hình mẫu sẵn có",
     "No eyes DaskToon can close: build each eye of loose pieces in front of the face, or sculpt a blink yourself":
         "Không có mắt DaskToon nhắm được: dựng mỗi mắt bằng các mảnh rời trước mặt, hoặc tự nặn nhắm mắt",
@@ -409,10 +409,10 @@ VI = {
     "The mouth opens by a shape key of its own": "Miệng há bằng hình mẫu sẵn có",
     "No mouth DaskToon finds: draw it on the face texture, or use a 2D mouth":
         "DaskToon không tìm thấy miệng: hãy vẽ miệng lên ảnh da mặt, hoặc dùng Miệng 2D",
-    "No blink yet: Sculpt Eye Expressions (or sculpt it yourself)":
-        "Chưa có nhắm mắt: Nặn biểu cảm mắt (hoặc tự nặn)",
-    "Some expression shape keys move nothing: Fill Empty Expressions":
-        "Có hình mẫu biểu cảm không dịch chuyển gì: Lấp biểu cảm còn trống",
+    "No blink yet: Auto Expressions (or sculpt it yourself)":
+        "Chưa có nhắm mắt: Biểu cảm tự động (hoặc tự nặn)",
+    "Some expression shape keys move nothing: Auto Expressions":
+        "Có hình mẫu biểu cảm không dịch chuyển gì: Biểu cảm tự động",
     "Expressions ready": "Biểu cảm đã sẵn sàng",
     # The Guide tab and its steps
     "Model Check": "Kiểm tra model",
@@ -514,12 +514,38 @@ VI = {
         "Cho mỗi lưới một bản đồ UV và shader DaskToon (menu ô vật liệu › Dùng shader DaskToon).",
     "Select the character and use Add › Armature › Anime Humanoid: it rigs, weights and checks in one go.":
         "Chọn nhân vật rồi dùng Thêm › Khung Rối › Khung người anime: gắn khung, trọng số và kiểm tra trong một lần.",
-    "Sculpt Eye Expressions closes the eyes and smiles; Fill Empty Expressions fills the shape keys that move "
-    "nothing.":
-        "Nặn biểu cảm mắt cho nhắm mắt và cười; Lấp biểu cảm còn trống lấp các hình mẫu không dịch chuyển gì.",
     "File › Export › Engine Export writes the model, its rig file and its clips for Unity.":
         "Tập Tin › Xuất Khẩu › Xuất sang engine ghi model, tệp rig và các đoạn phim cho Unity.",
     "Sculpt Eye Expressions": "Nặn biểu cảm mắt",
+    "Auto Expressions": "Biểu cảm tự động",
+    "Auto Expressions closes the eyes, smiles and fills the shape keys that move nothing, on every mesh of the "
+    "character.":
+        "Biểu cảm tự động cho nhắm mắt, cười và lấp các hình mẫu không dịch chuyển gì, trên mọi mesh của nhân vật.",
+    "Make the character's expressions on all its meshes; shape keys that already move are kept":
+        "Tạo biểu cảm cho nhân vật trên mọi mesh của nó; hình mẫu đã dịch chuyển được giữ nguyên",
+    "Auto Expressions: %d sculpted, %d filled, %d of %d ready": "Biểu cảm tự động: nặn %d, lấp %d, sẵn sàng %d trên %d",
+    "%d of %d ready: press one to try it": "Sẵn sàng %d trên %d: bấm một nút để thử",
+    "A I U E O: sculpt \"a\" or use a 2D Mouth": "A I U E O: nặn \"a\" hoặc dùng Miệng 2D",
+    "Try Expression": "Thử biểu cảm",
+    "Show this expression on every mesh of the character, with the others off":
+        "Hiện biểu cảm này trên mọi mesh của nhân vật, tắt các biểu cảm khác",
+    "The character has no shape key for this expression yet": "Nhân vật chưa có hình mẫu cho biểu cảm này",
+    "Back to Rest Face": "Về mặt bình thường",
+    "Turn every expression of the character off": "Tắt mọi biểu cảm của nhân vật",
+    "Redo Eye Expressions": "Làm lại biểu cảm mắt",
+    "Write blink, joy and surprised again from the eyes found now, over what those shape keys hold":
+        "Viết lại nhắm mắt, vui và ngạc nhiên từ đôi mắt tìm được lúc này, đè lên nội dung cũ của các hình mẫu đó",
+    "No eyes found: the shape keys stay as they are": "Không tìm thấy mắt: các hình mẫu giữ nguyên",
+    "Accessories": "Phụ kiện",
+    "Accessories of the anime rig": "Phụ kiện của rig anime",
+    "Parts of the anime rig; the accessories have a list of their own": "Các phần của rig anime; phụ kiện có danh sách riêng",
+    "Find Accessories": "Tìm phụ kiện",
+    "Make Accessories of what lies on the head and of the pieces standing off the body, then build the rig and check "
+    "it again":
+        "Đưa những gì nằm trên đầu và các mảnh đứng tách khỏi thân vào nhóm Phụ kiện, rồi dựng lại khung và kiểm tra lại",
+    "An accessory follows one bone and does not bend": "Phụ kiện đi theo một xương và không uốn cong",
+    "No bone chosen: each piece follows the bone it sits on": "Chưa chọn xương: mỗi mảnh đi theo xương nó nằm trên",
+    "Accessories found: %d": "Số phụ kiện tìm thấy: %d",
     "Make blink, blink_L, blink_R, joy and surprised for eyes built from loose pieces in front of the face":
         "Tạo nhắm mắt, nhắm mắt trái, nhắm mắt phải, vui và ngạc nhiên cho mắt làm bằng các mảnh rời đặt trước mặt",
     "Sculpted %s on %s": "Đã nặn %s trên %s",
@@ -540,16 +566,16 @@ VI = {
         "Đổi tên hình mẫu VRM 1.0 (happy, blinkLeft…) sang tên VRM 0.x (joy, blink_l…)",
     "Renamed %d shape keys": "Đã đổi tên %d hình mẫu",
     "Live Preview": "Xem trước trực tiếp",
-    "Play a blink, speech or emotion test on the mesh in a loop, until Esc or right click":
-        "Phát thử chớp mắt, nói hoặc cảm xúc trên mesh theo vòng lặp, đến khi bấm Esc hoặc chuột phải",
+    "Play a blink, speech or emotion test on the character in a loop, until Esc or right click":
+        "Phát thử chớp mắt, nói hoặc cảm xúc trên nhân vật theo vòng lặp, đến khi bấm Esc hoặc chuột phải",
     "Blink every few seconds": "Chớp mắt vài giây một lần",
     "Say the vowels A, I, U, E, O in a loop": "Đọc lần lượt các nguyên âm A, I, U, E, O theo vòng lặp",
     "Go through joy, surprise, sorrow and anger in a loop": "Lần lượt vui, ngạc nhiên, buồn, giận theo vòng lặp",
     "Live preview running: press Esc or right click to stop": "Đang xem trước trực tiếp: bấm Esc hoặc chuột phải để dừng",
     "Live preview stopped": "Đã dừng xem trước trực tiếp",
     "Test Expression on Model": "Thử biểu cảm trên model",
-    "Show this expression on the mesh: its shape keys go to the intensity, all others to 0":
-        "Hiện biểu cảm này trên mesh: các hình mẫu của nó lấy giá trị cường độ, mọi hình mẫu khác về 0",
+    "Show this expression on the character: its shape key goes to the intensity, the other expressions to 0":
+        "Hiện biểu cảm này trên nhân vật: hình mẫu của nó lấy giá trị cường độ, các biểu cảm khác về 0",
     "Showing %s: %s": "Đang hiện %s: %s",
     "No shape key of the mesh matches %s: add a VRM expression set first":
         "Không có hình mẫu nào của mesh khớp với %s: hãy thêm bộ biểu cảm VRM trước",
@@ -558,8 +584,8 @@ VI = {
         "Thêm các hình mẫu ARKit 52 mà mesh chưa có, để trống, sẵn sàng điêu khắc",
     "Added %d ARKit shape keys to %s": "Đã thêm %d hình mẫu ARKit vào %s",
     "Test ARKit Shape on Model": "Thử hình mẫu ARKit trên model",
-    "Show this ARKit shape key on the mesh: it goes to the intensity, all others to 0":
-        "Hiện hình mẫu ARKit này trên mesh: nó lấy giá trị cường độ, mọi hình mẫu khác về 0",
+    "Show this ARKit shape key on the character: it goes to the intensity, the other expressions to 0":
+        "Hiện hình mẫu ARKit này trên nhân vật: nó lấy giá trị cường độ, các biểu cảm khác về 0",
     "Showing %s": "Đang hiện %s",
     "Shape key %s not found: synthesize ARKit 52 first": "Không tìm thấy hình mẫu %s: hãy dựng ARKit 52 trước",
 

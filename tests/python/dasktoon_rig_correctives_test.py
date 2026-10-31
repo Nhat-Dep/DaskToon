@@ -115,6 +115,11 @@ class FixesTest(unittest.TestCase):
         self.assertLess(fix_of(self.rig, "LeftElbow").target.y, -0.9)  # the forearm comes forward
         self.assertLess(fix_of(self.rig, "LeftShoulder").target.z, -0.99)  # the arm down
 
+    def test_the_body_stands_straight(self):
+        """A shoulder moved out along a sloping arm comes lower; the neck read its height from it and sank among what hangs
+        in front of the chest, and the whole body's frame leaned 8 degrees (the game then read the knee fix askew)."""
+        self.assertGreater(correctives.body_frame(self.rig)[1].z, 0.999)
+
     def test_the_driver_follows_the_bend(self):
         body = self.objs["Body"]
         for name in ("RightHip", "RightShoulder", "LeftKneeDeep", "RightElbowDeep"):

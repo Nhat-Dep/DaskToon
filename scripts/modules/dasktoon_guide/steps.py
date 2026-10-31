@@ -43,10 +43,9 @@ STEPS = (
          n_("Select the character and use Add › Armature › Anime Humanoid: it rigs, weights and checks in one go."),
          ()),
     Step('EXPRESSIONS', n_("Expressions"),
-         n_("Sculpt Eye Expressions closes the eyes and smiles; Fill Empty Expressions fills the shape keys that move "
-            "nothing."),
-         (("dasktoon.sculpt_eye_expressions", n_("Sculpt Eye Expressions"), 'HIDE_OFF'),
-          ("dasktoon.fill_empty_expressions", n_("Fill Empty Expressions"), 'SHAPEKEY_DATA'))),
+         n_("Auto Expressions closes the eyes, smiles and fills the shape keys that move nothing, on every mesh of the "
+            "character."),
+         (("dasktoon.auto_expressions", n_("Auto Expressions"), 'SHAPEKEY_DATA'),)),
     Step('UNITY', n_("Unity"),
          n_("File › Export › Engine Export writes the model, its rig file and its clips for Unity."),
          (("export_scene.dasktoon_engine", n_("Engine Export"), 'EXPORT'),)),

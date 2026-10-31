@@ -286,14 +286,12 @@ def _moving_key(meshes, slot):
         key = obj.data.shape_keys
         if key is None:
             continue
-        base = np.empty(len(key.reference_key.data) * 3)
+        base = np.empty(len(key.reference_key.data) * 3, np.float32)
         key.reference_key.data.foreach_get("co", base)
         for block in key.key_blocks:
-            if block != key.reference_key and expressions.slot_of(block.name) == slot:
-                co = np.empty_like(base)
-                block.data.foreach_get("co", co)
-                if np.abs(co - base).max() > expressions.NOTHING:
-                    return True
+            if block != key.reference_key and expressions.slot_of(block.name) == slot \
+                    and expressions.key_moves(block, base):
+                return True
     return False
 
 
@@ -301,7 +299,7 @@ def _moving_key(meshes, slot):
 def check_eyes(c):
     from dasktoon_rig import eye_shapes
     if eye_shapes.find_eyes(c.rig, c.meshes):
-        return 'OK', rpt_("Eyes of loose pieces in front of the face: Sculpt Eye Expressions closes them")
+        return 'OK', rpt_("Eyes of loose pieces in front of the face: Auto Expressions closes them")
     if _moving_key(c.meshes, "BLINK"):
         return 'OK', rpt_("The eyes close by a shape key of their own")
     return 'WARN', rpt_("No eyes DaskToon can close: build each eye of loose pieces in front of the face, or sculpt a "
@@ -322,9 +320,9 @@ def check_mouth(c):
 @_after_rig(n_("Expressions"))
 def check_expressions(c):
     if not _moving_key(c.meshes, "BLINK"):
-        return 'WARN', rpt_("No blink yet: Sculpt Eye Expressions (or sculpt it yourself)")
+        return 'WARN', rpt_("No blink yet: Auto Expressions (or sculpt it yourself)")
     if _has_empty(c.meshes):
-        return 'WARN', rpt_("Some expression shape keys move nothing: Fill Empty Expressions")
+        return 'WARN', rpt_("Some expression shape keys move nothing: Auto Expressions")
     return 'OK', rpt_("Expressions ready")
 
 
@@ -334,15 +332,13 @@ def _has_empty(meshes):
         key = obj.data.shape_keys
         if key is None:
             continue
-        base = np.empty(len(key.reference_key.data) * 3)
+        base = np.empty(len(key.reference_key.data) * 3, np.float32)
         key.reference_key.data.foreach_get("co", base)
         for block in key.key_blocks:
             slot = expressions.slot_of(block.name)
             if block == key.reference_key or slot is None or block.name.lower() == "neutral":
                 continue
-            co = np.empty_like(base)
-            block.data.foreach_get("co", co)
-            if np.abs(co - base).max() <= expressions.NOTHING:
+            if not expressions.key_moves(block, base):
                 return True
     return False
 
