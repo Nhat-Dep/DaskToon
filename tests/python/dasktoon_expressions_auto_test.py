@@ -247,6 +247,34 @@ class ShownOnceTest(Character):
         self.assertEqual(values(self.eyes)["angry"], 0.0)
 
 
+class LeftOnTest(Character):
+    """An older version left its new keys at 1, and a file keeps them so: a face with every expression on at once."""
+
+    def test_the_button_leaves_the_rest_face(self):
+        shaped(self.eyes, "angry", value=1.0)
+        self.assertEqual(bpy.ops.dasktoon.auto_expressions(), {'FINISHED'})
+        self.assertEqual(set(values(self.eyes).values()), {0.0})
+
+    def test_rest_knows_all_the_vrm_names(self):
+        for name in ("neutral", "lookUp", "lookDown", "lookLeft", "lookRight"):
+            shaped(self.eyes, name, value=1.0)
+        bpy.ops.dasktoon.expression_rest()
+        self.assertEqual(set(values(self.eyes).values()), {0.0})
+
+
+class HalfModelledAutoTest(unittest.TestCase):
+    def setUp(self):
+        self.rig, _objs, self.eyes = et.character(sides=(1.0,))
+        self.eyes.modifiers.new("Mirror", 'MIRROR').use_axis[0] = True
+
+    def test_a_blink_of_a_half_gets_no_sides(self):
+        """Each side would be both, on a mirrored mesh."""
+        shaped(self.eyes, "blink")
+        auto_expressions.run(self.rig, [self.eyes])
+        self.assertNotIn("blink_L", values(self.eyes))
+        self.assertNotIn("blink_R", values(self.eyes))
+
+
 class ListTest(Character):
     def test_what_moves_what_is_empty_what_is_missing(self):
         shaped(self.eyes, "blink")

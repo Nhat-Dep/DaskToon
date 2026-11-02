@@ -32,6 +32,15 @@ had no part in finding them.
 | Shorts followed a skirt and not the thighs (leg weights, measured then) | Two parts named in Chinese both came to bones named "Part", and the first's passed for bones of the body | Only one part with a name not in Latin letters | `NamesInOtherScriptsTest` |
 | The outfit taken for the Body (seen in a real window's log) | Plain names, an outfit taller than skin that stops at the knee | Skin down to the floor again | `test_with_plain_names_the_body_reaches_the_head` |
 | A head of its own taken for the Body (held-out run, by the rule above) | The Body stops at the neck, under a head mesh | Skin in one piece, head included | `test_with_plain_names_a_head_of_its_own_is_not_the_body` |
+| Expressions were not looked at on the real faces until the user asked: a whole strip of an eye, a closed eye still open at its ends | Lashes in many small bits; a strand or an ear beside the eye; whites reaching far past a hole | Every fixture had four clean pieces and nothing beside them | `ManyLittlePiecesTest`, `WhatLiesBesideTheEyeTest`, `SeenThroughAHoleTest` |
+| A wink closed both eyes, or one key undid the other | A mesh modelled in half with a Mirror modifier | Every fixture modelled both sides | `HalfModelledTest`, `HalfModelledAutoTest` |
+| A character stayed backwards and rigged wrong (held-out run) | A wide round stand under the feet: its edge read as the floor | Every fixture stood on its own feet | `test_a_stand_under_the_feet_is_no_floor` |
+| A face stayed in an expression after the button | Keys left on, from the user's trying them | Every fixture started at rest | `LeftOnTest` |
+| "lông mi đâu": closed eyes had no lash | Every piece was squashed to 4% of its height, a thin lash with them | The test measured how flat the eye was, nothing about what stayed | `ClosedEyeTest` |
+| A band of iris along the closed eye (close-up renders) | The white and the iris kept as thick as the line, round any thinner lash; which piece is a lash cannot be told by its outline | Same | `test_the_white_and_the_iris_come_to_nothing`, `ALashOfAnyShapeTest` |
+| Painted whites open at both ends (close-up renders) | Lashes wider than the iris, the white painted past it | The eye was the band of most pieces, and the fixture's white was a piece | `test_the_eye_is_as_wide_as_its_lashes` |
+| The eye twice too tall, the close line below it | A ball in a dent, most of it under the skin | No fixture had skin in front of any piece | `BehindTheSkinTest` |
+| Joy lifted the chest round a brooch (a render) | A Head bone long against the face: how far below the eyes a mouth may be went by that bone | Fixture bones are all of a length with the face | `WhereAMouthLiesTest` |
 | A crash on one character | Adding a part moves the list in memory; a part held from before it is gone | One part added at a time | `test_many_meshes_each_with_something_standing_off`. This test did not fail on the old code: where the list lands is luck. The proof is the crash gone |
 
 All of it together: `tests/python/dasktoon_detailed_character_test.py`, one character with everything above under names that
@@ -67,7 +76,7 @@ The eight that had no part in finding the bugs:
 | RG2 | 4 > 6 | 159 > 90 | 77 > 46 | 0 > 0 | 0 > 0 |
 | adl | 13 > 5 | 1 > 30 | 0 > 15 | 96 > 11 | 1 > 4 |
 | filie | 3 > 1 | 226 > 89 | 108 > 43 | 106 > 48 | 2 > 0 |
-| Luna | 5 > 2 | 279 > 245 | 124 > 121 | 62 > 23 | 0 > 0 |
+| Luna | 5 > 3 | 279 > 255 | 124 > 125 | 62 > 26 | 0 > 0 |
 
 Two rules did most of it. An arm starting at the side of the trunk cut tears with the arms up by 12% to 82% on the five
 characters whose shoulders lay inside the chest. The trunk no longer hanging below the hips cut tears sitting on every
@@ -85,8 +94,24 @@ worst: arms left behind on Evita, shoulders inside the chest on Encore, thighs l
 The panels were looked at in a real window (tools/dasktoon_auto_expressions_screenshots.py): that found a hint cut short and
 a car for an icon, and its log showed the outfit taken for the Body.
 
+Auto Expressions on the ten characters with eyes, up close, open, blink and joy. Three (tdt, lr_shape, Violet) have keys of
+their own and are left to them. Encore needs Redo Eye Expressions, its keys being old. Every closed eye keeps its lash and
+shows no white. adl is a bust with no loose eyes: blink, joy and surprised from its keys, nothing sculpted.
+
+One rule was tried and dropped: an eye with a white of its own leaves the skin alone. It looked right on the piece tables and
+left Evita's eye open and a grey patch on filie, whose eyes are drawn on the skin behind what looked like a white. Tapering
+the skin toward the corners of the eye was dropped too: the whites came back at both ends on pl1, RG2 and Luna.
+
 ## What the checks do not settle
 
+- Closing an eye drawn on the skin stretches what is drawn round it. On Evita the shadow painted round the eyes spreads to a
+  darker band from the brows to the lashes, cut off by the hair at the sides. The lash line and the place of the close are
+  right; a clean lid would take a painted one. RGforGame and RG2 smear their brows the same way on a coarse mesh.
+- filie keeps a thin grey line above the closed eye, the top of what her skin paints behind the iris: the iris goes under
+  the skin there, so the eye counts up to where it shows.
+- Encore shows two small dark bits on the closed lash: pieces as thin as the lash, that lie inside the eye at rest. Whatever
+  is thin and off the eye's middle stays.
+- Luna's stand (the mesh Cube.001) is still a Clothing part.
 - Evita's cloak tears when her arms go up (worst edge 4.7 units on a character 11.65 tall), and her body at the shoulder 0.39.
   The cloak is one Clothing part hanging across arms and trunk. The tear counts in the table are mostly this. Her two
   remaining joint spots are at the shins, under the cloak.

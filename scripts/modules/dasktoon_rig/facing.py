@@ -21,15 +21,35 @@ REACH = 0.01  # (x height) a foot reaching less far past its leg tells nothing
 TOE = 0.015  # (x height) or its toes reach this much farther forward than its heel back (RGforGame's boots: soles
 #              under the shins on the whole, the toes 2.9% farther than the heels)
 FOOT = 0.16  # (x height) a foot lies this near its leg (pl1's chunky boots reach 0.124; a long dress's hem is farther)
+STAND = (0.5, 0.15, 0.01)  # (x height) a stand under the feet is this wide at least, this high at most; read in layers
 AGREE = math.radians(45.0)  # the two feet reach the same way within this
 AXIS = math.radians(30.0)  # a character facing within this of an axis faces it; between two, it is not turned
+
+
+def _on_a_stand(world, height, floor):
+    """The height the feet are at: `floor`, or the top of a stand under them, the bottom of the character far wider than
+    what stands on it (its soles were looked for in the stand, a real character was left facing the back)."""
+    z = (world[:, 2] - floor) / height
+    base, top = None, 0.0
+    for layer in np.arange(0.0, STAND[1], STAND[2]):
+        points = world[(z >= layer) & (z < layer + STAND[2]), :2]
+        if len(points) == 0:
+            continue
+        wide = float(np.ptp(points, axis=0).max())
+        if base is None:
+            if wide < STAND[0] * height:
+                return floor
+            base = wide
+        if wide >= 0.5 * base:
+            top = layer + STAND[2]
+    return floor + top * height
 
 
 def feet(world, height, floor):
     """(where the character stands (x, y), the horizontal unit direction its feet reach (x, y)) of a character `height`
     tall standing on `floor`, made of the vertices `world` (n x 3); None when its feet do not tell."""
-    z = (world[:, 2] - floor) / height
-    soles = world[z < SOLES, :2]
+    z = (world[:, 2] - _on_a_stand(world, height, floor)) / height
+    soles = world[(z >= 0.0) & (z < SOLES), :2]
     legs = world[(z > LEGS[0]) & (z < LEGS[1]), :2]
     if len(soles) == 0 or len(legs) < 2:
         return None

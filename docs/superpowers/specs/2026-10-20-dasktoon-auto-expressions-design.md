@@ -45,7 +45,10 @@ a face layer behind an eye (RGforGame) would stay open, so the skin under each e
 Body parts' meshes in front of the head inside the eye's outline move as the eye does, fading back to rest 30% of the
 eye's size out of it. Hair and clothes never move. Keys, on each mesh holding eye pieces or skin under them:
 
-- blink: every vertex of the eye goes to the close line, keeping 4% of its height (the lashes meet in a line);
+- blink: a closed eye is its lash. A lash comes whole to the close line, no thicker than `LINE` (15% of the eye's height).
+  What lies over the eye's middle, up, at its own middle across (the white, the iris) comes to `KEEP` (4%) behind it. Where
+  every piece lies over the middle, the front one stays `LINE` thick: the lash is drawn on it. The skin goes to the line,
+  keeping 4% of its height;
 - blink_L, blink_R: one eye (the character's left at +X);
 - joy: closed as an arc, its middle raised by 35% of the eye's height (the "^^" of a smiling anime face);
 - surprised: the eye 12% bigger about its centre.
@@ -95,6 +98,19 @@ face is found first and the eye may lie `DEEP` (0.25 head) behind it. Each eye i
 piece counting when at least half inside it (brows are left out), and mirror twins find the middle of a face off the Head
 bone. Open edges of a **Body** part all round an eye are the eye's own outline, and the skin round them closes with it; open
 edges in any other mesh still mean a socket, left alone.
+
+Finding the eye, as changed 2026-10-31 on ten characters. Where most pieces lie is found first, and only pieces as deep as
+that place (`AS_DEEP`) count: an ear joined to the face lies behind. Then the band up, wide enough at each height whatever
+number of pieces makes the width (many bits of lash are no wider than one), then across among those in that band: a strand
+beside the eye runs up past it. A ring of open edges of a Body round that place, as deep, is a hole, and the hole is the
+eye: whites may reach far past it under the skin. The eye goes as far across as its pieces, not the band: the white painted
+past an iris stayed open at both ends. A piece counts up as far as it shows (`SPOTS`, `UNDER`): a ball in a dent, most of it
+under the skin, made the eye twice as tall as the opening. A Mirror modifier makes the other eye: its pieces are their own
+twins, and that mesh gets no key of one side (the modifier would copy it).
+
+A mouth, drawn or of pieces, lies at most `MOUTH` (one distance between the eyes) below them. Every real mouth lay 0.23 to
+0.86 of that below; a brooch and necklaces 1.01 and more. The limit went by the Head bone's length before, and that bone
+may be anything against the face.
 
 ## On the user's characters (copies, 2026-10-20)
 

@@ -23,6 +23,7 @@ from dasktoon_rig import eye_shapes  # noqa: E402
 # (name, centre x, centre z, half width, half height); every piece is a flat grid facing -Y at y = -0.7.
 PIECES = (("white", 0.25, -0.15, 0.09, 0.07), ("iris", 0.25, -0.15, 0.04, 0.06),
           ("upper lash", 0.25, -0.07, 0.1, 0.012), ("lower lash", 0.25, -0.22, 0.08, 0.008))
+PAINTED = (("iris", 0.25, -0.15, 0.05, 0.08),) + PIECES[2:]  # the white painted on the face (pl1), lashes on the iris
 
 
 def grid(cx, cz, hw, hh, y, n=4):
@@ -111,7 +112,7 @@ class SculptTest(unittest.TestCase):
             mask = side_mask(self.rig, self.eyes, sign)
             low, high = rest(self.eyes)[mask, 2].min(), rest(self.eyes)[mask, 2].max()
             line = low + (high - low) / 3.0
-            self.assertLess(np.abs(co[mask, 2] - line).max(), 0.04 * (high - low) + 1e-6)
+            self.assertLess(np.abs(co[mask, 2] - line).max(), 0.5 * eye_shapes.LINE * (high - low) + 1e-6)
             np.testing.assert_allclose(co[mask][:, :2], rest(self.eyes)[mask][:, :2], atol=1e-6)  # only up and down
         self.assertGreater(size, 0.0)
 
@@ -145,6 +146,14 @@ class SculptTest(unittest.TestCase):
 class SkinTest(unittest.TestCase):
     """pl1 (a real model) paints its eye whites on the face: the skin under each eye closes with it, fading back to
     rest a margin out; only the Body part's skin, never the hair or clothes."""
+
+    def test_the_eye_is_as_wide_as_its_lashes(self):
+        """They go further than the iris does. The eye stopped with the iris, and the white painted past it stayed open
+        at both ends of a closed eye (pl1)."""
+        rig, _objs, eyes = character(pieces=PAINTED)
+        _centre, size = head_frame(rig)
+        eye = eye_shapes.find_eyes(rig, [eyes])["LEFT"]
+        self.assertAlmostEqual((eye.high[0] - eye.low[0]) / size, 0.2, delta=1e-4)
 
     def test_the_skin_under_the_eyes_closes_with_them(self):
         rig, objs, eyes = character()
@@ -310,6 +319,32 @@ class DrawnMouthTest(unittest.TestCase):
         self.assertIsNone(eye_shapes.drawn_mouth(rig, [face, eyes], eye_shapes.find_eyes(rig, [eyes])))
 
 
+class WhereAMouthLiesTest(unittest.TestCase):
+    """How far below the eyes a mouth may lie went by the Head bone, and a Head bone can be anything against the face (from
+    two to four eye distances long on real characters). A brooch on the chest was taken for the mouth, and joy lifted the
+    chest around it. It goes by how far apart the eyes are: every real mouth lay less than that below them."""
+
+    EYE = (("white", 0.1, -0.15, 0.03, 0.03), ("iris", 0.1, -0.15, 0.015, 0.02))
+
+    def found(self, z):
+        rig, _objs, eyes = character(pieces=self.EYE)
+        loose = eyes_object(rig, name="Loose", sides=(1.0,), pieces=(("piece", 0.0, z, 0.05, 0.02),))
+        return rig, eye_shapes.piece_mouth(rig, [eyes, loose], eye_shapes.find_eyes(rig, [eyes]))
+
+    def test_a_brooch_below_the_face_is_no_mouth(self):
+        self.assertIsNone(self.found(-0.6)[1])
+
+    def test_a_mouth_on_the_face_is(self):
+        rig, mouth = self.found(-0.3)
+        centre, size = head_frame(rig)
+        self.assertIsNotNone(mouth)
+        self.assertAlmostEqual(mouth[0][2], centre.z - 0.3 * size, delta=1e-4)
+
+    def test_a_drawing_on_the_chest_is_no_mouth(self):
+        rig, _objs, eyes = character(pieces=self.EYE)
+        self.assertIsNone(eye_shapes.drawn_mouth(rig, [painted_face(rig), eyes], eye_shapes.find_eyes(rig, [eyes])))
+
+
 class ExistingKeysTest(unittest.TestCase):
     def test_keys_that_move_are_kept_and_empty_ones_filled(self):
         rig, objs, eyes = character()
@@ -375,6 +410,299 @@ def rim_of(obj):
     return np.array([v for v in sorted(open_verts)
                      if low[0] + 0.01 * span[0] < co[v, 0] < high[0] - 0.01 * span[0]
                      and low[2] + 0.01 * span[2] < co[v, 2] < high[2] - 0.01 * span[2]])
+
+
+class ClosedEyeTest(unittest.TestCase):
+    """A closed eye is its lash: every piece was squashed to 4% of its height, so a lash came to nothing and what showed was
+    whatever lay in front, the colour of the iris on one real character. A lash comes to the close line and keeps its
+    thickness up to that of the line. What lies over the eye's middle, the white and the iris, comes to nothing behind it:
+    as thick as the line they showed round every thinner lash, a band of iris along five real closed eyes."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.rig, _objs, cls.eyes = character()
+        eye_shapes.sculpt(cls.rig, [cls.eyes])
+        cls.left = side_mask(cls.rig, cls.eyes, 1.0)
+        cls.centre, cls.size = head_frame(cls.rig)
+
+    def piece(self, name):
+        """Vertices of the left piece of PIECES called `name`."""
+        _name, x, z, hw, hh = next(p for p in PIECES if p[0] == name)
+        co = rest(self.eyes)
+
+        def off(piece):
+            middle = (co[piece].min(axis=0) + co[piece].max(axis=0)) / 2.0
+            return abs(middle[0] - (self.centre.x + x * self.size)) + abs(middle[2] - (self.centre.z + z * self.size)) \
+                + abs(float(np.ptp(co[piece, 0])) - 2.0 * hw * self.size)
+
+        return min(eye_shapes._pieces(self.eyes.data), key=off)
+
+    def height(self, vertices, key):
+        return float(np.ptp((rest(self.eyes) + offsets(self.eyes, key))[vertices, 2]))
+
+    def test_the_lashes_keep_their_thickness(self):
+        self.assertAlmostEqual(self.height(self.piece("upper lash"), "blink"), 2.0 * 0.012 * self.size, delta=1e-4)
+
+    def test_they_meet_on_the_line(self):
+        co = rest(self.eyes) + offsets(self.eyes, "blink")
+        upper, lower = self.piece("upper lash"), self.piece("lower lash")
+        self.assertAlmostEqual(float(co[upper, 2].mean()), float(co[lower, 2].mean()), delta=1e-4)
+
+    def test_the_white_and_the_iris_come_to_nothing(self):
+        eye = eye_shapes.find_eyes(self.rig, [self.eyes])["LEFT"]
+        lash = self.height(self.piece("lower lash"), "blink")
+        for name in ("white", "iris"):
+            height = self.height(self.piece(name), "blink")
+            self.assertLessEqual(height, eye_shapes.KEEP * (eye.high[2] - eye.low[2]) + 1e-5)
+            self.assertLess(height, lash)
+
+    def test_the_white_stays_behind_the_lash_on_the_line(self):
+        """Where they cross, what lies in front shows, as at rest."""
+        co = rest(self.eyes) + offsets(self.eyes, "blink")
+        white, lash = self.piece("white"), self.piece("upper lash")
+        self.assertLess(abs(float(co[white, 2].mean()) - float(co[lash, 2].mean())), 1e-4)
+
+
+class ALashOfAnyShapeTest(unittest.TestCase):
+    """Which piece is a lash cannot be read off its outline: one curving down round the corners of the eye (a real
+    character) is as tall as the eye, and thin. One piece may hold the white and the lash drawn on it (a real character):
+    then there is no lash to hide behind, and the front one is what the closed eye is."""
+
+    def arc(self, rig):
+        """A strip curving over the left and right eye from below the middle of the eye on one side to the other."""
+        centre, size = head_frame(rig)
+        verts, faces = [], []
+        for s in (1.0, -1.0):
+            turns = np.linspace(-0.3, np.pi + 0.3, 16)
+            base = len(verts)
+            for t in turns:
+                for radius in (1.0, 0.88):
+                    verts.append((centre.x + size * (s * 0.25 + 0.1 * radius * np.cos(t)), centre.y - 0.7 * size,
+                                  centre.z + size * (-0.15 + 0.08 * radius * np.sin(t))))
+            faces += [(base + 2 * i, base + 2 * i + 1, base + 2 * i + 3, base + 2 * i + 2) for i in range(len(turns) - 1)]
+        mesh = bpy.data.meshes.new("Arc")
+        mesh.from_pydata([tuple(v) for v in verts], [], faces)
+        obj = bpy.data.objects.new("Arc", mesh)
+        bpy.context.scene.collection.objects.link(obj)
+        obj.modifiers.new("Armature", 'ARMATURE').object = rig
+        return obj
+
+    def test_a_lash_round_the_eye_is_a_lash(self):
+        rig, _objs, eyes = character(pieces=PIECES[:2] + PIECES[3:])
+        arc = self.arc(rig)
+        eye = eye_shapes.find_eyes(rig, [eyes, arc])["LEFT"]
+        self.assertGreater(np.ptp(rest(arc)[:, 2]) / (eye.high[2] - eye.low[2]), 0.6)
+        eye_shapes.sculpt(rig, [eyes, arc])
+        left = side_mask(rig, arc, 1.0)
+        height = float(np.ptp((rest(arc) + offsets(arc, "blink"))[left, 2]))
+        self.assertAlmostEqual(height, eye_shapes.LINE * (eye.high[2] - eye.low[2]), delta=1e-5)
+
+    def test_without_a_lash_the_front_piece_stays(self):
+        rig, _objs = rt.rigged()
+        white = eyes_object(rig, name="White", pieces=PIECES[:1], depth=-0.72)
+        iris = eyes_object(rig, name="Iris", pieces=PIECES[1:2])
+        for meshes in ([white, iris], [iris, white]):
+            eye = eye_shapes.find_eyes(rig, meshes)["LEFT"]
+            eye_shapes.sculpt(rig, meshes, replace=True)
+            limit = eye.high[2] - eye.low[2]
+            self.assertAlmostEqual(float(np.ptp((rest(white) + offsets(white, "blink"))[side_mask(rig, white, 1.0), 2])),
+                                   eye_shapes.LINE * limit, delta=1e-5)
+            self.assertLessEqual(float(np.ptp((rest(iris) + offsets(iris, "blink"))[side_mask(rig, iris, 1.0), 2])),
+                                 eye_shapes.KEEP * limit + 1e-5)
+
+
+class BehindTheSkinTest(unittest.TestCase):
+    """An eye is what shows of it. A real face has a dent at each eye and a ball in it, most of it under the skin: read
+    whole, the ball made the eye twice as tall as the opening, the close line came below it, and closing dragged the
+    brows down."""
+
+    DRAWN = (("drawn", 0.25, -0.15, 0.09, 0.05),)
+    BALL = (("ball", 0.25, -0.15, 0.08, 0.12),)
+
+    def character(self, skin=True):
+        from bl_ui import dasktoon_rig as ui
+        rig, _objs = rt.rigged()
+        meshes = [eyes_object(rig, name="Drawn", pieces=self.DRAWN), eyes_object(rig, name="Ball", pieces=self.BALL, depth=-0.6)]
+        if skin:
+            face = eyes_object(rig, name="Face", sides=(1.0,), pieces=(("skin", 0.0, -0.15, 0.6, 0.4),), depth=-0.65)
+            ui.add_part(rig, face, 'BODY')
+            meshes.append(face)
+        return rig, meshes
+
+    def test_a_ball_behind_the_skin_is_no_part_of_the_eye(self):
+        rig, meshes = self.character()
+        _centre, size = head_frame(rig)
+        eye = eye_shapes.find_eyes(rig, meshes)["LEFT"]
+        self.assertAlmostEqual((eye.high[2] - eye.low[2]) / size, 0.1, delta=1e-3)
+        self.assertEqual({obj.name for obj, _piece in eye.pieces}, {"Drawn"})
+
+    def test_a_ball_in_a_dent_counts_as_far_as_it_shows(self):
+        from bl_ui import dasktoon_rig as ui
+        rig, _objs = rt.rigged()
+        centre, size = head_frame(rig)
+        rows = ((-0.55, -0.65), (-0.205, -0.65), (-0.2, -0.55), (-0.1, -0.55), (-0.095, -0.65), (0.25, -0.65))
+        verts = [(centre.x + size * u, centre.y + size * y, centre.z + size * v) for v, y in rows for u in (-0.6, 0.6)]
+        faces = [(2 * r, 2 * r + 1, 2 * r + 3, 2 * r + 2) for r in range(len(rows) - 1)]
+        mesh = bpy.data.meshes.new("Face")
+        mesh.from_pydata(verts, [], faces)
+        face = bpy.data.objects.new("Face", mesh)
+        bpy.context.scene.collection.objects.link(face)
+        face.modifiers.new("Armature", 'ARMATURE').object = rig
+        ui.add_part(rig, face, 'BODY')
+        ball = eyes_object(rig, name="Ball", pieces=self.BALL, depth=-0.6)
+        eye = eye_shapes.find_eyes(rig, [ball, face])["LEFT"]
+        self.assertAlmostEqual((eye.high[2] - eye.low[2]) / size, 0.1, delta=0.03)
+        self.assertAlmostEqual((eye.high[2] + eye.low[2]) / 2.0, centre.z - 0.15 * size, delta=0.02 * size)
+        self.assertEqual([obj.name for obj, _piece in eye.pieces], ["Ball"])
+
+    def test_with_no_skin_before_it_it_is(self):
+        rig, meshes = self.character(skin=False)
+        _centre, size = head_frame(rig)
+        eye = eye_shapes.find_eyes(rig, meshes)["LEFT"]
+        self.assertEqual({obj.name for obj, _piece in eye.pieces}, {"Drawn", "Ball"})
+        self.assertAlmostEqual((eye.high[2] - eye.low[2]) / size, 0.24, delta=1e-3)
+
+
+class ManyLittlePiecesTest(unittest.TestCase):
+    """Ten bits of lashes against two pieces of eye: counted one piece one vote, the bits made the eye, and a blink closed
+    a strip along the lower lid while the eye stayed open (a real character). What is big says where the eye is."""
+
+    BITS = tuple(("bit", 0.17 + 0.02 * k, -0.2, 0.012, 0.008) for k in range(9))
+    PIECES = (("eye", 0.25, -0.15, 0.09, 0.08),) + BITS
+
+    def setUp(self):
+        self.rig, _objs, self.eyes = character(pieces=self.PIECES)
+        self.meshes = [self.eyes]
+
+    def test_the_eye_is_the_big_piece(self):
+        centre, size = head_frame(self.rig)
+        eye = eye_shapes.find_eyes(self.rig, self.meshes)["LEFT"]
+        self.assertAlmostEqual((eye.high[2] - eye.low[2]) / size, 0.16, delta=0.03)
+        self.assertAlmostEqual((eye.low[2] + eye.high[2]) / 2.0, centre.z - 0.15 * size, delta=0.03 * size)
+
+    def test_a_blink_closes_it(self):
+        eye_shapes.sculpt(self.rig, self.meshes)
+        _centre, size = head_frame(self.rig)
+        self.assertGreater(float(np.abs(offsets(self.eyes, "blink")[:, 2]).max()), 0.06 * size)
+
+
+class WhatLiesBesideTheEyeTest(unittest.TestCase):
+    """What stands near an eye and is no part of it. An ear joined to the face comes well behind it; a strand or a
+    sideburn runs up past it. Both drew the eye's band after them (two real characters)."""
+
+    EYE = (("white", 0.25, -0.15, 0.09, 0.07), ("iris", 0.25, -0.15, 0.04, 0.06))
+
+    def found(self, *others):
+        self.rig, _objs, self.eyes = character(pieces=self.EYE)
+        return eye_shapes.find_eyes(self.rig, [self.eyes] + [make(self.rig) for make in others])
+
+    def assert_is_the_eye(self, found):
+        centre, size = head_frame(self.rig)
+        eye = found["LEFT"]
+        self.assertAlmostEqual((eye.high[0] - eye.low[0]) / size, 0.18, delta=0.03)
+        self.assertAlmostEqual((eye.high[2] - eye.low[2]) / size, 0.14, delta=0.03)
+        self.assertAlmostEqual((eye.low[0] + eye.high[0]) / 2.0, centre.x + 0.25 * size, delta=0.03 * size)
+
+    def test_an_ear_well_behind_it(self):
+        self.assert_is_the_eye(self.found(lambda rig: eyes_object(rig, name="Ear", pieces=(("ear", 0.42, -0.2, 0.15, 0.1),),
+                                                                  depth=-0.4)))
+
+    def test_a_tall_strand_beside_it(self):
+        self.assert_is_the_eye(self.found(lambda rig: eyes_object(rig, name="Strand", pieces=(
+            ("strand", 0.3, -0.1, 0.02, 0.16), ("bit", 0.3, -0.26, 0.02, 0.01)))))
+
+    def test_the_ring_round_an_ear_is_no_eye(self):
+        """An ear joined to the face leaves a ring of open edges, far behind the eye, that may go round the eye's place
+        as seen from the front: the eye has no hole there, and the ring is none of it."""
+        from bl_ui import dasktoon_rig as ui
+        rig, _objs = rt.rigged()
+        eyes = eyes_object(rig, pieces=PIECES)
+        ear = eyes_object(rig, name="Ear", pieces=(), socket=True)
+        ear.location.y += 0.5
+        bpy.context.view_layer.update()
+        ui.add_part(rig, ear, 'BODY')
+        eye = eye_shapes.find_eyes(rig, [eyes, ear])["LEFT"]
+        _centre, size = head_frame(rig)
+        self.assertLess((eye.high[2] - eye.low[2]) / size, 0.2)
+        self.assertGreater((eye.high[0] - eye.low[0]) / size, 0.18)
+
+
+class SeenThroughAHoleTest(unittest.TestCase):
+    """Where the face has a hole at the eye, the hole is the eye: what lies behind it says little. Whites reach far past
+    it under the skin, up to the brows and down past the cheek, and bits of lashes crowd one row. Read from those, a blink
+    tore the face open down to the mouth, or closed a strip (two real characters)."""
+
+    WHITE = ("white", 0.25, -0.15, 0.17, 0.2)  # far wider and taller than the hole
+    BITS = tuple(("bit", 0.17 + 0.02 * k, -0.2, 0.012, 0.008) for k in range(9))
+
+    @classmethod
+    def setUpClass(cls):
+        cls.rig, cls.objs = rt.rigged()
+        cls.face = holed_face(cls.rig)
+        cls.eyes = eyes_object(cls.rig, pieces=(cls.WHITE,) + cls.BITS, depth=-0.14)
+        cls.brows = eyes_object(cls.rig, name="Brows", pieces=BROW, depth=-0.2)
+        cls.meshes = [cls.eyes, cls.brows, cls.face]
+        cls.found = eye_shapes.find_eyes(cls.rig, cls.meshes)
+        cls.made = dict(eye_shapes.sculpt(cls.rig, cls.meshes))
+
+    def test_the_eye_is_the_hole(self):
+        centre, size = head_frame(self.rig)
+        eye = self.found["LEFT"]
+        self.assertAlmostEqual((eye.high[2] - eye.low[2]) / size, 2.0 * HOLE[3], delta=0.03)
+        self.assertAlmostEqual((eye.low[2] + eye.high[2]) / 2.0, centre.z + HOLE[1] * size, delta=0.03 * size)
+        self.assertAlmostEqual((eye.high[0] - eye.low[0]) / size, 2.0 * HOLE[2], delta=0.04)  # (the sheet's grid)
+
+    def test_the_edge_of_a_fringe_round_the_eye_is_no_socket(self):
+        from bl_ui import dasktoon_rig as ui
+        fringe = eyes_object(self.rig, name="Fringe", pieces=(), socket=True)
+        ui.add_part(self.rig, fringe, 'HAIR')
+        self.assertEqual(sorted(eye_shapes.find_eyes(self.rig, self.meshes + [fringe])), ["LEFT", "RIGHT"])
+        data = self.rig.data.dasktoon_rig
+        data.parts.remove(len(data.parts) - 1)
+        bpy.data.objects.remove(fringe)
+
+    def test_the_bits_close_with_it(self):
+        self.assertIn(self.eyes, [obj for obj, _piece in self.found["LEFT"].pieces])
+        self.assertGreater(len(self.found["LEFT"].pieces), 5)
+
+    def test_the_skin_far_from_it_stays(self):
+        centre, size = head_frame(self.rig)
+        co = rest(self.face)
+        moved = np.linalg.norm(offsets(self.face, "blink"), axis=1)
+        below = co[:, 2] < centre.z + (HOLE[1] - HOLE[3] - 0.08) * size
+        self.assertTrue(below.any())
+        self.assertLess(float(moved[below].max()), 1e-6)
+
+    def test_the_brows_stay(self):
+        self.assertIsNone(self.brows.data.shape_keys)
+
+
+class HalfModelledTest(unittest.TestCase):
+    """One eye and a Mirror modifier: the mesh holds one side only, so no eye had a twin and none was found (a real
+    character). A key on such a mesh moves both sides; one side alone it cannot do."""
+
+    def setUp(self):
+        self.rig, _objs, self.eyes = character(sides=(1.0,))
+        mirror = self.eyes.modifiers.new("Mirror", 'MIRROR')
+        mirror.use_axis[0] = True
+        self.meshes = [self.eyes]
+
+    def test_both_eyes_are_found(self):
+        found = eye_shapes.find_eyes(self.rig, self.meshes)
+        self.assertEqual(set(found), {"LEFT", "RIGHT"})
+        self.assertAlmostEqual(found["RIGHT"].low[0], -found["LEFT"].high[0], places=4)
+
+    def test_the_keys_are_on_the_half_and_close_both(self):
+        made = dict(eye_shapes.sculpt(self.rig, self.meshes))
+        self.assertIn("blink", made)
+        self.assertLess(float(offsets(self.eyes, "blink")[:, 2].min()), -1e-3)
+        self.assertIn("joy", made)
+        self.assertIn("surprised", made)
+
+    def test_no_key_for_one_side(self):
+        made = dict(eye_shapes.sculpt(self.rig, self.meshes))
+        self.assertNotIn("blink_L", made)
+        self.assertNotIn("blink_R", made)
 
 
 class EyesInHolesTest(unittest.TestCase):

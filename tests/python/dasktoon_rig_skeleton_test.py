@@ -640,6 +640,18 @@ class FacingTest(unittest.TestCase):
         body = polyline_chibi(self.ARM, self.LEG)
         self.assertEqual(facing.face_front(bpy.context, [body]), 0.0)
 
+    def test_a_stand_under_the_feet_is_no_floor(self):
+        """A round stand under a character (a real one): its soles were looked for in the stand, none was found, and a
+        character facing the back was left so, its rig the wrong way round."""
+        body = polyline_chibi(self.ARM, self.LEG, extra=[self.BACK])
+        stand = box("Stand", (1.8, -0.7, -0.14), (4.2, 1.7, 0.01))
+        self.assertAlmostEqual(abs(facing.face_front(bpy.context, [body, stand])), math.pi, places=6)
+
+    def test_a_stand_tells_nothing_of_a_character_without_feet(self):
+        body = polyline_chibi(self.ARM, self.LEG)
+        stand = box("Stand", (1.8, -0.7, -0.14), (4.2, 1.7, 0.01))
+        self.assertEqual(facing.face_front(bpy.context, [body, stand]), 0.0)
+
     def test_the_hem_of_a_long_dress_is_no_foot(self):
         """A dress widening down to the floor, with a train behind: no foot reaches back."""
         body = polyline_chibi(self.ARM, self.LEG)

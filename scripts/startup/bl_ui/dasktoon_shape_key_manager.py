@@ -1791,7 +1791,8 @@ VRM_GUIDE_CARDS = {
 }
 
 
-CARD_NAMES = {name.lower() for card in VRM_GUIDE_CARDS.values() for name in card['targets']}
+FACE_NAMES = {name.lower() for card in VRM_GUIDE_CARDS.values() for name in card['targets']} | {
+    "neutral", "lookup", "lookdown", "lookleft", "lookright"}
 
 
 def _face_keys(obj):
@@ -1802,7 +1803,7 @@ def _face_keys(obj):
         return []
     return [block for block in key.key_blocks if block != key.reference_key
             and (expressions.slot_of(block.name) is not None or block.name in ARKIT_52_ALL_NAMES
-                 or block.name.lower() in CARD_NAMES)]
+                 or block.name.lower() in FACE_NAMES)]
 
 
 def _show(obj, picked, value):
@@ -1877,6 +1878,11 @@ class DASKTOON_OT_auto_expressions(Operator):
         from dasktoon_rig import auto_expressions
         obj = context.object
         result = auto_expressions.run(auto_expressions.rig_of(obj), auto_expressions.meshes_of(obj))
+        _show(obj, lambda _mesh: (), 0.0)  # keys left on by an older version
+        if "BLINK" in result.left:
+            self.report({'WARNING'}, rpt_("No eyes DaskToon can close: build each eye of loose pieces in front of the face, "
+                                          "or sculpt a blink yourself"))
+            return {'FINISHED'}
         done = len(auto_expressions.LISTED) - len(result.left)
         self.report({'INFO'}, rpt_("Auto Expressions: %d sculpted, %d filled, %d of %d ready") % (
             len(result.sculpted), len(result.filled), done, len(auto_expressions.LISTED)))
@@ -1901,6 +1907,7 @@ class DASKTOON_OT_redo_eye_expressions(Operator):
         from dasktoon_rig import auto_expressions
         obj = context.object
         result = auto_expressions.run(auto_expressions.rig_of(obj), auto_expressions.meshes_of(obj), replace=True)
+        _show(obj, lambda _mesh: (), 0.0)
         if not result.sculpted:
             self.report({'WARNING'}, rpt_("No eyes found: the shape keys stay as they are"))
         return {'FINISHED'}

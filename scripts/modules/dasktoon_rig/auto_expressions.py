@@ -77,9 +77,10 @@ def slot_keys(obj, slot):
 
 
 def _add_sides(obj):
-    """Empty keys for the sides of a blink of `obj` that moves, for fill to make from it."""
+    """Empty keys for the sides of a blink of `obj` that moves, for fill to make from it. A mesh modelled in half has none:
+    a key there moves both sides."""
     key = obj.data.shape_keys
-    if key is None:
+    if key is None or eye_shapes.has_mirror(obj):
         return
     base = np.empty(len(key.reference_key.data) * 3, np.float32)
     key.reference_key.data.foreach_get("co", base)

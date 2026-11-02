@@ -9,20 +9,34 @@ lids; closing such an eye is squashing its pieces onto a line.
 The head's frame: the centre of the Head bone, its length as the unit, the character facing -Y with its left at +X
 (the standard skeleton, armature space). A loose piece (vertices joined by edges) of a mesh the rig deforms may be part
 of an eye when it is in the front of the face, to the side, at eye height and small, and has a mirror twin on the other
-side (the Head bone can sit off the face's middle, so the twins tell the middle: Encore). Of those, the eye is what
-most pieces share: the band across and up that at least half as many pieces cover as cover its busiest place, and the
-pieces mostly inside it. A brow lies above that band (Encore's brows, taken for the eye, put the close line above the
-real eye, and blink opened it). Both eyes are needed. Hair parts are left out (a lock hanging in front of an eye).
+side (the Head bone can sit off the face's middle, so the twins tell the middle: Encore). A piece of a mesh modelled in
+half, with a Mirror modifier, is its own twin (filie); a key there moves both sides, so that mesh gets no key of one side.
+Of those, the eye is where most pieces lie, of the pieces as deep as that place: the band up that they fill, at least
+half as wide as there however many pieces make that width, then across among those in that band, and the pieces mostly
+inside it. A brow lies above that band (Encore's brows, taken for the eye, put the close line above the real eye, and
+blink opened it), many bits of lashes are no wider than the one lash they make (counted one by one, Evita's made a strip
+of the eye), an ear lies behind it, a strand runs on past it (tdt). Where a ring of open edges of a Body goes round that
+place, as deep, the face has a hole there, and the hole is the eye: what lies behind it says little, whites may reach far
+past it under the skin. Both eyes are needed. Hair parts are left out (a lock hanging in front of an eye), and a piece
+counts as far as it shows: Evita's ball lies in a dent, most of it under the skin; read whole, it made the eye twice as
+tall as the opening, and closing dragged the brows down.
 
 Open edges of a Body part all around an eye (Encore's face has a hole at each eye) are the eye's opening: the eye's
 outline is then the hole's, and the lids close as the skin does below. Open edges all around an eye in anything else
 leave the face alone; the edge of the hair crossing it is no socket.
 
+A closed eye is its lash. A lash comes to the close line as it is, up to LINE thick. What lies over the eye's middle,
+up, at its own middle across, comes to nothing behind the lash: the white and the iris, thick as the line, showed round
+every thinner lash. That is no matter of outline: a lash curving down round the corners of the eye is as tall as the eye.
+Where no piece is a lash (one piece holds the white and the lash drawn on it, Luna), the front one stays as thick as the
+line, it is what the closed eye is.
+
 Eye whites painted on the face (pl1) would stay open, so the skin under each eye moves with it: the vertices of the
 Body parts' meshes in front of the head inside the eye's outline (across and up) move as the eye does, fading back to
 rest MARGIN of the eye's size out of it. Hair and clothes never move.
 
-A mouth drawn on the face (pl1) makes joy smile: the Body's face texture is read through its UVs below the eyes, the
+A mouth drawn on the face (pl1) makes joy smile: the Body's face texture is read through its UVs at most MOUTH below the
+eyes (Luna has a brooch further down, and joy lifted her chest round it; a Head bone's length says nothing here), the
 largest patch unlike the skin near the middle that is a wide line is the mouth (read on the mesh as shown, the rig
 at rest: pl1's Subdivision moves the drawing away from where its cage puts it; only what shows from the front: pl1
 has a pink inside of the mouth behind its face), and the skin at its corners lifts
@@ -30,8 +44,8 @@ has a pink inside of the mouth behind its face), and the skin at its corners lif
 A face without a drawing (filie) may hold the mouth as loose pieces in the middle below the eyes (plates inside the
 crease of a closed face): their outline gives the mouth instead.
 
-Keys, on each mesh holding eye pieces or skin under them: blink (both eyes onto the close line, a third of the way up,
-keeping KEEP of their height), blink_L and blink_R, joy (closed as an arc, its middle raised by ARCH of the eye's
+Keys, on each mesh holding eye pieces or skin under them: blink (both eyes onto the close line, a third of the way
+up), blink_L and blink_R, joy (closed as an arc, its middle raised by ARCH of the eye's
 height) and surprised (WIDEN times bigger about the eye's centre, across and up). A key of the same expression
 (expressions.SLOTS) that moves is kept, an empty one filled, a missing one added under its VRM 0.x name; asked to
 replace, every key of the expression is written again, and those on meshes that are no longer part of it cleared."""
@@ -52,11 +66,16 @@ TWIN_SIZE = 0.3  # how much the sizes of the two pieces of a pair differ
 OFF_MIDDLE = 0.15  # (of the head) how far from the Head bone the face's middle may be
 BAND_SHARE = 0.5  # the eye's band: at least this share as many pieces as cover its busiest place
 INSIDE = 0.5  # a piece at least this much in the band, both ways, is part of the eye
+AS_DEEP = 0.2  # (of the head) pieces and a hole this far in depth from where most pieces lie are at the eye
+SPOTS = 9  # across and up a piece: where to look for what shows of it
+UNDER = 0.01  # (of the head) skin this far in front of a piece covers it; a lash lying on the skin is not under it
 CLOSE_AT = 1.0 / 3.0
 KEEP = 0.04
+LINE = 0.15  # of the eye's height: how thick a closed eye is, about a lash
 ARCH = 0.35
 WIDEN = 1.12
 MARGIN = 0.3  # of the eye's size: the skin under an eye fades back to rest this far out of it
+MOUTH = 1.0  # of the distance between the eyes: how far below them a mouth lies, whatever the Head bone's length
 UNLIKE = 0.12  # how far from the skin's colour (RGB) the drawing of a mouth is
 SMILE = 0.18  # of the mouth's width: how far its corners lift for joy
 BIN = 0.02  # of the head: the cells grouping the drawn points into patches
@@ -94,11 +113,8 @@ def _rest(rig, obj):
     return co.reshape(-1, 3) @ np.array(to_arm.to_3x3()).T + np.array(to_arm.translation)
 
 
-def _pieces(mesh):
-    """Vertex indices of each loose piece (vertices joined by edges)."""
-    count = len(mesh.vertices)
-    edges = np.empty(len(mesh.edges) * 2, dtype=np.int64)
-    mesh.edges.foreach_get("vertices", edges)
+def _joined(count, pairs):
+    """Vertex indices of each group of the `count` vertices that the index `pairs` (n x 2) join."""
     parent = np.arange(count)
 
     def root(i):
@@ -107,12 +123,40 @@ def _pieces(mesh):
             i = parent[i]
         return i
 
-    for a, b in edges.reshape(-1, 2):
+    for a, b in pairs:
         ra, rb = root(a), root(b)
         if ra != rb:
             parent[ra] = rb
     roots = np.array([root(i) for i in range(count)])
     return [np.nonzero(roots == r)[0] for r in np.unique(roots)]
+
+
+def _triangles(mesh):
+    """Vertex indices of the triangles of `mesh`, n x 3."""
+    mesh.calc_loop_triangles()
+    out = np.empty(len(mesh.loop_triangles) * 3, dtype=np.int64)
+    mesh.loop_triangles.foreach_get("vertices", out)
+    return out.reshape(-1, 3)
+
+
+def _depths(points, triangles, x, z):
+    """How deep (y) each of `triangles` (n x 3 indices into `points`, armature space) lying over the place (x, z) is
+    there, seen from the front."""
+    a, b, c = (points[triangles[:, i]][:, [0, 2]] for i in range(3))
+
+    def turn(p, q):
+        return (q[:, 0] - p[:, 0]) * (z - p[:, 1]) - (q[:, 1] - p[:, 1]) * (x - p[:, 0])
+
+    turns = np.stack([turn(b, c), turn(c, a), turn(a, b)])
+    over = ((turns >= 0.0).all(axis=0) | (turns <= 0.0).all(axis=0)) & (turns.sum(axis=0) != 0.0)
+    return (points[triangles[over], 1] * (turns[:, over] / turns[:, over].sum(axis=0)).T).sum(axis=1)
+
+
+def _pieces(mesh):
+    """Vertex indices of each loose piece (vertices joined by edges)."""
+    edges = np.empty(len(mesh.edges) * 2, dtype=np.int64)
+    mesh.edges.foreach_get("vertices", edges)
+    return _joined(len(mesh.vertices), edges.reshape(-1, 2))
 
 
 def _boundary_points(mesh):
@@ -125,26 +169,60 @@ def _boundary_points(mesh):
     return edges.reshape(-1, 2)[faces == 1]
 
 
+def _rings(mesh):
+    """Vertex indices of each ring of open edges of `mesh`."""
+    pairs = _boundary_points(mesh)
+    if not len(pairs):
+        return []
+    used = np.unique(pairs)
+    return [used[group] for group in _joined(len(used), np.searchsorted(used, pairs))]
+
+
 def _is_mesh_of(rig, obj):
     return obj.type == 'MESH' and any(m.type == 'ARMATURE' and m.object == rig for m in obj.modifiers)
 
 
-def _band(spans):
-    """(low, high) of the stretch of `spans` (n x 2) most of them share: from the place most cover, on both ways for as
-    long as BAND_SHARE as many go on covering it."""
+def has_mirror(obj):
+    """True when `obj` is modelled in half: a Mirror modifier across its X makes the other side."""
+    return any(modifier.type == 'MIRROR' and modifier.use_axis[0] and modifier.mirror_object is None
+               and modifier.show_viewport for modifier in obj.modifiers)
+
+
+def _mirror_plane(rig, obj):
+    """x (armature space) of the plane the Mirror modifier of `obj` reflects it across; None without one, or one that
+    does not mirror the character's sides."""
+    to_arm = rig.matrix_world.inverted() @ obj.matrix_world
+    if not has_mirror(obj) or abs(to_arm.to_3x3().col[0].normalized().x) < 0.99:
+        return None
+    return float(to_arm.translation.x)
+
+
+def _reach(spans):
+    """How much of a line the `spans` (n x 2) cover, those overlapping counted once."""
+    total, end = 0.0, -np.inf
+    for low, high in sorted(spans.tolist()):
+        total += max(0.0, high - max(low, end))
+        end = max(end, high)
+    return total
+
+
+def _band(spans, others):
+    """(low, high, the place most cover) of the stretch of `spans` (n x 2) round that place, on both ways for as long as
+    the pieces reach BAND_SHARE as wide the other way (`others`, n x 2) as they do there."""
     edges = np.unique(spans)
     if len(edges) < 2:
-        return float(spans[:, 0].min()), float(spans[:, 1].max())
+        return float(spans[:, 0].min()), float(spans[:, 1].max()), float(spans[:, 0].min())
     middles = (edges[:-1] + edges[1:]) / 2.0
-    cover = ((spans[:, 0, None] <= middles) & (middles <= spans[:, 1, None])).sum(axis=0)
-    busiest = int(np.argmax(cover))
-    need = BAND_SHARE * cover[busiest]
-    low = high = busiest
+    covering = (spans[:, 0, None] <= middles) & (middles <= spans[:, 1, None])
+    cover = np.array([_reach(others[on]) for on in covering.T])
+    begin = int(np.argmax(covering.sum(axis=0)))
+    need = BAND_SHARE * cover[begin]
+    low = high = begin
     while low > 0 and cover[low - 1] >= need:
         low -= 1
     while high < len(cover) - 1 and cover[high + 1] >= need:
         high += 1
-    return float(edges[low]), float(edges[high + 1])
+    return float(edges[low]), float(edges[high + 1]), float(middles[begin])
 
 
 def _inside(low, high, band):
@@ -176,15 +254,40 @@ def _twins(found):
 
 
 def _eye_of(pieces, middle):
-    """The pieces of one eye of `pieces` [(object, piece, low, high)] and its band (low, high) across and up, head
-    frame; ([], None) with none at the eye's distance from the middle."""
+    """The pieces of one eye of `pieces` [(object, piece, low, high)], its band (low, high) up, and the place most of
+    them lie (across, deep, up), head frame; ([], None, None) with none at the eye's distance from the middle."""
     pieces = [p for p in pieces if SIDE[0] < abs((p[2][0] + p[3][0]) / 2.0 - middle) < SIDE[1]]
     if not pieces:
-        return [], None
-    across = _band(np.array([(p[2][0], p[3][0]) for p in pieces]))
-    up = _band(np.array([(p[2][2], p[3][2]) for p in pieces]))
-    kept = [p for p in pieces if _inside(p[2][0], p[3][0], across) and _inside(p[2][2], p[3][2], up)]
-    return kept, (across, up)
+        return [], None, None
+    def spans(found, axis):
+        return np.array([(p[2][axis], p[3][axis]) for p in found])
+
+    at_x = _band(spans(pieces, 0), spans(pieces, 2))[2]
+    at_z = _band(spans(pieces, 2), spans(pieces, 0))[2]
+    here = [p for p in pieces if p[2][0] <= at_x <= p[3][0] and p[2][2] <= at_z <= p[3][2]] or pieces
+    deep = float(np.median([(p[2][1] + p[3][1]) / 2.0 for p in here]))
+    pieces = [p for p in pieces if abs((p[2][1] + p[3][1]) / 2.0 - deep) <= AS_DEEP]
+    *up, at_z = _band(spans(pieces, 2), spans(pieces, 0))
+    row = [p for p in pieces if _inside(p[2][2], p[3][2], up)] or pieces
+    *across, at_x = _band(spans(row, 0), spans(row, 2))
+    kept = [p for p in row if _inside(p[2][0], p[3][0], across)]
+    return kept, up, (at_x, deep, at_z)
+
+
+def _hole_at(place, rests, rings, centre, size):
+    """(low, high) in armature space of the smallest ring of open edges of a Body round `place` (across, deep, up, head
+    frame), as deep and no wider than a piece of an eye; None without one. `rings`: {object: [vertex indices]}."""
+    x, y, z = np.array(place) * size + centre
+    best = None
+    for obj, found in rings.items():
+        for ring in found:
+            points = rests[obj][ring]
+            low, high = points.min(axis=0), points.max(axis=0)
+            if (low[0] < x < high[0] and low[2] < z < high[2] and abs(points[:, 1].mean() - y) <= AS_DEEP * size
+                    and max(high[0] - low[0], high[2] - low[2]) < WIDEST * size
+                    and (best is None or high[0] - low[0] < best[1][0] - best[0][0])):
+                best = low, high
+    return best
 
 
 def _round_the_eye(eye, middles, centre_y):
@@ -213,6 +316,41 @@ def _face_front(rig, meshes, centre, size):
     return front
 
 
+def _shown(found, rests, triangles, skins, centre, size):
+    """`found` (object, piece, low, high; head frame) with its low and high cut down to what shows of it, the skin of
+    `skins` [(rest, triangles)] in front of the rest; None when nothing does. Of what a Mirror modifier makes, the whole.
+    The spots are few: what shows all over keeps its outline, a lash thinner than they are far apart."""
+    obj, piece, low, high = found
+    if not len(piece):
+        return found
+    own = triangles[obj][np.isin(triangles[obj][:, 0], piece)]
+    low_at, high_at = low * size + centre, high * size + centre
+    near = []
+    for rest, skin in skins:
+        corners = rest[skin][:, :, [0, 2]]
+        apart = (corners.min(axis=1) > high_at[[0, 2]]) | (corners.max(axis=1) < low_at[[0, 2]])
+        near.append((rest, skin[~apart.any(axis=1)]))
+    under, shown = 0, []
+    for x in np.linspace(low_at[0], high_at[0], SPOTS):
+        for z in np.linspace(low_at[2], high_at[2], SPOTS):
+            depths = _depths(rests[obj], own, x, z)
+            if len(depths):
+                if any((_depths(rest, skin, x, z) < depths.min() - UNDER * size).any() for rest, skin in near):
+                    under += 1
+                else:
+                    shown.append((x, z))
+    if not under:
+        return found
+    if not shown:
+        return None
+    half = (high - low) / (SPOTS - 1) / 2.0
+    seen = (np.array(shown) - centre[[0, 2]]) / size
+    cut_low, cut_high = low.copy(), high.copy()
+    cut_low[[0, 2]] = np.maximum(seen.min(axis=0) - half[[0, 2]], low[[0, 2]])
+    cut_high[[0, 2]] = np.minimum(seen.max(axis=0) + half[[0, 2]], high[[0, 2]])
+    return obj, piece, cut_low, cut_high
+
+
 def find_eyes(rig, meshes):
     """{"LEFT": Eye, "RIGHT": Eye} of the character, or {} without both eyes or with eye sockets in no Body part."""
     head = _head(rig)
@@ -230,6 +368,7 @@ def find_eyes(rig, meshes):
         if obj in hair:
             continue
         rel = (rests[obj] - centre) / size
+        plane = _mirror_plane(rig, obj)
         for piece in _pieces(obj.data):
             p = rel[piece]
             low, high = p.min(axis=0), p.max(axis=0)
@@ -237,53 +376,92 @@ def find_eyes(rig, meshes):
             if (len(piece) >= FEWEST and middle[1] < deepest and abs(middle[0]) < SIDE[1] + OFF_MIDDLE
                     and HEIGHT[0] < middle[2] < HEIGHT[1] and np.ptp(p, axis=0).max() < WIDEST):
                 found.append((obj, piece, low, high))
+                if plane is not None:  # its twin: what the modifier makes, no vertices of the mesh
+                    at = (plane - centre[0]) / size
+                    other_low, other_high = low.copy(), high.copy()
+                    other_low[0], other_high[0] = 2.0 * at - high[0], 2.0 * at - low[0]
+                    found.append((obj, np.empty(0, dtype=np.int64), other_low, other_high))
+    bodies = set(_bodies(rig, meshes))
+    loose = {obj: np.zeros(len(rests[obj]), dtype=bool) for obj in bound}
+    for obj, piece, _low, _high in found:
+        loose[obj][piece] = True  # the rings of what may be part of an eye are no holes in the face
+    rings = {obj: [ring for ring in _rings(obj.data) if not loose[obj][ring].any()] for obj in bound if obj in bodies}
+    triangles = {obj: _triangles(obj.data) for obj in bound}
+    skins = [(rests[obj], triangles[obj][~loose[obj][triangles[obj]].any(axis=1)]) for obj in bound if obj in bodies]
     middle, left, right = _twins(found)
     if middle is None:
         return {}
-    eyes, taken = {}, {obj: np.zeros(len(rests[obj]), dtype=bool) for obj in bound}
+    eyes = {}
     for side, pieces in (("LEFT", left), ("RIGHT", right)):
-        kept, band = _eye_of(pieces, middle)
+        shown = [_shown(piece, rests, triangles, skins, centre, size) for piece in pieces]
+        kept, band, place = _eye_of([piece for piece in shown if piece is not None], middle)
         if not kept:
             return {}
-        points = np.concatenate([rests[obj][piece] for obj, piece, _low, _high in kept])
-        low, high = points.min(axis=0), points.max(axis=0)
-        low[0], high[0] = (np.array(band[0]) * size + centre[0])
-        low[2], high[2] = (np.array(band[1]) * size + centre[2])
-        eyes[side] = Eye(side, [(obj, piece) for obj, piece, _low, _high in kept], low, high)
-        for obj, piece, _low, _high in kept:
-            taken[obj][piece] = True
-    bodies = set(_bodies(rig, meshes))
-    for obj in bound:  # a socket: another piece's open edges around an eye
-        pairs = _boundary_points(obj.data)
-        pairs = pairs[~taken[obj][pairs[:, 0]] & ~taken[obj][pairs[:, 1]]]
-        if not len(pairs):
+        low = np.min([piece[2] for piece in kept], axis=0) * size + centre
+        high = np.max([piece[3] for piece in kept], axis=0) * size + centre
+        low[2], high[2] = (np.array(band) * size + centre[2])
+        hole = _hole_at(place, rests, rings, centre, size)
+        if hole is not None:  # with what lies on its rim: the lashes
+            rel_low, rel_high = (hole[0] - centre) / size, (hole[1] - centre) / size
+            pad = MARGIN * (rel_high - rel_low)
+            across, up = (rel_low[0] - pad[0], rel_high[0] + pad[0]), (rel_low[2] - pad[2], rel_high[2] + pad[2])
+            inside = [p for p in pieces if _inside(p[2][0], p[3][0], across) and _inside(p[2][2], p[3][2], up)]
+            kept = inside or kept
+            low[[0, 2]], high[[0, 2]] = hole[0][[0, 2]], hole[1][[0, 2]]
+        eyes[side] = Eye(side, [(obj, piece) for obj, piece, _low, _high in kept if len(piece)], low, high)
+    for obj in bound:  # a socket: open edges of something else around an eye (of a Body they are the hole above)
+        if obj in hair or obj in bodies:
             continue
-        rest = rests[obj]
-        middles = (rest[pairs[:, 0]] + rest[pairs[:, 1]]) / 2.0
-        for side, eye in eyes.items():
-            around = _round_the_eye(eye, middles, centre[1])
-            if around is None:
-                continue
-            if obj not in bodies:
+        pairs = _boundary_points(obj.data)
+        pairs = pairs[~loose[obj][pairs[:, 0]] & ~loose[obj][pairs[:, 1]]]
+        if len(pairs):
+            middles = (rests[obj][pairs[:, 0]] + rests[obj][pairs[:, 1]]) / 2.0
+            if any(_round_the_eye(eye, middles, centre[1]) is not None for eye in eyes.values()):
                 return {}
-            rim = rest[pairs[around].ravel()]
-            low, high = eye.low.copy(), eye.high.copy()
-            low[[0, 2]], high[[0, 2]] = rim[:, [0, 2]].min(axis=0), rim[:, [0, 2]].max(axis=0)
-            eyes[side] = eye._replace(low=low, high=high)
     return eyes
 
 
-def _moved(eye, points, how):
-    """`points` (armature space) of `eye` after `how`."""
+def _over_the_middle(rig, eye):
+    """For each piece of `eye`, True when it lies over the eye's middle, up, at its own middle across."""
+    middle = (eye.low[2] + eye.high[2]) / 2.0
+    held = {}
+    out = []
+    for obj, piece in eye.pieces:
+        if obj not in held:
+            held[obj] = _rest(rig, obj), _triangles(obj.data)
+        rest, triangles = held[obj]
+        x = (rest[piece, 0].min() + rest[piece, 0].max()) / 2.0
+        out.append(bool(len(_depths(rest, triangles[np.isin(triangles[:, 0], piece)], x, middle))))
+    return out
+
+
+def _hidden(rig, eye):
+    """Indices into the pieces of `eye` of those a closed eye does not show (module docstring)."""
+    over = _over_the_middle(rig, eye)
+    hidden = {i for i, on in enumerate(over) if on}
+    if hidden and len(hidden) == len(over):
+        hidden.remove(min(hidden, key=lambda i: _rest(rig, eye.pieces[i][0])[eye.pieces[i][1], 1].min()))
+    return hidden
+
+
+def _moved(eye, points, how, thick=None):
+    """`points` (armature space) of `eye` after `how`. With `thick` they are one piece of the eye: closing, it comes to
+    the line whole, no thicker than `thick` of the eye's height. Otherwise they are skin, whose every point goes to the
+    line."""
     out = points.copy()
     low, high = eye.low, eye.high
     line = low[2] + CLOSE_AT * (high[2] - low[2])
-    if how == 'CLOSE':
-        out[:, 2] = line + (points[:, 2] - line) * KEEP
-    elif how == 'ARC':
-        middle, half = (low[0] + high[0]) / 2.0, max((high[0] - low[0]) / 2.0, 1e-9)
-        lift = ARCH * (high[2] - low[2]) * np.clip(1.0 - ((points[:, 0] - middle) / half) ** 2, 0.0, 1.0)
-        out[:, 2] = line + lift + (points[:, 2] - line) * KEEP
+    if how in ('CLOSE', 'ARC'):
+        lift = 0.0
+        if how == 'ARC':
+            middle, half = (low[0] + high[0]) / 2.0, max((high[0] - low[0]) / 2.0, 1e-9)
+            lift = ARCH * (high[2] - low[2]) * np.clip(1.0 - ((points[:, 0] - middle) / half) ** 2, 0.0, 1.0)
+        if thick is not None:
+            bottom, top = float(points[:, 2].min()), float(points[:, 2].max())
+            height = max(top - bottom, 1e-9)
+            out[:, 2] = line + lift + (points[:, 2] - (bottom + top) / 2.0) * min(1.0, thick * (high[2] - low[2]) / height)
+        else:
+            out[:, 2] = line + lift + (points[:, 2] - line) * KEEP
     else:
         middle = (low + high) / 2.0
         for axis in (0, 2):
@@ -382,6 +560,13 @@ def _read(rig, obj, mesh, low, high, front, cache):
     return np.concatenate(points), np.concatenate(colours)
 
 
+def _mouth_band(eyes, size):
+    """(bottom, top) heights in armature space a mouth lies between, below `eyes`."""
+    apart = abs(eyes["LEFT"].low[0] + eyes["LEFT"].high[0] - eyes["RIGHT"].low[0] - eyes["RIGHT"].high[0]) / 2.0
+    lowest = min(eye.low[2] for eye in eyes.values())
+    return lowest - MOUTH * apart, lowest - 0.03 * size
+
+
 def drawn_mouth(rig, meshes, eyes):
     """(middle, half width) in armature space of a mouth drawn on the Body's face below the eyes, or None."""
     head = _head(rig)
@@ -389,8 +574,8 @@ def drawn_mouth(rig, meshes, eyes):
         return None
     centre, size = head
     middle_x = (eyes["LEFT"].low[0] + eyes["LEFT"].high[0] + eyes["RIGHT"].low[0] + eyes["RIGHT"].high[0]) / 4.0
-    top = min(eye.low[2] for eye in eyes.values()) - 0.03 * size
-    low = np.array((middle_x - 0.25 * size, 0.0, top - 0.6 * size))
+    bottom, top = _mouth_band(eyes, size)
+    low = np.array((middle_x - 0.25 * size, 0.0, bottom))
     high = np.array((middle_x + 0.25 * size, 0.0, top))
     cache = {}
     import bpy
@@ -452,7 +637,7 @@ def piece_mouth(rig, meshes, eyes):
         return None
     centre, size = head
     middle_x = (eyes["LEFT"].low[0] + eyes["LEFT"].high[0] + eyes["RIGHT"].low[0] + eyes["RIGHT"].high[0]) / 4.0
-    top = min(eye.low[2] for eye in eyes.values()) - 0.03 * size
+    bottom, top = _mouth_band(eyes, size)
     found = []
     for obj in meshes:
         if not _is_mesh_of(rig, obj) or not len(obj.data.vertices):
@@ -463,7 +648,7 @@ def piece_mouth(rig, meshes, eyes):
                 continue
             p = rest[piece]
             middle = (p.min(axis=0) + p.max(axis=0)) / 2.0
-            if (abs(middle[0] - middle_x) < 0.06 * size and middle[1] < centre[1] and top - 0.6 * size < middle[2] < top
+            if (abs(middle[0] - middle_x) < 0.06 * size and middle[1] < centre[1] and bottom < middle[2] < top
                     and np.ptp(p, axis=0).max() < WIDEST * size and np.ptp(p[:, 0]) >= 0.05 * size):  # a nose is none
                 found.append(p)
     if not found:
@@ -542,6 +727,7 @@ def sculpt(rig, meshes, replace=False):
     if not eyes:
         return []
     skin = _skin(rig, eyes, meshes)
+    hidden = {side: _hidden(rig, eye) for side, eye in eyes.items()}
     mouth = drawn_mouth(rig, meshes, eyes) or piece_mouth(rig, meshes, eyes)
     smiling = _bodies(rig, meshes) if mouth is not None else []
     holders = []
@@ -560,12 +746,15 @@ def sculpt(rig, meshes, replace=False):
         if slot in done:
             continue
         for obj in holders:
+            if len(sides) == 1 and has_mirror(obj):
+                continue
             rest = _rest(rig, obj)
             moved = np.zeros_like(rest)
             for side in sides:
-                for owner, piece in eyes[side].pieces:
+                for i, (owner, piece) in enumerate(eyes[side].pieces):
                     if owner == obj:
-                        moved[piece] = _moved(eyes[side], rest[piece], how) - rest[piece]
+                        thick = KEEP if i in hidden[side] else LINE
+                        moved[piece] = _moved(eyes[side], rest[piece], how, thick) - rest[piece]
                 near, fade = skin.get(obj, {}).get(side, ((), None))
                 if len(near):
                     moved[near] = (_moved(eyes[side], rest[near], how) - rest[near]) * fade[:, None]
