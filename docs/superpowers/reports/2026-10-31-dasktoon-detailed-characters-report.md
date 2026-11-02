@@ -41,6 +41,9 @@ had no part in finding them.
 | Painted whites open at both ends (close-up renders) | Lashes wider than the iris, the white painted past it | The eye was the band of most pieces, and the fixture's white was a piece | `test_the_eye_is_as_wide_as_its_lashes` |
 | The eye twice too tall, the close line below it | A ball in a dent, most of it under the skin | No fixture had skin in front of any piece | `BehindTheSkinTest` |
 | Joy lifted the chest round a brooch (a render) | A Head bone long against the face: how far below the eyes a mouth may be went by that bone | Fixture bones are all of a length with the face | `WhereAMouthLiesTest` |
+| Joy dented the jaw (a close-up of the mouth) | Every loose piece near the middle made one mouth, the collar with the teeth | No fixture had pieces in two rows, or lips at all | `test_joy_smiles_at_the_slit_whatever_lies_below`, `PiecesOfAMouthTest` |
+| No A I U E O on a mouth that opens | A slit in the skin with teeth, tongue and the inside of a mouth behind | The spec ruled no key can open a mouth, on the characters of that day | `dasktoon_expressions_mouth_test.py` |
+| Lip Sync moved the lips and not the teeth | Teeth a mesh of their own | The test character was one mesh | `test_every_mesh_of_the_character_talks` |
 | A crash on one character | Adding a part moves the list in memory; a part held from before it is gone | One part added at a time | `test_many_meshes_each_with_something_standing_off`. This test did not fail on the old code: where the list lands is luck. The proof is the crash gone |
 
 All of it together: `tests/python/dasktoon_detailed_character_test.py`, one character with everything above under names that
@@ -102,8 +105,18 @@ One rule was tried and dropped: an eye with a white of its own leaves the skin a
 left Evita's eye open and a grey patch on filie, whose eyes are drawn on the skin behind what looked like a white. Tapering
 the skin toward the corners of the eye was dropped too: the whites came back at both ends on pl1, RG2 and Luna.
 
+A I U E O (spec part D): Encore, Evita and Violet have a slit and get all five; looked at up close, each vowel. The other
+eight have none: pl1, RGforGame, RG2, filie and Luna have nothing to open, tdt, lr_shape and adl were not changed.
+Joy on Evita no longer touches the jaw; its smile is slight, its lips thick.
+
 ## What the checks do not settle
 
+- The vowels were seen only on the three characters that showed the need: no held-out character has a slit, so this rule has
+  not been shown on one that played no part in it. The numbers in spec part D were set by eye on those three, in a plain
+  render, not in motion or through Lip Sync on a real voice.
+- Pursed lips (U, O) leave a small lump at each end on Encore and a thin line past the lips on Violet.
+- Evita's open mouth shows pale teeth at each corner, what the model holds there (rays through the corners hit its own
+  pieces, not what lies behind the head).
 - Closing an eye drawn on the skin stretches what is drawn round it. On Evita the shadow painted round the eyes spreads to a
   darker band from the brows to the lashes, cut off by the hair at the sides. The lash line and the place of the close are
   right; a clean lid would take a painted one. RGforGame and RG2 smear their brows the same way on a coarse mesh.
@@ -127,7 +140,7 @@ the skin toward the corners of the eye was dropped too: the whites came back at 
 - `_run_half` reads one row: on very coarse meshes the silhouette has holes and a trunk can read too thin (seen on a test bust,
   not on a real character).
 - Encore's Head bone is 1.2 cm off the middle of her face: the eyes are found across it, the bone itself is not moved.
-- A I U E O are not made: the list says so and points to the 2D Mouth.
+- A I U E O are not made on a mouth without a slit: the list says so and points to the 2D Mouth.
 - Clothing across two objects (a sleeve mesh and a shirt mesh) has no shoulder carry between the objects; whether it matters
   was not measured.
 - `test_many_meshes_each_with_something_standing_off` did not fail on the old code (see the table).

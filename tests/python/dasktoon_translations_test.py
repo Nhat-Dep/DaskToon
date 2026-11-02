@@ -74,6 +74,7 @@ TRANSLATED = [
     "scripts/modules/dasktoon_rig/correctives.py",
     "scripts/modules/dasktoon_rig/expressions.py",
     "scripts/modules/dasktoon_rig/eye_shapes.py",
+    "scripts/modules/dasktoon_rig/mouth_shapes.py",
     "scripts/modules/dasktoon_guide/__init__.py",
     "scripts/modules/dasktoon_guide/checks.py",
     "scripts/modules/dasktoon_guide/fixes.py",

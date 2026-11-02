@@ -112,6 +112,38 @@ A mouth, drawn or of pieces, lies at most `MOUTH` (one distance between the eyes
 0.86 of that below; a brooch and necklaces 1.01 and more. The limit went by the Head bone's length before, and that bone
 may be anything against the face.
 
+## Part D: A I U E O for a mouth that opens (2026-11-02)
+
+Part B said no key can open a mouth: true of a drawn line and a closed face. Three of the user's characters from games have
+a mouth that opens all the same: a thin ring of open edges in the skin, teeth, tongue and the inside of the mouth behind it.
+
+- **The slit** (`eye_shapes.lips`): a ring of open edges on the main piece of a Body, where a mouth lies, at least 0.05 head
+  wide and no taller than `THIN` (a quarter) of its width. A ring round a loose piece is not it: teeth have rings too. It is
+  the surest mouth there is, so joy reads it first, before a drawing or pieces.
+- **The vowels** (`mouth_shapes.sculpt`, from Auto Expressions): keys a, i, u, e, o on the skin and on what moves behind it.
+
+| | Upper lip rises | Lower lip falls | Width |
+|---|---|---|---|
+| a | 0.2 | 1.1 | 1 |
+| i | 0.06 | 0.18 | 1.12 |
+| u | 0.15 | 0.26 | 0.72 |
+| e | 0.12 | 0.45 | 1.06 |
+| o | 0.3 | 0.7 | 0.78 |
+
+in half widths of the mouth. The lips part as an ellipse, not at all at the corners. The skin goes with them, fading out
+0.7 half widths above and 1.4 below; narrowing or widening fades the same way, and out to 1.6 half widths to the side.
+
+- **What lies behind**: pieces within `NEAR` (six half widths) behind the lips, and no bigger. The tallest (half as tall as
+  the tallest or more) are the inside of the mouth and stay. The lips part no further than 90% of the way to its edge, up and
+  down, and no wider than it reaches across: past that an open mouth looks through the head. Nothing behind the slit, no
+  vowels. Other pieces narrow with the lips (never widen): a line of the mouth may be a piece of its own. Those below the slit
+  go down 70% as far as the lower lip and never past it.
+- A vowel that moves is kept, an empty one filled, a missing one added under its VRM 0.x name. Redo Eye Expressions leaves
+  them: its name says eyes.
+- Lip Sync keys the vowels on every mesh of the character: teeth may be a mesh of their own.
+
+A mouth without a slit gets none: a 2D Mouth, or keys by hand.
+
 ## On the user's characters (copies, 2026-10-20)
 
 - filie: both eyes found (eye "mat" and lashes "mi"); closed, the eyes leave the lash line on her skin; joy arcs;

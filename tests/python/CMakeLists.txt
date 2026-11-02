@@ -282,6 +282,7 @@ foreach(dasktoon_test
     dasktoon_rig_correctives_test
     dasktoon_expressions_fill_test
     dasktoon_expressions_eyes_test
+    dasktoon_expressions_mouth_test
     dasktoon_guide_checks_test
     dasktoon_guide_ui_test
     dasktoon_paint_layers_test

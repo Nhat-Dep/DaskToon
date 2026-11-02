@@ -6,16 +6,16 @@
 whole character. The eyes, the skin round them and the mouth are often meshes of their own, so everything here works on
 all the meshes of the character's rig; a mesh without a rig is on its own.
 
-run fills the empty keys from those that move, sculpts what is still missing of the eye keys, and fills again: a blink
-made by hand stays and gets its two sides from it, and a key under another name (happy) comes from what was sculpted
-(joy). states tells, for each expression of LISTED, what the character has."""
+run fills the empty keys from those that move, sculpts what is still missing of the eye keys and of the vowels of a mouth
+that opens, and fills again: a blink made by hand stays and gets its two sides from it, and a key under another name
+(happy) comes from what was sculpted (joy). states tells, for each expression of LISTED, what the character has."""
 
 from typing import NamedTuple
 
 import bpy
 import numpy as np
 
-from . import expressions, eye_shapes
+from . import expressions, eye_shapes, mouth_shapes
 
 LISTED = ("BLINK", "BLINK_L", "BLINK_R", "JOY", "ANGRY", "SORROW", "FUN", "SURPRISED", "A", "I", "U", "E", "O")
 
@@ -97,6 +97,6 @@ def run(rig, meshes, replace=False):
         for obj in meshes:
             _add_sides(obj)
     filled = [] if replace else [pair for obj in meshes for pair in expressions.fill(obj)]
-    sculpted = eye_shapes.sculpt(rig, meshes, replace) if rig is not None else []
+    sculpted = eye_shapes.sculpt(rig, meshes, replace) + mouth_shapes.sculpt(rig, meshes) if rig is not None else []
     filled += [pair for obj in meshes for pair in expressions.fill(obj)]
     return Result(sculpted, filled, [slot for slot, state in states(meshes).items() if state != 'READY'])

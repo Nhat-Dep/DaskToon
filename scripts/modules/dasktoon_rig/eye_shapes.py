@@ -41,8 +41,11 @@ largest patch unlike the skin near the middle that is a wide line is the mouth (
 at rest: pl1's Subdivision moves the drawing away from where its cage puts it; only what shows from the front: pl1
 has a pink inside of the mouth behind its face), and the skin at its corners lifts
 (SMILE of its width at the corners, nothing in the middle). Stretching a drawn line cannot open it, so there is no "a".
+A mouth that opens, a thin ring of open edges on the skin, is the surest of all and is read first: mouth_shapes makes its
+vowels.
 A face without a drawing (filie) may hold the mouth as loose pieces in the middle below the eyes (plates inside the
-crease of a closed face): their outline gives the mouth instead.
+crease of a closed face): the outline of the group of them lying together, the biggest and of two the higher, gives the
+mouth instead. All of them together made a mouth halfway down the chin, with a piece of the collar among them.
 
 Keys, on each mesh holding eye pieces or skin under them: blink (both eyes onto the close line, a third of the way
 up), blink_L and blink_R, joy (closed as an arc, its middle raised by ARCH of the eye's
@@ -76,6 +79,8 @@ ARCH = 0.35
 WIDEN = 1.12
 MARGIN = 0.3  # of the eye's size: the skin under an eye fades back to rest this far out of it
 MOUTH = 1.0  # of the distance between the eyes: how far below them a mouth lies, whatever the Head bone's length
+THIN = 0.25  # of a slit's width: how tall the lips of a mouth that opens are, shut
+TOGETHER = 0.01  # of the head: pieces this far apart in height are of one mouth
 UNLIKE = 0.12  # how far from the skin's colour (RGB) the drawing of a mouth is
 SMILE = 0.18  # of the mouth's width: how far its corners lift for joy
 BIN = 0.02  # of the head: the cells grouping the drawn points into patches
@@ -567,6 +572,39 @@ def _mouth_band(eyes, size):
     return lowest - MOUTH * apart, lowest - 0.03 * size
 
 
+def lips(rig, meshes, eyes):
+    """(object, vertices) of the ring of open edges a mouth that opens leaves: thin and wide, on the skin of a Body and not
+    round a loose piece of it (teeth behind the lips), where a mouth lies; the widest, or None."""
+    head = _head(rig)
+    if head is None or not eyes:
+        return None
+    centre, size = head
+    middle_x = (eyes["LEFT"].low[0] + eyes["LEFT"].high[0] + eyes["RIGHT"].low[0] + eyes["RIGHT"].high[0]) / 4.0
+    bottom, top = _mouth_band(eyes, size)
+    best, widest = None, 0.0
+    for obj in _bodies(rig, meshes):
+        rest = _rest(rig, obj)
+        skin = np.zeros(len(rest), dtype=bool)
+        skin[max(_pieces(obj.data), key=len)] = True
+        for ring in _rings(obj.data):
+            low, high = rest[ring].min(axis=0), rest[ring].max(axis=0)
+            middle, wide = (low + high) / 2.0, high[0] - low[0]
+            if (skin[ring].all() and abs(middle[0] - middle_x) < 0.06 * size and bottom < middle[2] < top
+                    and middle[1] < centre[1] and wide >= 0.05 * size and high[2] - low[2] <= THIN * wide
+                    and wide > widest):
+                best, widest = (obj, ring), wide
+    return best
+
+
+def slit_mouth(rig, meshes, eyes):
+    """(middle, half width) in armature space of the lips of a mouth that opens, or None."""
+    found = lips(rig, meshes, eyes)
+    if found is None:
+        return None
+    points = _rest(rig, found[0])[found[1]]
+    return (points.min(axis=0) + points.max(axis=0)) / 2.0, np.ptp(points[:, 0]) / 2.0
+
+
 def drawn_mouth(rig, meshes, eyes):
     """(middle, half width) in armature space of a mouth drawn on the Body's face below the eyes, or None."""
     head = _head(rig)
@@ -653,7 +691,14 @@ def piece_mouth(rig, meshes, eyes):
                 found.append(p)
     if not found:
         return None
-    points = np.concatenate(found)
+    groups = []
+    for p in sorted(found, key=lambda p: -p[:, 2].max()):
+        if groups and p[:, 2].max() >= groups[-1][1] - TOGETHER * size:
+            groups[-1][1] = min(groups[-1][1], p[:, 2].min())
+            groups[-1][0].append(p)
+        else:
+            groups.append([[p], p[:, 2].min()])
+    points = np.concatenate(max(groups, key=lambda group: len(group[0]))[0])
     width = np.ptp(points[:, 0])
     if width < 0.05 * size:
         return None
@@ -718,6 +763,22 @@ def _clear(obj, slots):
             block.value = 0.0
 
 
+def write_key(rig, obj, moved, slot, name, replace):
+    """`moved` (offsets of `obj` in armature space) into the keys of `slot` of `obj` (_targets); returns their names."""
+    blocks = _targets(obj, slot, name, replace)
+    if not blocks:
+        return []
+    key = obj.data.shape_keys
+    base = np.empty(len(key.reference_key.data) * 3)
+    key.reference_key.data.foreach_get("co", base)
+    base = base.reshape(-1, 3)
+    to_arm = np.array((rig.matrix_world.inverted() @ obj.matrix_world).to_3x3())
+    for block in blocks:
+        block.data.foreach_set("co", (base + moved @ np.linalg.inv(to_arm).T).ravel())
+        block.value = 0.0  # off until used: a new shape key starts at 1
+    return [block.name for block in blocks]
+
+
 def sculpt(rig, meshes, replace=False):
     """Make the eye keys on the meshes holding eye pieces; returns [(key name, [mesh names])], nothing without eyes. An
     expression moving on any mesh of the character is left to that key: the skin closing over the eyes by a key of its
@@ -728,7 +789,7 @@ def sculpt(rig, meshes, replace=False):
         return []
     skin = _skin(rig, eyes, meshes)
     hidden = {side: _hidden(rig, eye) for side, eye in eyes.items()}
-    mouth = drawn_mouth(rig, meshes, eyes) or piece_mouth(rig, meshes, eyes)
+    mouth = slit_mouth(rig, meshes, eyes) or drawn_mouth(rig, meshes, eyes) or piece_mouth(rig, meshes, eyes)
     smiling = _bodies(rig, meshes) if mouth is not None else []
     holders = []
     for eye in eyes.values():
@@ -764,16 +825,6 @@ def sculpt(rig, meshes, replace=False):
                 if replace:
                     _clear(obj, {slot})
                 continue
-            blocks = _targets(obj, slot, name, replace)
-            if not blocks:
-                continue
-            key = obj.data.shape_keys
-            base = np.empty(len(key.reference_key.data) * 3)
-            key.reference_key.data.foreach_get("co", base)
-            base = base.reshape(-1, 3)
-            to_arm = np.array((rig.matrix_world.inverted() @ obj.matrix_world).to_3x3())
-            for block in blocks:
-                block.data.foreach_set("co", (base + moved @ np.linalg.inv(to_arm).T).ravel())
-                block.value = 0.0  # off until used: a new shape key starts at 1
-                made.setdefault(block.name, []).append(obj.name)
+            for block in write_key(rig, obj, moved, slot, name, replace):
+                made.setdefault(block, []).append(obj.name)
     return list(made.items())

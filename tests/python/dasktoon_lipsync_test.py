@@ -169,6 +169,19 @@ class ApplyTest(unittest.TestCase):
         bpy.context.scene.frame_set(1 + frames_inside(self.plan, None)[1])
         self.assertEqual(card[mouth.PROP], mouth.CELLS["CLOSED"])
 
+    def test_every_mesh_of_the_character_talks(self):
+        """Teeth may be a mesh of their own: keyed on the face alone they stood still in an open mouth."""
+        rig, body, _card = talking_character()
+        teeth = bpy.data.objects.new("Teeth", body.data.copy())
+        bpy.context.scene.collection.objects.link(teeth)
+        teeth.modifiers.new("Armature", 'ARMATURE').object = rig
+        frames = [dict.fromkeys(lipsync.VOWELS, 0.0) | {"A": 1.0, "open": 1.0} for _i in range(4)]
+        done = lipsync.apply(body, rig, frames, start_frame=1)
+        self.assertEqual(done["shape_keys"], 10)
+        animation = teeth.data.shape_keys.animation_data
+        self.assertIsNotNone(animation)
+        self.assertIsNotNone(animation.action)
+
     def test_vowel_names(self):
         for names in (("A", "I", "U", "E", "O"), ("Fcl_MTH_A", "Fcl_MTH_I", "Fcl_MTH_U", "Fcl_MTH_E", "Fcl_MTH_O")):
             _rig, body, _card = talking_character(vowel_keys=names)

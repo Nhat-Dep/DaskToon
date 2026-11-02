@@ -172,10 +172,14 @@ def _write(id_block, data_path, index, frames, values, interpolation='LINEAR'):
 
 
 def apply(obj, rig, frames, start_frame, strength=1.0):
-    """Key `frames` (analyse) from `start_frame`: the vowel shape keys of `obj`, the Jaw bone of `rig` when it has a
-    Jaw part, dt_mouth of its 2D mouths. Returns what was keyed; LipSyncError when there is nothing to key."""
-    from . import mouth
-    keys = vowel_keys(obj.data.shape_keys if obj.type == 'MESH' else None)
+    """Key `frames` (analyse) from `start_frame`: the vowel shape keys of `obj` and of the other meshes of `rig` (teeth may
+    be a mesh of their own), the Jaw bone of `rig` when it has a Jaw part, dt_mouth of its 2D mouths. Returns what was keyed;
+    LipSyncError when there is nothing to key."""
+    from . import auto_expressions, mouth
+    meshes = [obj] if obj.type == 'MESH' else []
+    meshes += [other for other in (auto_expressions.meshes_of(rig) if rig is not None else ()) if other not in meshes]
+    keys = [(mesh, vowel_keys(mesh.data.shape_keys)) for mesh in meshes]
+    keys = [(mesh, found) for mesh, found in keys if found]
     parts = list(rig.data.dasktoon_rig.parts) if rig is not None and hasattr(rig.data, "dasktoon_rig") else []
     jaw = rig is not None and rig.pose.bones.get("Jaw") is not None and any(p.role == 'JAW' for p in parts)
     mouths = [p.object for p in parts if p.role == 'MOUTH_2D' and p.object is not None]
@@ -183,9 +187,10 @@ def apply(obj, rig, frames, start_frame, strength=1.0):
         raise LipSyncError(rpt_("%s has no vowel shape keys (A I U E O, aa ih ou ee oh…), Jaw part or 2D mouth to "
                                 "key") % obj.name)
     times = np.arange(len(frames), dtype=np.float32) + start_frame
-    for vowel, block in keys.items():
-        _write(obj.data.shape_keys, 'key_blocks["%s"].value' % block.name, -1, times,
-               np.array([f[vowel] * strength for f in frames], np.float32))
+    for mesh, found in keys:
+        for vowel, block in found.items():
+            _write(mesh.data.shape_keys, 'key_blocks["%s"].value' % block.name, -1, times,
+                   np.array([f[vowel] * strength for f in frames], np.float32))
     if jaw:
         pose = rig.pose.bones["Jaw"]
         # The jaw opens turning down about its X axis: its tip goes down.
@@ -203,4 +208,4 @@ def apply(obj, rig, frames, start_frame, strength=1.0):
                  for f in frames]
         for card in mouths:
             _write(card, '["%s"]' % mouth.PROP, -1, times, np.array(cells, np.float32), 'CONSTANT')
-    return {"shape_keys": len(keys), "jaw": jaw, "mouth": bool(mouths)}
+    return {"shape_keys": sum(len(found) for _mesh, found in keys), "jaw": jaw, "mouth": bool(mouths)}
