@@ -14,8 +14,14 @@ Nothing behind the slit, no vowels. What else lies behind narrows with the lips:
 own, and it stood out beside pursed lips. Of that, what lies below the slit, lower teeth and tongue, goes down JAW as far
 as the lower lip and never past it, or it comes through the skin under the lip.
 
+The anime shader darkens what is closed in (AO), and nothing is more closed in than the inside of a mouth: Encore's, painted
+red, opened black. What lies behind the lips gets a copy of its material without that (INSIDE on its name), in a slot of its
+own where it shares a mesh with the skin; the skin keeps its own. This comes with the slit, whether the vowels are made here
+or not.
+
 A key of the same vowel that moves is kept, an empty one filled, a missing one added under its VRM 0.x name."""
 
+import bpy
 import numpy as np
 
 from . import eye_shapes
@@ -30,6 +36,7 @@ ROOM = 0.9
 JAW = 0.7
 TALL = 0.5  # of the tallest piece behind the slit: a piece this tall is the inside of the mouth
 NEAR = 6.0  # of half the mouth's width: how far behind the lips, and how big, what belongs to the mouth is
+INSIDE = ".Mouth"  # on the name of a material without the darkening of closed-in places
 
 
 def _smooth(share):
@@ -64,7 +71,7 @@ def _paths(mesh, ring, rest):
 class _Mouth:
     """A mouth that opens: where its lips are, and what lies behind them."""
 
-    def __init__(self, obj, rest, upper, lower, inside, others):
+    def __init__(self, obj, rest, upper, lower, inside, others, behind):
         self.obj, self.rest = obj, rest
         self.middle = (rest[upper, 0].min() + rest[upper, 0].max()) / 2.0
         self.half = (rest[upper, 0].max() - rest[upper, 0].min()) / 2.0
@@ -75,6 +82,7 @@ class _Mouth:
         self.up = inside[1] - self.line
         self.across = min(self.middle - inside[2], inside[3] - self.middle, self.half)
         self.others = others  # [(object, piece, how far below the slit it reaches, None for what lies above it)]
+        self.behind = behind  # [(object, piece)]: all that lies behind the lips
 
     @staticmethod
     def _along(points):
@@ -151,7 +159,57 @@ def _found(rig, meshes, eyes):
         return None
     others = [(other, piece, line - low[2] if (low[2] + high[2]) / 2.0 < line else None)
               for other, piece, low, high in behind if high[2] - low[2] < TALL * tallest]
-    return _Mouth(obj, rest, upper, lower, (bottom, top, left, right), others)
+    return _Mouth(obj, rest, upper, lower, (bottom, top, left, right), others, [entry[:2] for entry in behind])
+
+
+def _darkens(material):
+    """The nodes of `material` that darken what is closed in."""
+    tree = material.node_tree if material is not None else None
+    found = []
+    for node in tree.nodes if tree is not None else ():
+        if getattr(node, "use_ao", False):
+            factor = next(socket for socket in node.inputs if socket.name == "AO Factor")
+            if factor.is_linked or factor.default_value > 0.0:
+                found.append(node)
+    return found
+
+
+def _without_darkening(material):
+    """The copy of `material` for what lies behind the lips."""
+    name = material.name + INSIDE
+    copy = bpy.data.materials.get(name)
+    if copy is None:
+        copy = material.copy()
+        copy.name = name
+        for node in _darkens(copy):
+            node.use_ao = False
+    return copy
+
+
+def _light_the_inside(behind):
+    """What lies behind the lips, `behind` [(object, piece)], without the darkening of closed-in places (module docstring)."""
+    held = {}
+    for obj, piece in behind:
+        held.setdefault(obj, set()).update(piece.tolist())
+    for obj, vertices in held.items():
+        faces = {}
+        for polygon in obj.data.polygons:
+            if polygon.vertices[0] in vertices:
+                faces.setdefault(polygon.material_index, []).append(polygon)
+        for index, polygons in faces.items():
+            material = obj.material_slots[index].material if index < len(obj.material_slots) else None
+            if not _darkens(material):
+                continue
+            copy = _without_darkening(material)
+            if all(p.index in {q.index for q in polygons} for p in obj.data.polygons if p.material_index == index):
+                obj.material_slots[index].material = copy  # nothing else uses this slot
+                continue
+            slot = next((i for i, s in enumerate(obj.material_slots) if s.material == copy), None)
+            if slot is None:
+                obj.data.materials.append(copy)
+                slot = len(obj.material_slots) - 1
+            for polygon in polygons:
+                polygon.material_index = slot
 
 
 def sculpt(rig, meshes, replace=False):
@@ -161,6 +219,7 @@ def sculpt(rig, meshes, replace=False):
     mouth = _found(rig, meshes, eyes) if eyes else None
     if mouth is None:
         return []
+    _light_the_inside(mouth.behind)
     done = set() if replace else eye_shapes._done([obj for obj in meshes if eye_shapes._is_mesh_of(rig, obj)])
     made = {}
     for name, slot, rise, fall, wide in VOWELS:

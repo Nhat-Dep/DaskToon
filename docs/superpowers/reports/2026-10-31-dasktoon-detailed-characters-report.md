@@ -43,6 +43,7 @@ had no part in finding them.
 | Joy lifted the chest round a brooch (a render) | A Head bone long against the face: how far below the eyes a mouth may be went by that bone | Fixture bones are all of a length with the face | `WhereAMouthLiesTest` |
 | Joy dented the jaw (a close-up of the mouth) | Every loose piece near the middle made one mouth, the collar with the teeth | No fixture had pieces in two rows, or lips at all | `test_joy_smiles_at_the_slit_whatever_lies_below`, `PiecesOfAMouthTest` |
 | No A I U E O on a mouth that opens | A slit in the skin with teeth, tongue and the inside of a mouth behind | The spec ruled no key can open a mouth, on the characters of that day | `dasktoon_expressions_mouth_test.py` |
+| The open mouth was black (the user asked; it was in my renders and I took it for the model's colour) | AO on: the inside of a mouth, red in its picture, is the most closed-in place of a character | No test had a material, and on the two other characters with a slit the mouth stayed in colour (Evita has AO off; Violet has it on, and it did not go black) | `TheInsideIsNotDarkTest` |
 | Lip Sync moved the lips and not the teeth | Teeth a mesh of their own | The test character was one mesh | `test_every_mesh_of_the_character_talks` |
 | A crash on one character | Adding a part moves the list in memory; a part held from before it is gone | One part added at a time | `test_many_meshes_each_with_something_standing_off`. This test did not fail on the old code: where the list lands is luck. The proof is the crash gone |
 
@@ -115,6 +116,7 @@ Joy on Evita no longer touches the jaw; its smile is slight, its lips thick.
   not been shown on one that played no part in it. The numbers in spec part D were set by eye on those three, in a plain
   render, not in motion or through Lip Sync on a real voice.
 - Pursed lips (U, O) leave a small lump at each end on Encore and a thin line past the lips on Violet.
+- With AO on, a character other than Encore whose inside of the mouth is painted dark stays dark: that is the model's colour.
 - Evita's open mouth shows pale teeth at each corner, what the model holds there (rays through the corners hit its own
   pieces, not what lies behind the head).
 - Closing an eye drawn on the skin stretches what is drawn round it. On Evita the shadow painted round the eyes spreads to a

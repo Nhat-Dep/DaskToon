@@ -27,9 +27,30 @@ INSIDE = (("cavity", 0.0, MOUTH_Z, 0.08, 0.06),)
 TEETH = (("upper teeth", 0.0, MOUTH_Z + 0.015, 0.05, 0.008), ("lower teeth", 0.0, MOUTH_Z - 0.015, 0.05, 0.008))
 
 
-def face_with_slit(rig, half=HALF, gap=0.001, tall=False):
+def shaded(name, darkening=1.0, anime=True):
+    """A material of the anime shader with `darkening` of closed-in places (AO Factor); or of another shader."""
+    material = bpy.data.materials.new(name)
+    material.use_nodes = True
+    tree = material.node_tree
+    tree.nodes.clear()
+    node = tree.nodes.new("ShaderNodeAnimeCharacter" if anime else "ShaderNodeBsdfPrincipled")
+    if anime:
+        node.use_ao = True
+        next(i for i in node.inputs if i.name == "AO Factor").default_value = darkening
+    tree.links.new(node.outputs[0], tree.nodes.new("ShaderNodeOutputMaterial").inputs["Surface"])
+    return material
+
+
+def darkening(material):
+    """How much `material` darkens what is closed in."""
+    node = next(n for n in material.node_tree.nodes if n.bl_idname == "ShaderNodeAnimeCharacter")
+    return next(i for i in node.inputs if i.name == "AO Factor").default_value if node.use_ao else 0.0
+
+
+def face_with_slit(rig, half=HALF, gap=0.001, tall=False, behind=None):
     """A Body part: a face sheet with a slit `half` wide each way at the mouth's place, its lips a little apart. `tall`
-    turns the slit on end: a seam, no mouth."""
+    turns the slit on end: a seam, no mouth. `behind`: a piece (name, x, z, half width, half height) of the same mesh, behind
+    the lips."""
     centre, size = et.head_frame(rig)
     us = np.linspace(-0.6, 0.6, 49)
     vs = np.linspace(-0.6, 0.25, 35)
@@ -52,6 +73,11 @@ def face_with_slit(rig, half=HALF, gap=0.001, tall=False):
             else:
                 top = [(r + 1) * n + c + 1, (r + 1) * n + c]
             faces.append(tuple(below + top))
+    if behind is not None:
+        _name, x, z, hw, hh = behind
+        more, more_faces = et.grid(centre.x + x * size, centre.z + z * size, hw * size, hh * size, centre.y - 0.5 * size)
+        faces += [tuple(i + len(verts) for i in face) for face in more_faces]
+        verts += more
     mesh = bpy.data.meshes.new("Face")
     mesh.from_pydata(verts, [], faces)
     obj = bpy.data.objects.new("Face", mesh)
@@ -251,6 +277,94 @@ class RoomTest(unittest.TestCase):
         eyes = et.eyes_object(rig)
         face = face_with_slit(rig)
         self.assertEqual(mouth_shapes.sculpt(rig, [eyes, face]), [])
+
+
+class TheInsideIsNotDarkTest(unittest.TestCase):
+    """The anime shader darkens what is closed in (AO), and nothing is more closed in than the inside of a mouth: a mouth
+    painted red opened black on a real character. No test had a material, and on the two other characters with a slit the
+    mouth stayed in colour, so the black was taken for the model's own. What lies behind the lips goes without it, the
+    skin keeps it."""
+
+    def character(self, ao=1.0, anime=True):
+        rig, _objs = rt.rigged()
+        skin = shaded("Skin", ao, anime)
+        eyes = et.eyes_object(rig)
+        face = face_with_slit(rig)
+        cavity = et.eyes_object(rig, name="Cavity", sides=(1.0,), pieces=INSIDE, depth=-0.5)
+        teeth = et.eyes_object(rig, name="Teeth", sides=(1.0,), pieces=TEETH, depth=-0.55)
+        for obj in (face, cavity, teeth):
+            obj.data.materials.append(skin)
+        return rig, skin, face, cavity, teeth, [eyes, face, cavity, teeth]
+
+    def test_what_lies_behind_the_lips_goes_without_it(self):
+        rig, skin, _face, cavity, teeth, meshes = self.character()
+        mouth_shapes.sculpt(rig, meshes)
+        for obj in (cavity, teeth):
+            self.assertNotEqual(obj.material_slots[0].material, skin)
+            self.assertEqual(darkening(obj.material_slots[0].material), 0.0)
+
+    def test_the_skin_keeps_it(self):
+        rig, skin, face, _cavity, _teeth, meshes = self.character()
+        mouth_shapes.sculpt(rig, meshes)
+        self.assertEqual(face.material_slots[0].material, skin)
+        self.assertEqual(darkening(skin), 1.0)
+
+    def test_inside_the_mesh_of_the_skin_too(self):
+        rig, _objs = rt.rigged()
+        eyes = et.eyes_object(rig)
+        face = face_with_slit(rig, behind=INSIDE[0])
+        skin = shaded("Skin")
+        face.data.materials.append(skin)
+        mouth_shapes.sculpt(rig, [eyes, face])
+        self.assertEqual(len(face.data.materials), 2)
+        last = len(face.data.vertices) - 16
+        inside = [p.material_index for p in face.data.polygons if p.vertices[0] >= last]
+        outside = [p.material_index for p in face.data.polygons if p.vertices[0] < last]
+        self.assertEqual(set(inside), {1})
+        self.assertEqual(set(outside), {0})
+        self.assertEqual(darkening(face.data.materials[1]), 0.0)
+
+    def test_once_is_enough(self):
+        rig, _skin, face, cavity, _teeth, meshes = self.character()
+        mouth_shapes.sculpt(rig, meshes)
+        count = len(bpy.data.materials)
+        kept = cavity.material_slots[0].material
+        face.shape_key_clear()
+        mouth_shapes.sculpt(rig, meshes)
+        self.assertEqual(len(bpy.data.materials), count)
+        self.assertEqual(cavity.material_slots[0].material, kept)
+        self.assertEqual(len(cavity.material_slots), 1)
+
+    def test_it_comes_even_with_vowels_of_its_own(self):
+        """Pressing the button again on a character made before this, or with vowels by hand."""
+        rig, skin, face, cavity, _teeth, meshes = self.character()
+        face.shape_key_add(name="Basis", from_mix=False)
+        for name in ("a", "i", "u", "e", "o"):
+            key = face.shape_key_add(name=name, from_mix=False)
+            key.data[0].co.z += 0.01
+        self.assertEqual(mouth_shapes.sculpt(rig, meshes), [])
+        self.assertNotEqual(cavity.material_slots[0].material, skin)
+
+    def test_with_the_darkening_off_nothing_changes(self):
+        rig, skin, _face, cavity, _teeth, meshes = self.character(ao=0.0)
+        count = len(bpy.data.materials)
+        mouth_shapes.sculpt(rig, meshes)
+        self.assertEqual(cavity.material_slots[0].material, skin)
+        self.assertEqual(len(bpy.data.materials), count)
+
+    def test_another_shader_is_left_alone(self):
+        rig, skin, _face, cavity, _teeth, meshes = self.character(anime=False)
+        mouth_shapes.sculpt(rig, meshes)
+        self.assertEqual(cavity.material_slots[0].material, skin)
+
+    def test_a_mouth_without_a_slit_is_left_alone(self):
+        rig, _objs = rt.rigged()
+        eyes = et.eyes_object(rig)
+        loose = et.eyes_object(rig, name="Loose", sides=(1.0,), pieces=(("lips", 0.0, MOUTH_Z, 0.05, 0.01),))
+        skin = shaded("Skin")
+        loose.data.materials.append(skin)
+        mouth_shapes.sculpt(rig, [eyes, loose])
+        self.assertEqual(loose.material_slots[0].material, skin)
 
 
 class WithAutoExpressionsTest(unittest.TestCase):

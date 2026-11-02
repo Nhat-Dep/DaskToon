@@ -141,6 +141,11 @@ in half widths of the mouth. The lips part as an ellipse, not at all at the corn
 - A vowel that moves is kept, an empty one filled, a missing one added under its VRM 0.x name. Redo Eye Expressions leaves
   them: its name says eyes.
 - Lip Sync keys the vowels on every mesh of the character: teeth may be a mesh of their own.
+- **No darkening inside** (2026-11-03): the anime shader darkens what is closed in (AO), and the inside of a mouth is the most
+  closed-in place of a character. Encore's, red in its picture, opened black. What lies behind the lips gets a copy of its
+  material named `<material>.Mouth` with AO off, in a slot of its own where it shares a mesh with the skin; the skin keeps
+  its material. Only where AO is on, and only on the anime shader; a second press changes nothing. It comes with a slit,
+  whoever made the vowels. Shortening AO Distance does not do: at 0.03 on a character 1.5 tall the mouth is still black.
 
 A mouth without a slit gets none: a 2D Mouth, or keys by hand.
 
