@@ -110,3 +110,63 @@ Ba việc đảo ngược quyết định đã duyệt:
    giản", mặc định bật.
 
 Việc đổi tên thẻ trên cùng là việc lớn nhất: tên thẻ là dữ liệu trong file, và phần Animation đang tìm thẻ theo tên.
+
+## Bỏ bớt nếu chỉ làm nhân vật anime
+
+Câu hỏi của người dùng cùng ngày. Đã dò mã DaskToon dùng phần nào của Blender, phần nào được bản build bật, và mỗi phần nặng bao
+nhiêu. Bản cài hiện nặng 829 MB: chương trình 93 MB, Python 152 MB, thư viện đi kèm 322 MB.
+
+### Phải giữ, dù trông không liên quan
+
+| Phần | DaskToon dùng nó để |
+|---|---|
+| Cycles | Nướng màu khi xuất sang Unity và Godot (`dasktoon_export/bake.py`), có phép thử riêng |
+| Geometry Nodes | Viền, bóng mặt, hiệu ứng hành động nhanh (có cả vùng mô phỏng) |
+| Compositor | Hoàn thiện tranh: 13 loại node, gồm Kuwahara, Glare, Lens Distortion |
+| Hạt (particles) | Hiệu ứng anime dạng không khí: bong bóng, cánh hoa, tia lửa |
+| Sequencer | Nói khớp âm lấy giọng từ dải âm thanh |
+| FFmpeg | Xuất video |
+| OpenSubdiv | Lưới chia mịn (pl1 dùng) |
+| EEVEE | Chính là engine DaskToon Anime |
+| Python, numpy | Phần lớn DaskToon viết bằng Python |
+
+### Gỡ khỏi bản build: không mã DaskToon và không phép thử nào dùng
+
+| Phần | Làm gì | Tiết kiệm |
+|---|---|---|
+| USD, Hydra, MaterialX | Định dạng trao đổi của xưởng phim | 48 MB |
+| OSL | Viết shader bằng mã cho Cycles; nướng màu không cần | 72 MB |
+| OpenImageDenoise | Khử nhiễu ảnh Cycles và node Denoise; Hoàn thiện tranh không dùng | 63 MB |
+| Embree | Tăng tốc Cycles; nướng màu chạy được không có nó, chậm hơn chút | 26 MB |
+| oneAPI | Chạy Cycles trên card Intel | 6 MB |
+| libmv (tracking) | Bám điểm trong video | 5 MB |
+| OpenVDB, NanoVDB, Mantaflow, Ocean | Khói, lửa, nước, biển mô phỏng | 4 MB thư viện, phần còn lại trong chương trình |
+| Alembic | Trao đổi hoạt cảnh nướng sẵn | trong chương trình |
+| Freestyle | Vẽ nét kiểu cũ khi render; viền DaskToon thay thế | trong chương trình |
+| Bullet | Vật thể cứng va chạm; lắc lư DaskToon tự làm | trong chương trình |
+| OpenXR, chuột 3D, xuất PDF và SVG của bút chì dầu, dò ảnh thành nét | Kính VR, thiết bị riêng, bút chì dầu | trong chương trình |
+
+Cộng phần đo được: khoảng 224 MB trên 829 MB (27%), chưa tính phần chương trình nhỏ lại và thời gian build ngắn đi (chưa đo). Chỉ
+cần đổi tùy chọn của bản build, không sửa mã Blender, nên lần cập nhật Blender sau không bị xung đột. Sau khi đổi phải build lại
+toàn bộ và chạy hết phép thử, cả Unity và Godot.
+
+Gỡ khỏi bản cài các phần bổ trợ: hydra_storm, viewport_vr_preview, io_anim_bvh, io_curve_svg, rigify (trùng với khung DaskToon),
+pose_library (đang chen bảng "Kiến Tạo Tài Sản Tư Thế" vào thẻ Animation), ui_translate, node_wrangler. Ít dung lượng nhưng bớt
+rối.
+
+### Chỉ ẩn khỏi giao diện
+
+Bút chì dầu là phần lõi, không gỡ được bằng tùy chọn build; Cycles phải giữ cho việc nướng màu. Cả hai chỉ nên ẩn:
+
+- Menu Thêm từ 17 mục còn 6: Lưới, Bộ xương, Hình ảnh (tranh tham chiếu), Nguồn sáng, Máy quay, Hiệu ứng anime. Ẩn Đường cong, Bề mặt,
+  Siêu cầu, Văn bản, Mây điểm, Thể tích, Bút chì dầu, Lưới rào, Trống rỗng, Đầu dò ánh sáng, Loa, Trường lực, Thực thể bộ sưu tập.
+  Đường cong hay dùng làm tóc, nhưng khung tự động chỉ nhận lưới, nên vẫn phải đổi sang lưới.
+- Chọn engine: chỉ hiện DaskToon Anime.
+- Nhập và xuất: chỉ giữ FBX, glTF, OBJ và Xuất sang game.
+- Thẻ trên cùng: ẩn Sculpting, UV Editing, Rendering, Compositing, Geometry Nodes, Scripting; còn Layout, Modeling, Texture Paint,
+  Animation, Shading.
+- Cột icon: ẩn Lớp Xem, Bộ Sưu Tập, Ràng Buộc của vật thể, Hạt, Vật Lý, Kết Cấu. Ràng buộc lắc lư nằm ở thẻ của xương nên không mất.
+- Thẻ Vật thể: ẩn Mỹ Thuật Đường Nét (Line Art đã bỏ ngày 2026-10-04) và Thực Thể Hóa.
+
+Nên làm phần ẩn trước, dưới một công tắc "Giao diện đơn giản" bật sẵn, tắt đi thì hiện lại đủ (xem mục 3 ở phần trên). Phần gỡ khỏi
+build chỉ đáng làm khi đóng gói DaskToon cho người khác tải.
