@@ -68,6 +68,36 @@ class GameDataTest(unittest.TestCase):
         for normals in by_pos.values():
             self.assertLess(np.abs(np.array(normals) - normals[0]).max(), 1e-3)
 
+    def test_two_sided_sheet_has_a_direction(self):
+        """Cloth modelled two-sided: a face and its twin facing away at the same place. Their normals cancel where they
+        are summed, and the zero turned into NaN, which the FBX exporter refuses (a real character's coat). Each corner
+        then pushes its outline along its own face."""
+        bm = bmesh.new()
+        layer = bm.loops.layers.uv.new("UVMap")
+        corners = [(-1, -1, 0), (1, -1, 0), (1, 1, 0), (-1, 1, 0)]
+        for order in (corners, corners[::-1]):
+            face = bm.faces.new([bm.verts.new(co) for co in order])
+            for loop, uv in zip(face.loops, ((0, 0), (1, 0), (1, 1), (0, 1))):
+                loop[layer].uv = uv
+        mesh = bpy.data.meshes.new("Sheet")
+        bm.to_mesh(mesh)
+        bm.free()
+        obj = bpy.data.objects.new("Sheet", mesh)
+        bpy.context.scene.collection.objects.link(obj)
+        ok, msg = gd.write_outline_uvs(obj)
+        self.assertTrue(ok, msg)
+        uv = np.empty(len(mesh.loops) * 2, dtype=np.float32)
+        mesh.uv_layers["DT_OutlineN"].uv.foreach_get("vector", uv)
+        self.assertTrue(np.isfinite(uv).all())
+        decoded = decoded_world_normals(mesh)
+        own = np.array([mesh.polygons[i].normal for i in range(len(mesh.polygons)) for _ in range(4)])
+        self.assertLess(np.abs(decoded - own).max(), 1e-3)
+
+    def test_zero_encodes_to_the_surface_normal(self):
+        encoded = gd.oct_encode(np.zeros((1, 3)))
+        self.assertTrue(np.isfinite(encoded).all())
+        np.testing.assert_allclose(gd.oct_decode(encoded.astype(np.float64)), [[0.0, 0.0, 1.0]], atol=1e-6)
+
     def test_mask_written_to_dt_outline_w(self):
         obj = tu.add_plane()
         group = obj.vertex_groups.new(name="Outline_Weight")

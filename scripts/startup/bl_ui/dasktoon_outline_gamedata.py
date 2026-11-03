@@ -20,7 +20,8 @@ QUANT = 1e-5
 
 
 def oct_encode(v):
-    v = v / np.abs(v).sum(axis=1, keepdims=True)
+    """Octahedral (x, y) of the directions `v`; a zero vector gives (0, 0), the surface normal once decoded."""
+    v = v / np.maximum(np.abs(v).sum(axis=1, keepdims=True), 1e-12)
     xy = v[:, :2].copy()
     neg = v[:, 2] < 0.0
     sign = np.where(xy[neg] >= 0.0, 1.0, -1.0)
@@ -108,6 +109,9 @@ def write_outline_uvs(obj):
     corner_vert = _array(mesh.loops, "vertex_index", l_count, 1, np.int64)
     smooth = smoothed_vertex_normals(mesh)[corner_vert]
     n_ts = np.column_stack([(smooth * tangent).sum(1), (smooth * bitangent).sum(1), (smooth * normal).sum(1)])
+    length = np.linalg.norm(n_ts, axis=1)
+    # Faces back to back at one place (two-sided cloth) cancel when summed: such a corner pushes along its own face.
+    n_ts[length < 1e-6] = (0.0, 0.0, 1.0)
     n_ts /= np.maximum(np.linalg.norm(n_ts, axis=1, keepdims=True), 1e-12)
     encoded = oct_encode(n_ts).astype(np.float32)
     mask = np.zeros((l_count, 2), dtype=np.float32)
