@@ -170,3 +170,29 @@ Bút chì dầu là phần lõi, không gỡ được bằng tùy chọn build; 
 
 Nên làm phần ẩn trước, dưới một công tắc "Giao diện đơn giản" bật sẵn, tắt đi thì hiện lại đủ (xem mục 3 ở phần trên). Phần gỡ khỏi
 build chỉ đáng làm khi đóng gói DaskToon cho người khác tải.
+
+## Thay chức năng gốc bằng bản DaskToon
+
+### Đã thay (kiểm lại ngày 2026-11-03)
+
+Vật liệu mới và khối vuông mặc định dùng Anime BSDF. Engine mặc định là DaskToon Anime. Render ảnh và hoạt họa đi qua `dasktoon.render`,
+nướng hiệu ứng hành động nhanh trước. Line Art và Freestyle được thay bằng viền DaskToon. Thẻ Animation là của DaskToon. Màn hình
+chào là Dự án. Hướng nắng tự đồng bộ. Trải UV anime được Bắt đầu tô vẽ và Hướng dẫn dùng. Lắc lư dùng ràng buộc Spring viết bằng C++.
+
+### Nên thay tiếp: mặc định gốc đang đi ngược hướng anime
+
+| Gốc | Vì sao sai cho anime | Thay bằng | Công sức |
+|---|---|---|---|
+| Cảnh khởi động: khối vuông, đèn điểm 1000 W | Bóng mặt và viền chỉ đi theo đèn Sun (`find_sun`); cảnh mặc định không có Sun | Cảnh DaskToon có sẵn của Tạo model (Sun, máy quay, màu Standard) | Nhỏ |
+| Khung nhìn: Layout màu đất sét, Shading dùng ảnh rừng HDRI | Người mới không thấy nét anime cho tới khi tự đổi chế độ | Mở ở kiểu nhìn toon theo đèn của cảnh | Nhỏ, máy yếu có thể chậm |
+| Texture Paint chỉ báo "thiếu UV, vật liệu" | Người vẽ không tô được nét đầu | Vào thẻ là tự chạy Bắt đầu tô vẽ, tự thêm vật liệu khi thiếu | Nhỏ |
+| Danh sách Hình Mẫu hiện cả DT_Fix_... | Hình sửa chỗ gập là đồ nội bộ, chạy bằng driver | Lọc DT_Fix_ ra khỏi danh sách, có nút hiện lại | Nhỏ |
+| Pose Library bật sẵn | Chen bảng "Kiến Tạo Tài Sản Tư Thế" vào thẻ Animation; trùng với Lưu dáng | Tắt sẵn | Rất nhỏ |
+| Cài đặt nhanh lần đầu (5 mục) | Hỏi bàn phím, chuột, phím cách | Trang DaskToon chỉ hỏi ngôn ngữ (viết bằng Python, `WM_MT_splash_quick_setup`) | Nhỏ |
+| Thẻ Vật Lý: vải, thân mềm | DaskToon có lắc lư riêng | Ẩn trong Giao diện đơn giản | Rất nhỏ |
+| Nướng màu bằng Cycles khi xuất | Đúng, nhưng buộc phải giữ cả Cycles | Nướng bằng GPU qua EEVEE, viết bằng C++ | Lớn, chưa đáng |
+
+### Không nên thay
+
+Cách xoay khung nhìn, chọn, phím tắt, công cụ dựng lưới, nặn, trải UV tay, bảng node. Người mới học 3D phần lớn qua video hướng dẫn
+Blender trên mạng; giữ nguyên những thứ này thì các video đó vẫn dùng được với DaskToon.
