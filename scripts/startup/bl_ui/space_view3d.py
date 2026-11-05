@@ -5092,6 +5092,9 @@ class VIEW3D_MT_edit_mesh_normals(Menu):
         layout.operator("mesh.normals_tools", text="Copy Vector").mode = 'COPY'
         layout.operator("mesh.normals_tools", text="Paste Vector").mode = 'PASTE'
 
+        layout.operator("mesh.smooth_normals", text="Smooth Vectors")
+        layout.operator("mesh.normals_tools", text="Reset Vectors").mode = 'RESET'
+
         layout.separator()
 
         layout.menu("VIEW3D_MT_edit_mesh_normals_select_strength")

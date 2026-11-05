@@ -119,5 +119,33 @@ class NoSidebarTest(unittest.TestCase):
         self.assertEqual(bad, [])
 
 
+class BlenderMenusTest(unittest.TestCase):
+    """Blender's own tools stay reachable: Edit Mode's Normals menu (Mesh › Normals, Alt+N) had lost Smooth Vectors and
+    Reset Vectors since DaskToon's first commit; the user looked for Reset Vectors there."""
+
+    @staticmethod
+    def normals_menu():
+        """The log of the Normals menu and of every submenu it opens."""
+        log, menus = [], ["VIEW3D_MT_edit_mesh_normals"]
+        while menus:
+            entries = tu.draw(getattr(bpy.types, menus.pop()))
+            log += entries
+            menus += [entry[1] for entry in entries if entry[0] == "menu"]
+        return log
+
+    def test_every_normals_tool_of_the_manual_is_in_the_normals_menu(self):
+        import _rna_manual_reference as manual
+        documented = {name[len("bpy.ops."):].rstrip("*") for name, page in manual.url_manual_mapping
+                      if name.startswith("bpy.ops.") and "editing/mesh/normals.html" in page}
+        shown = {entry[1] for entry in self.normals_menu() if entry[0] == "operator"}
+        self.assertGreater(len(documented), 8)
+        self.assertEqual(sorted(documented - shown), [])
+
+    def test_copy_paste_and_reset_vectors(self):
+        modes = {getattr(entry[5], "mode", None) for entry in self.normals_menu()
+                 if entry[0] == "operator" and entry[1] == "mesh.normals_tools"}
+        self.assertLessEqual({'COPY', 'PASTE', 'RESET'}, modes)
+
+
 if __name__ == "__main__":
     tu.run_tests()
