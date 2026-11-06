@@ -5,6 +5,7 @@
 """Build Rig on test characters, as separate objects and as one mesh by material (anime rig spec 6)."""
 
 import os
+import re
 import sys
 import unittest
 
@@ -237,6 +238,33 @@ class MergedTest(CheckedWeightsMixin, unittest.TestCase):
         names = deform_names(rig)
         used = {names[j] for j in np.nonzero(weights.read(obj, names)[hair].sum(axis=0))[0]}
         self.assertTrue(used <= {"Head"} | set(HAIR), used)
+
+    def test_one_bad_piece_does_not_cost_the_body_its_weights(self):
+        """Blender solves bone heat for a whole mesh at once: one face of no area in a merged character left every
+        vertex without a solution, each took its nearest bone whole, and every joint bent like a hinge, with no bend
+        fix made (temp_2_1, a real model: all 30664 vertices; its skin alone solves). The pieces are solved again
+        alone; at most the bad piece takes the nearest bone."""
+        bpy.ops.wm.read_factory_settings(use_empty=True)
+        obj = fx.character(merged=True)["Character"]
+        body_slot = [m.name for m in obj.data.materials].index("Body")
+        bm = bmesh.new()
+        bm.from_mesh(obj.data)
+        sliver = [bm.verts.new(Vector(p) * fx.HEIGHT) for p in ((0.2, 0.0, 0.5), (0.22, 0.0, 0.5), (0.24, 0.0, 0.5))]
+        bm.faces.new(sliver).material_index = body_slot
+        bm.to_mesh(obj.data)
+        bm.free()
+        rig = fx.rig_for()
+        result = build.build(bpy.context, rig, merged_parts(obj))
+        self.assert_unity_weights(obj, rig)
+        body = parts.part_vertices(parts.Part("Body", obj, scope='MATERIAL', material="Body"))
+        tube = body[:-3]
+        names = deform_names(rig)
+        matrix = weights.read(obj, names)[tube]
+        blended = ((matrix > 0.05) & (matrix < 0.95)).any(axis=1)
+        self.assertGreater(blended.mean(), 0.5)  # the tube bends smoothly along the spine (clean: 0.74)
+        took_nearest = [int(re.search(r": (\d+) vertices", w).group(1)) for w in result.warnings
+                        if "nearest bone" in w]
+        self.assertLessEqual(sum(took_nearest), 3, result.warnings)  # at most the bad face itself
 
 
 class TransformTest(unittest.TestCase):

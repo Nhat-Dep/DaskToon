@@ -160,6 +160,60 @@ def heat_of_copy(context, rig, obj, body_bones):
         bpy.data.meshes.remove(mesh)
 
 
+def heat_by_pieces(context, rig, obj, names, vertices):
+    """Automatic weights (len(vertices) x len(names)) of `vertices` of obj worked out on the loose pieces holding them,
+    without the rest of the mesh. Blender solves bone heat for a whole mesh at once, so one bad piece (a face of no
+    area, a speck far from every bone) leaves every vertex without a solution (temp_2_1, a real model: all 30664
+    vertices of a merged character, whose skin alone solves). The pieces are solved together, a group that fails is
+    split in halves and solved again; a row stays empty where a piece fails even alone."""
+    import bmesh
+    vertices = np.asarray(vertices, np.int64)
+    out = np.zeros((len(vertices), len(names)))
+    if not len(vertices):
+        return out
+    _world, edges = parts.mesh_arrays(obj)
+    row_of = np.full(len(obj.data.vertices), -1, np.int64)
+    row_of[vertices] = np.arange(len(vertices))
+    wanted = [p for p in parts.pieces(edges, np.arange(len(obj.data.vertices))) if (row_of[p] >= 0).any()]
+
+    def solve(group):
+        keep = np.zeros(len(obj.data.vertices), bool)
+        for piece in group:
+            keep[piece] = True
+        copy = obj.copy()
+        copy.data = obj.data.copy()
+        context.scene.collection.objects.link(copy)
+        try:
+            if copy.data.shape_keys is not None:
+                copy.shape_key_clear()
+            bm = bmesh.new()
+            bm.from_mesh(copy.data)
+            bm.verts.ensure_lookup_table()
+            bmesh.ops.delete(bm, geom=[v for v in bm.verts if not keep[v.index]], context='VERTS')
+            bm.to_mesh(copy.data)  # the kept vertices keep their order
+            bm.free()
+            clear(copy, range(len(copy.data.vertices)), names)
+            body_heat(context, rig, copy, set(names))
+            return np.nonzero(keep)[0], read(copy, names)
+        finally:
+            mesh = copy.data
+            bpy.data.objects.remove(copy)
+            bpy.data.meshes.remove(mesh)
+
+    pending = [wanted]
+    while pending:
+        group = pending.pop()
+        kept, matrix = solve(group)
+        rows = row_of[kept]
+        inside = rows >= 0
+        if (matrix[inside].sum(axis=1) > 0.0).all() or len(group) == 1:
+            out[rows[inside]] = matrix[inside]
+            continue
+        half = len(group) // 2
+        pending += [group[:half], group[half:]]
+    return out
+
+
 def clothing_weights(context, rig, sources, names, obj, vertices):
     """Weights (len(vertices) x len(names)) of Clothing vertices of obj (spec 5.2): copied from the Body surface where
     it is near (CLOTH_GAP), automatic weights of the clothing itself where it is far, a blend in between."""

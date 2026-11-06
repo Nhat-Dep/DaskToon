@@ -255,6 +255,11 @@ def _paint(context, rig, parts, owners, plan, actual, result):
         vertices = np.nonzero(body)[0]
         matrix = weights.read(obj, body_bones)[vertices]
         empty = matrix.sum(axis=1) <= 0.0
+        if empty.any():  # solved again on their loose pieces alone: one bad piece fails the whole mesh
+            weights.write(obj, vertices[empty], body_bones,
+                          weights.heat_by_pieces(context, rig, obj, body_bones, vertices[empty]))
+            matrix = weights.read(obj, body_bones)[vertices]
+            empty = matrix.sum(axis=1) <= 0.0
         if empty.any():
             world, _edges = rig_parts.mesh_arrays(obj)
             weights.write(obj, vertices[empty], body_bones,
