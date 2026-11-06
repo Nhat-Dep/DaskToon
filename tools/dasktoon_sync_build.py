@@ -18,7 +18,8 @@ import shutil
 import sys
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-MIRRORED = ("scripts/startup", "scripts/modules", "scripts/presets/keyconfig")  # the keymaps: F12 is DaskToon's Render
+MIRRORED = ("scripts/startup", "scripts/modules", "scripts/presets/keyconfig",  # the keymaps: F12 is DaskToon's Render
+            "scripts/addons_core/mmd_tools")  # shipped MMD Tools (only it: other core add-ons come from elsewhere too)
 SKIP = {"__pycache__"}
 
 
