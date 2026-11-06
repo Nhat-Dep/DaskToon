@@ -27,10 +27,12 @@ FBX_SETTINGS = dict(
 
 
 def export_objects(context, selected_only):
-    """The selection (plus the armatures deforming it), or every visible armature, mesh and empty."""
+    """The selection, or every visible armature, mesh and empty; plus the armatures deforming them, hidden ones too
+    (an armature hidden to look at the mesh was left out, and Unity got a mesh without a skeleton: temp_2_1)."""
     if not selected_only:
-        return [o for o in context.scene.objects if o.type in EXPORT_TYPES and o.visible_get()]
-    chosen = [o for o in context.selected_objects if o.type in EXPORT_TYPES]
+        chosen = [o for o in context.scene.objects if o.type in EXPORT_TYPES and o.visible_get()]
+    else:
+        chosen = [o for o in context.selected_objects if o.type in EXPORT_TYPES]
     for obj in list(chosen):
         rigs = [m.object for m in getattr(obj, "modifiers", ()) if m.type == 'ARMATURE' and m.object is not None]
         if obj.parent is not None and obj.parent.type == 'ARMATURE':
@@ -122,11 +124,15 @@ def write_fbx(context, objects, filepath, include_animation, single_take=False):
     selected = [o for o in view_layer.objects if o.select_get()]
     active = view_layer.objects.active
     left_out = []
+    hidden = []  # hidden in the viewport (H): shown while writing, the exporter takes only what is shown
     try:
         for obj in selected:
             obj.select_set(False)
         for obj in objects:
             try:
+                if obj.hide_get():
+                    obj.hide_set(False)
+                    hidden.append(obj)
                 obj.select_set(True)
             except RuntimeError:
                 left_out.append(obj.name)
@@ -141,4 +147,6 @@ def write_fbx(context, objects, filepath, include_animation, single_take=False):
                 obj.select_set(obj in selected)
             except RuntimeError:
                 pass
+        for obj in hidden:
+            obj.hide_set(True)
         view_layer.objects.active = active

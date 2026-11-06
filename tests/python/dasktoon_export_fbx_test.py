@@ -94,6 +94,35 @@ class FbxTest(unittest.TestCase):
         everything = model_fbx.export_objects(bpy.context, selected_only=False)
         self.assertNotIn("Camera", [o.name for o in everything])
 
+    def test_a_hidden_armature_still_goes_with_its_mesh(self):
+        """The armature hidden in the viewport (H) to look at the mesh was left out of the FBX without a word, and Unity
+        got a mesh with no skeleton (temp_2_1, a real model). Both ways of exporting take it, and it stays hidden."""
+        obj = outlined_character()
+        arm = bpy.data.objects.new("Rig", bpy.data.armatures.new("Rig"))
+        bpy.context.scene.collection.objects.link(arm)
+        bpy.context.view_layer.objects.active = arm
+        bpy.ops.object.mode_set(mode='EDIT')
+        bone = arm.data.edit_bones.new("Hips")
+        bone.head, bone.tail = (0, 0, 0), (0, 0, 0.5)
+        bpy.ops.object.mode_set(mode='OBJECT')
+        obj.modifiers.new("Armature", 'ARMATURE').object = arm
+        obj.vertex_groups.new(name="Hips").add(list(range(len(obj.data.vertices))), 1.0, 'REPLACE')
+        arm.hide_set(True)
+        for selected_only in (False, True):
+            for o in bpy.context.view_layer.objects:
+                o.select_set(o == obj)
+            chosen = model_fbx.export_objects(bpy.context, selected_only=selected_only)
+            self.assertIn("Rig", [o.name for o in chosen], selected_only)
+            path = os.path.join(tempfile.mkdtemp(prefix="dt_fbx_"), "Hidden.fbx")
+            model_fbx.write_fbx(bpy.context, chosen, path, include_animation=False)
+            self.assertTrue(arm.hide_get())
+            names = set(bpy.data.objects.keys())
+            bpy.ops.import_scene.fbx(filepath=path)
+            imported = [o for o in bpy.data.objects if o.name not in names]
+            self.assertIn('ARMATURE', [o.type for o in imported], selected_only)
+            for o in imported:
+                bpy.data.objects.remove(o)
+
     def test_outline_errors_are_reported_not_raised(self):
         obj = outlined_character()
         obj.data.uv_layers.remove(obj.data.uv_layers[0])
