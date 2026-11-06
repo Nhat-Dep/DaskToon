@@ -337,6 +337,16 @@ VI = {
     "Remove Empty Shape Keys": "Xóa hình mẫu trống",
     "Remove the shape keys that move no vertex": "Xóa các hình mẫu không làm dịch chuyển đỉnh nào",
     "Removed %d empty shape keys": "Đã xóa %d hình mẫu trống",
+    "Repair Shape Keys": "Sửa hình mẫu",
+    "Mend shape keys that pull edited vertices back to their old shape or move vertices they should not":
+        "Sửa các hình mẫu kéo những đỉnh đã sửa về hình cũ hoặc làm dịch chuyển những đỉnh không nên",
+    "The mesh to repair (the active object when empty)": "Mesh cần sửa (để trống thì là đối tượng đang chọn)",
+    "Repaired %d vertices held back by old keys and %d vertices moved where they should not be":
+        "Đã sửa %d đỉnh bị hình mẫu cũ kéo lại và %d đỉnh bị dịch chuyển sai chỗ",
+    "Shape keys of %s pull %d vertices back to their shape before an edit":
+        "Hình mẫu của %s kéo %d đỉnh về hình dạng trước khi sửa",
+    "%d shape keys of %s move vertices they should not": "%d hình mẫu của %s làm dịch chuyển những đỉnh không nên",
+    "Repair": "Sửa",
     "Fill Empty Expressions": "Lấp biểu cảm còn trống",
     "Build empty expression shape keys from the others: \"e\" from \"a\" and \"i\", blink sides, the upper lip, "
     "VRM names":

@@ -66,7 +66,8 @@ JOINT_NAMES = {
     "LeftFoot": "Left ankle", "RightFoot": "Right ankle",
     "Neck": "Base of the neck", "Head": "Head joint",
 }
-ISSUE_ICONS = {'JOINT': 'BONE_DATA', 'STRETCH': 'MOD_SIMPLEDEFORM', 'FACING': 'ORIENTATION_GLOBAL'}
+ISSUE_ICONS = {'JOINT': 'BONE_DATA', 'STRETCH': 'MOD_SIMPLEDEFORM', 'FACING': 'ORIENTATION_GLOBAL',
+               'KEYS': 'SHAPEKEY_DATA'}
 
 
 def _is_mesh(_self, obj):
@@ -169,7 +170,8 @@ def _look_changed(self, _context):
 # vertices in the item's "vertices" property.
 class DaskRigIssue(PropertyGroup):
     """A spot the Check of the auto rig found"""
-    kind: EnumProperty(items=[('JOINT', "", ""), ('STRETCH', "", ""), ('ROLE', "", ""), ('FACING', "", "")],
+    kind: EnumProperty(items=[('JOINT', "", ""), ('STRETCH', "", ""), ('ROLE', "", ""), ('FACING', "", ""),
+                              ('KEYS', "", "")],
                        default='JOINT')
     bone: StringProperty()
     part: StringProperty()
@@ -1327,6 +1329,11 @@ def issue_sentence(issue):
         region = next((name for identifier, name, *_rest in REGION_ITEMS if identifier == issue.region), issue.region)
         pose = next((name for identifier, name, _tip in POSE_ITEMS if identifier == issue.pose), issue.pose)
         return rpt_("%s stretched in the %s pose (%s)") % (iface_(region), iface_(pose, "DaskToon"), issue.part)
+    if issue.kind == 'KEYS':
+        name = issue.object.name if issue.object is not None else ""
+        if issue.get("stale", 0):
+            return rpt_("Shape keys of %s pull %d vertices back to their shape before an edit") % (name, issue["stale"])
+        return rpt_("%d shape keys of %s move vertices they should not") % (issue.get("thrown", 0), name)
     if issue.role == 'SKIRT' and issue.below_waist:
         return rpt_("The part of %s below the waist looks like a skirt") % issue.part
     if issue.role == 'SKIRT':
@@ -1365,6 +1372,9 @@ def draw_issue(layout, rig, index, issue):
                      depress=shown).index = index
         if issue.object in [part.object for part in _region_parts(rig)]:
             row.operator("dasktoon.rig_paint_spot", text="Paint Regions", icon='BRUSH_DATA').index = index
+    elif issue.kind == 'KEYS':
+        if issue.object is not None:
+            row.operator("dasktoon.repair_shape_keys", text="Repair", icon='SHAPEKEY_DATA').object_name =                 issue.object.name
     elif issue.below_waist:
         row.operator("dasktoon.rig_skirt_below_waist", text="Make That Part a Skirt",
                      icon=ROLE_ICONS.get(issue.role, 'NONE')).part = issue.part

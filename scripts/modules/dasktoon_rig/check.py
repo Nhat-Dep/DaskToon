@@ -298,6 +298,22 @@ def role_issues(rig, parts):
     return out
 
 
+def key_issues(meshes, rig=None):
+    """[(mesh, stale vertices, keys moving what they should not)] of the meshes whose shape keys need Repair Shape Keys
+    (expressions.repair_keys): keys made before the mesh was edited, a vertex a key throws far, a face key moving what
+    does not follow the head."""
+    from . import expressions
+    out = []
+    for obj in meshes:
+        if obj.type != 'MESH' or obj.data.shape_keys is None:
+            continue
+        stale = int(expressions.stale_vertices(obj)[0].sum())
+        thrown = len(set(expressions.spikes(obj)) | set(expressions.off_region(obj, rig)))
+        if stale or thrown:
+            out.append((obj, stale, thrown))
+    return out
+
+
 def run(context, rig):
     """Look for the spots worth a look (spec 4) and keep them on the rig (rig.data.dasktoon_rig.issues); the rig is left
     at rest. Returns how many were found."""
@@ -318,6 +334,10 @@ def run(context, rig):
         item = data.issues.add()
         item.kind, item.object, item.part, item.pose, item.region = 'STRETCH', obj, owner.get(obj, ""), pose, region
         item["vertices"] = [int(v) for v in spot]
+    for obj, stale, thrown in key_issues(list(dict.fromkeys(meshes)), rig):
+        item = data.issues.add()
+        item.kind, item.object = 'KEYS', obj
+        item["stale"], item["thrown"] = stale, thrown
     for name, role, lower in role_issues(rig, parts):
         item = data.issues.add()
         item.kind, item.part, item.role, item.below_waist = 'ROLE', name, role, lower

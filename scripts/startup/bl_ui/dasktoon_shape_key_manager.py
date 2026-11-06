@@ -1505,6 +1505,28 @@ class DASKTOON_OT_vrm_remove_empty_shapes(Operator):
         return {'FINISHED'}
 
 
+class DASKTOON_OT_repair_shape_keys(Operator):
+    """Mend shape keys that pull edited vertices back to their old shape or move vertices they should not"""
+    bl_idname = "dasktoon.repair_shape_keys"
+    bl_label = "Repair Shape Keys"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    object_name: StringProperty(name="Object", description="The mesh to repair (the active object when empty)",
+                                options={'SKIP_SAVE'})
+
+    def execute(self, context):
+        from dasktoon_rig import expressions
+        obj = bpy.data.objects.get(self.object_name) if self.object_name else context.object
+        if obj is None or obj.type != 'MESH' or obj.data.shape_keys is None:
+            self.report({'ERROR'}, rpt_("Select a mesh with shape keys"))
+            return {'CANCELLED'}
+        rig = next((m.object for m in obj.modifiers if m.type == 'ARMATURE' and m.object is not None), None)
+        stale, thrown = expressions.repair_keys(obj, rig)
+        self.report({'INFO'}, rpt_("Repaired %d vertices held back by old keys and %d vertices moved where they "
+                                   "should not be") % (stale, sum(thrown.values())))
+        return {'FINISHED'}
+
+
 class DASKTOON_OT_fill_empty_expressions(Operator):
     """Build empty expression shape keys from the others: "e" from "a" and "i", blink sides, the upper lip, VRM names"""
     bl_idname = "dasktoon.fill_empty_expressions"
@@ -2240,6 +2262,7 @@ class DATA_PT_dasktoon_expression_tools(DaskExpressionPanel, Panel):
         col.operator("dasktoon.fill_empty_expressions", icon='SHAPEKEY_DATA')
         col.operator("dasktoon.vrm_split_shape_key", icon='ARROW_LEFTRIGHT')
         col.operator("dasktoon.vrm_bake_expression", icon='EXPERIMENTAL')
+        col.operator("dasktoon.repair_shape_keys", icon='TOOL_SETTINGS')
         col.operator("dasktoon.vrm_remove_empty_shapes", icon='TRASH')
         self.layout.operator(DASKTOON_OT_lip_sync_from_audio.bl_idname, icon='SPEAKER')
 
@@ -2389,6 +2412,7 @@ classes = (
     DASKTOON_OT_vrm_bake_expression,
     DASKTOON_OT_vrm_synthesize_arkit52,
     DASKTOON_OT_vrm_remove_empty_shapes,
+    DASKTOON_OT_repair_shape_keys,
     DASKTOON_OT_fill_empty_expressions,
     DASKTOON_OT_sculpt_eye_expressions,
     DASKTOON_OT_vrm_convert_naming,
