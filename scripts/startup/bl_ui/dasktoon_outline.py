@@ -54,9 +54,25 @@ def outline_node(outline_mat):
     return next((n for n in outline_mat.node_tree.nodes if n.bl_idname == 'ShaderNodeDaskOutline'), None)
 
 
+def _build_companion(companion):
+    """The whole node tree of a companion material: a Dask Outline node into the output."""
+    nt = companion.node_tree
+    nt.nodes.clear()
+    output = nt.nodes.new('ShaderNodeOutputMaterial')
+    output.location = (300.0, 0.0)
+    dask = nt.nodes.new('ShaderNodeDaskOutline')
+    nt.links.new(dask.outputs["BSDF"], output.inputs["Surface"])
+    _companion_signatures.pop(companion.as_pointer(), None)
+
+
 def outline_material_for(mat, create=True):
     companion = mat.get(OUTLINE_MAT_PROP)
     if isinstance(companion, bpy.types.Material):
+        # A file saved by a program without the Dask Outline node (Blender itself) keeps the companion but not
+        # its node: the companion is made again, its colour branches follow on the next sync.
+        if (create and outline_node(companion) is None and companion.library is None
+                and companion.node_tree is not None):
+            _build_companion(companion)
         return companion
     if not create:
         return None
@@ -64,12 +80,7 @@ def outline_material_for(mat, create=True):
     companion.use_backface_culling = True
     if hasattr(companion, "use_backface_culling_shadow"):
         companion.use_backface_culling_shadow = True
-    nt = companion.node_tree
-    nt.nodes.clear()
-    output = nt.nodes.new('ShaderNodeOutputMaterial')
-    output.location = (300.0, 0.0)
-    dask = nt.nodes.new('ShaderNodeDaskOutline')
-    nt.links.new(dask.outputs["BSDF"], output.inputs["Surface"])
+    _build_companion(companion)
     mat[OUTLINE_MAT_PROP] = companion
     return companion
 
@@ -252,7 +263,11 @@ def _slot_params(obj):
         companion = outline_material_for(mat)
         dask = outline_node(companion)
         node = source[1]
-        _fix_line_weight(dask)
+        if dask is None and node is None:  # a linked companion without its node: nothing to draw the line with
+            slots.append(gn.SlotParams(False, 0.0, 0.0, 0.0, None))
+            continue
+        if dask is not None:
+            _fix_line_weight(dask)
         width_socket = node.inputs["Outline Width"] if node is not None else dask.inputs["Outline Width"]
         slots.append(gn.SlotParams(True, float(width_socket.default_value), LIGHT_BLEED, HAND_WOBBLE, companion))
     return slots

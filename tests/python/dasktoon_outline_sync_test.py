@@ -41,6 +41,24 @@ class OutlineSyncTest(unittest.TestCase):
         self.assertIsNone(self.obj.modifiers.get(gn.MODIFIER_NAME))
         self.assertIsNotNone(bpy.data.materials.get("Skin.Outline"))
 
+    def test_companion_without_its_outline_node_is_mended(self):
+        """A file saved by a program that does not know the Dask Outline node (Blender itself) keeps the companion
+        material but loses the node in it: every sync then failed, on loading and on each update after (a real
+        character, 24 of its materials)."""
+        self.node.use_outline = True
+        update()
+        companion = outline.outline_material_for(self.mat, create=False)
+        tree = companion.node_tree
+        tree.nodes.remove(outline.outline_node(companion))
+        self.assertIsNone(outline.outline_node(companion))
+        outline.reset_cache()
+        outline.sync_object(self.obj, bpy.context.scene)
+        dask = outline.outline_node(companion)
+        self.assertIsNotNone(dask)
+        output = next(n for n in tree.nodes if n.bl_idname == 'ShaderNodeOutputMaterial')
+        self.assertTrue(any(link.from_node == dask for link in output.inputs["Surface"].links))
+        self.assertIsNotNone(self.obj.modifiers.get(gn.MODIFIER_NAME))
+
     def test_reroute_between_node_and_output(self):
         nt = self.mat.node_tree
         output = next(n for n in nt.nodes if n.bl_idname == 'ShaderNodeOutputMaterial')
