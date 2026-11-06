@@ -347,6 +347,24 @@ VI = {
         "Hình mẫu của %s kéo %d đỉnh về hình dạng trước khi sửa",
     "%d shape keys of %s move vertices they should not": "%d hình mẫu của %s làm dịch chuyển những đỉnh không nên",
     "Repair": "Sửa",
+    # bl_ui/dasktoon_import.py, dasktoon_import/uemodel.py
+    "Import Unreal Model": "Nhập mô hình Unreal",
+    "Unreal Model (.uemodel)": "Mô hình Unreal (.uemodel)",
+    "Unreal Model": "Mô hình Unreal",
+    "Import an Unreal model (.uemodel, as FModel writes it): mesh, skeleton, shape keys and textures":
+        "Nhập mô hình Unreal (.uemodel, do FModel xuất): lưới, khung xương, hình mẫu và ảnh",
+    "Unreal works in centimetres: 0.01 gives metres": "Unreal dùng xăng-ti-mét: 0,01 đổi ra mét",
+    "Import the morph targets as shape keys": "Nhập các morph target thành hình mẫu",
+    "Imported %s: %d vertices, %d bones, %d shape keys": "Đã nhập %s: %d đỉnh, %d xương, %d hình mẫu",
+    "The file ends too early: it is cut short or not a .uemodel":
+        "Tệp kết thúc quá sớm: tệp bị cắt dở hoặc không phải .uemodel",
+    "Not a UEFormat file (.uemodel)": "Không phải tệp UEFormat (.uemodel)",
+    "The .uemodel holds no mesh": "Tệp .uemodel không có lưới nào",
+    "This .uemodel is version %d; DaskToon reads versions up to %d":
+        "Tệp .uemodel này là phiên bản %d; DaskToon đọc được tới phiên bản %d",
+    "This .uemodel is compressed with %s, which DaskToon cannot read: export it from FModel without compression":
+        "Tệp .uemodel này nén bằng %s, DaskToon không đọc được: hãy xuất lại từ FModel, không nén",
+    "This UEFormat file holds %s, not a model": "Tệp UEFormat này chứa %s, không phải mô hình",
     "Fill Empty Expressions": "Lấp biểu cảm còn trống",
     "Build empty expression shape keys from the others: \"e\" from \"a\" and \"i\", blink sides, the upper lip, "
     "VRM names":
