@@ -444,6 +444,39 @@ class EarsTest(unittest.TestCase):
         np.testing.assert_allclose(with_tails.end, alone.end, atol=0.03)
 
 
+    def test_a_masked_ribbon_stays_out_under_the_outline(self):
+        """A ribbon of the body's own mesh, from the waist out past the hands, masked as an accessory; the body has
+        DaskToon's outline on (temp_2, a real model: the outline shell added its own vertices, the mask no longer
+        matched the mesh and counted for nothing, and the arms were fitted onto the ribbons and the cloak)."""
+        from bl_ui import dasktoon_outline as outline
+        level = [(0.12, 0.0, 1.42), (0.36, 0.0, 1.40), (0.62, 0.0, 1.38)]  # T-pose arms, hands out to 0.67
+        body = polyline_chibi(level, CentreLineTest.LEG)
+        verts = [tuple(v.co) for v in body.data.vertices]
+        faces = [tuple(p.vertices) for p in body.data.polygons]
+        o = Vector((3.0, 0.5, 0.0))
+        for s in (1.0, -1.0):
+            ribbon_verts, ribbon_faces = tube(o + Vector((s * 0.12, 0.05, 1.0)), o + Vector((s * 0.78, 0.05, 1.31)), 0.04)
+            faces += [tuple(i + len(verts) for i in face) for face in ribbon_faces]
+            verts += ribbon_verts
+        mesh = bpy.data.meshes.new("Body")
+        mesh.from_pydata(verts, [], faces)
+        body.data = mesh
+        ribbon = np.zeros(len(verts), bool)
+        ribbon[len(body.data.vertices) - 2 * len(ribbon_verts):] = True
+        material, node = tu.node_material("Skin", 'ShaderNodeAnimeCharacter')
+        tu.assign(body, material)
+        node.use_outline = True
+        outline.sync_object(body, bpy.context.scene)
+        self.assertIsNotNone(body.modifiers.get("DaskToon Outline"))
+        bpy.context.view_layer.update()
+        rig = skeleton.create_humanoid(bpy.context, 1.0, (0.0, 0.0, 0.0))
+        skeleton.fit(bpy.context, rig, [body], body=[body], skip={body: ribbon})
+        for side, sign in (("Left", 1.0), ("Right", -1.0)):
+            hand = world_head(rig, side + "Hand")
+            self.assertGreater(hand.z, 1.3, msg=side)  # on the arm (1.33 to 1.47 high), not down the ribbon
+            self.assertLess(sign * (hand.x - 3.0), 0.7, msg=side)  # the hand, not the end of the ribbon at 0.82
+        self.assertTrue(body.modifiers["DaskToon Outline"].show_viewport)
+
     def test_a_slim_hand_out_of_a_wide_sleeve(self):
         """A slim hand out of a wide sleeve (RGforGame, a real model): the band widens at the cuff, the hand alone is
         too short for an arm, and the walk goes on to the body."""

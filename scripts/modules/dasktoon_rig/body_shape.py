@@ -53,18 +53,30 @@ Limb = namedtuple("Limb", "base end axis width")  # front view (x, z): where it 
 
 
 def evaluated(context, obj):
-    """(world vertices n x 3, triangles m x 3) of `obj` as shown, modifiers on (a mirrored half is whole)."""
-    depsgraph = context.evaluated_depsgraph_get()
-    shown = obj.evaluated_get(depsgraph)
-    mesh = shown.to_mesh()
+    """(world vertices n x 3, triangles m x 3) of `obj` as shown, modifiers on (a mirrored half is whole), but for
+    DaskToon's outline: a shell round the body, whose vertices the masks of the mesh do not count (temp_2, a real model:
+    with the shell on, its accessory masks counted for nothing and the arms were fitted onto its ribbons)."""
+    from bl_ui.dasktoon_outline_nodes import MODIFIER_NAME
+    outline = obj.modifiers.get(MODIFIER_NAME) if obj.type == 'MESH' else None
+    if outline is not None and not outline.show_viewport:
+        outline = None
+    if outline is not None:
+        outline.show_viewport = False
     try:
-        co = np.empty(len(mesh.vertices) * 3, np.float32)
-        mesh.vertices.foreach_get("co", co)
-        mesh.calc_loop_triangles()
-        triangles = np.empty(len(mesh.loop_triangles) * 3, np.int32)
-        mesh.loop_triangles.foreach_get("vertices", triangles)
+        depsgraph = context.evaluated_depsgraph_get()
+        shown = obj.evaluated_get(depsgraph)
+        mesh = shown.to_mesh()
+        try:
+            co = np.empty(len(mesh.vertices) * 3, np.float32)
+            mesh.vertices.foreach_get("co", co)
+            mesh.calc_loop_triangles()
+            triangles = np.empty(len(mesh.loop_triangles) * 3, np.int32)
+            mesh.loop_triangles.foreach_get("vertices", triangles)
+        finally:
+            shown.to_mesh_clear()
     finally:
-        shown.to_mesh_clear()
+        if outline is not None:
+            outline.show_viewport = True
     matrix = np.array(obj.matrix_world)
     return co.reshape(-1, 3).astype(float) @ matrix[:3, :3].T + matrix[:3, 3], triangles.reshape(-1, 3)
 
