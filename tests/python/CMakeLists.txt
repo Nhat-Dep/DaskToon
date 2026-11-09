@@ -291,6 +291,7 @@ foreach(dasktoon_test
     dasktoon_material_convert_test
     dasktoon_export_rig_test
     dasktoon_spring_constraint_test
+    dasktoon_jiggle_test
     dasktoon_animation_filter_test
     dasktoon_animation_keying_test
     dasktoon_animation_tab_test

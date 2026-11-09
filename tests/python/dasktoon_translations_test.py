@@ -117,6 +117,8 @@ TRANSLATED = [
     "scripts/modules/dasktoon_finish/styles.py",
     "scripts/startup/bl_ui/dasktoon_import.py",
     "scripts/modules/dasktoon_import/uemodel.py",
+    "scripts/startup/bl_ui/dasktoon_jiggle.py",
+    "scripts/modules/dasktoon_rig/jiggle.py",
 ]
 # Blender files DaskToon rewrote parts of (project workflow spec 13): only these classes are DaskToon's.
 TRANSLATED_CLASSES = {

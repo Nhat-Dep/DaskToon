@@ -219,6 +219,11 @@ void DEG_add_object_pointcache_relation(DepsNodeHandle *node_handle,
   relation_builder->add_node_handle_relation(comp_key, deg_node_handle, description);
   /* Node deduct point cache component and connect source to it. */
   ID *id = DEG_get_id_from_handle(node_handle);
+  /* DaskToon: the Jiggle modifier collides without a point cache; the relation to the handle is all it needs. */
+  const deg::IDNode *id_node = relation_builder->getGraph()->find_id_node(id);
+  if (id_node == nullptr || id_node->find_component(deg::NodeType::POINT_CACHE) == nullptr) {
+    return;
+  }
   deg::ComponentKey point_cache_key(id, deg::NodeType::POINT_CACHE);
   deg::Relation *rel = relation_builder->add_relation(comp_key, point_cache_key, "Point Cache");
   if (rel != nullptr) {

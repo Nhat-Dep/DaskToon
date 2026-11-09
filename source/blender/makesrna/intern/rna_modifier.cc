@@ -295,6 +295,11 @@ const EnumPropertyItem rna_enum_object_modifier_type_items[] = {
      "Displace",
      "Offset vertices based on a texture"},
     {eModifierType_Hook, "HOOK", ICON_HOOK, "Hook", "Deform specific points using another object"},
+    {eModifierType_Jiggle,
+     "JIGGLE",
+     ICON_MOD_SOFT,
+     "Jiggle",
+     "Soft parts that wobble when they move and dent when something pushes in"},
     {eModifierType_LaplacianDeform,
      "LAPLACIANDEFORM",
      ICON_MOD_MESHDEFORM,
@@ -1018,6 +1023,7 @@ static void rna_Modifier_use_pin_to_last_set(PointerRNA *ptr, bool value)
 RNA_MOD_VGROUP_NAME_SET(Armature, defgrp_name);
 RNA_MOD_VGROUP_NAME_SET(Bevel, defgrp_name);
 RNA_MOD_VGROUP_NAME_SET(Cast, defgrp_name);
+RNA_MOD_VGROUP_NAME_SET(Jiggle, defgrp_name);
 RNA_MOD_VGROUP_NAME_SET(Curve, name);
 RNA_MOD_VGROUP_NAME_SET(DataTransfer, defgrp_name);
 RNA_MOD_VGROUP_NAME_SET(Decimate, defgrp_name);
@@ -1122,6 +1128,7 @@ RNA_MOD_OBJECT_SET(Array, end_cap, OB_MESH);
 RNA_MOD_OBJECT_SET(Array, curve_ob, OB_CURVES_LEGACY);
 RNA_MOD_OBJECT_SET(Boolean, object, OB_MESH);
 RNA_MOD_OBJECT_SET(Cast, object, OB_EMPTY);
+RNA_MOD_OBJECT_SET(Jiggle, rig, OB_ARMATURE);
 RNA_MOD_OBJECT_SET(Curve, object, OB_CURVES_LEGACY);
 RNA_MOD_OBJECT_SET(DataTransfer, ob_source, OB_MESH);
 RNA_MOD_OBJECT_SET(Lattice, object, OB_LATTICE);
@@ -1219,6 +1226,49 @@ static void rna_HookModifier_vertex_indices_get(PointerRNA *ptr, int *values)
   if (hmd->indexar != nullptr) {
     memcpy(values, hmd->indexar, sizeof(int) * hmd->indexar_num);
   }
+}
+
+static void rna_JiggleModifier_colliders_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
+{
+  JiggleModifierData *jmd = static_cast<JiggleModifierData *>(ptr->data);
+  rna_iterator_array_begin(iter,
+                           ptr,
+                           jmd->colliders_array,
+                           sizeof(JiggleModifierCollider),
+                           jmd->colliders_num,
+                           false,
+                           nullptr);
+}
+
+static void rna_JiggleModifier_collider_add(ID *id,
+                                            JiggleModifierData *jmd,
+                                            Main *bmain,
+                                            const char *bone,
+                                            const char *bone_end,
+                                            float radius)
+{
+  JiggleModifierCollider *colliders = MEM_new_array<JiggleModifierCollider>(
+      size_t(jmd->colliders_num) + 1, __func__);
+  for (int i = 0; i < jmd->colliders_num; i++) {
+    colliders[i] = jmd->colliders_array[i];
+  }
+  JiggleModifierCollider &collider = colliders[jmd->colliders_num];
+  STRNCPY(collider.bone, bone);
+  STRNCPY(collider.bone_end, bone_end);
+  collider.radius = std::max(radius, 0.0f);
+  MEM_SAFE_DELETE(jmd->colliders_array);
+  jmd->colliders_array = colliders;
+  jmd->colliders_num++;
+  DEG_id_tag_update(id, ID_RECALC_GEOMETRY);
+  DEG_relations_tag_update(bmain);
+}
+
+static void rna_JiggleModifier_colliders_clear(ID *id, JiggleModifierData *jmd, Main *bmain)
+{
+  MEM_SAFE_DELETE(jmd->colliders_array);
+  jmd->colliders_num = 0;
+  DEG_id_tag_update(id, ID_RECALC_GEOMETRY);
+  DEG_relations_tag_update(bmain);
 }
 
 static void rna_HookModifier_vertex_indices_set(HookModifierData *hmd,
@@ -4647,6 +4697,147 @@ static void rna_def_modifier_cast(BlenderRNA *brna)
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   RNA_define_lib_overridable(false);
+}
+
+static void rna_def_modifier_jiggle(BlenderRNA *brna)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+  FunctionRNA *func;
+  PropertyRNA *parm;
+
+  srna = RNA_def_struct(brna, "JiggleModifierCollider", nullptr);
+  RNA_def_struct_ui_text(
+      srna, "Jiggle Collider", "A capsule along the rig's bones that pushes the jiggle out");
+  RNA_def_struct_sdna(srna, "JiggleModifierCollider");
+
+  prop = RNA_def_property(srna, "bone", PROP_STRING, PROP_NONE);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(prop, "Bone", "The capsule starts at this bone's head");
+
+  prop = RNA_def_property(srna, "bone_end", PROP_STRING, PROP_NONE);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(
+      prop, "End Bone", "The capsule ends at this bone's tail (empty: the same bone's tail)");
+
+  prop = RNA_def_property(srna, "radius", PROP_FLOAT, PROP_DISTANCE);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(prop, "Radius", "Radius of the capsule, in armature units");
+
+  srna = RNA_def_struct(brna, "JiggleModifier", "Modifier");
+  RNA_def_struct_ui_text(srna,
+                         "Jiggle Modifier",
+                         "Soft parts that wobble when they move and dent when something pushes in");
+  RNA_def_struct_sdna(srna, "JiggleModifierData");
+  RNA_def_struct_ui_icon(srna, ICON_MOD_SOFT);
+
+  RNA_define_lib_overridable(true);
+
+  prop = RNA_def_property(srna, "vertex_group", PROP_STRING, PROP_NONE);
+  RNA_def_property_string_sdna(prop, nullptr, "defgrp_name");
+  RNA_def_property_ui_text(
+      prop, "Vertex Group", "How free each vertex is: 1 jiggles fully, 0 follows the shape");
+  RNA_def_property_string_funcs(prop, nullptr, nullptr, "rna_JiggleModifier_defgrp_name_set");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "invert_vertex_group", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", MOD_JIGGLE_INVERT_VGROUP);
+  RNA_def_property_ui_text(prop, "Invert", "Invert vertex group influence");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "use_pin_bottom", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", MOD_JIGGLE_PIN_BOTTOM);
+  RNA_def_property_ui_text(
+      prop, "Pin Bottom", "The bottom stands still, the higher the more it jiggles");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "frequency", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_range(prop, 0.01f, 100.0f);
+  RNA_def_property_ui_range(prop, 0.1f, 20.0f, 10, 2);
+  RNA_def_property_ui_text(prop, "Frequency", "Wobbles per second");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "damping", PROP_FLOAT, PROP_FACTOR);
+  RNA_def_property_range(prop, 0.0f, 1.0f);
+  RNA_def_property_ui_text(prop, "Damping", "How fast the wobble settles");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "spread", PROP_FLOAT, PROP_FACTOR);
+  RNA_def_property_range(prop, 0.0f, 1.0f);
+  RNA_def_property_ui_text(prop, "Spread", "How far a dent spreads to the surface around it");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "volume", PROP_FLOAT, PROP_FACTOR);
+  RNA_def_property_range(prop, 0.0f, 1.0f);
+  RNA_def_property_ui_text(prop, "Keep Volume", "Pushed in here, it bulges out elsewhere");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "follow", PROP_FLOAT, PROP_FACTOR);
+  RNA_def_property_range(prop, 0.0f, 1.0f);
+  RNA_def_property_ui_text(
+      prop,
+      "Follow Motion",
+      "1 moves with the object and jiggles only when hit, 0 lags behind its motion");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "substeps", PROP_INT, PROP_NONE);
+  RNA_def_property_range(prop, 1, 50);
+  RNA_def_property_ui_range(prop, 1, 20, 1, -1);
+  RNA_def_property_ui_text(prop, "Quality", "Steps per frame: more for stiff or fast jiggles");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "distance", PROP_FLOAT, PROP_DISTANCE);
+  RNA_def_property_range(prop, 0.0f, FLT_MAX);
+  RNA_def_property_ui_range(prop, 0.0f, 0.1f, 0.1, 4);
+  RNA_def_property_ui_text(prop, "Distance", "How far the surface stays from the colliders");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "collision_collection", PROP_POINTER, PROP_NONE);
+  RNA_def_property_pointer_sdna(prop, nullptr, "collision_collection");
+  RNA_def_property_struct_type(prop, "Collection");
+  RNA_def_property_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(
+      prop, "Collision Collection", "Only collide with the Collision objects in this collection");
+  RNA_def_property_update(prop, 0, "rna_Modifier_dependency_update");
+
+  prop = RNA_def_property(srna, "rig", PROP_POINTER, PROP_NONE);
+  RNA_def_property_ui_text(
+      prop, "Rig", "The armature whose body colliders (arms, hands) push the jiggle");
+  RNA_def_property_pointer_funcs(prop, nullptr, "rna_JiggleModifier_rig_set", nullptr, nullptr);
+  RNA_def_property_flag(prop, PROP_EDITABLE | PROP_ID_SELF_CHECK);
+  RNA_def_property_update(prop, 0, "rna_Modifier_dependency_update");
+
+  RNA_define_lib_overridable(false);
+
+  prop = RNA_def_property(srna, "colliders", PROP_COLLECTION, PROP_NONE);
+  RNA_def_property_struct_type(prop, "JiggleModifierCollider");
+  RNA_def_property_collection_sdna(prop, nullptr, "colliders_array", nullptr);
+  RNA_def_property_collection_funcs(prop,
+                                    "rna_JiggleModifier_colliders_begin",
+                                    "rna_iterator_array_next",
+                                    "rna_iterator_array_end",
+                                    "rna_iterator_array_get",
+                                    nullptr,
+                                    nullptr,
+                                    nullptr,
+                                    nullptr);
+  RNA_def_property_ui_text(prop, "Colliders", "Capsules of the rig that push the jiggle");
+
+  func = RNA_def_function(srna, "collider_add", "rna_JiggleModifier_collider_add");
+  RNA_def_function_ui_description(func, "Add a capsule of the rig that pushes the jiggle");
+  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN);
+  parm = RNA_def_string(func, "bone", nullptr, 64, "Bone", "Capsule from this bone's head");
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+  parm = RNA_def_string(
+      func, "bone_end", nullptr, 64, "End Bone", "To this bone's tail (empty: the same bone)");
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+  parm = RNA_def_float(
+      func, "radius", 0.03f, 0.0f, FLT_MAX, "Radius", "In armature units", 0.0f, 10.0f);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+
+  func = RNA_def_function(srna, "colliders_clear", "rna_JiggleModifier_colliders_clear");
+  RNA_def_function_ui_description(func, "Remove all the rig capsules");
+  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN);
 }
 
 static void rna_def_modifier_meshdeform(BlenderRNA *brna)
@@ -11681,6 +11872,7 @@ void RNA_def_modifier(BlenderRNA *brna)
   rna_def_modifier_smooth(brna);
   rna_def_modifier_correctivesmooth(brna);
   rna_def_modifier_cast(brna);
+  rna_def_modifier_jiggle(brna);
   rna_def_modifier_meshdeform(brna);
   rna_def_modifier_particlesystem(brna);
   rna_def_modifier_particleinstance(brna);

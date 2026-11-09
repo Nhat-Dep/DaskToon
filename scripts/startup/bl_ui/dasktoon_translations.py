@@ -14,7 +14,7 @@ KEEP = {
     "DaskToon", "Unity", "Unity 6 (URP)", "VRM", "VRoid", "ARKit", "FBX", "URP",
     "VRM 0.x", "VRM 1.0", "_L / _R", "_l / _r", "Left / Right",
     "Anime BSDF", "Manga BSDF", "DaskToon Anime", "DaskToon Manga", "Manga", "Unity 6, Universal Render Pipeline 17.5",
-    "Engine: %s", "Godot 4", "FBX / glTF",
+    "Engine: %s", "Godot 4", "FBX / glTF", "Rig",
 }
 
 VI = {
@@ -1998,6 +1998,68 @@ VI = {
     "Cells from the top left: closed, A, I, U, E, O": "Các ô từ góc trên trái: ngậm, A, I, U, E, O",
     "The object's dt_mouth picks the cell; lip sync keys it": "Thuộc tính dt_mouth của object chọn ô; lip sync key nó",
     "Gaze": "Ánh mắt",
+    # Jiggle (docs/superpowers/specs/2026-11-10-dasktoon-jiggle-design.md): bl_ui/dasktoon_jiggle.py,
+    # dasktoon_rig/jiggle.py, the C++ modifier
+    "Jiggle": "Rung mềm",
+    "Jiggle Modifier": "Bộ biến đổi Rung mềm",
+    "Soft parts that wobble when they move and dent when something pushes in":
+        "Phần mềm rung khi chuyển động và lõm xuống khi có vật ấn vào",
+    "Jiggle Collider": "Vật va chạm của rung mềm",
+    "A capsule along the rig's bones that pushes the jiggle out": "Một khối trụ dọc xương của rig, đẩy phần rung ra",
+    "The capsule starts at this bone's head": "Khối bắt đầu ở đầu xương này",
+    "End Bone": "Xương cuối",
+    "The capsule ends at this bone's tail (empty: the same bone's tail)":
+        "Khối kết thúc ở đuôi xương này (để trống: đuôi của cùng xương)",
+    "How free each vertex is: 1 jiggles fully, 0 follows the shape":
+        "Độ tự do của mỗi đỉnh: 1 rung hết cỡ, 0 đi đúng theo hình",
+    "Pin Bottom": "Giữ đáy",
+    "The bottom stands still, the higher the more it jiggles": "Đáy đứng yên, càng lên cao càng rung nhiều",
+    "Wobbles per second": "Số lần rung mỗi giây",
+    "How fast the wobble settles": "Rung lặng đi nhanh đến đâu",
+    "How far a dent spreads to the surface around it": "Chỗ lõm lan ra mặt xung quanh đến đâu",
+    "Keep Volume": "Giữ thể tích",
+    "Pushed in here, it bulges out elsewhere": "Ấn lõm chỗ này thì chỗ khác phồng ra",
+    "Follow Motion": "Theo chuyển động",
+    "1 moves with the object and jiggles only when hit, 0 lags behind its motion":
+        "1 đi theo vật và chỉ rung khi bị chạm, 0 chạy trễ sau chuyển động",
+    "Steps per frame: more for stiff or fast jiggles": "Số bước mỗi khung hình: tăng khi rung cứng hoặc nhanh",
+    "How far the surface stays from the colliders": "Mặt giữ cách vật va chạm bao xa",
+    "Collision Collection": "Bộ sưu tập va chạm",
+    "Only collide with the Collision objects in this collection":
+        "Chỉ va chạm với các vật có Va chạm trong bộ sưu tập này",
+    "The armature whose body colliders (arms, hands) push the jiggle":
+        "Khung xương có các vật va chạm cơ thể (tay, bàn tay) đẩy phần rung",
+    "Capsules of the rig that push the jiggle": "Các khối trụ của rig đẩy phần rung",
+    "Add a capsule of the rig that pushes the jiggle": "Thêm một khối trụ của rig đẩy phần rung",
+    "Remove all the rig capsules": "Xóa mọi khối trụ của rig",
+    "{} body colliders": "{} vật va chạm cơ thể",
+    "Make Selected Colliders": "Cho các vật đang chọn va chạm",
+    "Pudding": "Bánh pudding",
+    "Soft and slow, the bottom stands still": "Mềm và chậm, đáy đứng yên",
+    "Jelly": "Thạch",
+    "Quick and springy, the bottom stands still": "Nhanh và nảy, đáy đứng yên",
+    "Breast": "Ngực",
+    "Bounces with the body, settles slowly": "Nảy theo người, lặng chậm",
+    "Soft Flesh": "Thịt mềm",
+    "Belly, thighs: a short wobble": "Bụng, đùi: rung ngắn",
+    "Cheek": "Má",
+    "Small and quick, mostly when touched": "Nhỏ và nhanh, chủ yếu khi bị chạm",
+    "Make the selected part (Edit Mode) or the whole object jiggle and dent like a pudding":
+        "Cho phần đang chọn (chế độ Chỉnh sửa) hoặc cả vật rung và lõm như bánh pudding",
+    "Add Jiggle": "Thêm rung mềm",
+    "Soft Flesh on a rigged character, Pudding on anything else":
+        "Thịt mềm cho nhân vật có rig, Bánh pudding cho vật khác",
+    "Select the part that should jiggle": "Hãy chọn phần cần rung",
+    "Select the part that should jiggle in Edit Mode": "Hãy chọn phần cần rung trong chế độ Chỉnh sửa",
+    "Added %s: it jiggles when played": "Đã thêm %s: phát hoạt hình là thấy rung",
+    "Set the Jiggle modifier's settings from a preset": "Đặt các thanh chỉnh của Rung mềm theo một mẫu",
+    "Jiggle Preset": "Mẫu rung mềm",
+    "No Jiggle modifier": "Không có bộ biến đổi Rung mềm",
+    "Let the selected objects push jiggles in (Physics › Collision)":
+        "Cho các vật đang chọn ấn lõm được phần rung (Vật lý › Va chạm)",
+    "Make Colliders": "Cho vật này va chạm",
+    "Colliders now: %s": "Vật va chạm mới: %s",
+    "none new": "không có vật mới",
 }
 
 # Words that need their own translation context, because Blender's own translation of the same word in the default

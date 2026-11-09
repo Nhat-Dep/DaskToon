@@ -125,6 +125,8 @@ enum ModifierType : int {
   eModifierType_GreasePencilBuild = 84,
   eModifierType_GreasePencilSimplify = 85,
   eModifierType_GreasePencilTexture = 86,
+  /** DaskToon: soft parts that jiggle and dent (docs/superpowers/specs/2026-11-10-dasktoon-jiggle-design.md). */
+  eModifierType_Jiggle = 87,
   NUM_MODIFIER_TYPES,
 };
 
@@ -3520,6 +3522,57 @@ struct GreasePencilTextureModifierData {
   /* Dot texture rotation. */
   float alignment_rotation = 0;
   char _pad[4] = {};
+};
+
+/** #JiggleModifierData.flag */
+enum JiggleModifierFlag : short {
+  MOD_JIGGLE_INVERT_VGROUP = (1 << 0),
+  /** The bottom (object -Z) stands still, the top moves most. */
+  MOD_JIGGLE_PIN_BOTTOM = (1 << 1),
+};
+ENUM_OPERATORS(JiggleModifierFlag);
+
+/** A capsule of the rig the jiggle collides with: from `bone`'s head to `bone_end`'s tail (empty: `bone`'s tail). */
+struct JiggleModifierCollider {
+  char bone[/*MAX_NAME*/ 64] = "";
+  char bone_end[/*MAX_NAME*/ 64] = "";
+  /** In armature units, like the Spring constraint's colliders. */
+  float radius = 0.03f;
+  char _pad[4] = {};
+};
+
+/** DaskToon "Rung mem": vertices spring back towards the shape of the modifiers before, dents spread, the volume is
+ * kept and colliders push in (docs/superpowers/specs/2026-11-10-dasktoon-jiggle-design.md). */
+struct JiggleModifierData {
+  ModifierData modifier;
+
+  /** Only collide with the Collision objects of this collection (all of the scene's when empty). */
+  struct Collection *collision_collection = nullptr;
+  /** The armature whose `colliders` capsules push the mesh (the character's own hands and arms). */
+  struct Object *rig = nullptr;
+  JiggleModifierCollider *colliders_array = nullptr;
+  int colliders_num = 0;
+  /** Wobbles per second of a vertex let go. */
+  float frequency = 3.0f;
+  /** How free each vertex is (1 = jiggles fully, 0 = follows exactly). */
+  char defgrp_name[/*MAX_VGROUP_NAME*/ 64] = "";
+  /** 0 wobbles on, 1 settles at once. */
+  float damping = 0.15f;
+  /** How far a dent spreads to the vertices around it. */
+  float spread = 0.5f;
+  /** How much a dent pushes the rest out (keeps the volume). */
+  float volume = 0.5f;
+  /** 1 moves with the object (jiggles only when hit), 0 lags behind its motion. */
+  float follow = 0.0f;
+  /** Distance kept from the colliders' surfaces, in world units. */
+  float distance = 0.005f;
+  /** Steps per frame. */
+  short substeps = 4;
+  JiggleModifierFlag flag = JiggleModifierFlag(0);
+
+#ifdef __cplusplus
+  Span<JiggleModifierCollider> colliders() const;
+#endif
 };
 
 }  // namespace blender

@@ -213,6 +213,7 @@ class OBJECT_MT_modifier_add_deform(ModifierAddMenu, Menu):
         if ob_type in {'MESH', 'CURVE', 'FONT', 'SURFACE', 'LATTICE'}:
             self.operator_modifier_add(layout, 'HOOK')
         if ob_type == 'MESH':
+            self.operator_modifier_add(layout, 'JIGGLE')
             self.operator_modifier_add(layout, 'LAPLACIANDEFORM')
         if ob_type in {'MESH', 'CURVE', 'FONT', 'SURFACE', 'LATTICE'}:
             self.operator_modifier_add(layout, 'LATTICE')

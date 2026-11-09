@@ -526,6 +526,8 @@ def build(context, rig, parts):
         result.objects = [obj.name for obj in owners]
         sway.sync(rig)
         sway.clear_cache(rig)
+        from . import jiggle
+        jiggle.sync_rig(rig)  # the jiggles collide with the new colliders and hands
         return result
     finally:
         view_layer.objects.active = active
