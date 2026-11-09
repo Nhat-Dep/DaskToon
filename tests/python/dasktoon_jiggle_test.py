@@ -270,6 +270,62 @@ class MotionTest(unittest.TestCase):
         self.assertGreater(max(abs(xs[f]) for f in range(7, 40)), 0.005)  # wobbles on when it stops
         self.assertLess(abs(xs[79]), 0.01)
 
+    def test_soft_edge_moves_with_the_middle(self):
+        """The edge of a soft region shows a share of the same wobble as its middle, in step with it: a stiffer edge
+        wobbling at its own pace tore a real character's breast into a cone."""
+        empty_scene()
+        obj = pudding()
+        start = rest(obj)
+        weights = jiggle.soft_weights(obj, [i for i in range(len(start)) if start[i, 2] > 0.2])
+        group = obj.vertex_groups.new(name="Soft")
+        for i, w in weights.items():
+            group.add([i], w, 'REPLACE')
+        md = obj.modifiers.new("Jiggle", 'JIGGLE')
+        jiggle.apply_preset(md, 'PUDDING')
+        md.vertex_group, md.use_pin_bottom, md.spread, md.volume = "Soft", False, 0.0, 0.0
+        key_location(obj, [(1, (0, 0, 0)), (4, (0, 0, 0.15)), (7, (0, 0, 0)), (60, (0, 0, 0))])
+        core = [i for i, w in weights.items() if w > 0.999]
+        edge = [i for i, w in weights.items() if 0.2 < w < 0.8]
+        self.assertTrue(core and edge)
+        checked = 0
+        for frame in range(1, 41):
+            d = positions(obj, frame) - start - np.array(obj.matrix_world.translation)
+            middle = d[core].mean(axis=0)
+            if frame < 8 or np.linalg.norm(middle) < 0.002:
+                continue
+            for i in edge:
+                expected = weights[i] * middle
+                self.assertLess(np.linalg.norm(d[i] - expected), 0.25 * np.linalg.norm(expected) + 1e-4,
+                                (frame, i, weights[i]))
+            checked += 1
+        self.assertGreater(checked, 5)
+
+    def test_sharp_edge_does_not_fold(self):
+        """A group going from 1 to 0 between neighbours, shaken hard: the surface may stretch but never folds over (a
+        breast's narrow edge folded into a crumpled ridge)."""
+        empty_scene()
+        obj = pudding(cuts=15)
+        start = rest(obj)
+        group = obj.vertex_groups.new(name="Soft")
+        group.add([i for i in range(len(start)) if start[i, 2] > 0.2], 1.0, 'REPLACE')
+        md = obj.modifiers.new("Jiggle", 'JIGGLE')
+        jiggle.apply_preset(md, 'PUDDING')
+        md.vertex_group, md.use_pin_bottom = "Soft", False
+        key_location(obj, [(1, (0, 0, 0)), (3, (0.3, 0, 0.3)), (5, (0, 0, 0)), (40, (0, 0, 0))])
+        normals = np.empty(len(obj.data.polygons) * 3)
+        obj.data.polygons.foreach_get("normal", normals)
+        normals = normals.reshape(-1, 3)
+        moved = 0.0
+        for frame in range(1, 41):
+            bpy.context.scene.frame_set(frame)
+            ev = obj.evaluated_get(bpy.context.evaluated_depsgraph_get())
+            now = np.empty(len(ev.data.polygons) * 3)
+            ev.data.polygons.foreach_get("normal", now)
+            now = now.reshape(-1, 3)
+            self.assertGreater(float((now * normals).sum(axis=1).min()), 0.0, frame)
+            moved = max(moved, float(np.abs(positions(obj) - start - np.array(obj.matrix_world.translation)).max()))
+        self.assertGreater(moved, 0.02)  # it did jiggle
+
     def test_follow_motion_one_does_not_lag(self):
         empty_scene()
         obj = pudding()
@@ -350,6 +406,60 @@ class RigColliderTest(unittest.TestCase):
             return float(np.linalg.norm(p - (a + (b - a) * t)))
         # ...but leaves the vertices it moves where they are, inside it (pushed, none would be closer than 0.1).
         self.assertLess(min(gap(co[i]) for i in top_half), 0.09)
+
+
+    def test_skin_resting_near_a_collider_stays_still(self):
+        """Skin at the soft edge that rests closer to a body capsule than the collision distance is not pushed: the
+        push, scaled up by the edge's small share of the wobble, threw spikes out of a real character's breast."""
+        rig, belly = body_rig()
+        start = rest(belly)
+        weights = jiggle.soft_weights(belly, [i for i in range(len(start)) if start[i, 0] > 0.3])
+        group = belly.vertex_groups.new(name="Soft")
+        for i, w in weights.items():
+            group.add([i], w, 'REPLACE')
+        edge = min((i for i, w in weights.items() if 0.1 < w < 0.4), key=lambda i: weights[i])
+        out = start[edge] / np.linalg.norm(start[edge])
+        along = np.cross(out, (0.0, 0.0, 1.0))
+        along /= np.linalg.norm(along)
+        radius = 0.03
+        centre = start[edge] + out * (radius + 0.003)  # 3 mm from the skin, inside the 5 mm distance
+        bpy.context.view_layer.objects.active = rig
+        bpy.ops.object.mode_set(mode='EDIT')
+        probe = rig.data.edit_bones.new("Probe")
+        probe.head, probe.tail = centre - along * 0.05, centre + along * 0.05
+        bpy.ops.object.mode_set(mode='OBJECT')
+        md = belly.modifiers.new("Jiggle", 'JIGGLE')
+        jiggle.apply_preset(md, 'FLESH')
+        md.vertex_group, md.distance, md.rig = "Soft", 0.005, rig
+        md.collider_add("Probe", "", radius)
+        for frame in range(1, 11):
+            np.testing.assert_allclose(positions(belly, frame), start, atol=1e-4, err_msg=str(frame))
+
+
+    def test_capsule_just_under_the_skin_does_not_push_it(self):
+        """A body capsule lying just under the soft skin (the ribcage under a breast) is the inside of that body: the
+        skin lagging into it is not thrown back out (it threw spikes out of a real character's breast)."""
+        def run(with_inner):
+            rig, belly = body_rig()
+            bpy.context.view_layer.objects.active = rig
+            bpy.ops.object.mode_set(mode='EDIT')
+            inner = rig.data.edit_bones.new("Inner")
+            inner.head, inner.tail = (0.3, 0.0, -0.1), (0.3, 0.0, 0.1)
+            bpy.ops.object.mode_set(mode='OBJECT')
+            start = rest(belly)
+            group = belly.vertex_groups.new(name="Soft")
+            group.add([i for i in range(len(start)) if start[i, 0] > 0.25], 1.0, 'REPLACE')
+            md = belly.modifiers.new("Jiggle", 'JIGGLE')
+            jiggle.apply_preset(md, 'FLESH')
+            md.vertex_group, md.rig, md.follow = "Soft", rig, 0.0
+            if with_inner:
+                md.collider_add("Inner", "", 0.09)  # its surface 1 cm under the skin at x = 0.4
+            key_location(rig, [(1, (0, 0, 0)), (4, (0.15, 0, 0)), (7, (0, 0, 0)), (30, (0, 0, 0))])
+            return [positions(belly, frame) for frame in range(1, 21)]
+        plain, inner = run(False), run(True)
+        for frame, (a, b) in enumerate(zip(plain, inner), start=1):
+            self.assertLess(float(np.abs(a - b).max()), 0.002, frame)
+        self.assertGreater(max(float(np.abs(p - plain[0]).max()) for p in plain), 0.01)  # the skin did lag in
 
 
 class AddTest(unittest.TestCase):

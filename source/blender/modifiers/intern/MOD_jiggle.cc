@@ -177,6 +177,13 @@ constexpr int JIGGLE_MAX_CATCH_UP = 300;
 constexpr int JIGGLE_CHECKPOINT = 10;
 constexpr int JIGGLE_MAX_CHECKPOINTS = 16;
 constexpr int JIGGLE_MAX_FRAMES = 2000;
+/** A vertex showing less of the wobble than this is not pushed by the colliders (its shown share is too small to
+ * carry the push back into the wobble). */
+constexpr float JIGGLE_MIN_SHOWN = 0.25f;
+/** The steepest the shown wobble may change along the surface (metres per metre) where the freedom changes. */
+constexpr float JIGGLE_FOLD = 0.7f;
+/** A rig capsule closer than this share of its radius (plus the distance) to the skin at the start lies under it. */
+constexpr float JIGGLE_UNDER_SKIN = 0.25f;
 /** Share of a step's motion along a collider's surface taken back while touching it. */
 constexpr float JIGGLE_FRICTION = 0.8f;
 
@@ -360,8 +367,14 @@ struct JiggleSolver {
   Array<int> tri_piece;
   Array<int> vertex_piece;
   int pieces_num = 0;
-  /** Bounding box diagonal of the goals: the size of the thing. */
+  /** Bounding box diagonal of the goals: the size of the thing (a jump further than it starts again). */
   float size = 1.0f;
+  /** Bounding box diagonal of the free vertices' goals: the soft part's size (it never strays further than a share
+   * of it). */
+  float free_size = 1.0f;
+  /** The furthest a wobble may go before the shown surface folds where the freedom changes fastest (the freedom times
+   * the wobble changes by at most JIGGLE_FOLD per unit of length there). */
+  float fold_limit = FLT_MAX;
 
   Vector<JiggleCapsule> capsules;
   /** Per capsule, the vertices its own bone moves (it does not push those). */
@@ -416,7 +429,7 @@ void JiggleSolver::collide(MutableSpan<float3> position, const Span<float3> befo
   const float distance = std::max(jmd->distance, 0.0f);
   const float search = size * 0.5f + distance;
   for (const int i : IndexRange(verts_num)) {
-    if (freedom[i] <= 0.0f) {
+    if (freedom[i] < JIGGLE_MIN_SHOWN) {
       continue;
     }
     float3 p = position[i];
@@ -487,6 +500,33 @@ static Vector<std::pair<float3, float3>> capsule_ends(const Span<JiggleCapsule> 
   return out;
 }
 
+/* Every free vertex wobbles alike (`state.position`, one spring for all); a vertex shows `freedom` of its wobble:
+ * shown = goal + freedom * (position - goal). The colliders and the volume work on the shown shape. A freedom that
+ * set the stiffness instead let the edge of a soft part wobble at its own pace and tore a breast into a cone. */
+static void jiggle_shown(const Span<float> freedom,
+                         const Span<float3> goal,
+                         const Span<float3> position,
+                         MutableSpan<float3> r_shown)
+{
+  for (const int i : goal.index_range()) {
+    r_shown[i] = goal[i] + (position[i] - goal[i]) * freedom[i];
+  }
+}
+
+/** The wobble of every vertex the colliders pushed, from its pushed shown place. */
+static void jiggle_from_shown(const Span<float> freedom,
+                              const Span<float3> goal,
+                              const Span<float3> shown_before,
+                              const Span<float3> shown,
+                              MutableSpan<float3> position)
+{
+  for (const int i : goal.index_range()) {
+    if (freedom[i] >= JIGGLE_MIN_SHOWN && shown[i] != shown_before[i]) {
+      position[i] = goal[i] + (shown[i] - goal[i]) / freedom[i];
+    }
+  }
+}
+
 void JiggleSolver::reset(JiggleState &state, Span<float3> goal)
 {
   state.position = Array<float3>(goal);
@@ -494,14 +534,18 @@ void JiggleSolver::reset(JiggleState &state, Span<float3> goal)
   state.goal = Array<float3>(goal);
   state.capsules = capsule_ends(capsules);
   place_colliders(1.0f, {}, false);
-  /* What starts inside a collider (the plate under a pudding, the chest under the arm) stays out of it. */
+  /* What starts inside a collider or closer to it than the distance it keeps (the plate under a pudding, the chest
+   * under the arm) is never pushed by it. A capsule starting just under the skin (within a quarter of its radius more)
+   * is the inside of that body, the ribcage under a breast: the skin lagging into it is not thrown out either. */
   started_inside->clear();
-  const float search = size * 0.5f;
+  const float distance = std::max(jmd->distance, 0.0f);
+  const float search = size * 0.5f + distance;
   for (const JiggleCapsule &capsule : capsules) {
     Array<bool> inside(verts_num, false);
     for (const int i : IndexRange(verts_num)) {
       float3 out;
-      inside[i] = jiggle_capsule_distance(capsule, goal[i], out) < 0.0f;
+      inside[i] = jiggle_capsule_distance(capsule, goal[i], out) <
+                  distance + JIGGLE_UNDER_SKIN * capsule.radius;
     }
     started_inside->insert_or_assign(capsule.key, std::move(inside));
   }
@@ -510,11 +554,14 @@ void JiggleSolver::reset(JiggleState &state, Span<float3> goal)
     for (const int i : IndexRange(verts_num)) {
       float gap;
       float3 normal;
-      inside[i] = jiggle_mesh_distance(collider, goal[i], search, gap, normal) && gap < 0.0f;
+      inside[i] = jiggle_mesh_distance(collider, goal[i], search, gap, normal) && gap < distance;
     }
     started_inside->insert_or_assign(collider.key, std::move(inside));
   }
-  collide(state.position, {});
+  const Array<float3> before(goal);
+  Array<float3> shown(goal);
+  collide(shown, {});
+  jiggle_from_shown(freedom, goal, before, shown, state.position);
 }
 
 void JiggleSolver::step(JiggleState &state, Span<float3> goal_new, const float dt, const bool sweep)
@@ -526,6 +573,10 @@ void JiggleSolver::step(JiggleState &state, Span<float3> goal_new, const float d
   state.goal = Array<float3>(goal_new);
   state.capsules = capsule_ends(capsules);
 
+  Array<float3> shown(verts_num);
+  Array<float3> shown_start(verts_num);
+  Array<float3> shown_pushed(verts_num);
+
   /* A jump (a cut, the object put somewhere else) starts again instead of flying. */
   float jump = 0.0f;
   for (const int i : IndexRange(verts_num)) {
@@ -535,17 +586,20 @@ void JiggleSolver::step(JiggleState &state, Span<float3> goal_new, const float d
     p.copy_from(goal_new);
     v.fill(float3(0.0f));
     place_colliders(1.0f, {}, false);
-    collide(p, {});
+    shown.as_mutable_span().copy_from(goal_new);
+    shown_pushed.as_mutable_span().copy_from(goal_new);
+    collide(shown_pushed, {});
+    jiggle_from_shown(freedom, goal_new, shown, shown_pushed, p);
     return;
   }
 
   const float h = dt / float(substeps);
   const float follow = std::clamp(jmd->follow, 0.0f, 1.0f);
   const float zeta = std::clamp(jmd->damping, 0.0f, 1.0f);
-  const float max_omega = 1.5f / h;
+  const float om = std::min(omega, 1.5f / h);
   const float spread = 1.0f - std::pow(1.0f - std::clamp(jmd->spread, 0.0f, 1.0f), 1.0f / substeps);
   const float keep = 1.0f - std::pow(1.0f - std::clamp(jmd->volume, 0.0f, 1.0f), 1.0f / substeps);
-  const float limit = size * 0.25f;
+  const float limit = std::min(free_size * 0.25f, fold_limit);
 
   /* `v` is the velocity relative to the share of the goal's motion the jiggle follows: Follow Motion 1 carries the
    * vertices along with the goals and the springs only see what collides. */
@@ -570,46 +624,47 @@ void JiggleSolver::step(JiggleState &state, Span<float3> goal_new, const float d
       goal[i] = math::interpolate(goal_old[i], goal_new[i], t);
     }
     start.as_mutable_span().copy_from(p);
+    jiggle_shown(freedom, before, start, shown_start);
 
-    /* Springs back to the goal (semi-implicit Euler, the force from the start of the step): a less free vertex is a
-     * stiffer spring. */
+    /* Springs back to the goal (semi-implicit Euler, the force from the start of the step). */
     for (const int i : IndexRange(verts_num)) {
-      const float w = freedom[i];
-      if (w <= 0.0f) {
+      if (freedom[i] <= 0.0f) {
         p[i] = goal[i];
         v[i] = goal_velocity[i] * (1.0f - follow);
         continue;
       }
-      const float om = std::min(omega / std::sqrt(w), max_omega);
       const float3 a = -(om * om) * (p[i] - before[i]) -
                        (2.0f * zeta * om) * (v[i] - goal_velocity[i] * (1.0f - follow));
       v[i] += a * h;
       p[i] += v[i] * h + goal_velocity[i] * (follow * h);
     }
 
-    /* A dent spreads: each offset from the goal is pulled towards the average of its neighbours'. */
+    /* A dent spreads: each wobble is pulled towards the average of its free neighbours'. */
     if (spread > 0.0f) {
       for (const int i : IndexRange(verts_num)) {
         offset[i] = p[i] - goal[i];
       }
       for (const int i : IndexRange(verts_num)) {
-        const float w = freedom[i];
-        const int begin = neighbour_offsets[i];
-        const int end = neighbour_offsets[i + 1];
-        if (w <= 0.0f || end == begin) {
+        if (freedom[i] <= 0.0f) {
           continue;
         }
         float3 sum(0.0f);
-        for (int n = begin; n < end; n++) {
-          sum += offset[neighbours[n]];
+        int count = 0;
+        for (int n = neighbour_offsets[i]; n < neighbour_offsets[i + 1]; n++) {
+          if (freedom[neighbours[n]] > 0.0f) {
+            sum += offset[neighbours[n]];
+            count++;
+          }
         }
-        const float3 average = sum / float(end - begin);
-        p[i] += (average - offset[i]) * (spread * w);
+        if (count > 0) {
+          p[i] += (sum / float(count) - offset[i]) * spread;
+        }
       }
     }
 
-    /* Keeps the volume of each piece: pushed in here, it bulges out there. */
+    /* Keeps the volume of each piece's shown shape: pushed in here, it bulges out there. */
     if (keep > 0.0f && pieces_num > 0 && !tris.is_empty()) {
+      jiggle_shown(freedom, goal, p, shown);
       volume.fill(0.0f);
       rest.fill(0.0f);
       weight_sum.fill(0.0f);
@@ -617,15 +672,15 @@ void JiggleSolver::step(JiggleState &state, Span<float3> goal_new, const float d
       for (const int t_index : tris.index_range()) {
         const int3 tri = tris[t_index];
         const int piece = tri_piece[t_index];
-        volume[piece] += math::dot(p[tri[0]], math::cross(p[tri[1]], p[tri[2]])) / 6.0f;
+        volume[piece] += math::dot(shown[tri[0]], math::cross(shown[tri[1]], shown[tri[2]])) / 6.0f;
         rest[piece] += math::dot(goal[tri[0]], math::cross(goal[tri[1]], goal[tri[2]])) / 6.0f;
-        gradient[tri[0]] += math::cross(p[tri[1]], p[tri[2]]) / 6.0f;
-        gradient[tri[1]] += math::cross(p[tri[2]], p[tri[0]]) / 6.0f;
-        gradient[tri[2]] += math::cross(p[tri[0]], p[tri[1]]) / 6.0f;
+        gradient[tri[0]] += math::cross(shown[tri[1]], shown[tri[2]]) / 6.0f;
+        gradient[tri[1]] += math::cross(shown[tri[2]], shown[tri[0]]) / 6.0f;
+        gradient[tri[2]] += math::cross(shown[tri[0]], shown[tri[1]]) / 6.0f;
       }
       for (const int i : IndexRange(verts_num)) {
         if (vertex_piece[i] >= 0) {
-          weight_sum[vertex_piece[i]] += freedom[i] * math::length_squared(gradient[i]);
+          weight_sum[vertex_piece[i]] += freedom[i] * freedom[i] * math::length_squared(gradient[i]);
         }
       }
       for (const int i : IndexRange(verts_num)) {
@@ -634,11 +689,12 @@ void JiggleSolver::step(JiggleState &state, Span<float3> goal_new, const float d
           continue;
         }
         const float lambda = -(volume[piece] - rest[piece]) / weight_sum[piece];
+        /* The shown place moves by freedom * this: the volume comes back at the shown shape. */
         p[i] += gradient[i] * (keep * lambda * freedom[i]);
       }
     }
 
-    /* Never further from the goal than a quarter of the thing's size (before the colliders, which win). */
+    /* Never further from the goal than a quarter of the soft part's size (before the colliders, which win). */
     for (const int i : IndexRange(verts_num)) {
       const float3 d = p[i] - goal[i];
       const float length = math::length(d);
@@ -647,9 +703,13 @@ void JiggleSolver::step(JiggleState &state, Span<float3> goal_new, const float d
       }
     }
 
-    /* The colliders swept through the frame step by step: a fast hand cannot jump over a vertex. */
+    /* The colliders swept through the frame step by step (a fast hand cannot jump over a vertex), pushing the shown
+     * shape. */
     place_colliders(t, capsules_from, sweep);
-    collide(p, start);
+    jiggle_shown(freedom, goal, p, shown);
+    shown_pushed.as_mutable_span().copy_from(shown);
+    collide(shown_pushed, shown_start);
+    jiggle_from_shown(freedom, goal, shown, shown_pushed, p);
 
     for (const int i : IndexRange(verts_num)) {
       if (freedom[i] > 0.0f) {
@@ -875,6 +935,7 @@ static uint64_t setup_hash(const JiggleModifierData &jmd, const JiggleSolver &so
 static void store_frame(JiggleCacheEntry &entry,
                         const int frame,
                         const JiggleState &state,
+                        const Span<float> freedom,
                         const uint64_t inputs,
                         const bool exact)
 {
@@ -882,7 +943,7 @@ static void store_frame(JiggleCacheEntry &entry,
   out.offset.reinitialize(entry.free_indices.size());
   for (const int n : entry.free_indices.index_range()) {
     const int i = entry.free_indices[n];
-    out.offset[n] = state.position[i] - state.goal[i];
+    out.offset[n] = (state.position[i] - state.goal[i]) * freedom[i];
   }
   out.inputs = inputs;
   out.exact = exact;
@@ -979,6 +1040,22 @@ static void deform_verts(ModifierData *md,
     inputs.add(goal[i]);
   }
   solver.size = std::max(math::distance(low, high), 1e-6f);
+  float3 free_low(FLT_MAX), free_high(-FLT_MAX);
+  for (const int i : IndexRange(verts_num)) {
+    if (solver.freedom[i] > 0.0f) {
+      free_low = math::min(free_low, goal[i]);
+      free_high = math::max(free_high, goal[i]);
+    }
+  }
+  solver.free_size = std::max(math::distance(free_low, free_high), 1e-6f);
+  float steepest = 0.0f;
+  for (const int2 &edge : mesh->edges()) {
+    const float change = std::fabs(solver.freedom[edge[0]] - solver.freedom[edge[1]]);
+    if (change > 0.0f) {
+      steepest = std::max(steepest, change / std::max(math::distance(goal[edge[0]], goal[edge[1]]), 1e-6f));
+    }
+  }
+  solver.fold_limit = steepest > 0.0f ? JIGGLE_FOLD / steepest : FLT_MAX;
   build_colliders(solver, *jmd, ctx, *mesh, ctime, inputs);
 
   const std::shared_ptr<JiggleCacheEntry> entry_ptr = jiggle_entry(ob, md);
@@ -1006,7 +1083,7 @@ static void deform_verts(ModifierData *md,
   const auto show_state = [&](const JiggleState &state) {
     for (const int n : entry.free_indices.index_range()) {
       const int i = entry.free_indices[n];
-      offset[n] = state.position[i] - state.goal[i];
+      offset[n] = (state.position[i] - state.goal[i]) * solver.freedom[i];
     }
   };
   const int start_frame = scene->r.sfra;
@@ -1044,7 +1121,7 @@ static void deform_verts(ModifierData *md,
       JiggleState state;
       solver.reset(state, goal);
       show_state(state);
-      store_frame(entry, frame, state, hash, true);
+      store_frame(entry, frame, state, solver.freedom, hash, true);
       store_state(entry, frame, start_frame, std::move(state));
     }
     else if (cached != entry.frames.end() && cached->second.exact) {
@@ -1054,7 +1131,7 @@ static void deform_verts(ModifierData *md,
       JiggleState state = entry.states.at(frame - 1);
       solver.step(state, goal, dt, true);
       show_state(state);
-      store_frame(entry, frame, state, hash, true);
+      store_frame(entry, frame, state, solver.freedom, hash, true);
       store_state(entry, frame, start_frame, std::move(state));
     }
     else if (cached != entry.frames.end()) {
@@ -1082,7 +1159,7 @@ static void deform_verts(ModifierData *md,
         solver.reset(state, goal);
       }
       show_state(state);
-      store_frame(entry, frame, state, hash, false);
+      store_frame(entry, frame, state, solver.freedom, hash, false);
       store_state(entry, frame, start_frame, std::move(state));
     }
   }

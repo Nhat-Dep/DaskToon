@@ -15,14 +15,14 @@ GROUP = "DT_Jiggle"
 NAME = "Jiggle"
 HAND_SHARE = 0.9  # of the hand's mean thickness, like the rig's colliders (build.COLLIDER_SHARE)
 HAND_FALLBACK = 0.35  # of the hand's length, for a hand no vertex follows
-EDGE = 0.5  # the soft edge of a selection, as a share of the selection's radius
+EDGE = 1.0  # the soft edge of a selection, as a share of the selection's radius (half of it folded a real breast)
 SIDES = ("Left", "Right")
 
 # name: (frequency, damping, spread, volume, follow, pin bottom) (spec 7)
 PRESETS = {
     'PUDDING': (3.0, 0.12, 0.6, 0.8, 0.0, True),
     'JELLY': (5.0, 0.08, 0.4, 0.6, 0.0, True),
-    'BREAST': (2.5, 0.18, 0.5, 0.5, 0.3, False),
+    'BREAST': (3.0, 0.25, 0.5, 0.5, 0.5, False),
     'FLESH': (3.5, 0.25, 0.5, 0.5, 0.5, False),
     'CHEEK': (5.0, 0.3, 0.5, 0.3, 0.6, False),
 }

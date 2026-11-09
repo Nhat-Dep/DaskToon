@@ -67,7 +67,8 @@ Như ràng buộc lò xo: bộ nhớ chung, khóa theo UID phiên của vật g�
   xương (như lò xo). Mỗi vật va chạm: xương đầu, xương cuối (trống = cùng xương), bán kính.
   - Bỏ qua khối của xương đang kéo đỉnh đó (nhóm đỉnh trùng tên xương, trọng số > 0,05): ngực không bị khối Chest
     đẩy, bụng không bị khối Spine đẩy.
-  - Bỏ qua khối mà đích đã nằm trong.
+  - Bỏ qua khối mà đích đã nằm trong, hoặc lúc bắt đầu cách nó chưa tới Khoảng cách + ¼ bán kính khối (khối nằm ngay
+    dưới da là ruột của chính phần thân đó: khung sườn dưới ngực).
   - Thêm rung mềm chép vật va chạm của rig (`rig.data.dasktoon_rig.colliders`) và thêm hai khối **bàn tay** (từ đầu
     xương Hand tới đầu ngón dài nhất; bán kính = 0,9 × khoảng cách trung bình của các đỉnh thuộc bàn tay tới trục,
     không có thì 0,35 × chiều dài bàn tay). Dựng rig lại thì đồng bộ lại.
@@ -75,7 +76,8 @@ Như ràng buộc lò xo: bộ nhớ chung, khóa theo UID phiên của vật g�
 ## 6. Mép mờ của vùng chọn
 
 Trọng số 1 trong vùng chọn, ra ngoài giảm dần theo khoảng cách trên mặt (theo cạnh) tới 0 ở khoảng `0,5 ×` bán kính
-vùng (bán kính = khoảng cách lớn nhất từ tâm vùng tới đỉnh chọn), đường cong mượt (smoothstep).
+vùng (bán kính = khoảng cách lớn nhất từ tâm vùng tới đỉnh chọn) — sửa thành `1 ×` sau khi thử trên Phoebe (§11),
+đường cong mượt (smoothstep).
 
 ## 7. Mẫu
 
@@ -83,7 +85,7 @@ vùng (bán kính = khoảng cách lớn nhất từ tâm vùng tới đỉnh ch
 |---|---|---|---|---|---|---|
 | Bánh pudding | 3,0 | 0,12 | 0,6 | 0,8 | 0,0 | bật |
 | Thạch | 5,0 | 0,08 | 0,4 | 0,6 | 0,0 | bật |
-| Ngực | 2,5 | 0,18 | 0,5 | 0,5 | 0,3 | tắt |
+| Ngực | 3,0 | 0,25 | 0,5 | 0,5 | 0,5 | tắt |
 | Thịt mềm | 3,5 | 0,25 | 0,5 | 0,5 | 0,5 | tắt |
 | Má | 5,0 | 0,3 | 0,5 | 0,3 | 0,6 | tắt |
 
@@ -110,8 +112,32 @@ Trên mô hình thật: bản sao của nhân vật, rung ngực/bụng khi ch�
 
 1. Tên giao diện "Rung mềm"; tên gốc "Jiggle".
 2. Độ lan dùng làm mượt độ lệch, không dùng giữ độ dài cạnh (giữ độ dài không truyền được vết lõm vuông góc mặt).
-3. Độ tự do vào làm độ cứng (`ω²/w`) chứ không trộn kết quả cuối, để va chạm vẫn đúng ở mép vùng.
+3. ~~Độ tự do vào làm độ cứng (`ω²/w`)~~ — sai, xem §11: mọi đỉnh tự do rung cùng một nhịp, đỉnh hiện `w ×` cú rung;
+   va chạm và thể tích tính trên hình hiện ra.
 4. Vật va chạm lưới: dùng tam giác cuối khung, không nội suy trong khung (đủ cho vật thường; vật rất nhanh có thể xuyên).
 5. Bộ nhớ chỉ giữ mốc mỗi 10 khung để không ăn quá nhiều RAM trên lưới dày.
 6. Va chạm khung xương lưu trong bộ biến đổi (danh sách xương + bán kính), Python đồng bộ từ rig, như lò xo xương.
 7. Bàn tay chỉ là vật va chạm của rung mềm, không thêm vào vật va chạm của lò xo tóc/váy (không đổi hành vi cũ).
+
+## 11. Thử trên mô hình thật (2026-11-10, 02:45–03:40)
+
+Phoebe (temp_4_3, bản sao; ngực, người nhún 10 cm hai lần) tìm ra bốn lỗi chung; mỗi lỗi có phép thử tổng hợp, trượt
+trên mã cũ, qua trên mã mới:
+
+1. **Mép vùng rung lệch nhịp với giữa vùng** (độ tự do làm độ cứng): ngực bị xé thành hình chóp. Sửa: cùng một nhịp,
+   độ tự do chỉ là phần cú rung được hiện ra. Phép thử: `test_soft_edge_moves_with_the_middle`.
+2. **Da nằm sẵn trong Khoảng cách của một khối** bị đẩy ra, cú đẩy chia cho độ tự do nhỏ thành gai. Sửa: lúc bắt đầu
+   cách khối chưa tới Khoảng cách thì khối không đẩy; đỉnh hiện dưới 25% cú rung không va chạm. Phép thử:
+   `test_skin_resting_near_a_collider_stays_still`.
+3. **Mép gắt gấp nếp** khi cú rung lớn hơn bề rộng dải chuyển tiếp. Sửa: cú rung giới hạn ở `0,7 / độ dốc lớn nhất của
+   trọng số`; mép mờ do nút tạo rộng `1 ×` bán kính vùng; mẫu Ngực 3 Hz, tắt dần 0,25, theo chuyển động 0,5. Phép thử:
+   `test_sharp_edge_does_not_fold`.
+4. **Khung sườn ngay dưới da ngực** (khối UpperChest, đỉnh mép ngực ăn 2–4% trọng số của nó) hất da ra. Sửa: khối nằm
+   cách da chưa tới Khoảng cách + ¼ bán kính lúc bắt đầu không đẩy da đó. Phép thử:
+   `test_capsule_just_under_the_skin_does_not_push_it`.
+
+Thêm (từ phép thử bàn tay): khối mỏng đi nhanh được quét qua các bước nhỏ; đỉnh đi ra lại đúng phía nó vào; ma sát 0,8
+giữ da không trượt khỏi đầu ngón tay.
+
+Đối chiếu trên temp_2_1 (không dùng để sửa): ngực và bụng, tay khoanh trước ngực theo hoạt hình của tệp: không gai,
+không gấp; cẳng tay ấn ngực lõm tự nhiên. 25–33 ms mỗi khung trên lưới 39–60 nghìn đỉnh.
