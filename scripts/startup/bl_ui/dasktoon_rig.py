@@ -1551,7 +1551,9 @@ class DaskRigPanel:
 
     @classmethod
     def poll(cls, context):
-        return rig_of(context) is not None
+        # A machine rig has panels of its own (bl_ui/dasktoon_machine.py).
+        rig = rig_of(context)
+        return rig is not None and not getattr(getattr(rig.data, "dasktoon_machine", None), "is_machine", False)
 
 
 class DATA_PT_dasktoon_rig(DaskRigPanel, Panel):

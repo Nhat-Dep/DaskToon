@@ -2155,6 +2155,106 @@ VI = {
     "Make Colliders": "Cho vật này va chạm",
     "Colliders now: %s": "Vật va chạm mới: %s",
     "none new": "không có vật mới",
+
+    # bl_ui/dasktoon_machine.py, dasktoon_machine
+    "Machine Rig": "Rig cơ khí",
+    "Machine": "Máy",
+    "Create Machine Rig": "Tạo rig máy",
+    "Make the selected meshes a machine: a rig with one Root joint holding every piece, ready for Add Joint":
+        "Biến các lưới đang chọn thành một máy: một bộ xương có khớp Root giữ mọi mảnh, sẵn để Thêm khớp",
+    "Rigid pieces on joints, for robots, weapons and machines":
+        "Các mảnh cứng gắn vào khớp, cho robot, vũ khí và máy móc",
+    "Machine rig made: %d pieces wait for a joint": "Đã tạo rig máy: %d mảnh đang chờ gắn khớp",
+    "Select the meshes of the machine first": "Hãy chọn các lưới của máy trước",
+    "Already part of a machine: %s": "Đã thuộc một máy rồi: %s",
+    "%s Machine": "%s Máy",
+    "Add Joint": "Thêm khớp",
+    "Click a piece, then the piece it hangs from; move the guessed pivot, change the axis or kind; Enter makes it":
+        "Nhấp một mảnh, rồi mảnh nó treo vào; dời tâm quay đã đoán, đổi trục hay loại khớp; Enter để tạo",
+    "Open a 3D Viewport to use the tool": "Hãy mở một khung nhìn 3D để dùng công cụ",
+    "Click a piece to give it a joint, or a piece with a joint to change it":
+        "Nhấp một mảnh để gắn khớp cho nó, hoặc nhấp mảnh đã có khớp để sửa",
+    "Click the piece it hangs from, or empty space for the root. Shift+click: more pieces":
+        "Nhấp mảnh mà nó treo vào, hoặc chỗ trống để gắn vào Root. Shift+nhấp: thêm mảnh",
+    "Enter: make the joint · drag G: move the pivot · X Y Z: axis · A: guessed axis · T: kind · "
+    "P: another parent · Backspace: undo the last joint":
+        "Enter: tạo khớp · G hoặc kéo chấm: dời tâm quay · X Y Z: trục · A: trục tự đoán · T: loại khớp · "
+        "P: chọn mảnh cha khác · Backspace: gỡ khớp vừa tạo",
+    "The parent piece got a free joint of its own: %s": "Mảnh cha được gắn một khớp tự do riêng: %s",
+    "This piece has a joint already: %s": "Mảnh này đã có khớp: %s",
+    "A joint cannot hang from itself or from a joint below it":
+        "Khớp không thể treo vào chính nó hay vào khớp nằm dưới nó",
+    "No joint named %s": "Không có khớp tên %s",
+    "The piece has no vertices": "Mảnh không có đỉnh nào",
+    "This joint cannot be removed": "Không gỡ được khớp này",
+    "Kind": "Loại khớp",
+    "How the joint moves against its parent": "Khớp cử động thế nào so với khớp cha",
+    "Hinge": "Bản lề",
+    "Turns about one axis (the red ring)": "Quay quanh một trục (vòng đỏ)",
+    "Ball Joint": "Khớp cầu",
+    "Turns every way": "Quay mọi hướng",
+    "Slide": "Trượt",
+    "Moves along one axis without turning": "Đi thẳng theo một trục, không quay",
+    "Does not move against its parent": "Không cử động so với khớp cha",
+    "Keep the joint between a smallest and a largest value": "Giữ khớp trong khoảng từ nhỏ nhất tới lớn nhất",
+    "Smallest": "Nhỏ nhất",
+    "Largest": "Lớn nhất",
+    "The smallest angle of the hinge": "Góc nhỏ nhất của bản lề",
+    "The largest angle of the hinge": "Góc lớn nhất của bản lề",
+    "How far the slide moves back": "Trượt lùi được bao xa",
+    "How far the slide moves forward": "Trượt tới được bao xa",
+    "Aims": "Đang ngắm",
+    "Aim Point": "Điểm mũi",
+    "Pieces Without a Joint": "Mảnh chưa có khớp",
+    "%d pieces have no joint yet (red in the tool)": "Còn %d mảnh chưa gắn khớp (màu đỏ trong công cụ)",
+    "Every piece has a joint": "Mảnh nào cũng đã có khớp",
+    "In the tool: click a piece, then its parent, then Enter": "Trong công cụ: nhấp mảnh, rồi mảnh cha, rồi Enter",
+    "Selected Joint": "Khớp đang chọn",
+    "Select a joint (a bone) to set it up": "Chọn một khớp (một xương) để chỉnh",
+    "Remove Joint": "Gỡ khớp",
+    "Take the selected joint away: its pieces wait for a joint again, the joints below it hang from its parent":
+        "Gỡ khớp đang chọn: các mảnh của nó lại chờ gắn khớp, các khớp dưới nó treo vào khớp cha",
+    "Make a Piece from Selection": "Mảnh từ vùng chọn",
+    "The selected faces become a piece of their own, to be given a joint apart from the rest of their part":
+        "Các mặt đang chọn thành một mảnh riêng, gắn khớp riêng với phần còn lại",
+    "Select the faces of a piece in Edit Mode": "Chọn các mặt của một mảnh trong chế độ Chỉnh sửa",
+    "Select the faces of the piece in Edit Mode first": "Hãy chọn các mặt của mảnh trong chế độ Chỉnh sửa trước",
+    "New piece %d": "Mảnh mới %d",
+    "Make Pieces Rigid": "Làm cứng các mảnh",
+    "Each piece of the meshes on this armature goes wholly to the bone holding most of it, so nothing bends":
+        "Mỗi mảnh của các lưới gắn bộ xương này đi trọn theo xương giữ nó nhiều nhất, để không gì bị uốn méo",
+    "%d pieces are split between joints: they are selected in their meshes, split them with Make a Piece from "
+    "Selection":
+        "%d mảnh bị nhiều khớp chia nhau: chúng đang được chọn trong lưới, hãy tách bằng Mảnh từ vùng chọn",
+    "%d pieces made rigid": "Đã làm cứng %d mảnh",
+    "No mesh is moved by this armature": "Không có lưới nào gắn với bộ xương này",
+    "The armature has no bones": "Bộ xương không có xương nào",
+    "IK Legs": "Chân IK",
+    "Add IK Leg": "Thêm chân IK",
+    "The selected joint becomes a foot: an IK target moves it and bends the joints above it":
+        "Khớp đang chọn thành bàn chân: một điểm IK kéo nó đi và gập các khớp phía trên",
+    "Select the foot joint and press Add IK Leg": "Chọn khớp bàn chân rồi bấm Thêm chân IK",
+    "IK target added: %s": "Đã thêm điểm IK: %s",
+    "Remove IK Leg": "Gỡ chân IK",
+    "Take this IK leg away; its joints stay": "Gỡ chân IK này; các khớp vẫn giữ",
+    "Snap Leg": "Chuyển chân",
+    "Switch the leg over without moving it": "Chuyển chân sang IK hoặc FK mà không làm nó xê dịch",
+    "A foot needs a joint above it": "Bàn chân cần có một khớp ở trên",
+    "This foot already has an IK target": "Bàn chân này đã có điểm IK",
+    "0: the IK target moves the leg, 1: its joints do": "0: điểm IK kéo chân, 1: các khớp tự quay",
+    "Aiming": "Ngắm",
+    "Aim": "Ngắm",
+    "Add Aim Target": "Thêm điểm ngắm",
+    "The selected joint (a barrel, an eye) and the joints above it turn towards a target you can move":
+        "Khớp đang chọn (nòng súng, con mắt) và các khớp phía trên quay theo một điểm ngắm kéo được",
+    "Select a barrel or an eye joint and press Add Aim Target": "Chọn khớp nòng súng hay con mắt rồi bấm Thêm điểm ngắm",
+    "Aim target added: %s": "Đã thêm điểm ngắm: %s",
+    "Remove Aim Target": "Gỡ điểm ngắm",
+    "Take this aim target away; the joints turn back to their own pose": "Gỡ điểm ngắm; các khớp về lại tư thế riêng",
+    "How much the joints turn towards the target": "Các khớp quay theo điểm ngắm bao nhiêu",
+    "Only a hinge or a ball joint can aim": "Chỉ bản lề hoặc khớp cầu mới ngắm được",
+    "The joint holds no piece": "Khớp không giữ mảnh nào",
+    "This joint already aims": "Khớp này đã ngắm rồi",
 }
 
 # Words that need their own translation context, because Blender's own translation of the same word in the default

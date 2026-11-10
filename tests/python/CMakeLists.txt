@@ -312,6 +312,8 @@ foreach(dasktoon_test
     dasktoon_import_adopt_test
     dasktoon_rig_controls_test
     dasktoon_rig_face_board_test
+    dasktoon_machine_test
+    dasktoon_machine_ui_test
 )
   add_blender_test(
     ${dasktoon_test}
