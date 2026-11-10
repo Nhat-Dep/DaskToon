@@ -162,13 +162,16 @@ def create(context, objects, name=None):
     return rig
 
 
-SPLIT = 0.6  # a piece whose strongest bone has less than this share of its weights is split between bones
+SPLIT = 0.6  # a piece whose strongest bone has less than this share of its weights is split between bones ...
+SPLIT_VERTS = 0.05  # ... and so is one with this share of its vertices held mostly by another bone (a leg grown out of
+# a body: one skin over several bones)
 
 
 def adopt(context, rig):
     """Make the pieces of the meshes on an armature with its own skeleton rigid (machine rig spec 6): each piece goes
-    100% to the bone holding most of it. The armature becomes a machine, its first root bone the root. Returns
-    (number of pieces, [pieces split between bones])."""
+    100% to the bone holding most of it. A piece split between bones keeps its weights: making it rigid would stop it
+    bending; it is reported for the user to cut it into pieces. The armature becomes a machine, its first root bone
+    the root. Returns (number of pieces, [pieces split between bones])."""
     from . import joints, pieces, shapes
     arm = rig.data
     roots = [b for b in arm.bones if b.parent is None]
@@ -185,26 +188,35 @@ def adopt(context, rig):
     for obj in objects:
         ids = pieces.ensure(obj)
         groups = {g.index: g.name for g in obj.vertex_groups if g.name in bones}
-        totals, members = {}, {name: [] for name in groups.values()}
+        totals, members, strongest = {}, {name: [] for name in groups.values()}, {}
         for v in obj.data.vertices:
             piece = int(ids[v.index])
+            best = (None, 0.5)
             for g in v.groups:
                 name = groups.get(g.group)
                 if name is not None and g.weight > 0.0:
                     t = totals.setdefault(piece, {})
                     t[name] = t.get(name, 0.0) + g.weight
                     members[name].append(v.index)
+                    if g.weight > best[1]:
+                        best = (name, g.weight)
+            strongest[v.index] = best[0]
         winner = {}
         for piece, t in totals.items():
             best = max(t, key=t.get)
-            winner[piece] = best
-            if t[best] < SPLIT * sum(t.values()):
+            verts = np.nonzero(ids == piece)[0]
+            others = sum(1 for v in verts if strongest[int(v)] not in (None, best))
+            if t[best] < SPLIT * sum(t.values()) or others >= SPLIT_VERTS * len(verts):
                 split.append((obj, piece))
+                winner[piece] = None
+            else:
+                winner[piece] = best
         count += len(np.unique(ids))
+        kept = np.array([winner.get(int(p), "") is None for p in ids])
         for name in groups.values():
             group = obj.vertex_groups[name]
             keep = np.nonzero(np.array([winner.get(int(p)) == name for p in ids]))[0].tolist()
-            drop = sorted(set(members[name]) - set(keep))
+            drop = sorted(set(members[name]) - set(keep) - set(np.nonzero(kept)[0].tolist()))
             if drop:
                 group.remove(drop)
             if keep:

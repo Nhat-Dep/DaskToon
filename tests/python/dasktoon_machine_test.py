@@ -554,9 +554,23 @@ class AdoptTest(unittest.TestCase):
         self.assertEqual(self.weights(self.p["Barrel"]), {(("turret", 1.0),)})
         self.assertEqual(self.weights(self.p["Wheel"]), {(("turret", 1.0),)})
         self.assertEqual(split, [self.p["Turret"]])
-        self.assertEqual(len(self.weights(self.p["Turret"])), 1)
+        self.assertEqual(self.weights(self.p["Turret"]), {(("hull", 0.5), ("turret", 0.5))})  # left as it was
         self.assertEqual(self.rig.data.bones["hull"].dasktoon_joint.kind, 'BALL')
         self.assertEqual(self.rig.pose.bones["hull"].custom_shape.name, "DT Machine Ball")
+
+    def test_a_piece_bending_on_two_bones_is_left_as_it_was(self):
+        # most of the shin's weight is on the hull, but its lower quarter is wholly on the turret: one skin over two
+        # bones (a leg grown out of a body), not a rigid piece; making it rigid would stop it bending
+        b = pieces.Binding(self.rig, list(self.objs.values()))
+        verts = b.verts(self.p["Shin"])
+        low = [int(v) for v in verts if b.world[self.mech][v][2] < 0.2]
+        self.mech.vertex_groups["hull"].add(verts.tolist(), 1.0, 'REPLACE')
+        self.mech.vertex_groups["hull"].remove(low)
+        self.mech.vertex_groups["turret"].add(low, 1.0, 'REPLACE')
+        before = self.weights(self.p["Shin"])
+        _count, split = machine.adopt(bpy.context, self.rig)
+        self.assertIn(self.p["Shin"], split)
+        self.assertEqual(self.weights(self.p["Shin"]), before)
 
 
 if __name__ == "__main__":
