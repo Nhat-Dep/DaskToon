@@ -83,6 +83,7 @@ _modules = [
     "dasktoon_uv",
     "dasktoon_import",
     "dasktoon_jiggle",
+    "dasktoon_machine",
     "properties_collection",
     "properties_strip",
     "properties_strip_modifier",
