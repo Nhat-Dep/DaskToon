@@ -160,3 +160,61 @@ def create(context, objects, name=None):
         add_modifier(obj, rig)
     shapes.style_root(rig)
     return rig
+
+
+SPLIT = 0.6  # a piece whose strongest bone has less than this share of its weights is split between bones
+
+
+def adopt(context, rig):
+    """Make the pieces of the meshes on an armature with its own skeleton rigid (machine rig spec 6): each piece goes
+    100% to the bone holding most of it. The armature becomes a machine, its first root bone the root. Returns
+    (number of pieces, [pieces split between bones])."""
+    from . import joints, pieces, shapes
+    arm = rig.data
+    roots = [b for b in arm.bones if b.parent is None]
+    if not roots:
+        raise MachineError(rpt_("The armature has no bones"))
+    objects = meshes(rig)
+    if not objects:
+        raise MachineError(rpt_("No mesh is moved by this armature"))
+    if not arm.dasktoon_machine.is_machine:
+        arm.dasktoon_machine.is_machine = True
+        arm.dasktoon_machine.root = roots[0].name
+    bones = {b.name for b in arm.bones}
+    count, split, holding = 0, [], set()
+    for obj in objects:
+        ids = pieces.ensure(obj)
+        groups = {g.index: g.name for g in obj.vertex_groups if g.name in bones}
+        totals, members = {}, {name: [] for name in groups.values()}
+        for v in obj.data.vertices:
+            piece = int(ids[v.index])
+            for g in v.groups:
+                name = groups.get(g.group)
+                if name is not None and g.weight > 0.0:
+                    t = totals.setdefault(piece, {})
+                    t[name] = t.get(name, 0.0) + g.weight
+                    members[name].append(v.index)
+        winner = {}
+        for piece, t in totals.items():
+            best = max(t, key=t.get)
+            winner[piece] = best
+            if t[best] < SPLIT * sum(t.values()):
+                split.append((obj, piece))
+        count += len(np.unique(ids))
+        for name in groups.values():
+            group = obj.vertex_groups[name]
+            keep = np.nonzero(np.array([winner.get(int(p)) == name for p in ids]))[0].tolist()
+            drop = sorted(set(members[name]) - set(keep))
+            if drop:
+                group.remove(drop)
+            if keep:
+                group.add(keep, 1.0, 'REPLACE')
+                holding.add(name)
+    binding = pieces.Binding(rig, objects)
+    for name in holding:
+        bone = arm.bones[name]
+        if bone.use_deform and name != root_name(rig):
+            joints.apply_kind(rig, name)
+            shapes.style(rig, name, binding)
+    shapes.style_root(rig)
+    return count, split

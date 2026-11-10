@@ -467,5 +467,64 @@ class AimTest(unittest.TestCase):
         self.assertFalse([c for pb in self.rig.pose.bones for c in pb.constraints if c.name == aim.TRACK])
 
 
+class AdoptTest(unittest.TestCase):
+    """An imported machine: its own skeleton, smooth weights blending the pieces between bones."""
+
+    def setUp(self):
+        bpy.ops.wm.read_factory_settings(use_empty=True)
+        self.objs, parts = fx.machine()
+        self.p = {name: pieces.piece_of_vertex(o, i) for name, (o, i) in parts.items()}
+        arm = bpy.data.armatures.new("Imported")
+        self.rig = bpy.data.objects.new("Imported", arm)
+        bpy.context.scene.collection.objects.link(self.rig)
+        bpy.context.view_layer.objects.active = self.rig
+        bpy.ops.object.mode_set(mode='EDIT')
+        for name, head, tail, parent in (("center", (0, 0, 0), (0, 0.2, 0), None),
+                                         ("hull", (0, 0, 0.6), (0, 0, 0.7), "center"),
+                                         ("turret", (0, 0, 0.7), (0, 0, 0.8), "hull")):
+            eb = arm.edit_bones.new(name)
+            eb.head, eb.tail = head, tail
+            if parent:
+                eb.parent = arm.edit_bones[parent]
+        bpy.ops.object.mode_set(mode='OBJECT')
+        b = pieces.Binding(self.rig, list(self.objs.values()))
+        for obj in self.objs.values():
+            for name in ("hull", "turret"):
+                obj.vertex_groups.new(name=name)
+            mod = obj.modifiers.new("Armature", 'ARMATURE')
+            mod.object = self.rig
+        mech = self.objs["Mech"]
+        for piece, weights in ((self.p["Body"], {"hull": 0.8, "turret": 0.2}),
+                               (self.p["Turret"], {"hull": 0.5, "turret": 0.5}),
+                               (self.p["Barrel"], {"turret": 1.0}),
+                               (self.p["Wheel"], {"hull": 0.3, "turret": 0.7})):
+            obj = piece[0]
+            for name, w in weights.items():
+                obj.vertex_groups[name].add(b.verts(piece).tolist(), w, 'REPLACE')
+        self.mech = mech
+
+    def weights(self, piece):
+        obj = piece[0]
+        b = pieces.Binding(self.rig, list(self.objs.values()))
+        out = set()
+        for v in b.verts(piece):
+            out.add(tuple(sorted((obj.vertex_groups[g.group].name, round(g.weight, 6))
+                                 for g in obj.data.vertices[v].groups if g.weight > 0)))
+        return out
+
+    def test_each_piece_goes_to_its_strongest_bone(self):
+        count, split = machine.adopt(bpy.context, self.rig)
+        self.assertTrue(machine.is_machine(self.rig))
+        self.assertEqual(machine.root_name(self.rig), "center")
+        self.assertEqual(count, len(fx.PARTS))
+        self.assertEqual(self.weights(self.p["Body"]), {(("hull", 1.0),)})
+        self.assertEqual(self.weights(self.p["Barrel"]), {(("turret", 1.0),)})
+        self.assertEqual(self.weights(self.p["Wheel"]), {(("turret", 1.0),)})
+        self.assertEqual(split, [self.p["Turret"]])
+        self.assertEqual(len(self.weights(self.p["Turret"])), 1)
+        self.assertEqual(self.rig.data.bones["hull"].dasktoon_joint.kind, 'BALL')
+        self.assertEqual(self.rig.pose.bones["hull"].custom_shape.name, "DT Machine Ball")
+
+
 if __name__ == "__main__":
     tu.run_tests()
