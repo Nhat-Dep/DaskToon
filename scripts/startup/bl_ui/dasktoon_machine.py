@@ -333,9 +333,11 @@ def _view3d(context):
 class _Overlay:
     """Triangles of each piece (world rest positions) for the tool's colours."""
 
+    LIFT = 0.002  # (x the mesh's size) drawn this far out along the normals, off the faces under them
+
     def __init__(self, binding):
         self.binding = binding
-        self.tris = {}
+        self.tris, self.coords = {}, {}
         for obj in binding.objects:
             mesh = obj.data
             mesh.calc_loop_triangles()
@@ -343,6 +345,14 @@ class _Overlay:
             mesh.loop_triangles.foreach_get("vertices", tri)
             tri = tri.reshape(-1, 3)
             self.tris[obj] = (tri, binding.ids[obj][tri[:, 0]])
+            normals = np.empty(len(mesh.vertices) * 3)
+            mesh.vertex_normals.foreach_get("vector", normals)
+            normal_matrix = np.array(obj.matrix_world.inverted_safe().transposed().to_3x3())
+            normals = normals.reshape(-1, 3) @ normal_matrix.T
+            normals /= np.maximum(np.linalg.norm(normals, axis=1), 1e-9)[:, None]
+            world = binding.world[obj]
+            size = float(np.linalg.norm(world.max(axis=0) - world.min(axis=0))) if len(world) else 0.0
+            self.coords[obj] = world + normals * self.LIFT * size
         self.cache = {}
 
     def batch(self, pieces):
@@ -361,7 +371,7 @@ class _Overlay:
                 continue
             used, inverse = np.unique(chosen, return_inverse=True)
             offset = len(coords)
-            coords += self.binding.world[obj][used].tolist()
+            coords += self.coords[obj][used].tolist()
             indices += (inverse.reshape(-1, 3) + offset).tolist()
         shader = gpu.shader.from_builtin('UNIFORM_COLOR')
         batch = batch_for_shader(shader, 'TRIS', {"pos": coords}, indices=indices) if indices else None
