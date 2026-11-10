@@ -166,7 +166,26 @@ struct JiggleFrame {
 struct JiggleCacheEntry {
   std::mutex mutex;
   uint64_t setup = 0;
-  Array<int> free_indices;
+  /* The soft part of the mesh, made again only when the mesh, the weights or the settings change: the free vertices
+   * and the ones sharing a face or an edge with them (those hold still but close the soft part's faces). Every frame
+   * works on these alone, so the rest of a character costs nothing. Indices below are into `region` ("local"). */
+  bool has_region = false;
+  /** Local vertex -> mesh vertex. */
+  Array<int> region;
+  /** The free vertices: local and mesh indices. */
+  Array<int> free_local;
+  Array<int> free_mesh;
+  Array<float> freedom;
+  /** Free neighbours of each local vertex along the edges. */
+  Array<int> neighbour_offsets;
+  Array<int> neighbours;
+  /** The edges and triangles that touch a free vertex. */
+  Array<int2> edges;
+  Array<int3> tris;
+  /** The piece (connected) of each triangle and each vertex (-1: in no triangle). */
+  Array<int> tri_piece;
+  Array<int> vertex_piece;
+  int pieces_num = 0;
   std::map<int, JiggleState> states;
   std::map<int, JiggleFrame> frames;
   /** For each collider (key), the vertices that started inside it: it never pushes those. */
@@ -725,72 +744,137 @@ void JiggleSolver::step(JiggleState &state, Span<float3> goal_new, const float d
 /** \name Evaluation
  * \{ */
 
-static void build_topology(JiggleSolver &solver, const Mesh &mesh)
+/** The soft part of the mesh into `entry` (see JiggleCacheEntry). */
+static void build_region(JiggleCacheEntry &entry, const Mesh &mesh, const Span<float> freedom)
 {
   const int verts_num = mesh.verts_num;
-  const Span<int2> edges = mesh.edges();
-  Array<int> counts(verts_num + 1, 0);
-  for (const int2 &edge : edges) {
-    counts[edge[0]]++;
-    counts[edge[1]]++;
-  }
-  solver.neighbour_offsets.reinitialize(verts_num + 1);
-  int total = 0;
+  Array<bool> in_region(verts_num, false);
   for (const int i : IndexRange(verts_num)) {
-    solver.neighbour_offsets[i] = total;
-    total += counts[i];
+    in_region[i] = freedom[i] > 0.0f;
   }
-  solver.neighbour_offsets[verts_num] = total;
-  solver.neighbours.reinitialize(total);
-  Array<int> fill(verts_num, 0);
+  Array<int3> all_tris(mesh.corner_tris().size());
+  bke::mesh::vert_tris_from_corner_tris(mesh.corner_verts(), mesh.corner_tris(), all_tris);
+  Vector<int3> tris;
+  for (const int3 &tri : all_tris) {
+    if (freedom[tri[0]] > 0.0f || freedom[tri[1]] > 0.0f || freedom[tri[2]] > 0.0f) {
+      tris.append(tri);
+    }
+  }
+  Vector<int2> edges;
+  for (const int2 &edge : mesh.edges()) {
+    if (freedom[edge[0]] > 0.0f || freedom[edge[1]] > 0.0f) {
+      edges.append(edge);
+    }
+  }
+  for (const int3 &tri : tris) {
+    in_region[tri[0]] = in_region[tri[1]] = in_region[tri[2]] = true;
+  }
   for (const int2 &edge : edges) {
-    solver.neighbours[solver.neighbour_offsets[edge[0]] + fill[edge[0]]++] = edge[1];
-    solver.neighbours[solver.neighbour_offsets[edge[1]] + fill[edge[1]]++] = edge[0];
+    in_region[edge[0]] = in_region[edge[1]] = true;
+  }
+  Array<int> local(verts_num, -1);
+  Vector<int> region;
+  for (const int i : IndexRange(verts_num)) {
+    if (in_region[i]) {
+      local[i] = region.size();
+      region.append(i);
+    }
+  }
+  const int count = region.size();
+  entry.region = Array<int>(region.as_span());
+  entry.freedom.reinitialize(count);
+  Vector<int> free_local, free_mesh;
+  for (const int l : IndexRange(count)) {
+    entry.freedom[l] = freedom[region[l]];
+    if (entry.freedom[l] > 0.0f) {
+      free_local.append(l);
+      free_mesh.append(region[l]);
+    }
+  }
+  entry.free_local = Array<int>(free_local.as_span());
+  entry.free_mesh = Array<int>(free_mesh.as_span());
+  entry.tris.reinitialize(tris.size());
+  for (const int t : tris.index_range()) {
+    entry.tris[t] = int3(local[tris[t][0]], local[tris[t][1]], local[tris[t][2]]);
+  }
+  entry.edges.reinitialize(edges.size());
+  for (const int e : edges.index_range()) {
+    entry.edges[e] = int2(local[edges[e][0]], local[edges[e][1]]);
   }
 
-  /* Pieces: connected by edges. */
-  Array<int> piece(verts_num, -1);
+  /* Free neighbours (spread). */
+  Array<int> counts(count, 0);
+  for (const int2 &edge : entry.edges) {
+    if (entry.freedom[edge[0]] > 0.0f && entry.freedom[edge[1]] > 0.0f) {
+      counts[edge[0]]++;
+      counts[edge[1]]++;
+    }
+  }
+  entry.neighbour_offsets.reinitialize(count + 1);
+  int total = 0;
+  for (const int l : IndexRange(count)) {
+    entry.neighbour_offsets[l] = total;
+    total += counts[l];
+  }
+  entry.neighbour_offsets[count] = total;
+  entry.neighbours.reinitialize(total);
+  Array<int> fill(count, 0);
+  for (const int2 &edge : entry.edges) {
+    if (entry.freedom[edge[0]] > 0.0f && entry.freedom[edge[1]] > 0.0f) {
+      entry.neighbours[entry.neighbour_offsets[edge[0]] + fill[edge[0]]++] = edge[1];
+      entry.neighbours[entry.neighbour_offsets[edge[1]] + fill[edge[1]]++] = edge[0];
+    }
+  }
+
+  /* Pieces: connected through the edges and triangles kept. */
+  Array<int> parent(count);
+  for (const int l : IndexRange(count)) {
+    parent[l] = l;
+  }
+  const auto find = [&](int l) {
+    while (parent[l] != l) {
+      parent[l] = parent[parent[l]];
+      l = parent[l];
+    }
+    return l;
+  };
+  const auto join = [&](const int a, const int b) { parent[find(a)] = find(b); };
+  for (const int2 &edge : entry.edges) {
+    join(edge[0], edge[1]);
+  }
+  for (const int3 &tri : entry.tris) {
+    join(tri[0], tri[1]);
+    join(tri[1], tri[2]);
+  }
+  Array<int> piece_of_root(count, -1);
   int pieces = 0;
-  Vector<int> stack;
-  for (const int i : IndexRange(verts_num)) {
-    if (piece[i] >= 0) {
-      continue;
+  for (const int l : IndexRange(count)) {
+    const int root = find(l);
+    if (piece_of_root[root] < 0) {
+      piece_of_root[root] = pieces++;
     }
-    piece[i] = pieces;
-    stack.append(i);
-    while (!stack.is_empty()) {
-      const int vert = stack.pop_last();
-      for (int n = solver.neighbour_offsets[vert]; n < solver.neighbour_offsets[vert + 1]; n++) {
-        const int other = solver.neighbours[n];
-        if (piece[other] < 0) {
-          piece[other] = pieces;
-          stack.append(other);
-        }
-      }
-    }
-    pieces++;
   }
-  solver.pieces_num = pieces;
-  solver.tri_piece.reinitialize(solver.tris.size());
-  solver.vertex_piece.reinitialize(verts_num);
-  solver.vertex_piece.fill(-1);
-  for (const int t : solver.tris.index_range()) {
-    solver.tri_piece[t] = piece[solver.tris[t][0]];
+  entry.pieces_num = pieces;
+  entry.tri_piece.reinitialize(entry.tris.size());
+  entry.vertex_piece.reinitialize(count);
+  entry.vertex_piece.fill(-1);
+  for (const int t : entry.tris.index_range()) {
+    entry.tri_piece[t] = piece_of_root[find(entry.tris[t][0])];
     for (const int corner : IndexRange(3)) {
-      solver.vertex_piece[solver.tris[t][corner]] = solver.tri_piece[t];
+      entry.vertex_piece[entry.tris[t][corner]] = entry.tri_piece[t];
     }
   }
+  entry.has_region = true;
 }
 
-static void build_freedom(JiggleSolver &solver,
-                          const JiggleModifierData &jmd,
-                          const Object *ob,
-                          const Mesh &mesh,
-                          Span<float3> local_positions)
+/** How free each mesh vertex is (the vertex group, Pin Bottom). */
+static Array<float> build_freedom(const JiggleModifierData &jmd,
+                                  const Object *ob,
+                                  const Mesh &mesh,
+                                  Span<float3> local_positions)
 {
   const int verts_num = mesh.verts_num;
-  solver.freedom.reinitialize(verts_num);
-  solver.freedom.fill(1.0f);
+  Array<float> freedom(verts_num, 1.0f);
   const MDeformVert *dvert = nullptr;
   int defgrp_index = -1;
   MOD_get_vgroup(ob, &mesh, jmd.defgrp_name, &dvert, &defgrp_index);
@@ -800,7 +884,7 @@ static void build_freedom(JiggleSolver &solver,
       const float w = (dvert && defgrp_index >= 0) ?
                           BKE_defvert_find_weight(&dvert[i], defgrp_index) :
                           0.0f;
-      solver.freedom[i] = std::clamp(invert ? 1.0f - w : w, 0.0f, 1.0f);
+      freedom[i] = std::clamp(invert ? 1.0f - w : w, 0.0f, 1.0f);
     }
   }
   if ((jmd.flag & MOD_JIGGLE_PIN_BOTTOM) != 0 && verts_num > 0) {
@@ -811,20 +895,22 @@ static void build_freedom(JiggleSolver &solver,
     }
     const float height = high - low;
     for (const int i : IndexRange(verts_num)) {
-      solver.freedom[i] *= height > 1e-8f ? (local_positions[i].z - low) / height : 0.0f;
+      freedom[i] *= height > 1e-8f ? (local_positions[i].z - low) / height : 0.0f;
     }
   }
-  for (float &w : solver.freedom) {
+  for (float &w : freedom) {
     if (w < 1e-4f) {
       w = 0.0f;
     }
   }
+  return freedom;
 }
 
 static void build_colliders(JiggleSolver &solver,
                             const JiggleModifierData &jmd,
                             const ModifierEvalContext *ctx,
                             const Mesh &mesh,
+                            const Span<int> region,
                             const float ctime,
                             JiggleHash &inputs)
 {
@@ -854,16 +940,16 @@ static void build_colliders(JiggleSolver &solver,
       inputs.add(capsule.b1);
       inputs.add(capsule.radius);
 
-      Array<bool> skip(mesh.verts_num, false);
+      Array<bool> skip(region.size(), false);
       if (!dverts.is_empty()) {
         const int groups[2] = {BKE_id_defgroup_name_index(&mesh.id, collider.bone),
                                collider.bone_end[0] ?
                                    BKE_id_defgroup_name_index(&mesh.id, collider.bone_end) :
                                    -1};
-        for (const int i : IndexRange(mesh.verts_num)) {
+        for (const int l : region.index_range()) {
           for (const int group : groups) {
-            if (group >= 0 && BKE_defvert_find_weight(&dverts[i], group) > 0.05f) {
-              skip[i] = true;
+            if (group >= 0 && BKE_defvert_find_weight(&dverts[region[l]], group) > 0.05f) {
+              skip[l] = true;
             }
           }
         }
@@ -907,12 +993,13 @@ static void build_colliders(JiggleSolver &solver,
   BKE_collision_objects_free(collobjs);
 }
 
-static uint64_t setup_hash(const JiggleModifierData &jmd, const JiggleSolver &solver, const Mesh &mesh)
+static uint64_t setup_hash(const JiggleModifierData &jmd, const Span<float> freedom, const Mesh &mesh)
 {
   JiggleHash hash;
   hash.add(uint64_t(mesh.verts_num));
   hash.add(uint64_t(mesh.edges_num));
-  hash.add(uint64_t(solver.tris.size()));
+  hash.add(uint64_t(mesh.faces_num));
+  hash.add(uint64_t(mesh.corners_num));
   hash.add(jmd.frequency);
   hash.add(jmd.damping);
   hash.add(jmd.spread);
@@ -926,7 +1013,7 @@ static uint64_t setup_hash(const JiggleModifierData &jmd, const JiggleSolver &so
     hash.add(collider.bone_end);
     hash.add(collider.radius);
   }
-  for (const float w : solver.freedom) {
+  for (const float w : freedom) {
     hash.add(w);
   }
   return hash.value;
@@ -940,10 +1027,10 @@ static void store_frame(JiggleCacheEntry &entry,
                         const bool exact)
 {
   JiggleFrame out;
-  out.offset.reinitialize(entry.free_indices.size());
-  for (const int n : entry.free_indices.index_range()) {
-    const int i = entry.free_indices[n];
-    out.offset[n] = (state.position[i] - state.goal[i]) * freedom[i];
+  out.offset.reinitialize(entry.free_local.size());
+  for (const int n : entry.free_local.index_range()) {
+    const int l = entry.free_local[n];
+    out.offset[n] = (state.position[l] - state.goal[l]) * freedom[l];
   }
   out.inputs = inputs;
   out.exact = exact;
@@ -1001,28 +1088,46 @@ static void deform_verts(ModifierData *md,
   if (scene == nullptr) {
     return;
   }
-  const int verts_num = int(positions.size());
   Object *ob = ctx->object;
   const float4x4 &to_world = ob->object_to_world();
   const float4x4 &to_local = ob->world_to_object();
 
-  JiggleSolver solver;
-  solver.jmd = jmd;
-  solver.verts_num = verts_num;
-  Array<int3> tris(mesh->corner_tris().size());
-  bke::mesh::vert_tris_from_corner_tris(mesh->corner_verts(), mesh->corner_tris(), tris);
-  solver.tris = tris;
-  build_freedom(solver, *jmd, ob, *mesh, positions);
+  /* Only the free vertices' weights are read over the whole mesh; the rest works on the soft part. */
+  const Array<float> freedom = build_freedom(*jmd, ob, *mesh, positions);
   bool any_free = false;
-  for (const float w : solver.freedom) {
+  for (const float w : freedom) {
     any_free |= w > 0.0f;
   }
   if (!any_free) {
     return;
   }
-  build_topology(solver, *mesh);
+  const std::shared_ptr<JiggleCacheEntry> entry_ptr = jiggle_entry(ob, md);
+  JiggleCacheEntry &entry = *entry_ptr;
+  std::scoped_lock lock(entry.mutex);
+  const uint64_t setup = setup_hash(*jmd, freedom, *mesh);
+  if (setup != entry.setup || !entry.has_region) {
+    entry.setup = setup;
+    entry.states.clear();
+    entry.frames.clear();
+    entry.started_inside.clear();
+    build_region(entry, *mesh, freedom);
+  }
+  const Span<int> region = entry.region;
+  const int verts_num = region.size();
+
+  JiggleSolver solver;
+  solver.jmd = jmd;
+  solver.verts_num = verts_num;
+  solver.freedom = entry.freedom;
+  solver.neighbour_offsets = entry.neighbour_offsets;
+  solver.neighbours = entry.neighbours;
+  solver.tris = entry.tris;
+  solver.tri_piece = entry.tri_piece;
+  solver.vertex_piece = entry.vertex_piece;
+  solver.pieces_num = entry.pieces_num;
   solver.omega = 2.0f * float(M_PI) * std::max(jmd->frequency, 0.01f);
   solver.substeps = std::clamp(int(jmd->substeps), 1, 50);
+  solver.started_inside = &entry.started_inside;
 
   const float ctime = DEG_get_ctime(ctx->depsgraph);
   const int frame = int(std::lround(ctime));
@@ -1031,59 +1136,36 @@ static void deform_verts(ModifierData *md,
                                           1.0f / 24.0f;
 
   Array<float3> goal(verts_num);
-  float3 low(FLT_MAX), high(-FLT_MAX);
+  float3 low(FLT_MAX), high(-FLT_MAX), free_low(FLT_MAX), free_high(-FLT_MAX);
   JiggleHash inputs;
-  for (const int i : IndexRange(verts_num)) {
-    goal[i] = math::transform_point(to_world, positions[i]);
-    low = math::min(low, goal[i]);
-    high = math::max(high, goal[i]);
-    inputs.add(goal[i]);
+  for (const int l : IndexRange(verts_num)) {
+    goal[l] = math::transform_point(to_world, positions[region[l]]);
+    low = math::min(low, goal[l]);
+    high = math::max(high, goal[l]);
+    if (solver.freedom[l] > 0.0f) {
+      free_low = math::min(free_low, goal[l]);
+      free_high = math::max(free_high, goal[l]);
+    }
+    inputs.add(goal[l]);
   }
   solver.size = std::max(math::distance(low, high), 1e-6f);
-  float3 free_low(FLT_MAX), free_high(-FLT_MAX);
-  for (const int i : IndexRange(verts_num)) {
-    if (solver.freedom[i] > 0.0f) {
-      free_low = math::min(free_low, goal[i]);
-      free_high = math::max(free_high, goal[i]);
-    }
-  }
   solver.free_size = std::max(math::distance(free_low, free_high), 1e-6f);
   float steepest = 0.0f;
-  for (const int2 &edge : mesh->edges()) {
+  for (const int2 &edge : entry.edges) {
     const float change = std::fabs(solver.freedom[edge[0]] - solver.freedom[edge[1]]);
     if (change > 0.0f) {
       steepest = std::max(steepest, change / std::max(math::distance(goal[edge[0]], goal[edge[1]]), 1e-6f));
     }
   }
   solver.fold_limit = steepest > 0.0f ? JIGGLE_FOLD / steepest : FLT_MAX;
-  build_colliders(solver, *jmd, ctx, *mesh, ctime, inputs);
-
-  const std::shared_ptr<JiggleCacheEntry> entry_ptr = jiggle_entry(ob, md);
-  JiggleCacheEntry &entry = *entry_ptr;
-  std::scoped_lock lock(entry.mutex);
-  solver.started_inside = &entry.started_inside;
-
-  const uint64_t setup = setup_hash(*jmd, solver, *mesh);
-  if (setup != entry.setup || entry.free_indices.is_empty()) {
-    entry.setup = setup;
-    entry.states.clear();
-    entry.frames.clear();
-    entry.started_inside.clear();
-    Vector<int> free;
-    for (const int i : IndexRange(verts_num)) {
-      if (solver.freedom[i] > 0.0f) {
-        free.append(i);
-      }
-    }
-    entry.free_indices = Array<int>(free.as_span());
-  }
+  build_colliders(solver, *jmd, ctx, *mesh, region, ctime, inputs);
 
   /* The offsets from the goals to show (free vertices only). */
-  Array<float3> offset(entry.free_indices.size(), float3(0.0f));
+  Array<float3> offset(entry.free_local.size(), float3(0.0f));
   const auto show_state = [&](const JiggleState &state) {
-    for (const int n : entry.free_indices.index_range()) {
-      const int i = entry.free_indices[n];
-      offset[n] = (state.position[i] - state.goal[i]) * solver.freedom[i];
+    for (const int n : entry.free_local.index_range()) {
+      const int l = entry.free_local[n];
+      offset[n] = (state.position[l] - state.goal[l]) * solver.freedom[l];
     }
   };
   const int start_frame = scene->r.sfra;
@@ -1164,9 +1246,8 @@ static void deform_verts(ModifierData *md,
     }
   }
 
-  for (const int n : entry.free_indices.index_range()) {
-    const int i = entry.free_indices[n];
-    positions[i] = math::transform_point(to_local, goal[i] + offset[n]);
+  for (const int n : entry.free_local.index_range()) {
+    positions[entry.free_mesh[n]] = math::transform_point(to_local, goal[entry.free_local[n]] + offset[n]);
   }
 }
 

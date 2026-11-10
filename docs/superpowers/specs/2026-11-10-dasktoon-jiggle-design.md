@@ -141,3 +141,11 @@ giữ da không trượt khỏi đầu ngón tay.
 
 Đối chiếu trên temp_2_1 (không dùng để sửa): ngực và bụng, tay khoanh trước ngực theo hoạt hình của tệp: không gai,
 không gấp; cẳng tay ấn ngực lõm tự nhiên. 25–33 ms mỗi khung trên lưới 39–60 nghìn đỉnh.
+
+## 12. Tốc độ (2026-11-10, sau khi người dùng thấy giật)
+
+Đo trên Phoebe (38.793 đỉnh, vùng ngực 516 đỉnh tự do), lấy lần nhanh nhất của 5 vòng xen kẽ: trước khi sửa Rung mềm làm
+mỗi khung chậm thêm khoảng 17 ms, kể cả khung đã có sẵn trong bộ nhớ, vì mỗi khung nó dựng lại đỉnh kề, mảnh, tam giác và
+tính thể tích trên cả lưới. Nay phần mềm (đỉnh tự do và các đỉnh chung mặt/cạnh với chúng) được dựng một lần, chỉ dựng
+lại khi lưới, trọng số hay thanh chỉnh đổi; mỗi khung chỉ làm việc trên phần đó; thể tích chỉ tính trên các tam giác chạm
+phần mềm (độ thay đổi thể tích y hệt). Còn khoảng 2,5 ms mỗi khung (10,3 ms tắt, 12,6–13,0 ms bật).
