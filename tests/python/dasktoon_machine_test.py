@@ -129,6 +129,39 @@ class GuessTest(unittest.TestCase):
         self.assertLess(angle(j.axis, (1, 0, 0)), 1.0)
         np.testing.assert_allclose(j.pivot, (-0.15, 0.105, 0.7), atol=1e-3)
 
+    def test_a_head_wider_than_its_mast_turns_about_the_mast(self):
+        # no vertex of the lamp touches the mast: the mast's top corners touch the lamp's bottom face
+        j = self.guess(["Lamp"], ["Mast"])
+        self.assertEqual(j.kind, 'HINGE')
+        self.assertLess(angle(j.axis, (0, 0, 1)), 1.0)
+        np.testing.assert_allclose(j.pivot, (-0.25, -0.15, 0.85), atol=1e-3)
+
+    def test_a_round_piece_off_its_parent_turns_about_its_own_axis(self):
+        j = self.guess(["Drill"], ["Body"])
+        self.assertEqual(j.kind, 'HINGE')
+        self.assertLess(angle(j.axis, (0, 0, 1)), 1.0)
+        np.testing.assert_allclose(j.pivot[:2], (0.0, 0.0), atol=1e-3)
+        self.assertTrue(0.47 < j.pivot[2] < 0.51, j.pivot)
+
+    def test_a_fan_turns_about_its_round_hub(self):
+        # the hub and its blades together are not round: the hub, nearest the body, is
+        j = self.guess(["Hub", "Blade", "Blade2"], ["Body"])
+        self.assertEqual(j.kind, 'HINGE')
+        self.assertLess(angle(j.axis, (1, 0, 0)), 1.0)
+        np.testing.assert_allclose(j.pivot[1:], (-0.1, 0.6), atol=1e-3)
+        self.assertTrue(-0.33 < j.pivot[0] < -0.3, j.pivot)
+
+    def test_crossed_rings_spin_about_the_round_plinth_under_them(self):
+        # neither touching nor round together (each ring alone is, about its own tilted normal): they turn about the
+        # axis of the round piece they float over, which goes through their middle
+        j = self.guess(["RingA", "RingB"], ["Plinth"])
+        self.assertEqual(j.kind, 'HINGE')
+        self.assertLess(angle(j.axis, (0, 0, 1)), 1.0)
+        np.testing.assert_allclose(j.pivot[:2], (0.22, 0.12), atol=1e-3)
+        # also when the plinth is one of several parent pieces, round in different ways
+        j = self.guess(["RingA", "RingB"], ["Plinth", "Hub"])
+        self.assertLess(angle(j.axis, (0, 0, 1)), 1.0)
+
     def test_a_piece_away_from_its_parent_gets_a_ball_joint_in_the_gap(self):
         j = self.guess(["Foot"], ["Body"])
         self.assertEqual(j.kind, 'BALL')

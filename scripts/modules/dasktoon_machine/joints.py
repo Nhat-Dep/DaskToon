@@ -7,6 +7,7 @@ axis (hinges turn about it, slides move along it). Its Y axis points at its one 
 its pieces, across the axis, so an IK chain of hinges reaches from pivot to pivot. guess() reads a pivot, an axis and a
 kind from where a piece touches its parent."""
 
+import math
 from dataclasses import dataclass, field
 
 import bpy
@@ -24,6 +25,11 @@ TOUCH_MIN = 1.5  # ... or this many times the nearest distance
 THIN = 0.05  # a spread this much smaller than the widest one is flat
 ROUND = 0.2  # distances to an axis varying less than this (std / mean) are a cylinder round it
 SHORTEST = 0.05  # (x the pieces' size) the shortest bone
+SIDES = 6  # a part needs this many vertices to be read as round by its own shape
+ORDERS = (3, 4, 5, 6, 8, 10, 12, 16)  # symmetric after a turn of 360 / k degrees, for one of these k: round
+SAME = 0.02  # (x the piece's size) turned points this near the piece's own points land on it
+SAMPLE = 300  # points tried per turn
+THROUGH = 0.1  # (x the child's size) a parent's axis this near the child's middle goes through it
 
 
 @dataclass
@@ -65,9 +71,99 @@ def contact_shape(points, size):
     return 'BALL', np.array((0.0, 0.0, 1.0)), centre
 
 
+def _rotation(e, angle):
+    """The matrix turning `angle` about the unit axis `e`."""
+    c, s = math.cos(angle), math.sin(angle)
+    x, y, z = e
+    return np.array(((c + x * x * (1 - c), x * y * (1 - c) - z * s, x * z * (1 - c) + y * s),
+                     (y * x * (1 - c) + z * s, c + y * y * (1 - c), y * z * (1 - c) - x * s),
+                     (z * x * (1 - c) - y * s, z * y * (1 - c) + x * s, c + z * z * (1 - c))))
+
+
+def round_axis(points, size):
+    """The axis a piece turns about by its shape (a drill bit, a hub, a geared wheel, crossed rings), or None: turned
+    by 360/k degrees about it, for some k in ORDERS (3 or more), the piece lands on itself, within SAME x its size. A
+    box (and a cylinder about a cross axis) only does so after half a turn. Of such axes, the one with the highest k
+    wins. The axes tried go through the middle of the points: their principal axes and the world axes (crossed rings
+    spread alike every way across theirs, so their principal axes say nothing)."""
+    if len(points) < 3:
+        return None
+    from mathutils.kdtree import KDTree
+    centre = points.mean(axis=0)
+    x = points - centre
+    tree = KDTree(len(x))
+    for i, p in enumerate(x):
+        tree.insert(p, i)
+    tree.balance()
+    sample = x[::max(1, len(x) // SAMPLE)]
+    _values, vectors = np.linalg.eigh(x.T @ x / len(points))
+    best, best_key = None, None
+    for e in list(vectors.T) + list(np.eye(3)):
+        if np.linalg.norm(x - np.outer(x @ e, e), axis=1).max() < 1e-3 * size:
+            continue
+        for k in sorted(ORDERS, reverse=True):
+            turned = sample @ _rotation(e, 2 * math.pi / k).T
+            miss = np.percentile([tree.find(p)[2] for p in turned], 90)
+            if miss < SAME * size:
+                key = (k, -miss)
+                if best_key is None or key > best_key:
+                    best, best_key = e, key
+                break
+    return None if best is None else _signed(best)
+
+
+def _nearest(tree, points):
+    """(distances, nearest surface points) of `points` to a BVH tree."""
+    found = [tree.find_nearest(Vector(p)) for p in points]
+    dist = np.array([f[3] if f[0] is not None else np.inf for f in found])
+    near = np.array([tuple(f[0]) if f[0] is not None else (np.inf,) * 3 for f in found]).reshape(-1, 3)
+    return dist, near
+
+
+def _turning(binding, child, parent, points, dist, size):
+    """(axis, a point on it) the child turns about when its contact says nothing: the whole child's when round; else
+    the round parent's (or a round parent piece's) when its axis goes through the child's middle (a gimbal over its
+    round base); else the axis of
+    the child's round piece nearest the parent (a fan's hub among its blades); (None, centre) when nothing is round."""
+    turns = round_axis(points, size)
+    if turns is not None:
+        return turns, points.mean(axis=0)
+    centre = points.mean(axis=0)
+    bases = [binding.points(parent)] + sorted((binding.points([p]) for p in parent),
+                                              key=lambda q: np.linalg.norm(q.mean(axis=0) - centre) if len(q) else 0)
+    for base in bases if len(parent) > 1 else bases[:1]:
+        if len(base) < SIDES:
+            continue
+        axis = round_axis(base, float(np.linalg.norm(base.max(axis=0) - base.min(axis=0))) or size)
+        if axis is not None:
+            middle = base.mean(axis=0)
+            off = centre - middle
+            if np.linalg.norm(off - (off @ axis) * axis) <= THROUGH * size:
+                return axis, middle
+    counts = [len(binding.verts(p)) for p in child]
+    starts = np.cumsum([0] + counts)
+    order = sorted(range(len(child)), key=lambda k: dist[starts[k]:starts[k + 1]].min() if counts[k] else np.inf)
+    for k in order:
+        own = points[starts[k]:starts[k + 1]]
+        if len(own) < SIDES:
+            continue
+        turns = round_axis(own, float(np.linalg.norm(own.max(axis=0) - own.min(axis=0))) or size)
+        if turns is not None:
+            return turns, own.mean(axis=0)
+    return None, points.mean(axis=0)
+
+
+def _on_axis(centre, axis, point):
+    return centre + ((point - centre) @ axis) * axis
+
+
 def guess(binding, child, parent):
     """The Joint of the pieces `child` on the pieces `parent` (world space). Without a parent: a ball joint in the
-    middle of the child."""
+    middle of the child.
+
+    The contact is measured both ways: the child's vertices on the parent's faces and the parent's vertices on the
+    child's faces (a lamp wider than its mast touches it only with the mast's corners). When the contact reads as no
+    axis (a gap, a blob), a child round about an axis of its own turns about it."""
     points = binding.points(child)
     if not len(points):
         raise MachineError(rpt_("The piece has no vertices"))
@@ -76,14 +172,30 @@ def guess(binding, child, parent):
     tree = binding.surface(parent) if parent else None
     if tree is None:
         return Joint((lo + hi) / 2)
-    nearest = [tree.find_nearest(Vector(p)) for p in points]
-    dist = np.array([n[3] if n[0] is not None else np.inf for n in nearest])
-    i = int(np.argmin(dist))
-    if dist[i] > GAP * size:
-        return Joint((points[i] + np.array(nearest[i][0])) / 2)
-    touching = points[dist <= max(TOUCH * size, TOUCH_MIN * dist[i]) + 1e-9]
-    kind, axis, centre = contact_shape(touching, size)
-    return Joint(centre, axis, kind)
+    dist, near = _nearest(tree, points)
+    others = binding.points(parent)
+    reach = GAP * size
+    others = others[np.all((others >= lo - reach) & (others <= hi + reach), axis=1)]
+    child_tree = binding.surface(child) if len(others) else None
+    if child_tree is not None:
+        back, back_near = _nearest(child_tree, others)
+    else:
+        back, back_near = np.zeros(0), np.zeros((0, 3))
+    i, j = int(np.argmin(dist)), int(np.argmin(back)) if len(back) else -1
+    nearest = dist[i] if j < 0 or dist[i] <= back[j] else back[j]
+    pair = (points[i], near[i]) if j < 0 or dist[i] <= back[j] else (others[j], back_near[j])
+    turns, centre = _turning(binding, child, parent, points, dist, size)
+    if nearest > GAP * size:
+        middle = (pair[0] + pair[1]) / 2
+        if turns is not None:
+            return Joint(_on_axis(centre, turns, middle), turns, 'HINGE')
+        return Joint(middle)
+    d = max(TOUCH * size, TOUCH_MIN * nearest) + 1e-9
+    touching = np.concatenate([points[dist <= d], others[back <= d]])
+    kind, axis, middle = contact_shape(touching, size)
+    if kind == 'BALL' and turns is not None:
+        return Joint(_on_axis(centre, turns, middle), turns, 'HINGE')
+    return Joint(middle, axis, kind)
 
 
 # Bones

@@ -28,9 +28,9 @@ def _frame(axis):
             'Z': ((1, 0, 0), (0, 1, 0), (0, 0, 1))}[axis]
 
 
-def cylinder(centre, axis, radius, length, rings=1, hole=0.0):
-    """A closed cylinder (n-gon caps) along `axis`, `rings` segments long; with `hole` > 0 a thick ring round a hole of
-    that radius instead (a wheel)."""
+def cylinder(centre, axis, radius, length, rings=1, hole=0.0, end_radius=None):
+    """A closed cylinder (n-gon caps) along `axis`, `rings` segments long, narrowing to `end_radius` at its + end; with
+    `hole` > 0 a thick ring round a hole of that radius instead (a wheel)."""
     u, v, w = _frame(axis)
     verts, faces = [], []
 
@@ -39,9 +39,10 @@ def cylinder(centre, axis, radius, length, rings=1, hole=0.0):
         return tuple(centre[i] + u[i] * c + v[i] * s + w[i] * t for i in range(3))
 
     ts = [-length / 2 + length * k / rings for k in range(rings + 1)]
-    for t in ts:
+    for r, t in enumerate(ts):
+        ring_radius = radius if end_radius is None else radius + (end_radius - radius) * r / rings
         for k in range(SEGMENTS):
-            verts.append(point(radius, 2 * math.pi * k / SEGMENTS, t))
+            verts.append(point(ring_radius, 2 * math.pi * k / SEGMENTS, t))
     n = SEGMENTS
     for r in range(rings):
         for k in range(n):
@@ -64,6 +65,25 @@ def cylinder(centre, axis, radius, length, rings=1, hole=0.0):
     return verts, faces
 
 
+def tilted_ring(centre, normal, radius, width=0.01, segments=32):
+    """A flat band round `centre` in the plane across `normal` (a gyroscope's ring)."""
+    n = [c / math.sqrt(sum(v * v for v in normal)) for c in normal]
+    a = [0.0, 0.0, 1.0] if abs(n[2]) < 0.9 else [1.0, 0.0, 0.0]
+    u = [a[1] * n[2] - a[2] * n[1], a[2] * n[0] - a[0] * n[2], a[0] * n[1] - a[1] * n[0]]
+    lu = math.sqrt(sum(v * v for v in u))
+    u = [v / lu for v in u]
+    v = [n[1] * u[2] - n[2] * u[1], n[2] * u[0] - n[0] * u[2], n[0] * u[1] - n[1] * u[0]]
+    verts, faces = [], []
+    for r in (radius, radius - width):
+        for k in range(segments):
+            t = 2 * math.pi * k / segments
+            verts.append(tuple(centre[i] + (u[i] * math.cos(t) + v[i] * math.sin(t)) * r for i in range(3)))
+    for k in range(segments):
+        k1 = (k + 1) % segments
+        faces.append((k, k1, segments + k1, segments + k))
+    return verts, faces
+
+
 # name: (mesh, builder)
 PARTS = (
     ("Body", "Mech", lambda: box((-0.3, -0.2, 0.5), (0.3, 0.2, 0.7))),
@@ -78,6 +98,19 @@ PARTS = (
     ("Foot", "Mech", lambda: box((0.44, -0.04, 0.1), (0.62, 0.04, 0.15))),
     ("Axle", "Mech", lambda: cylinder((-0.2, 0.275, 0.55), 'Y', 0.03, 0.15)),
     ("Wheel", "Wheel", lambda: cylinder((-0.2, 0.3, 0.55), 'Y', 0.12, 0.05, hole=0.03)),
+    # a lamp head wider than the mast it sits on: only the mast's corners touch it
+    ("Mast", "Mech", lambda: box((-0.27, -0.17, 0.7), (-0.23, -0.13, 0.85))),
+    ("Lamp", "Mech", lambda: box((-0.3, -0.2, 0.85), (-0.2, -0.1, 0.9))),
+    # a drill bit hanging under the body without touching it, round about its own axis
+    ("Drill", "Mech", lambda: cylinder((0.0, 0.0, 0.38), 'Z', 0.01, 0.2, end_radius=0.05)),
+    # a fan off the -X end: a round hub with two blades reaching out of it, none touching the body
+    ("Hub", "Mech", lambda: cylinder((-0.36, -0.1, 0.6), 'X', 0.03, 0.06)),
+    ("Blade", "Mech", lambda: box((-0.37, -0.11, 0.63), (-0.35, -0.09, 0.8))),
+    ("Blade2", "Mech", lambda: box((-0.37, -0.3, 0.59), (-0.35, -0.13, 0.61))),
+    # two tilted rings crossing, floating over a round plinth on the body, spinning together about its axis
+    ("Plinth", "Mech", lambda: cylinder((0.22, 0.12, 0.75), 'Z', 0.05, 0.1)),
+    ("RingA", "Mech", lambda: tilted_ring((0.22, 0.12, 1.0), (0.94, 0.0, 0.34), 0.06, width=0.003)),
+    ("RingB", "Mech", lambda: tilted_ring((0.22, 0.12, 1.0), (0.0, 0.94, 0.34), 0.06, width=0.003)),
 )
 
 # Where the joints of the test machine are: (pivot, axis).

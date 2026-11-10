@@ -64,17 +64,19 @@ nhiều mảnh.
 
 - Tên xương: tên lưới khi mảnh là cả lưới, nếu không tên vật liệu chiếm nhiều mặt nhất, nếu không "Part"; thêm số khi
   trùng. Người dùng đổi tên tùy ý.
-- **Đầu xương** = tâm quay. **Trục X của xương = trục quay** của bản lề; với khớp trượt **trục Y = hướng trượt**.
-- **Hướng Y** (trong mặt phẳng ⊥ X với bản lề): tới tâm quay của khớp con nếu có đúng một con, nếu không tới điểm xa
+- **Đầu xương** = tâm quay. **Trục X của xương = trục của khớp**: bản lề quay quanh nó, khớp trượt đi dọc nó (mọi
+  loại khớp dùng chung một trục, nên đổi loại không phải xoay lại xương).
+- **Hướng Y** (trong mặt phẳng ⊥ X): tới tâm quay của khớp con nếu có đúng một con, nếu không tới điểm xa
   nhất của mảnh (chiếu lên mặt phẳng ⊥ X). Độ dài = khoảng đó, ít nhất 5% đường chéo mảnh. Thêm con thì xương cha được
   xoay lại theo luật này (lúc dựng, chưa có hoạt hình).
 - Trọng lượng: nhóm đỉnh tên xương, 1,0 trên mọi đỉnh của các mảnh; các đỉnh đó bị bỏ khỏi mọi nhóm xương máy khác.
-- Gỡ khớp: mảnh về khớp cha, khớp con nối vào khớp cha.
+- Gỡ khớp: mảnh về Root (lại thành "chưa gắn", tô đỏ), khớp con nối vào khớp cha; chân IK và điểm ngắm dùng
+  khớp đó bị gỡ theo.
 - Loại khớp (đặt lên xương tư thế, đổi được bất cứ lúc nào):
   - **Bản lề**: Euler XYZ, khóa quay Y Z, khóa dời; IK khóa Y Z (`lock_ik_y/z`); giới hạn = Limit Rotation X (cục bộ,
     `use_transform_limit`) và `ik_min_x/ik_max_x`.
   - **Khớp cầu**: Quaternion, khóa dời; không giới hạn ở phần 1.
-  - **Trượt**: khóa quay; khóa dời X Z; giới hạn = Limit Location Y; IK khóa cả ba.
+  - **Trượt**: khóa quay; khóa dời Y Z (đi theo X); giới hạn = Limit Location X; IK khóa cả ba.
   - **Cố định**: khóa hết.
 - Hình điều khiển (custom shape, bộ sưu tập ẩn "DT Machine Shapes"): bản lề = vòng quanh trục X, khớp cầu = ba vòng,
   trượt = mũi tên theo Y, cỡ theo mảnh. Màu theo loại (nhóm xương).
@@ -145,8 +147,8 @@ Sau khi xong: một mô hình máy có sẵn (nếu tìm thấy trong máy ngư�
 
 ## 11. Quyết định của Claude (chế độ tự động)
 
-1. Khớp đặt bằng xương (cách A) với **trục X = trục bản lề**, **Y = trượt**: theo quy ước gập của Blender, giới hạn
-   chỉ một trục.
+1. Khớp đặt bằng xương (cách A) với **trục X = trục của khớp** cho cả bản lề lẫn trượt: theo quy ước gập của
+   Blender, giới hạn chỉ một trục, đổi loại khớp không phải sửa xương.
 2. Mảnh lưu bằng thuộc tính đỉnh `dt_piece` (không tách vật) — giữ viền, vật liệu; vùng chọn tách được trong một khối.
 3. Mảnh "chưa gắn" = đang ở Root; Root không nhận mảnh nào chủ ý (nhấp chỗ trống tạo khớp mới dưới Root).
 4. Đoán khớp bằng PCA của vùng tiếp xúc (trụ / thẳng / phẳng / khối), ngưỡng theo cỡ mảnh.
@@ -156,3 +158,13 @@ Sau khi xong: một mô hình máy có sẵn (nếu tìm thấy trong máy ngư�
 8. Bảng riêng "Rig cơ khí", bảng Anime Rig ẩn trên bộ xương máy; vào từ menu Vật và bảng lưới.
 9. Tên xương lấy từ dữ liệu người dùng (lưới / vật liệu), Root giữ tên tiếng Anh như các xương DaskToon khác.
 10. Gỡ khớp vừa tạo bằng Backspace trong công cụ; Ctrl+Z sau khi thoát hoàn tác cả lần dùng công cụ.
+11. Gỡ khớp trả mảnh về Root (thấy lại màu đỏ) chứ không giao cho khớp cha: người dùng thấy rõ mảnh nào còn thiếu.
+12. Mảnh cha chưa có khớp khi được nhấp: tự gắn cho nó một khớp cầu dưới Root (báo trên dòng trạng thái), không bắt
+    người dùng quay lại làm trước.
+13. Điểm mũi khi ngắm = trọng tâm các điểm ở đầu xa (≥ 98% khoảng xa nhất), để nòng tròn cho tâm nòng chứ không phải
+    một điểm trên vành.
+14. Chuỗi IK / ngắm dừng trước khớp treo thẳng vào Root (thân), kể cả khi thân chỉ có một chân.
+15. Công cụ tô màu lên các mặt ở tư thế nghỉ, đẩy ra ngoài theo pháp tuyến 0,2% cỡ lưới (khỏi sọc); không thấy được
+    phần tạo bởi bộ biến đổi (Mirror...) — mảnh phải có thật trong lưới.
+16. Bảng Anime Rig ẩn trên bộ xương máy; tên loại khớp Bản lề / Trượt dùng chữ có sẵn của Blender (Bản Lề, Trượt
+    Đẩy) vì Blender thắng trong ngữ cảnh mặc định.
