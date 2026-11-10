@@ -313,6 +313,7 @@ def _shape_keys(obj, lod):
     count = len(base)
     for name, deltas in lod.morphs:
         block = obj.shape_key_add(name=name, from_mix=False)
+        block.value = 0.0  # a new key starts on: every expression at once on the face
         co = base.copy()
         inside = deltas["vertex"] < count
         np.add.at(co, deltas["vertex"][inside].astype(np.int64), deltas["position"][inside])

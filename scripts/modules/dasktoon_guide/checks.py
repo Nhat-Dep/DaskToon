@@ -206,8 +206,25 @@ def used_materials(meshes):
 
 
 def is_dasktoons(material):
+    """True when DaskToon's shader shades the material: one of its nodes feeds the active output's Surface (an Anime
+    BSDF left unhooked in the tree, as MMD Tools leaves the one a new material starts with, does not count)."""
     tree = material.node_tree if material.use_nodes else None
-    return tree is not None and any(node.bl_idname in ANIME for node in tree.nodes)
+    if tree is None:
+        return False
+    outputs = [n for n in tree.nodes if n.bl_idname == 'ShaderNodeOutputMaterial']
+    output = next((n for n in outputs if n.is_active_output), outputs[0] if outputs else None)
+    if output is None:
+        return any(node.bl_idname in ANIME for node in tree.nodes)
+    seen, nodes = set(), [link.from_node for link in output.inputs["Surface"].links]
+    while nodes:
+        node = nodes.pop()
+        if node.name in seen:
+            continue
+        seen.add(node.name)
+        if node.bl_idname in ANIME:
+            return True
+        nodes.extend(link.from_node for s in node.inputs for link in s.links)
+    return False
 
 
 def check_shader(c):

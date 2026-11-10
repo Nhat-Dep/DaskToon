@@ -308,6 +308,8 @@ foreach(dasktoon_test
     dasktoon_rig_face_test
     dasktoon_rig_mouth_render_test
     dasktoon_lipsync_test
+    dasktoon_import_uemodel_test
+    dasktoon_import_adopt_test
 )
   add_blender_test(
     ${dasktoon_test}

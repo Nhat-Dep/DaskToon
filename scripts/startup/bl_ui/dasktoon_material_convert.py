@@ -44,6 +44,18 @@ def _output(tree):
     return next((n for n in outputs if n.is_active_output), outputs[0] if outputs else None)
 
 
+def _from_image(socket, depth=6):
+    """True when an image texture feeds `socket`, through at most `depth` nodes."""
+    nodes = [link.from_node for link in socket.links]
+    for _step in range(depth):
+        if any(node.bl_idname == 'ShaderNodeTexImage' for node in nodes):
+            return True
+        nodes = [link.from_node for node in nodes for s in node.inputs for link in s.links]
+        if not nodes:
+            return False
+    return False
+
+
 def colour_of(mat):
     """(socket feeding the colour or None, the colour when nothing feeds it, socket feeding alpha or None), or None when
     the material has no shader to read or already uses DaskToon's."""
@@ -60,7 +72,13 @@ def colour_of(mat):
         if "Alpha" in shader.inputs and shader.inputs["Alpha"].is_linked:
             alpha = shader.inputs["Alpha"].links[0].from_socket
     elif shader.bl_idname == 'ShaderNodeGroup':
-        socket = next((s for s in shader.inputs if s.type == 'RGBA'), None)
+        # MMD Tools' shader takes Ambient and Diffuse colours before its texture: a colour input fed by an image
+        # first, then any one fed, then the first.
+        colours = [s for s in shader.inputs if s.type == 'RGBA']
+        socket = (next((s for s in colours if s.is_linked and _from_image(s)), None)
+                  or next((s for s in colours if s.is_linked), None) or (colours[0] if colours else None))
+        alpha = next((s.links[0].from_socket for s in shader.inputs
+                      if s.type == 'VALUE' and s.is_linked and "alpha" in s.name.lower()), None)
     else:
         socket = None
     if socket is None:  # a mix or anything else: the first image texture, else grey

@@ -365,6 +365,30 @@ VI = {
     "This .uemodel is compressed with %s, which DaskToon cannot read: export it from FModel without compression":
         "Tệp .uemodel này nén bằng %s, DaskToon không đọc được: hãy xuất lại từ FModel, không nén",
     "This UEFormat file holds %s, not a model": "Tệp UEFormat này chứa %s, không phải mô hình",
+    # dasktoon_import adopt (docs/superpowers/specs/2026-11-10-dasktoon-import-adopt-design.md)
+    "Import MikuMikuDance Model": "Nhập mô hình MikuMikuDance",
+    "MikuMikuDance Model (.pmx, .pmd)": "Mô hình MikuMikuDance (.pmx, .pmd)",
+    "MikuMikuDance Model": "Mô hình MikuMikuDance",
+    "Import a MikuMikuDance model (.pmx, .pmd) with MMD Tools": "Nhập mô hình MikuMikuDance (.pmx, .pmd) bằng MMD Tools",
+    "MikuMikuDance units are 8 cm: 0.08 gives metres": "Một đơn vị MikuMikuDance là 8 cm: 0,08 đổi ra mét",
+    "DaskToon Character": "Nhân vật DaskToon",
+    "DaskToon Shader": "Shader DaskToon",
+    "Give every material of the model DaskToon's shader with an outline, keeping its colour or texture":
+        "Gắn shader DaskToon có viền cho mọi material của mô hình, giữ màu hoặc ảnh màu của nó",
+    "Make the model a DaskToon character: standing in the middle facing the front, DaskToon's skeleton with the "
+    "model's own weights, swaying hair and skirts, DaskToon's expression names and shader":
+        "Biến mô hình thành nhân vật DaskToon: đứng giữa cảnh quay mặt ra trước, khung xương DaskToon giữ trọng số "
+        "gốc của mô hình, tóc và váy đung đưa, tên biểu cảm và shader của DaskToon",
+    "Make DaskToon Character": "Biến thành nhân vật DaskToon",
+    "Make the selected imported model a DaskToon character: standing in the middle facing the front, DaskToon's "
+    "skeleton with the model's own weights, swaying hair and skirts, DaskToon's expression names and shader":
+        "Biến mô hình đã nhập đang chọn thành nhân vật DaskToon: đứng giữa cảnh quay mặt ra trước, khung xương "
+        "DaskToon giữ trọng số gốc của mô hình, tóc và váy đung đưa, tên biểu cảm và shader của DaskToon",
+    "%s is a DaskToon character: %d swaying chains, %d expressions, %d materials":
+        "%s đã thành nhân vật DaskToon: %d chuỗi đung đưa, %d biểu cảm, %d material",
+    "The skeleton has no bone DaskToon knows as %s": "Khung xương không có xương nào DaskToon nhận ra là %s",
+    "No skeleton in the model": "Mô hình không có khung xương",
+    "Select the model's skeleton and the meshes it moves": "Hãy chọn khung xương của mô hình và các lưới nó điều khiển",
     "Fill Empty Expressions": "Lấp biểu cảm còn trống",
     "Build empty expression shape keys from the others: \"e\" from \"a\" and \"i\", blink sides, the upper lip, "
     "VRM names":
@@ -1704,6 +1728,9 @@ VI = {
         "và các mesh nó điều khiển (DaskToon)",
     # Animation tab: Key Pose and the DaskToon Character keying set (spec 5)
     "DaskToon Character": "Nhân vật DaskToon",
+    "DaskToon Shader": "Shader DaskToon",
+    "Give every material of the model DaskToon's shader with an outline, keeping its colour or texture":
+        "Gắn shader DaskToon có viền cho mọi material của mô hình, giữ màu hoặc ảnh màu của nó",
     "Key the whole pose of the selected characters: every bone, every shape key of their meshes and every expression "
     "controller; other selected objects get location, rotation and scale":
         "Chèn khung khóa cho cả dáng của các nhân vật đang chọn: mọi xương, mọi hình mẫu của các mesh và mọi bộ điều "

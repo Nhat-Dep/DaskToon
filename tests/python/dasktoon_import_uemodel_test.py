@@ -106,6 +106,9 @@ class ImportUEModelTest(unittest.TestCase):
             stream.write(data)
         self.assertEqual(bpy.ops.dasktoon.import_uemodel(filepath=path), {'FINISHED'})
         obj = bpy.data.objects["Tester"]
+        from dasktoon_guide import checks
+        # DaskToon's shader at once, though a skeleton of two bones cannot become a DaskToon character
+        self.assertTrue(all(checks.is_dasktoons(slot.material) for slot in obj.material_slots))
         rig = bpy.data.objects["Tester_Rig"]
         return obj, rig
 
@@ -120,6 +123,9 @@ class ImportUEModelTest(unittest.TestCase):
         np.testing.assert_allclose(uv[corner].vector, (0.25, 0.75), atol=1e-6)  # upside down, as Blender has UVs
         smile = mesh.shape_keys.key_blocks["Smile"]
         np.testing.assert_allclose(smile.data[3].co, (0.0, -0.5, 1.1), atol=1e-6)
+        self.assertEqual(smile.value, 0.0)  # imported off: the face as modelled
+        shown = obj.evaluated_get(bpy.context.evaluated_depsgraph_get()).data
+        np.testing.assert_allclose(shown.vertices[3].co, mesh.vertices[3].co, atol=1e-6)
         np.testing.assert_allclose(smile.data[2].co, co[2], atol=1e-6)
         groups = {g.name: g.index for g in obj.vertex_groups}
         first = {groups_name: g.weight for g in mesh.vertices[0].groups

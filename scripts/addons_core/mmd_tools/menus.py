@@ -15,7 +15,7 @@ class MMDFileImportMenu(bpy.types.Menu):
 
     @staticmethod
     def draw_menu(this: bpy.types.Menu, _):
-        this.layout.operator(fileio.ImportPmx.bl_idname, text="MikuMikuDance Model (.pmd, .pmx)", icon="OUTLINER_OB_ARMATURE")
+        # DaskToon: File > Import > MikuMikuDance Model is dasktoon.import_mmd, which runs this importer.
         this.layout.operator(fileio.ImportVmd.bl_idname, text="MikuMikuDance Motion (.vmd)", icon="ANIM")
         this.layout.operator(fileio.ImportVpd.bl_idname, text="Vocaloid Pose Data (.vpd)", icon="POSE_HLT")
 

@@ -1284,7 +1284,7 @@ class MMD_FH_PMX(bpy.types.FileHandler):
 
     @classmethod
     def poll_drop(cls, context):
-        return poll_file_object_drop(context)
+        return False  # DaskToon: a dropped model goes to dasktoon.import_mmd (File > Import > MikuMikuDance Model)
 
 
 class MMD_FH_VMD(bpy.types.FileHandler):
