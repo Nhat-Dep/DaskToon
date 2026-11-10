@@ -97,3 +97,17 @@ trong bản lõi này một hình mẫu mới bắt đầu ở mức 1.
 - Váy/áo choàng dài nhiều xương bay mạnh khi di chuyển nhanh với thông số mặc định; có thể lấy giảm chấn từ vật lý MMD.
 - Venti (tệp tải về) tên ảnh trong .pmx khác tên tệp trên đĩa nên mất màu — lỗi của bản tải, MMD Tools cũng vậy.
 - Vật liệu do bộ nhập .uemodel làm trông nhạt hơn bản MMD của cùng nhân vật.
+
+## 10. Tóc không tự biến dạng khi đứng yên (người dùng yêu cầu cùng ngày)
+
+"Phần tóc khi rig không nên tự ý biến dạng so với lúc chưa rig hoặc rig gốc khi import". Đo trên Phoebe: đứng yên,
+bật đung đưa, sau 30 khung tóc/váy lệch tới 360 mm (.pmx) và 151 mm (.uemodel), 15 nghìn đỉnh. Nguyên nhân là va
+chạm, không phải trọng lực: gốc chuỗi tóc nằm sẵn trong khối va chạm của đầu/thân nên bị đẩy văng ngay từ khung đầu.
+
+Sửa chung trong dasktoon_rig/sway.py (cả chuỗi do Dựng rig tạo): mỗi khớp của chuỗi nhận khối va chạm thu nhỏ vừa đủ
+để không chạm đuôi khớp đó ở tư thế nghỉ; khớp nào lúc nghỉ đã nằm trong khối thì bỏ khối đó. Sau sửa: lệch 0 mm;
+khi chuyển động tóc vẫn va vào thân. Kiểm tra cũ không bắt được vì nhân vật mẫu có chuỗi nằm ngoài khối va chạm; kiểm
+tra nhập nay cho tóc mọc từ trong đầu và đòi đứng yên giữ nguyên hình.
+
+Còn lại: Unity và Godot dùng chung một khối va chạm (một bán kính) cho mọi chuỗi, nên trong engine tóc vẫn có thể bị
+đẩy lúc đứng yên; cần xuất kèm bán kính/bỏ qua theo từng khớp và sửa script của hai engine.

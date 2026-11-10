@@ -15,6 +15,7 @@ import numpy as np
 from mathutils import Matrix
 
 from . import build, spring
+from . import chains as chains_math
 
 CONSTRAINT_NAME = "DaskToon Spring"
 ROTATION_PATHS = ("rotation_quaternion", "rotation_euler", "rotation_axis_angle")
@@ -104,8 +105,24 @@ def _sync_colliders(rig, con, colliders):
             item.radius = radius
 
 
+def rest_colliders(rig, name, colliders, radius):
+    """The colliders [(bone, radius)] of the chain bone `name`, none touching its tail at rest: a collider is made small
+    enough to leave the tail where it is modelled, and left out when the tail is already inside it (hair rooted in the
+    head). Standing still the chain keeps its shape; moving, it still meets the body."""
+    bones = rig.data.bones
+    tail = np.array([bones[name].tail_local], float)
+    out = []
+    for bone, collider_radius in colliders:
+        b = bones[bone]
+        room = float(chains_math.segment_distance(tail, b.head_local, b.tail_local)[0]) - radius
+        if room > 1e-6:
+            out.append((bone, min(collider_radius, room)))
+    return out
+
+
 def sync(rig):
-    """A Spring constraint on every chain bone with its part's settings, the rig's colliders and Live Sway (spec 9.4)."""
+    """A Spring constraint on every chain bone with its part's settings, the rig's colliders (rest_colliders) and Live
+    Sway (spec 9.4)."""
     data = rig.data.dasktoon_rig
     colliders = [(c.bone, c.radius) for c in data.colliders if rig.data.bones.get(c.bone) is not None]
     for part_name, names in chains(rig):
@@ -121,7 +138,7 @@ def sync(rig):
                 value = getattr(params, prop)
                 if abs(getattr(con, prop) - value) > 1e-7:
                     setattr(con, prop, value)
-            _sync_colliders(rig, con, colliders)
+            _sync_colliders(rig, con, rest_colliders(rig, name, colliders, params.radius))
             if con.mute != (not data.live_sway):
                 con.mute = not data.live_sway
 

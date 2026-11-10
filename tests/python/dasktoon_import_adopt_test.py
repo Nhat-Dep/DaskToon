@@ -368,7 +368,9 @@ class CharacterTest(unittest.TestCase):
         # standing: turned to face -Y, on the floor, in the middle, every transform applied; nothing moves at rest
         self.assertTrue(np.allclose(np.array(rig.matrix_world), np.eye(4), atol=1e-6))
         self.assertTrue(np.allclose(np.array(obj.matrix_world), np.eye(4), atol=1e-6))
-        rig.data.dasktoon_rig.live_sway = False  # the hair's springs would push it off the head's collider
+        self.assertTrue(rig.data.dasktoon_rig.live_sway)
+        for frame in range(1, 25):  # standing still with the sway on: the hair keeps its modelled shape, though it is
+            bpy.context.scene.frame_set(frame)  # rooted inside the head's collider
         self.assertEqual({k.name: k.value for k in obj.data.shape_keys.key_blocks[1:] if k.value}, {})
         shown = _evaluated(obj)
         np.testing.assert_allclose(shown, [v.co[:] for v in obj.data.vertices], atol=1e-5)
@@ -403,6 +405,7 @@ class CharacterTest(unittest.TestCase):
         self.assertIn("Head", {c.bone for c in rig.data.dasktoon_rig.colliders})
         self.assertNotIn(build.MARK, bones_["Head"])
         # posed: the forearm takes the hand and half the elbow helper, not the upper arm
+        rig.data.dasktoon_rig.live_sway = False
         rest = _evaluated(obj)
         pb = rig.pose.bones["LeftLowerArm"]
         pb.rotation_mode = 'XYZ'
