@@ -95,6 +95,21 @@ def _world_points(obj):
     return co.reshape(-1, 3) @ mw[:3, :3].T + mw[:3, 3]
 
 
+def drive(rig, con, target, prop, expression):
+    """The influence of constraint `con` driven by the custom property `prop` of pose bone `target` through a simple
+    expression in `v` (no Python needed to run it)."""
+    driver = con.driver_add("influence").driver
+    driver.type = 'SCRIPTED'
+    for v in list(driver.variables):
+        driver.variables.remove(v)
+    var = driver.variables.new()
+    var.name, var.type = "v", 'SINGLE_PROP'
+    var.targets[0].id_type = 'OBJECT'
+    var.targets[0].id = rig
+    var.targets[0].data_path = 'pose.bones["%s"]["%s"]' % (target.replace('"', '\\"'), prop)
+    driver.expression = expression
+
+
 def add_modifier(obj, rig):
     """The Armature modifier on `rig`, first in the stack (before the outline and anything that makes geometry)."""
     mod = next((m for m in obj.modifiers if m.type == 'ARMATURE' and m.object == rig), None)

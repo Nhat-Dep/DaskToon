@@ -18,7 +18,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import dasktoon_machine_fixtures as fx  # noqa: E402
 import dasktoon_test_utils as tu  # noqa: E402
 import dasktoon_machine as machine  # noqa: E402
-from dasktoon_machine import joints, pieces  # noqa: E402
+from dasktoon_machine import aim, joints, legs, pieces, tool  # noqa: E402
 
 
 def new_machine():
@@ -274,6 +274,197 @@ class JointTest(unittest.TestCase):
         self.assertGreater(pb.custom_shape_scale_xyz[0], 0.03)
         self.assertEqual(self.rig.pose.bones[machine.ROOT].custom_shape.name, "DT Machine Root")
         self.assertIn(knee, [b.name for b in self.rig.data.collections["Joints"].bones])
+
+
+class ToolTest(unittest.TestCase):
+    def setUp(self):
+        self.rig, self.objs, self.p = new_machine()
+        self.t = tool.ToolState(bpy.context, self.rig)
+
+    def test_a_leg_by_clicks(self):
+        t, p = self.t, self.p
+        t.click(p["Body"])
+        self.assertEqual(t.state, tool.PARENT)
+        t.click(None)
+        self.assertEqual(t.state, tool.ADJUST)
+        body = t.confirm()
+        self.assertEqual(self.rig.data.bones[body].parent.name, machine.ROOT)
+        for name, (pivot, axis) in (("Thigh", fx.HIP), ("Shin", fx.KNEE), ("Foot", fx.ANKLE)):
+            t.click(p[name])
+            self.assertEqual(t.state, tool.ADJUST)  # the last joint is the parent
+            t.move_pivot(pivot)
+            t.set_axis(axis)
+            while t.joint.kind != 'HINGE':
+                t.cycle_kind()
+            t.confirm()
+        bones = self.rig.data.bones
+        self.assertEqual([bones["Foot"].parent.name, bones["Shin"].parent.name, bones["Thigh"].parent.name],
+                         ["Shin", "Thigh", "Body"])
+        np.testing.assert_allclose(bones["Shin"].head_local, fx.KNEE[0], atol=1e-5)
+        self.assertEqual(t.undo_last(), "Foot")
+        self.assertNotIn("Foot", bones)
+        self.assertEqual(t.default_parent, "Shin")
+        # a click on a piece with a joint opens it
+        t.click(p["Shin"])
+        self.assertEqual(t.editing, "Shin")
+        t.cycle_kind()
+        t.confirm()
+        self.assertEqual(bones["Shin"].dasktoon_joint.kind, 'BALL')
+
+    def test_shift_click_gathers_pieces_and_parent_gets_its_own_joint(self):
+        t, p = self.t, self.p
+        t.click(p["Turret"])
+        t.click(p["EarL"], shift=True)
+        t.click(p["EarR"], shift=True)
+        t.click(p["Body"])  # no joint yet: it gets a free one under the root
+        self.assertIn("Body", self.rig.data.bones)
+        self.assertEqual(t.joint.kind, 'HINGE')
+        self.assertLess(angle(t.joint.axis, (0, 0, 1)), 1.0)
+        turret = t.confirm()
+        b = pieces.Binding(self.rig)
+        self.assertEqual(sorted(b.pieces_of(turret), key=lambda x: x[1]),
+                         sorted([p["Turret"], p["EarL"], p["EarR"]], key=lambda x: x[1]))
+        self.assertEqual(self.rig.data.bones[turret].parent.name, "Body")
+        t.default_parent = None
+        t.click(p["Wheel"])
+        t.click(p["Axle"])
+        self.assertLess(angle(t.joint.axis, (0, 1, 0)), 1.0)
+        wheel = t.confirm()
+        self.assertEqual(self.rig.data.bones[wheel].parent.name, "Axle")
+        self.assertEqual(wheel, "Wheel")  # the whole mesh
+
+    def test_a_joint_cannot_hang_from_its_own_child(self):
+        t, p = self.t, self.p
+        body, _hip, _knee, _ankle = build_leg(self.rig, t.binding, p)
+        t.click(p["Thigh"])
+        t.click(p["Shin"])
+        self.assertTrue(t.message)
+        self.assertEqual(t.parent, body)
+
+
+class LegTest(unittest.TestCase):
+    def setUp(self):
+        self.rig, self.objs, self.p = new_machine()
+        self.b = pieces.Binding(self.rig)
+        self.body, self.hip, self.knee, self.ankle = build_leg(self.rig, self.b, self.p)
+        self.target = legs.add(bpy.context, self.rig, self.ankle)
+
+    def head(self, name):
+        bpy.context.view_layer.update()
+        return np.array(self.rig.matrix_world @ self.rig.pose.bones[name].head)
+
+    def move_target(self, goal):
+        bone = self.rig.data.bones[self.target]
+        self.rig.pose.bones[self.target].location = \
+            bone.matrix_local.to_3x3().inverted() @ Vector(np.asarray(goal) - np.array(bone.head_local))
+
+    def test_the_leg_follows_its_target(self):
+        self.assertEqual(legs.chain(self.rig, self.ankle), [self.knee, self.hip])
+        self.assertEqual(legs.legs(self.rig), [(self.ankle, self.target)])
+        np.testing.assert_allclose(self.head(self.ankle), fx.ANKLE[0], atol=1e-5)
+        rest = rest_points(self.objs["Mech"])
+        np.testing.assert_allclose(evaluated_points(self.objs["Mech"]), rest, atol=1e-5)
+        goal = np.array((0.4, 0.0, 0.3))
+        self.move_target(goal)
+        np.testing.assert_allclose(self.head(self.ankle), goal, atol=1e-3)
+        moved = evaluated_points(self.objs["Mech"])
+        b = pieces.Binding(self.rig)
+        for name in ("Thigh", "Shin", "Foot"):  # the leg stays in its plane: the hinges turn about Y only
+            v = b.verts(self.p[name])
+            np.testing.assert_allclose(moved[v][:, 1], rest[v][:, 1], atol=1e-4, err_msg=name)
+        foot = self.rig.pose.bones[self.ankle].matrix.to_quaternion()
+        target = self.rig.pose.bones[self.target].matrix.to_quaternion()
+        self.assertLess(foot.rotation_difference(target).angle, 1e-3)
+        self.rig.pose.bones[self.target][legs.SWITCH] = 1.0
+        self.rig.update_tag()
+        np.testing.assert_allclose(self.head(self.ankle), fx.ANKLE[0], atol=1e-5)
+
+    def test_snaps_keep_the_pose(self):
+        tgt = self.rig.pose.bones[self.target]
+        self.move_target((0.4, 0.0, 0.3))
+        before = self.head(self.ankle)
+        legs.snap(bpy.context, self.rig, self.target, 'FK')
+        self.assertEqual(tgt[legs.SWITCH], 1.0)
+        np.testing.assert_allclose(self.head(self.ankle), before, atol=1e-4)
+        self.rig.pose.bones[self.knee].rotation_euler.x += 0.3
+        before = self.head(self.ankle)
+        legs.snap(bpy.context, self.rig, self.target, 'IK')
+        self.assertEqual(tgt[legs.SWITCH], 0.0)
+        np.testing.assert_allclose(self.head(self.ankle), before, atol=1e-3)
+
+    def test_removing_the_leg_or_its_joints(self):
+        legs.remove(bpy.context, self.rig, self.target)
+        self.assertNotIn(self.target, self.rig.data.bones)
+        self.assertFalse([c for pb in self.rig.pose.bones for c in pb.constraints if c.name.startswith("DT IK")])
+        target = legs.add(bpy.context, self.rig, self.ankle)
+        joints.remove(bpy.context, pieces.Binding(self.rig), self.knee)
+        self.assertNotIn(target, self.rig.data.bones)
+        with self.assertRaises(machine.MachineError):
+            legs.add(bpy.context, self.rig, self.body)
+
+
+class AimTest(unittest.TestCase):
+    def setUp(self):
+        self.rig, self.objs, self.p = new_machine()
+        t = tool.ToolState(bpy.context, self.rig)
+        p = self.p
+        for child, parent in ((["Turret", "EarL", "EarR"], "Body"), (["Trunnion", "Barrel"], "Turret")):
+            t.default_parent = None
+            t.click(p[child[0]])
+            for name in child[1:]:
+                t.click(p[name], shift=True)
+            t.click(p[parent])
+            self.assertEqual(t.joint.kind, 'HINGE')
+            t.confirm()
+        b = pieces.Binding(self.rig)
+        self.gun, self.turret = b.bone_of(p["Trunnion"]), b.bone_of(p["Turret"])
+        self.target = aim.add(bpy.context, self.rig, self.gun)
+
+    def gun_direction(self):
+        bpy.context.view_layer.update()
+        m = self.rig.matrix_world @ self.rig.pose.bones[self.gun].matrix
+        return np.array(m.translation), np.array(m.to_3x3().col[1].normalized())
+
+    def aim_at(self, goal):
+        bone = self.rig.data.bones[self.target]
+        self.rig.pose.bones[self.target].location = \
+            bone.matrix_local.to_3x3().inverted() @ Vector(np.asarray(goal) - np.array(bone.head_local))
+
+    def test_the_chain_points_at_the_muzzle_at_rest(self):
+        self.assertEqual(aim.chain(self.rig, self.gun), [self.gun, self.turret])
+        bones = self.rig.data.bones
+        self.assertLess(angle(bones[self.gun].matrix_local.col[1][:3], (1, 0, 0)), 0.5)
+        self.assertLess(angle(bones[self.turret].matrix_local.col[1][:3], (1, 0, 0)), 0.5)
+        np.testing.assert_allclose(bones[self.target].head_local, (0.1 + 4 * 0.4, 0.0, 0.84), atol=1e-3)
+        for obj in self.objs.values():
+            np.testing.assert_allclose(evaluated_points(obj), rest_points(obj), atol=1e-5)
+
+    def test_the_gun_points_at_the_target(self):
+        for goal in ((1.0, 1.0, 1.5), (-0.5, 0.8, 0.9), (0.3, -1.2, 0.4)):
+            self.aim_at(goal)
+            head, y = self.gun_direction()
+            self.assertLess(angle(y, np.array(goal) - head), 2.0, goal)
+            turret = self.rig.matrix_world @ self.rig.pose.bones[self.turret].matrix
+            self.assertLess(angle(turret.to_3x3().col[0][:3], (0, 0, 1)), 0.1)  # the turret only turns about Z
+
+    def test_limits_hold_while_aiming(self):
+        data = self.rig.data.bones[self.gun].dasktoon_joint
+        data.use_limit = True
+        data.angle_min, data.angle_max = math.radians(-30), math.radians(10)
+        self.aim_at((0.3, 0.0, 5.0))
+        _head, y = self.gun_direction()
+        self.assertAlmostEqual(math.degrees(math.asin(y[2])), 30.0, delta=0.5)
+
+    def test_aim_off_and_remove(self):
+        self.aim_at((1.0, 1.0, 1.5))
+        self.rig.pose.bones[self.target][aim.SWITCH] = 0.0
+        self.rig.update_tag()
+        _head, y = self.gun_direction()
+        self.assertLess(angle(y, (1, 0, 0)), 0.5)
+        aim.remove(bpy.context, self.rig, self.target)
+        self.assertNotIn(self.target, self.rig.data.bones)
+        self.assertFalse(self.rig.data.bones[self.gun].dasktoon_joint.aim)
+        self.assertFalse([c for pb in self.rig.pose.bones for c in pb.constraints if c.name == aim.TRACK])
 
 
 if __name__ == "__main__":
