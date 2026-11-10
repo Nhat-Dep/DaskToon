@@ -50,15 +50,24 @@ cụm liền cạnh và nhận số mới. **Mảnh từ vùng chọn** đặt s
 nhiều mảnh.
 
 **Đoán khớp** giữa mảnh con C và mảnh cha P (vị trí nghỉ, không gian thế giới):
-- Điểm tiếp xúc: đỉnh của C cách mặt P không quá `max(2% đường chéo C, 1,5 × khoảng nhỏ nhất)`. Không có điểm nào
-  (hở) → điểm giữa cặp điểm gần nhau nhất, khớp cầu.
-- PCA của điểm tiếp xúc (trị riêng λ1 ≥ λ2 ≥ λ3, trục e1, e2, e3):
-  - **Trụ / vòng**: với mỗi trục e, khoảng cách điểm tới đường thẳng qua trọng tâm theo e có hệ số biến thiên < 0,2 và
-    bán kính > 0 → **bản lề** quanh e, tâm = trọng tâm (vòng trục bánh xe, chốt bản lề). Chọn e có hệ số nhỏ nhất.
+- Tiếp xúc đo **hai chiều**: đỉnh của C gần mặt P, và đỉnh của P gần mặt C (cái mũ rộng hơn đỉnh tháp chỉ chạm bằng
+  các góc của tháp). Khoảng gần nhất d₀; gần là trong `max(2% cỡ C, 1,5 × d₀)`.
+- Hở (d₀ > 5% cỡ C) hoặc tiếp xúc không ra trục → xét **trục quay theo hình dạng** (dưới đây); không có → khớp cầu
+  ở giữa cặp điểm gần nhất (hoặc giữa vùng tiếp xúc).
+- PCA của vùng tiếp xúc (trị riêng λ1 ≥ λ2 ≥ λ3, trục e1, e2, e3):
   - **Thẳng**: λ2 < 0,05 λ1 → bản lề quanh e1 (chốt mảnh, mép bản lề).
-  - **Phẳng**: λ3 < 0,05 λ2 → bản lề quanh e3 (mâm xoay, tháp pháo trên tấm).
-  - Còn lại → **khớp cầu** tại trọng tâm.
-- Không có cha (Root) → khớp cầu tại trọng tâm mảnh.
+  - **Trụ / vòng**: với mỗi trục e, khoảng cách điểm tới đường thẳng qua trọng tâm theo e có hệ số biến thiên < 0,2 →
+    **bản lề** quanh e, tâm = trọng tâm (vòng trục bánh xe, chốt bản lề, đáy tháp pháo).
+  - **Phẳng**: λ3 < 0,05 λ2 → bản lề quanh e3 (mâm xoay).
+  - Còn lại → không ra trục.
+- **Trục quay theo hình dạng**, theo thứ tự: (1) cả C đối xứng xoay; (2) P (cả cụm, rồi từng mảnh của P) đối xứng
+  xoay và trục của nó đi qua giữa C (trong 10% cỡ C) — con quay trên bệ tròn; (3) mảnh của C gần P nhất mà đối xứng
+  xoay — bầu cánh quạt giữa các cánh. **Đối xứng xoay** quanh trục e: xoay 360°/k (k ∈ 3, 4, 5, 6, 8, 10, 12, 16)
+  quanh e qua trọng tâm thì 90% điểm (lấy mẫu ≤ 300) rơi cách một điểm của chính nó < 2% cỡ. Hộp chữ nhật và trụ xét
+  theo trục ngang chỉ trùng sau nửa vòng nên không tính. Trục thử: ba trục PCA và ba trục thế giới (hai vòng đan nhau
+  trải đều mọi hướng ngang nên PCA không tách được trục đứng). Nhiều trục đạt thì lấy k lớn nhất.
+- Không có cha (Root) → khớp cầu tại giữa hộp bao của mảnh.
+- Chưa đoán khớp trượt (người dùng bấm T).
 
 ## 4. Khớp = một xương
 
@@ -141,9 +150,28 @@ hông là chốt trụ; một bánh xe là lưới riêng có lỗ trục. Khôn
 - Làm cứng: lưới da pha trọng lượng → mỗi mảnh một nhóm 1,0; mảnh chia đều bị báo.
 - Bảng vẽ không lỗi; dịch đủ tiếng Việt.
 
-## 10. Thử trên mô hình thật
+## 10. Thử trên mô hình thật (2026-11-10, 17:50–18:10)
 
-Sau khi xong: một mô hình máy có sẵn (nếu tìm thấy trong máy người dùng) hoặc mô hình dựng nhanh, ảnh chụp tư thế.
+Bộ FactoryTime (`D:\game\FactoryTime_Assets`): mỗi bộ phận quay có một Empty hoạt hình quay quanh một trục — dùng
+làm đáp án tự động (scratchpad bench.py): đoán khớp giữa các lưới dưới Empty đó và các lưới của cha nó.
+- Lần đầu: guồng nước, bánh răng máy khoan đúng; **mũ cối xay gió** (rộng hơn tháp) → khớp cầu; **mũi khoan** (hở) →
+  khớp cầu; **bầu cánh quạt + 4 cánh** → khớp cầu; **hai vòng nghiêng đan nhau** của lab → lệch 27°, rồi 70°, rồi 90°
+  qua các lần sửa.
+- Vì sao kiểm thử cũ không bắt: máy giả chỉ có mảnh con đặt đỉnh lên mặt mảnh cha. Thêm vào máy giả (không tên, không
+  số của mô hình thật): đèn rộng hơn cột, mũi khoan hở, quạt có bầu tròn và hai cánh một phía (cánh chữ thập đối
+  xứng thì vẫn "tròn" — làm khó hơn), hai vòng nghiêng đan trên bệ tròn. Mỗi kiểm thử hỏng trên mã cũ trước khi sửa.
+- Cách đo tròn đi qua ba lần: hệ số biến thiên theo tầng (quá dễ: nhận trục nghiêng; trụ đối xứng gương theo trục
+  ngang) → đối xứng xoay k ≥ 3 (đúng bản chất). Hai vòng đan **không** đối xứng xoay quanh trục đứng (xoay 90° thì B
+  thành A nghiêng ngược) — người dựng cho chúng quay theo trục của bệ tròn bên dưới: luật (2).
+- Sau cùng: 5/5 bộ phận quay của FactoryTime đúng trục (sai 0,0°) và đúng tâm (lệch 0,000) — gồm bánh răng của máy
+  lắp ráp (assembler_1), không dùng để sửa.
+- **robot.blend** (người máy 4 chân, 19 xương, nhập sẵn; không dùng để sửa phần đoán): Làm cứng các mảnh gom cả thân
+  liền chân (một lớp da, xương thân giữ 63%) vào xương thân → chân hết gập. Sửa: mảnh có ≥ 5% đỉnh do xương khác giữ
+  chính cũng là "bị chia", và mảnh bị chia **giữ nguyên trọng lượng** (báo và chọn sẵn). Kiểm thử mới: mảnh ống chân
+  có 1/4 dưới thuộc hẳn xương khác. Sau sửa: thân được báo, 6 mảnh còn lại cứng (lệch trong mảnh 0,04 mm khi tạo
+  dáng ngẫu nhiên).
+- Ảnh công cụ trong cửa sổ thật: màu (đỏ chưa gắn, cam đang chọn, xanh cha, vàng tâm / trục) đúng; lớp màu bị sọc vì
+  trùng mặt → đẩy ra theo pháp tuyến.
 
 ## 11. Quyết định của Claude (chế độ tự động)
 
@@ -168,3 +196,5 @@ Sau khi xong: một mô hình máy có sẵn (nếu tìm thấy trong máy ngư�
     phần tạo bởi bộ biến đổi (Mirror...) — mảnh phải có thật trong lưới.
 16. Bảng Anime Rig ẩn trên bộ xương máy; tên loại khớp Bản lề / Trượt dùng chữ có sẵn của Blender (Bản Lề, Trượt
     Đẩy) vì Blender thắng trong ngữ cảnh mặc định.
+17. Làm cứng các mảnh không đụng tới mảnh bị chia (giữ trọng lượng cũ) — không phá rig của người dùng; trước đó
+    mảnh bị chia vẫn bị gắn vào xương mạnh nhất.
