@@ -133,6 +133,7 @@ TRANSLATED = [
     "scripts/modules/dasktoon_machine/legs.py",
     "scripts/modules/dasktoon_machine/aim.py",
     "scripts/modules/dasktoon_machine/tool.py",
+    "scripts/modules/dasktoon_machine/linkage.py",
     "scripts/modules/dasktoon_rig/jiggle.py",
 ]
 # Blender files DaskToon rewrote parts of (project workflow spec 13): only these classes are DaskToon's.

@@ -18,7 +18,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import dasktoon_machine_fixtures as fx  # noqa: E402
 import dasktoon_test_utils as tu  # noqa: E402
 import dasktoon_machine as machine  # noqa: E402
-from dasktoon_machine import aim, joints, legs, pieces, tool  # noqa: E402
+from dasktoon_machine import aim, joints, legs, linkage, pieces, tool  # noqa: E402
 
 
 def new_machine():
@@ -498,6 +498,132 @@ class AimTest(unittest.TestCase):
         self.assertNotIn(self.target, self.rig.data.bones)
         self.assertFalse(self.rig.data.bones[self.gun].dasktoon_joint.aim)
         self.assertFalse([c for pb in self.rig.pose.bones for c in pb.constraints if c.name == aim.TRACK])
+
+
+def parts_machine(parts):
+    bpy.ops.wm.read_factory_settings(use_empty=True)
+    objs, firsts = fx.machine(parts)
+    rig = machine.create(bpy.context, list(objs.values()), "Parts")
+    return rig, objs, {name: pieces.piece_of_vertex(o, i) for name, (o, i) in firsts.items()}
+
+
+def hinge(pivot, axis):
+    return joints.Joint(np.array(pivot, dtype=float), np.array(axis, dtype=float), 'HINGE')
+
+
+class PistonTest(unittest.TestCase):
+    def setUp(self):
+        self.rig, self.objs, self.p = parts_machine(fx.ARM_PARTS)
+        b = self.b = pieces.Binding(self.rig)
+        ctx = bpy.context
+        self.base = joints.add(ctx, b, [self.p["Base"]], None, joints.guess(b, [self.p["Base"]], []))
+        self.boom = joints.add(ctx, b, [self.p["Boom"]], self.base, hinge(*fx.BOOM))
+        self.barrel = joints.add(ctx, b, [self.p["Barrel"]], self.base, hinge(fx.BARREL_PIN, (0, 1, 0)))
+        self.rod = joints.add(ctx, b, [self.p["Rod"]], self.boom, hinge(fx.ROD_PIN, (0, 1, 0)))
+        linkage.piston_add(ctx, self.rig, self.barrel, self.rod)
+
+    def world(self, name):
+        bpy.context.view_layer.update()
+        m = self.rig.matrix_world @ self.rig.pose.bones[name].matrix
+        return np.array(m.translation), np.array(m.to_3x3().col[1].normalized())
+
+    def test_rest_pose_does_not_move_anything(self):
+        self.assertEqual(linkage.pistons(self.rig), [(self.barrel, self.rod)])
+        for obj in self.objs.values():
+            np.testing.assert_allclose(evaluated_points(obj), rest_points(obj), atol=1e-5)
+
+    def test_barrel_and_rod_stay_on_one_line_as_the_boom_lifts(self):
+        arm = self.objs["Arm"]
+        before = evaluated_points(arm)
+        for angle_ in (-0.4, 0.3):
+            self.rig.pose.bones[self.boom].rotation_euler.x = angle_
+            x_head, x_y = self.world(self.barrel)
+            r_head, r_y = self.world(self.rod)
+            np.testing.assert_allclose(x_head, fx.BARREL_PIN, atol=1e-5)  # the barrel's pin stays on the base
+            self.assertLess(angle(x_y, r_head - x_head), 0.5)
+            self.assertLess(angle(r_y, x_head - r_head), 0.5)
+            self.assertLess(angle(x_y, -r_y), 0.5)
+            moved = evaluated_points(arm)
+            v = self.b.verts(self.p["Rod"])
+            d_rest = np.linalg.norm(before[v][:, None] - before[v][None], axis=2)
+            d_moved = np.linalg.norm(moved[v][:, None] - moved[v][None], axis=2)
+            np.testing.assert_allclose(d_moved, d_rest, atol=1e-5)  # the rod stays rigid
+        # the pins moved apart or together: the rod slid in or out of the barrel
+        self.rig.pose.bones[self.boom].rotation_euler.x = -0.4
+        far = np.linalg.norm(self.world(self.rod)[0] - self.world(self.barrel)[0])
+        self.rig.pose.bones[self.boom].rotation_euler.x = 0.3
+        near = np.linalg.norm(self.world(self.rod)[0] - self.world(self.barrel)[0])
+        self.assertGreater(abs(far - near), 0.05)
+
+    def test_errors_and_removal(self):
+        with self.assertRaises(machine.MachineError):
+            linkage.piston_add(bpy.context, self.rig, self.barrel, self.rod)
+        linkage.piston_remove(bpy.context, self.rig, self.barrel)
+        self.assertEqual(linkage.pistons(self.rig), [])
+        self.assertNotIn(linkage.HELPER + self.barrel, self.rig.data.bones)
+        self.assertEqual(self.rig.data.bones[self.rod].dasktoon_joint.kind, 'HINGE')
+        self.assertFalse([c for pb in self.rig.pose.bones for c in pb.constraints if c.name == linkage.TRACK])
+        with self.assertRaises(machine.MachineError):
+            linkage.piston_add(bpy.context, self.rig, self.barrel, self.boom)  # same parent
+        linkage.piston_add(bpy.context, self.rig, self.barrel, self.rod)
+        joints.remove(bpy.context, pieces.Binding(self.rig), self.rod)
+        self.assertEqual(linkage.pistons(self.rig), [])
+
+
+class LinkTest(unittest.TestCase):
+    def setUp(self):
+        self.rig, self.objs, self.p = parts_machine(fx.GEAR_PARTS)
+        b = pieces.Binding(self.rig)
+        ctx = bpy.context
+        self.a = joints.add(ctx, b, [self.p["GearA"]], None, hinge((0, 0, 0), (0, 0, 1)))
+        self.b_ = joints.add(ctx, b, [self.p["GearB"]], None, hinge((0.15, 0, 0), (0, 0, 1)))
+        self.c = joints.add(ctx, b, [self.p["WheelC"]], None, hinge((0.5, 0, 0), (0, 0, 1)))
+        self.lever = joints.add(ctx, b, [self.p["Lever"]], None, hinge((0, 0.31, 0), (0, 1, 0)))
+        self.slider = joints.add(ctx, b, [self.p["Slider"]], None,
+                                 joints.Joint(np.array((0.35, 0.31, 0.01)), np.array((1.0, 0, 0)), 'SLIDE'))
+
+    def value(self, name, path="rotation_euler"):
+        bpy.context.view_layer.update()
+        return getattr(self.rig.pose.bones[name], path)[0]
+
+    def test_ratios_are_guessed(self):
+        self.assertAlmostEqual(linkage.ratio(self.rig, self.a, self.b_), -2.0, places=3)  # meshing
+        self.assertAlmostEqual(linkage.ratio(self.rig, self.b_, self.a), -0.5, places=3)
+        self.assertAlmostEqual(linkage.ratio(self.rig, self.a, self.c), 1.0, places=3)  # apart: a chain
+        self.assertAlmostEqual(linkage.ratio(self.rig, self.lever, self.slider), 1.0)
+
+    def test_the_follower_turns_with_its_driver(self):
+        linkage.link_add(bpy.context, self.rig, self.a, self.b_)
+        linkage.link_add(bpy.context, self.rig, self.a, self.c)
+        self.rig.pose.bones[self.a].rotation_euler.x = math.radians(30)
+        self.rig.update_tag()
+        self.assertAlmostEqual(math.degrees(self.value(self.b_)), -60.0, places=3)
+        self.assertAlmostEqual(math.degrees(self.value(self.c)), 30.0, places=3)
+        self.rig.pose.bones[self.c][linkage.RATIO] = 0.5
+        self.rig.update_tag()
+        self.assertAlmostEqual(math.degrees(self.value(self.c)), 15.0, places=3)
+        self.assertEqual(sorted(f for _d, f, _r in linkage.links(self.rig)), sorted([self.b_, self.c]))
+
+    def test_a_lever_drives_a_slide(self):
+        linkage.link_add(bpy.context, self.rig, self.lever, self.slider, 0.1)
+        self.rig.pose.bones[self.lever].rotation_euler.x = 0.5
+        self.rig.update_tag()
+        self.assertAlmostEqual(self.value(self.slider, "location"), 0.05, places=5)
+
+    def test_loops_and_removal(self):
+        linkage.link_add(bpy.context, self.rig, self.a, self.b_)
+        with self.assertRaises(machine.MachineError):
+            linkage.link_add(bpy.context, self.rig, self.b_, self.a)
+        with self.assertRaises(machine.MachineError):
+            linkage.link_add(bpy.context, self.rig, self.c, self.b_)  # follows another already
+        linkage.link_remove(self.rig, self.b_)
+        self.assertEqual(linkage.links(self.rig), [])
+        self.rig.pose.bones[self.a].rotation_euler.x = 0.4
+        self.rig.update_tag()
+        self.assertAlmostEqual(self.value(self.b_), 0.0)
+        linkage.link_add(bpy.context, self.rig, self.a, self.b_)
+        joints.remove(bpy.context, pieces.Binding(self.rig), self.a)
+        self.assertEqual(linkage.links(self.rig), [])
 
 
 class AdoptTest(unittest.TestCase):

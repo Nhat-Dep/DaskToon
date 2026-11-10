@@ -119,11 +119,32 @@ KNEE = ((0.5, 0.0, 0.6), (0.0, 1.0, 0.0))
 ANKLE = ((0.5, 0.0, 0.125), (0.0, 1.0, 0.0))
 
 
-def machine():
+# An arm on a base lifted by a piston: the barrel's pin on the base, the rod's pin on the arm.
+ARM_PARTS = (
+    ("Base", "Arm", lambda: box((-0.2, -0.1, 0.0), (0.2, 0.1, 0.2))),
+    ("Boom", "Arm", lambda: box((0.2, -0.03, 0.12), (0.8, 0.03, 0.18))),
+    ("Barrel", "Arm", lambda: cylinder((0.2, 0.0, 0.3), 'X', 0.03, 0.3)),
+    ("Rod", "Arm", lambda: cylinder((0.4, 0.0, 0.3), 'X', 0.015, 0.3)),
+)
+BOOM = ((0.2, 0.0, 0.15), (0.0, 1.0, 0.0))
+BARREL_PIN = (0.05, 0.0, 0.3)
+ROD_PIN = (0.55, 0.0, 0.3)
+
+# Two spur gears touching, a wheel apart from them, a lever and a slider.
+GEAR_PARTS = (
+    ("GearA", "Gears", lambda: cylinder((0.0, 0.0, 0.0), 'Z', 0.1, 0.02)),
+    ("GearB", "Gears", lambda: cylinder((0.15, 0.0, 0.0), 'Z', 0.05, 0.02)),
+    ("WheelC", "Gears", lambda: cylinder((0.5, 0.0, 0.0), 'Z', 0.1, 0.02)),
+    ("Lever", "Gears", lambda: box((-0.01, 0.3, 0.0), (0.01, 0.32, 0.2))),
+    ("Slider", "Gears", lambda: box((0.3, 0.3, 0.0), (0.4, 0.32, 0.02))),
+)
+
+
+def machine(parts=PARTS):
     """({mesh name: object}, {part name: (object, first vertex index)})."""
     meshes, firsts = {}, {}
     data = {}
-    for name, mesh_name, make in PARTS:
+    for name, mesh_name, make in parts:
         verts, faces = make()
         mv, mf, mm, mats = data.setdefault(mesh_name, ([], [], [], []))
         firsts[name] = (mesh_name, len(mv))

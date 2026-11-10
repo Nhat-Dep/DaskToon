@@ -156,6 +156,47 @@ class UiTest(unittest.TestCase):
         self.assertIn(self.p["Barrel"][1], owner.tolist())
 
 
+class PartsUiTest(unittest.TestCase):
+    def test_piston_and_link_commands_use_the_selected_joints(self):
+        bpy.ops.wm.read_factory_settings(use_empty=True)
+        objs, firsts = fx.machine(fx.ARM_PARTS + fx.GEAR_PARTS)
+        p = {name: pieces.piece_of_vertex(o, i) for name, (o, i) in firsts.items()}
+        rig = machine.create(bpy.context, list(objs.values()), "Parts")
+        b = pieces.Binding(rig)
+        ctx = bpy.context
+
+        def hinge(pivot, axis):
+            return joints.Joint(np.array(pivot, float), np.array(axis, float), 'HINGE')
+
+        base = joints.add(ctx, b, [p["Base"]], None, joints.guess(b, [p["Base"]], []))
+        boom = joints.add(ctx, b, [p["Boom"]], base, hinge(*fx.BOOM))
+        barrel = joints.add(ctx, b, [p["Barrel"]], base, hinge(fx.BARREL_PIN, (0, 1, 0)))
+        rod = joints.add(ctx, b, [p["Rod"]], boom, hinge(fx.ROD_PIN, (0, 1, 0)))
+        a = joints.add(ctx, b, [p["GearA"]], None, hinge((0, 0, 0), (0, 0, 1)))
+        g = joints.add(ctx, b, [p["GearB"]], None, hinge((0.15, 0, 0), (0, 0, 1)))
+        select_only([rig], rig)
+
+        def select(active, *others):
+            for pb in rig.pose.bones:
+                pb.select = pb.name in (active,) + others
+            rig.data.bones.active = rig.data.bones[active]
+
+        select(barrel)
+        self.assertEqual(bpy.ops.dasktoon.machine_piston_add(), {'CANCELLED'})  # one joint only
+        select(barrel, rod)
+        self.assertEqual(bpy.ops.dasktoon.machine_piston_add(), {'FINISHED'})
+        log = tu.draw(ui.DATA_PT_dasktoon_machine_pistons, panel_context(rig))
+        self.assertIn("dasktoon.machine_piston_remove", ops(log))
+        self.assertEqual(bpy.ops.dasktoon.machine_piston_remove(barrel=barrel), {'FINISHED'})
+        select(a, g)
+        self.assertEqual(bpy.ops.dasktoon.machine_link_add(), {'FINISHED'})
+        log = tu.draw(ui.DATA_PT_dasktoon_machine_links, panel_context(rig))
+        self.assertIn("dasktoon.machine_link_remove", ops(log))
+        self.assertAlmostEqual(rig.pose.bones[g]["dt_link_ratio"], -2.0, places=3)
+        self.assertEqual(bpy.ops.dasktoon.machine_link_remove(follower=g), {'FINISHED'})
+        self.assertNotIn("dt_link", rig.pose.bones[g])
+
+
 class AdoptUiTest(unittest.TestCase):
     def test_make_pieces_rigid_selects_the_split_ones(self):
         bpy.ops.wm.read_factory_settings(use_empty=True)

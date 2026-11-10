@@ -323,9 +323,10 @@ def remove(context, binding, name):
     rig = binding.rig
     if name == binding.root or name not in rig.data.bones:
         raise MachineError(rpt_("This joint cannot be removed"))
-    from . import aim, legs
+    from . import aim, legs, linkage
     legs.remove_for(context, rig, name)
     aim.remove_for(context, rig, name)
+    linkage.remove_for(context, rig, name)
     pieces = binding.pieces_of(name)
     if pieces:
         binding.bind(pieces, binding.root)

@@ -310,6 +310,107 @@ class DASKTOON_OT_machine_aim_remove(Operator):
         return {'FINISHED'}
 
 
+def selected_joints(rig):
+    """(active joint, [the other selected joints]) by the bones' selection."""
+    active = active_joint(rig)
+    others = [pb.name for pb in rig.pose.bones if pb.select and active is not None and pb.name != active.name and
+              pb.bone.use_deform]
+    return (active.name if active is not None else None), others
+
+
+class DASKTOON_OT_machine_piston_add(Operator):
+    """The barrel (the selected joint) and the rod (the other selected one) keep facing each other's pin"""
+    bl_idname = "dasktoon.machine_piston_add"
+    bl_label = "Make Piston"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        rig = machine_of(context)
+        return rig is not None and active_joint(rig) is not None
+
+    def execute(self, context):
+        import dasktoon_machine as machine
+        from dasktoon_machine import linkage
+        rig = machine_of(context)
+        barrel, others = selected_joints(rig)
+        if len(others) != 1:
+            self.report({'WARNING'}, rpt_("Select two joints: the rod, then the barrel"))
+            return {'CANCELLED'}
+        try:
+            linkage.piston_add(context, rig, barrel, others[0])
+        except machine.MachineError as error:
+            return _report_error(self, error)
+        self.report({'INFO'}, rpt_("Piston made: %s and %s") % (barrel, others[0]))
+        return {'FINISHED'}
+
+
+class DASKTOON_OT_machine_piston_remove(Operator):
+    """Take this piston apart; the barrel and the rod become hinges again"""
+    bl_idname = "dasktoon.machine_piston_remove"
+    bl_label = "Remove Piston"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    barrel: StringProperty(options={'HIDDEN', 'SKIP_SAVE'})
+
+    def execute(self, context):
+        from dasktoon_machine import linkage
+        rig = machine_of(context)
+        if rig is None or self.barrel not in rig.pose.bones:
+            return {'CANCELLED'}
+        linkage.piston_remove(context, rig, self.barrel)
+        return {'FINISHED'}
+
+
+class DASKTOON_OT_machine_link_add(Operator):
+    """The other selected joints move with the selected one: gears turn by their sizes, anything else one for one"""
+    bl_idname = "dasktoon.machine_link_add"
+    bl_label = "Link Joints"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        rig = machine_of(context)
+        return rig is not None and active_joint(rig) is not None
+
+    def execute(self, context):
+        import dasktoon_machine as machine
+        from dasktoon_machine import linkage
+        rig = machine_of(context)
+        driver, followers = selected_joints(rig)
+        if not followers:
+            self.report({'WARNING'}, rpt_("Select the joints that follow, then the one that drives them last"))
+            return {'CANCELLED'}
+        done = []
+        for follower in followers:
+            try:
+                linkage.link_add(context, rig, driver, follower)
+                done.append(follower)
+            except machine.MachineError as error:
+                self.report({'WARNING'}, str(error))
+        if not done:
+            return {'CANCELLED'}
+        self.report({'INFO'}, rpt_("%d joints follow %s") % (len(done), driver))
+        return {'FINISHED'}
+
+
+class DASKTOON_OT_machine_link_remove(Operator):
+    """This joint no longer follows its driver"""
+    bl_idname = "dasktoon.machine_link_remove"
+    bl_label = "Unlink Joint"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    follower: StringProperty(options={'HIDDEN', 'SKIP_SAVE'})
+
+    def execute(self, context):
+        from dasktoon_machine import linkage
+        rig = machine_of(context)
+        if rig is None or self.follower not in rig.pose.bones:
+            return {'CANCELLED'}
+        linkage.link_remove(rig, self.follower)
+        return {'FINISHED'}
+
+
 # The Add Joint tool
 
 
@@ -674,6 +775,42 @@ class DATA_PT_dasktoon_machine_aim(DaskMachinePanel, Panel):
             row.operator("dasktoon.machine_aim_remove", text="", icon='X').target = target
 
 
+class DATA_PT_dasktoon_machine_pistons(DaskMachinePanel, Panel):
+    bl_label = "Pistons"
+    bl_parent_id = "DATA_PT_dasktoon_machine"
+    bl_options = {'DEFAULT_CLOSED'}
+
+    def draw(self, context):
+        from dasktoon_machine import linkage
+        layout = self.layout
+        rig = context.object
+        for barrel, rod in linkage.pistons(rig):
+            row = layout.row(align=True)
+            row.label(text="%s ↔ %s" % (barrel, rod), icon='CON_STRETCHTO', translate=False)
+            row.operator("dasktoon.machine_piston_remove", text="", icon='X').barrel = barrel
+        layout.label(text="Give the barrel and the rod a joint each, select both (the barrel last)", icon='INFO')
+        layout.operator("dasktoon.machine_piston_add", icon='CON_STRETCHTO')
+
+
+class DATA_PT_dasktoon_machine_links(DaskMachinePanel, Panel):
+    bl_label = "Linked Joints"
+    bl_parent_id = "DATA_PT_dasktoon_machine"
+    bl_options = {'DEFAULT_CLOSED'}
+
+    def draw(self, context):
+        from dasktoon_machine import linkage
+        layout = self.layout
+        rig = context.object
+        column = layout.column(align=True)
+        for driver, follower, _ratio in linkage.links(rig):
+            row = column.row(align=True)
+            row.label(text="%s → %s" % (driver, follower), icon='LINKED', translate=False)
+            row.prop(rig.pose.bones[follower], '["%s"]' % linkage.RATIO, text="Ratio")
+            row.operator("dasktoon.machine_link_remove", text="", icon='X').follower = follower
+        layout.label(text="Gears, wheels, levers: select the followers, then the driver last", icon='INFO')
+        layout.operator("dasktoon.machine_link_add", icon='LINKED')
+
+
 class DATA_PT_dasktoon_machine_mesh(Panel):
     bl_label = "Machine Rig"
     bl_space_type = 'PROPERTIES'
@@ -717,11 +854,17 @@ classes = (
     DASKTOON_OT_machine_leg_snap,
     DASKTOON_OT_machine_aim_add,
     DASKTOON_OT_machine_aim_remove,
+    DASKTOON_OT_machine_piston_add,
+    DASKTOON_OT_machine_piston_remove,
+    DASKTOON_OT_machine_link_add,
+    DASKTOON_OT_machine_link_remove,
     DASKTOON_OT_machine_joint_tool,
     DATA_PT_dasktoon_machine,
     DATA_PT_dasktoon_machine_joint,
     DATA_PT_dasktoon_machine_legs,
     DATA_PT_dasktoon_machine_aim,
+    DATA_PT_dasktoon_machine_pistons,
+    DATA_PT_dasktoon_machine_links,
     DATA_PT_dasktoon_machine_mesh,
 )
 

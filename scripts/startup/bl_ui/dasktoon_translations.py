@@ -2255,6 +2255,37 @@ VI = {
     "Only a hinge or a ball joint can aim": "Chỉ bản lề hoặc khớp cầu mới ngắm được",
     "The joint holds no piece": "Khớp không giữ mảnh nào",
     "This joint already aims": "Khớp này đã ngắm rồi",
+    "Pistons": "Pít-tông",
+    "Make Piston": "Nối thành pít-tông",
+    "The barrel (the selected joint) and the rod (the other selected one) keep facing each other's pin":
+        "Xi-lanh (khớp đang chọn) và cần đẩy (khớp chọn kèm) luôn hướng vào chốt của nhau",
+    "Give the barrel and the rod a joint each, select both (the barrel last)":
+        "Gắn khớp cho xi-lanh và cần đẩy, rồi chọn cả hai (xi-lanh chọn sau cùng)",
+    "Select two joints: the rod, then the barrel": "Chọn hai khớp: cần đẩy trước, xi-lanh sau",
+    "Piston made: %s and %s": "Đã nối pít-tông: %s và %s",
+    "Remove Piston": "Gỡ pít-tông",
+    "Take this piston apart; the barrel and the rod become hinges again":
+        "Gỡ pít-tông này; xi-lanh và cần đẩy lại thành bản lề",
+    "One of these joints is in a piston already": "Một trong hai khớp đã thuộc một pít-tông",
+    "The barrel and the rod have their pins in the same place": "Chốt của xi-lanh và cần đẩy trùng chỗ nhau",
+    "The barrel and the rod must hang from two different joints":
+        "Xi-lanh và cần đẩy phải gắn vào hai khớp khác nhau",
+    "Linked Joints": "Khớp nối",
+    "Link Joints": "Nối khớp",
+    "The other selected joints move with the selected one: gears turn by their sizes, anything else one for one":
+        "Các khớp chọn kèm cử động theo khớp đang chọn: bánh răng theo cỡ của chúng, còn lại một đổi một",
+    "Gears, wheels, levers: select the followers, then the driver last":
+        "Bánh răng, bánh xe, cần gạt: chọn các khớp đi theo, rồi chọn khớp dẫn sau cùng",
+    "Select the joints that follow, then the one that drives them last":
+        "Chọn các khớp đi theo, rồi chọn khớp dẫn sau cùng",
+    "%d joints follow %s": "%d khớp đi theo %s",
+    "Unlink Joint": "Bỏ nối khớp",
+    "This joint no longer follows its driver": "Khớp này thôi đi theo khớp dẫn",
+    "%s follows another joint already": "%s đã đi theo một khớp khác",
+    "A joint cannot follow itself": "Khớp không thể đi theo chính nó",
+    "How far this joint moves for each unit of its driver": "Khớp này cử động bao nhiêu cho mỗi đơn vị của khớp dẫn",
+    "Only hinges and slides can be linked": "Chỉ nối được bản lề và khớp trượt",
+    "These joints would drive each other round in a loop": "Các khớp này sẽ kéo nhau thành vòng lặp",
 }
 
 # Words that need their own translation context, because Blender's own translation of the same word in the default
