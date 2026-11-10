@@ -50,6 +50,9 @@ class Result:
         self.chains = 0
         self.expressions = []
         self.materials = 0
+        self.controls = 0  # control bones added; 0 without
+        self.controls_error = ""
+        self.face_knobs = 0
 
 
 def source_of(objects):
@@ -426,9 +429,10 @@ def add_sway(rig, meshes):
 
 # --- all together ---
 
-def adopt(context, armature, meshes, kind='OTHER', swaying=None):
+def adopt(context, armature, meshes, kind='OTHER', swaying=None, controls=True):
     """Make the character of `armature` and `meshes` a DaskToon character (module docstring). `swaying`: the source
-    bones that swing (MikuMikuDance's physics), None to find chains of extra bones. Returns a Result; raises
+    bones that swing (MikuMikuDance's physics), None to find chains of extra bones; `controls`: add the animation
+    controls (dasktoon_rig.controls; a skeleton they cannot go on stays without, saying why). Returns a Result; raises
     AdoptError when its skeleton lacks a bone DaskToon needs."""
     try:
         source_bones.match(read_bones(armature))  # before anything changes: a skeleton it cannot use stays as it is
@@ -477,6 +481,14 @@ def adopt(context, armature, meshes, kind='OTHER', swaying=None):
     result.materials = convert_materials(meshes)
     view_layer = context.view_layer
     view_layer.update()
+    if controls:
+        from dasktoon_rig import controls as rig_controls
+        try:
+            result.controls = rig_controls.add(context, rig)
+        except rig_controls.ControlsError as ex:
+            result.controls_error = str(ex)
+        from dasktoon_rig import face_board
+        result.face_knobs = face_board.build(context, rig)  # the expressions named above, on knobs beside the head
     for obj in context.scene.objects:
         obj.select_set(obj == rig or obj in meshes)
     view_layer.objects.active = rig

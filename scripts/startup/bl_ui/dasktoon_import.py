@@ -19,9 +19,15 @@ ADOPT_DESCRIPTION = ("Make the model a DaskToon character: standing in the middl
                      "with the model's own weights, swaying hair and skirts, DaskToon's expression names and shader")
 
 
+CONTROLS_DESCRIPTION = ("Add the animation controls (IK and FK arms and legs, foot roll, fingers) to the DaskToon "
+                        "character, as Anime Rig › Controls › Add Controls does")
+
+
 def _report_adopted(op, result):
     op.report({'INFO'}, rpt_("%s is a DaskToon character: %d swaying chains, %d expressions, %d materials") % (
         result.rig.name, result.chains, len(result.expressions), result.materials))
+    if result.controls_error:
+        op.report({'WARNING'}, rpt_("No controls: %s") % result.controls_error)
 
 
 SHADER_DESCRIPTION = "Give every material of the model DaskToon's shader with an outline, keeping its colour or texture"
@@ -66,6 +72,7 @@ class DASKTOON_OT_import_uemodel(Operator, ImportHelper):
         soft_max=1.0)
     shape_keys: BoolProperty(name="Shape Keys", description="Import the morph targets as shape keys", default=True)
     dasktoon: BoolProperty(name="DaskToon Character", description=ADOPT_DESCRIPTION, default=True)
+    controls: BoolProperty(name="Controls", description=CONTROLS_DESCRIPTION, default=True)
     shader: BoolProperty(name="DaskToon Shader", description=SHADER_DESCRIPTION, default=True)
     outline: BoolProperty(name="Outline", description=OUTLINE_DESCRIPTION, default=False)
 
@@ -90,7 +97,7 @@ class DASKTOON_OT_import_uemodel(Operator, ImportHelper):
                 len(keys.key_blocks) - 1 if keys else 0))
             if self.dasktoon and rig is not None:
                 try:
-                    _report_adopted(self, adopt.adopt(context, rig, [obj], kind='UNREAL'))
+                    _report_adopted(self, adopt.adopt(context, rig, [obj], kind='UNREAL', controls=self.controls))
                 except adopt.AdoptError as ex:
                     self.report({'WARNING'}, "%s: %s" % (os.path.basename(path), ex))
         _shade(self, _new_objects(before))
@@ -111,6 +118,7 @@ class DASKTOON_OT_import_mmd(Operator, ImportHelper):
         name="Scale", description="MikuMikuDance units are 8 cm: 0.08 gives metres", default=0.08, min=1e-6,
         soft_max=1.0)
     dasktoon: BoolProperty(name="DaskToon Character", description=ADOPT_DESCRIPTION, default=True)
+    controls: BoolProperty(name="Controls", description=CONTROLS_DESCRIPTION, default=True)
     shader: BoolProperty(name="DaskToon Shader", description=SHADER_DESCRIPTION, default=True)
     outline: BoolProperty(name="Outline", description=OUTLINE_DESCRIPTION, default=False)
 
@@ -135,7 +143,7 @@ class DASKTOON_OT_import_mmd(Operator, ImportHelper):
             done += 1
             if self.dasktoon:
                 try:
-                    _report_adopted(self, mmd.adopt_imported(context, path, _new_objects(start)))
+                    _report_adopted(self, mmd.adopt_imported(context, path, _new_objects(start), self.controls))
                 except adopt.AdoptError as ex:  # a skeleton DaskToon does not know: the model stays as imported
                     self.report({'WARNING'}, "%s: %s" % (os.path.basename(path), ex))
         _shade(self, _new_objects(before))

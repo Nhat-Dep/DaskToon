@@ -67,7 +67,7 @@ def adopt_file(context, path, scale=0.08):
     return adopt_imported(context, path, import_file(context, path, scale))
 
 
-def adopt_imported(context, path, objects):
+def adopt_imported(context, path, objects, controls=True):
     """Adopt the model MMD Tools just made of `path` (`objects`, the new objects); returns adopt.Result."""
     from . import adopt
     armature, meshes = adopt.source_of(objects)
@@ -78,4 +78,4 @@ def adopt_imported(context, path, objects):
     if japanese is not None:
         names = bone_names_by_japanese(armature)
         swaying = {names[j] for j in japanese if j in names}
-    return adopt.adopt(context, armature, meshes, kind='MMD', swaying=swaying)
+    return adopt.adopt(context, armature, meshes, kind='MMD', swaying=swaying, controls=controls)

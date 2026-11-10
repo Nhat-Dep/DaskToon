@@ -48,6 +48,20 @@ class DaskHUDState:
 # Data Models: Mappings & Groups
 # =============================================================================
 
+def _set_key(obj, block, value):
+    """Shape key `block` of `obj` shown at `value`: through its knob when the face board drives it (its own value would
+    do nothing), else its value."""
+    from dasktoon_rig import face_board
+    face_board.set_value(obj, block, value)
+
+
+def _key_key(obj, block, frame):
+    """A key at `frame` on shape key `block` of `obj`, or on the face board knob driving it."""
+    from dasktoon_rig import face_board
+    owner, path, index, _scale = face_board.knob_path(obj, block.name)
+    owner.keyframe_insert(data_path=path, index=index, frame=frame)
+
+
 def _update_slider_value(self, context):
     """Callback when a 1D mapping slider value changes."""
     obj = context.object
@@ -55,7 +69,7 @@ def _update_slider_value(self, context):
         return
     kb = obj.data.shape_keys.key_blocks.get(self.shape_key_name)
     if kb and self.enabled:
-        kb.value = max(self.min_value, min(self.slider_value, self.max_value))
+        _set_key(obj, kb, max(self.min_value, min(self.slider_value, self.max_value)))
 
 
 class DaskShapeMappingItem(PropertyGroup):
@@ -204,7 +218,7 @@ class DaskShapeGroupItem(PropertyGroup):
                     continue
                 kb = key_blocks.get(mapping.shape_key_name)
                 if kb:
-                    kb.value = max(mapping.min_value, min(mapping.slider_value, mapping.max_value))
+                    _set_key(obj, kb, max(mapping.min_value, min(mapping.slider_value, mapping.max_value)))
             return
 
         # 2D Planar / Star / Compass RBF Evaluation
@@ -229,7 +243,7 @@ class DaskShapeGroupItem(PropertyGroup):
             else:
                 val = mapping.min_value
 
-            kb.value = max(0.0, min(val, 1.0))
+            _set_key(obj, kb, max(0.0, min(val, 1.0)))
 
 
 class DaskShapeControllerRoot(PropertyGroup):
@@ -737,7 +751,7 @@ class DASKTOON_OT_shape_axis_reset_all(Operator):
         if obj and obj.type == 'MESH' and obj.data and obj.data.shape_keys:
             for kb in obj.data.shape_keys.key_blocks:
                 if kb != obj.data.shape_keys.reference_key:
-                    kb.value = 0.0
+                    _set_key(obj, kb, 0.0)
 
         self.report({'INFO'}, rpt_("All controllers and shape keys reset"))
         return {'FINISHED'}
@@ -764,7 +778,7 @@ class DASKTOON_OT_shape_axis_keyframe_handle(Operator):
                         if mp.shape_key_name:
                             kb = obj.data.shape_keys.key_blocks.get(mp.shape_key_name)
                             if kb:
-                                kb.keyframe_insert(data_path="value")
+                                _key_key(obj, kb, context.scene.frame_current)
 
                 self.report({'INFO'}, rpt_("Keyframed %s at frame %d") % (grp.name, context.scene.frame_current))
         return {'FINISHED'}
@@ -1319,7 +1333,7 @@ class DASKTOON_OT_vrm_bake_expression(Operator):
         if self.reset_after:
             for kb in sk.key_blocks:
                 if kb != basis_kb and kb != new_kb:
-                    kb.value = 0.0
+                    _set_key(obj, kb, 0.0)
 
         self.report({'INFO'}, rpt_("Baked %d shape keys into %s") % (active_count, self.new_name))
         return {'FINISHED'}
@@ -1663,7 +1677,8 @@ def _live_keys(obj):
 def _live_show(keys, values):
     for slot, value in values.items():
         for mesh, name in keys.get(slot, ()):
-            bpy.data.objects[mesh].data.shape_keys.key_blocks[name].value = value
+            obj = bpy.data.objects[mesh]
+            _set_key(obj, obj.data.shape_keys.key_blocks[name], value)
 
 
 class DASKTOON_OT_vrm_live_preview(Operator):
@@ -1838,9 +1853,9 @@ def _show(obj, picked, value):
     shown = []
     for mesh in meshes:
         for block in _face_keys(mesh):
-            block.value = 0.0
+            _set_key(mesh, block, 0.0)
         for block in picked(mesh):
-            block.value = value
+            _set_key(mesh, block, value)
             if block.name not in shown:
                 shown.append(block.name)
     return shown

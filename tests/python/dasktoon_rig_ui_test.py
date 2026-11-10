@@ -736,9 +736,9 @@ class TextTest(unittest.TestCase):
         strings = {ui.DaskRigPart.bl_rna.description, ui.DaskRig.bl_rna.description,
                    ui.DaskRigCollider.bl_rna.description}
         operators = [cls for cls in ui.classes if issubclass(cls, bpy.types.Operator)]
-        self.assertEqual(len(operators), 23)
+        self.assertEqual(len(operators), 28)  # Add / Remove Controls, the IK/FK switch, Add / Remove Face Board
         for struct in operators:
-            strings.update((struct.bl_label, struct.__doc__))
+            strings.update((struct.bl_label, getattr(struct, "bl_description", None) or struct.__doc__))
         for struct in [ui.DaskRigPart, ui.DaskRigCollider, ui.DaskRig] + operators:
             for prop in struct.bl_rna.properties:
                 if prop.identifier not in struct.__annotations__:  # Operator's own RNA (bl_options...) is Blender's

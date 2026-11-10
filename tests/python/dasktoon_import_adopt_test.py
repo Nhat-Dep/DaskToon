@@ -365,6 +365,9 @@ class CharacterTest(unittest.TestCase):
         self.assertEqual(obj.parent, rig)
         self.assertEqual(obj.modifiers[0].object, rig)
         self.assertEqual(rig.data[adopt.IMPORTED], 'MMD')
+        # no fingers: the controls cannot go on, which the import reports; the character is made all the same
+        self.assertEqual(result.controls, 0)
+        self.assertIn("LeftIndexProximal", result.controls_error)
         # standing: turned to face -Y, on the floor, in the middle, every transform applied; nothing moves at rest
         self.assertTrue(np.allclose(np.array(rig.matrix_world), np.eye(4), atol=1e-6))
         self.assertTrue(np.allclose(np.array(obj.matrix_world), np.eye(4), atol=1e-6))

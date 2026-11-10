@@ -111,3 +111,10 @@ tra nhập nay cho tóc mọc từ trong đầu và đòi đứng yên giữ ngu
 
 Còn lại: Unity và Godot dùng chung một khối va chạm (một bán kính) cho mọi chuỗi, nên trong engine tóc vẫn có thể bị
 đẩy lúc đứng yên; cần xuất kèm bán kính/bỏ qua theo từng khớp và sửa script của hai engine.
+
+## 11. Điều khiển và bảng mặt khi nhập (người dùng chọn cùng ngày)
+
+Ô **Điều khiển** (bật sẵn) ở hộp nhập: nhân vật nhập vào có luôn lớp điều khiển Rigify và bảng mặt
+(docs/superpowers/specs/2026-11-06-dasktoon-rig-controls-design.md §17). Khung thiếu khớp Rigify cần (ví dụ không có
+ngón) thì nhập vẫn xong, báo "Không gắn được điều khiển: …". Anaxa, Shorekeeper, Phoebe .uemodel: thêm điều khiển
+1,5–2,5 giây, tư thế nghỉ không xê dịch.

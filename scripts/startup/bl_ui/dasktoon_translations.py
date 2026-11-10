@@ -14,7 +14,7 @@ KEEP = {
     "DaskToon", "Unity", "Unity 6 (URP)", "VRM", "VRoid", "ARKit", "FBX", "URP",
     "VRM 0.x", "VRM 1.0", "_L / _R", "_l / _r", "Left / Right",
     "Anime BSDF", "Manga BSDF", "DaskToon Anime", "DaskToon Manga", "Manga", "Unity 6, Universal Render Pipeline 17.5",
-    "Engine: %s", "Godot 4", "FBX / glTF", "Rig",
+    "Engine: %s", "Godot 4", "FBX / glTF", "Rig", "IK", "FK", "IK / FK", "MMD Tools", "A", "I", "U", "E", "O",
 }
 
 VI = {
@@ -365,13 +365,80 @@ VI = {
     "This .uemodel is compressed with %s, which DaskToon cannot read: export it from FModel without compression":
         "Tệp .uemodel này nén bằng %s, DaskToon không đọc được: hãy xuất lại từ FModel, không nén",
     "This UEFormat file holds %s, not a model": "Tệp UEFormat này chứa %s, không phải mô hình",
+    # Anime Rig › Controls (docs/superpowers/specs/2026-11-06-dasktoon-rig-controls-design.md, section 6)
+    "Controls": "Điều khiển",
+    "Add Controls": "Thêm điều khiển",
+    "Add animation controls on the joints (Rigify): IK and FK arms and legs, foot roll, finger and body controls; only "
+    "the DaskToon bones still move the meshes, so Unity gets the same skeleton":
+        "Thêm bộ điều khiển hoạt hình trên các khớp (Rigify): tay chân IK và FK, lăn bàn chân, điều khiển ngón tay và "
+        "thân; chỉ xương DaskToon còn làm biến dạng lưới nên Unity nhận khung xương như cũ",
+    "Added %d control bones": "Đã thêm %d xương điều khiển",
+    "Remove Controls": "Gỡ điều khiển",
+    "Take the animation controls off; the joints, weights, chains and keys of the DaskToon bones stay":
+        "Gỡ bộ điều khiển hoạt hình; khớp, trọng số, chuỗi và khóa của xương DaskToon giữ nguyên",
+    "Switch IK / FK": "Chuyển IK / FK",
+    "Put this limb's IK or FK controls where the limb is now and switch to them, so it does not jump":
+        "Đặt bộ điều khiển IK hoặc FK của tay/chân này đúng chỗ nó đang ở rồi chuyển sang, để không bị giật",
+    "Limb": "Tay chân",
+    "To": "Sang",
+    "To IK": "Sang IK",
+    "To FK": "Sang FK",
+    "This rig has no controls yet": "Rig này chưa có bộ điều khiển",
+    "Shown controls:": "Hiện điều khiển:",
+    "Torso (Tweak)": "Thân (tinh chỉnh)",
+    "Left Arm IK": "Tay trái IK",
+    "Left Arm FK": "Tay trái FK",
+    "Right Arm IK": "Tay phải IK",
+    "Right Arm FK": "Tay phải FK",
+    "Left Leg IK": "Chân trái IK",
+    "Left Leg FK": "Chân trái FK",
+    "Right Leg IK": "Chân phải IK",
+    "Right Leg FK": "Chân phải FK",
+    "Fingers": "Ngón tay",
+    "Fingers (Detail)": "Ngón tay (chi tiết)",
+    "Left Arm (Tweak)": "Tay trái (tinh chỉnh)",
+    "Right Arm (Tweak)": "Tay phải (tinh chỉnh)",
+    "Left Leg (Tweak)": "Chân trái (tinh chỉnh)",
+    "Right Leg (Tweak)": "Chân phải (tinh chỉnh)",
+    "Root": "Gốc",
+    "Took the controls off to edit the joints; press Build Rig when done":
+        "Đã gỡ bộ điều khiển để sửa khớp; sửa xong bấm Dựng rig",
+    "Rigify is missing from this build": "Bản DaskToon này thiếu Rigify",
+    "These joints are missing: %s": "Thiếu các khớp: %s",
+    "Rigify could not make the controls": "Rigify không tạo được bộ điều khiển",
+    "Add the animation controls (IK and FK arms and legs, foot roll, fingers) to the DaskToon character, as Anime Rig "
+    "› Controls › Add Controls does":
+        "Gắn bộ điều khiển hoạt hình (tay chân IK và FK, lăn bàn chân, ngón tay) cho nhân vật DaskToon, như nút Rig "
+        "anime › Điều khiển › Thêm điều khiển",
+    "No controls: %s": "Không gắn được điều khiển: %s",
+    "This rig has no controls for %s": "Rig này không có điều khiển cho %s",
+    # Face board (docs/superpowers/specs/2026-11-06-dasktoon-rig-controls-design.md, section 8)
+    "Wink": "Nháy mắt",
+    "Fun": "Dịu",
+    "Blush": "Đỏ má",
+    "Tongue": "Lưỡi",
+    "Heart Eyes": "Mắt tim",
+    "Star Eyes": "Mắt sao",
+    "Grin": "Cười toe",
+    "EXPRESSIONS": "BIỂU CẢM",
+    "Face Board": "Bảng mặt",
+    "Add Face Board": "Thêm bảng mặt",
+    "Remove Face Board": "Gỡ bảng mặt",
+    "Add a board of knobs beside the head that drive the expression shape keys the character has: brows, eyes, wink, "
+    "gaze, mouth, A I U E O and the emotions":
+        "Thêm bảng núm cạnh đầu điều khiển các hình mẫu biểu cảm nhân vật có: lông mày, mắt, nháy mắt, ánh mắt, miệng, "
+        "A I U E O và cảm xúc",
+    "Take the face board off; the shape keys go back to their own values":
+        "Gỡ bảng mặt; các hình mẫu trở về giá trị riêng của chúng",
+    "The character has no expression shape key a knob could drive":
+        "Nhân vật không có hình mẫu biểu cảm nào để núm điều khiển",
+    "Face board with %d knobs": "Bảng mặt có %d núm",
     # dasktoon_import adopt (docs/superpowers/specs/2026-11-10-dasktoon-import-adopt-design.md)
     "Import MikuMikuDance Model": "Nhập mô hình MikuMikuDance",
     "MikuMikuDance Model (.pmx, .pmd)": "Mô hình MikuMikuDance (.pmx, .pmd)",
     "MikuMikuDance Model": "Mô hình MikuMikuDance",
     "Import a MikuMikuDance model (.pmx, .pmd) with MMD Tools": "Nhập mô hình MikuMikuDance (.pmx, .pmd) bằng MMD Tools",
     "MikuMikuDance units are 8 cm: 0.08 gives metres": "Một đơn vị MikuMikuDance là 8 cm: 0,08 đổi ra mét",
-    "DaskToon Character": "Nhân vật DaskToon",
     "Draw DaskToon's outline round the model; off by default, as a model with many bones plays slowly with it. Turn "
     "it on later per material":
         "Vẽ viền ngoài DaskToon quanh mô hình; mặc định tắt vì mô hình nhiều xương có viền sẽ phát chậm. Có thể bật "
@@ -1732,8 +1799,6 @@ VI = {
     # Animation tab: Key Pose and the DaskToon Character keying set (spec 5)
     "DaskToon Character": "Nhân vật DaskToon",
     "DaskToon Shader": "Shader DaskToon",
-    "Give every material of the model DaskToon's shader with an outline, keeping its colour or texture":
-        "Gắn shader DaskToon có viền cho mọi material của mô hình, giữ màu hoặc ảnh màu của nó",
     "Key the whole pose of the selected characters: every bone, every shape key of their meshes and every expression "
     "controller; other selected objects get location, rotation and scale":
         "Chèn khung khóa cho cả dáng của các nhân vật đang chọn: mọi xương, mọi hình mẫu của các mesh và mọi bộ điều "

@@ -187,10 +187,16 @@ def apply(obj, rig, frames, start_frame, strength=1.0):
         raise LipSyncError(rpt_("%s has no vowel shape keys (A I U E O, aa ih ou ee oh…), Jaw part or 2D mouth to "
                                 "key") % obj.name)
     times = np.arange(len(frames), dtype=np.float32) + start_frame
+    from . import face_board
+    keyed = set()
     for mesh, found in keys:
         for vowel, block in found.items():
-            _write(mesh.data.shape_keys, 'key_blocks["%s"].value' % block.name, -1, times,
-                   np.array([f[vowel] * strength for f in frames], np.float32))
+            # A key the face board drives ignores its own value: its knob is keyed (one knob may drive several meshes).
+            owner, path, index, scale = face_board.knob_path(mesh, block.name)
+            if (owner, path, index) in keyed:
+                continue
+            keyed.add((owner, path, index))
+            _write(owner, path, index, times, np.array([f[vowel] * strength * scale for f in frames], np.float32))
     if jaw:
         pose = rig.pose.bones["Jaw"]
         # The jaw opens turning down about its X axis: its tip goes down.

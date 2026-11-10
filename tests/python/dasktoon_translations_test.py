@@ -119,6 +119,8 @@ TRANSLATED = [
     "scripts/modules/dasktoon_import/uemodel.py",
     "scripts/modules/dasktoon_import/adopt.py",
     "scripts/modules/dasktoon_import/mmd.py",
+    "scripts/modules/dasktoon_rig/controls.py",
+    "scripts/modules/dasktoon_rig/face_board.py",
     "scripts/modules/dasktoon_import/bones.py",
     "scripts/modules/dasktoon_import/faces.py",
     "scripts/modules/dasktoon_import/__init__.py",

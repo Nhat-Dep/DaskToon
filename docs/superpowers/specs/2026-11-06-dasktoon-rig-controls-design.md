@@ -303,3 +303,26 @@ Mỗi giai đoạn một kế hoạch riêng, xong giai đoạn nào đẩy lên
 - Dựng rig lâu hơn vài giây (Rigify tạo khung); temp_2_1 hiện mất 58 giây.
 - Phát lại chậm hơn vì thêm nhiều xương và ràng buộc; đo trên temp_2_1, nếu chậm hơn 30% thì xem lại.
 - Nhập khung Rigify vào khung DaskToon phải giữ driver của Rigify (đã đúng trên temp_2_1); phép thử kiểm.
+
+## 17. Trạng thái (2026-11-10)
+
+Người dùng chọn làm trước: bộ điều khiển, tự gắn khi nhập, bảng mặt.
+
+Đã làm:
+- §6 lớp Rigify (dasktoon_rig/controls.py): Thêm/Gỡ điều khiển, Dựng rig và Sửa khớp gỡ rồi gắn lại; mục **Điều khiển**
+  (§6.5) có thanh IK/FK, nút **Sang IK** / **Sang FK** cho từng tay chân (tự viết, không dùng script Rigify), bật tắt
+  nhóm xương bằng tên tiếng Việt, nút bảng mặt. Bắt khớp: bộ điều khiển đặt theo độ lệch lúc nghỉ với xương ORG;
+  không có cực IK thì xoắn xương gốc IK (Rigify chỉ cho xoắn quanh Y của nó) cho khuỷu/gối trùng; chuỗi IK của Rigify
+  có giãn nên khi gập bộ giải co tay chân ~2%, bù bằng tỉ lệ xương gốc IK như công cụ của chính Rigify. Đo trên mô
+  hình thật: đỉnh lưới lệch dưới 0,5 mm khi chuyển. Tự ghi khóa thì đặt khóa luôn. Nhóm xương mặt rỗng của khung mẫu
+  Rigify bị xóa.
+- Nhập MMD/.uemodel tự gắn điều khiển và bảng mặt (ô "Điều khiển", bật sẵn); thiếu khớp (ví dụ không có ngón) thì báo.
+- §8 bảng mặt (dasktoon_rig/face_board.py): núm hai chiều Lông mày, Mắt, Nháy mắt, Ánh mắt, Miệng; thanh trượt
+  A I U E O, năm cảm xúc, Đỏ má, Lưỡi, Mắt tim, Mắt sao, Cười toe; chỉ núm có hình mẫu; nhiều lưới cùng tên một núm;
+  driver biểu thức đơn giản; chữ theo ngôn ngữ giao diện; bảng đặt ngoài mép xa nhất của mô hình quanh đầu (mũ, tóc).
+  Khác §8.2: một núm Lông mày và một núm Mắt cho cả hai bên, thêm núm Nháy mắt (trái/phải) — mô hình nhập vào thường
+  có biểu cảm chung hai bên. Công cụ (§8.6): lip sync khóa lên núm; HUD, Thử biểu cảm, xem trước, đặt lại, nướng hình
+  mẫu đặt giá trị qua núm (một hàm chung face_board.set_value / knob_path). Gỡ điều khiển giữ bảng.
+
+Chưa làm: §3–5 (bỏ tự rig, đặt khớp bằng tay), §7 vai nâng trên lớp điều khiển, §9 ngực lắc, HUD báo "điều khiển bằng
+bảng mặt" (nay HUD đẩy núm), chuyển khóa cũ trên giá trị hình mẫu sang núm, xuất Godot hình mẫu do bảng lái, thử Unity.

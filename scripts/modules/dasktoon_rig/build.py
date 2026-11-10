@@ -492,6 +492,10 @@ def build(context, rig, parts):
         bpy.ops.object.mode_set(mode='OBJECT')
     try:
         check(rig, parts)
+        from . import controls
+        had_controls = controls.has_controls(rig)
+        if had_controls:  # built on the joints: off while the rig is built, on again after (spec 5, step 3)
+            controls.remove(context, rig)
         result = Result()
         owners = ownership(parts)
         result.warnings.extend(mesh_warnings(parts, owners))
@@ -528,6 +532,8 @@ def build(context, rig, parts):
         sway.clear_cache(rig)
         from . import jiggle
         jiggle.sync_rig(rig)  # the jiggles collide with the new colliders and hands
+        if had_controls:
+            controls.add(context, rig)
         return result
     finally:
         view_layer.objects.active = active

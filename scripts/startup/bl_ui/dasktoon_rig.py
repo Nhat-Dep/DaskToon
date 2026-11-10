@@ -440,6 +440,127 @@ class DASKTOON_OT_rig_add_humanoid(Operator):
         return {'FINISHED'}
 
 
+class DASKTOON_OT_rig_controls_add(Operator):
+    bl_idname = "dasktoon.rig_controls_add"
+    bl_label = "Add Controls"
+    bl_description = ("Add animation controls on the joints (Rigify): IK and FK arms and legs, foot roll, finger and "
+                      "body controls; only the DaskToon bones still move the meshes, so Unity gets the same skeleton")
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        from dasktoon_rig import controls
+        rig = rig_of(context)
+        return rig is not None and context.mode in {'OBJECT', 'POSE'} and not controls.has_controls(rig)
+
+    def execute(self, context):
+        from dasktoon_rig import controls
+        rig = rig_of(context)
+        mode = rig.mode
+        try:
+            count = controls.add(context, rig)
+        except controls.ControlsError as ex:
+            self.report({'ERROR'}, str(ex))
+            return {'CANCELLED'}
+        context.view_layer.objects.active = rig
+        rig.select_set(True)
+        if mode == 'POSE':
+            bpy.ops.object.mode_set(mode='POSE')
+        self.report({'INFO'}, rpt_("Added %d control bones") % count)
+        return {'FINISHED'}
+
+
+class DASKTOON_OT_rig_controls_remove(Operator):
+    """Take the animation controls off; the joints, weights, chains and keys of the DaskToon bones stay"""
+    bl_idname = "dasktoon.rig_controls_remove"
+    bl_label = "Remove Controls"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        from dasktoon_rig import controls
+        rig = rig_of(context)
+        return rig is not None and context.mode in {'OBJECT', 'POSE'} and controls.has_controls(rig)
+
+    def execute(self, context):
+        from dasktoon_rig import controls
+        controls.remove(context, rig_of(context))
+        return {'FINISHED'}
+
+
+class DASKTOON_OT_rig_face_board_add(Operator):
+    bl_idname = "dasktoon.rig_face_board_add"
+    bl_label = "Add Face Board"
+    bl_description = ("Add a board of knobs beside the head that drive the expression shape keys the character has: "
+                      "brows, eyes, wink, gaze, mouth, A I U E O and the emotions")
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        from dasktoon_rig import face_board
+        rig = rig_of(context)
+        return rig is not None and context.mode in {'OBJECT', 'POSE'} and not face_board.has_board(rig)
+
+    def execute(self, context):
+        from dasktoon_rig import face_board
+        rig = rig_of(context)
+        mode = rig.mode
+        count = face_board.build(context, rig)
+        if mode == 'POSE' and context.view_layer.objects.active == rig:
+            bpy.ops.object.mode_set(mode='POSE')
+        if not count:
+            self.report({'WARNING'}, rpt_("The character has no expression shape key a knob could drive"))
+            return {'CANCELLED'}
+        self.report({'INFO'}, rpt_("Face board with %d knobs") % count)
+        return {'FINISHED'}
+
+
+class DASKTOON_OT_rig_face_board_remove(Operator):
+    """Take the face board off; the shape keys go back to their own values"""
+    bl_idname = "dasktoon.rig_face_board_remove"
+    bl_label = "Remove Face Board"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        from dasktoon_rig import face_board
+        rig = rig_of(context)
+        return rig is not None and context.mode in {'OBJECT', 'POSE'} and face_board.has_board(rig)
+
+    def execute(self, context):
+        from dasktoon_rig import face_board
+        face_board.remove(context, rig_of(context))
+        return {'FINISHED'}
+
+
+class DASKTOON_OT_rig_controls_snap(Operator):
+    """Put this limb's IK or FK controls where the limb is now and switch to them, so it does not jump"""
+    bl_idname = "dasktoon.rig_controls_snap"
+    bl_label = "Switch IK / FK"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    limb: StringProperty(name="Limb", options={'SKIP_SAVE'})
+    to: EnumProperty(name="To", items=[('IK', "IK", ""), ('FK', "FK", "")], options={'SKIP_SAVE'})
+
+    @classmethod
+    def poll(cls, context):
+        from dasktoon_rig import controls
+        rig = rig_of(context)
+        return rig is not None and controls.has_controls(rig)
+
+    def execute(self, context):
+        from dasktoon_rig import controls
+        rig = rig_of(context)
+        try:
+            controls.snap(context, rig, self.limb, self.to)
+        except controls.ControlsError as ex:
+            self.report({'ERROR'}, str(ex))
+            return {'CANCELLED'}
+        if context.scene.tool_settings.use_keyframe_insert_auto:
+            controls.key_limb(rig, self.limb, context.scene.frame_current)
+        return {'FINISHED'}
+
+
 class DASKTOON_OT_rig_edit_joints(Operator):
     """Edit the joints of the skeleton with X-Axis Mirror on, so both sides move together"""
     bl_idname = "dasktoon.rig_edit_joints"
@@ -452,7 +573,12 @@ class DASKTOON_OT_rig_edit_joints(Operator):
         return rig is not None and rig.mode != 'EDIT' and context.view_layer.objects.active == rig
 
     def execute(self, context):
-        rig_of(context).data.use_mirror_x = True
+        from dasktoon_rig import controls
+        rig = rig_of(context)
+        if controls.remove(context, rig):  # built on the old joints: posing would pull the meshes back to them
+            context.view_layer.objects.active = rig
+            self.report({'INFO'}, rpt_("Took the controls off to edit the joints; press Build Rig when done"))
+        rig.data.use_mirror_x = True
         bpy.ops.object.mode_set(mode='EDIT')
         return {'FINISHED'}
 
@@ -1488,6 +1614,46 @@ class DATA_PT_dasktoon_rig_joints(DaskRigPanel, Panel):
         layout.prop(rig_of(context).data.dasktoon_rig, "bend_fixes")
 
 
+class DATA_PT_dasktoon_rig_controls(DaskRigPanel, Panel):
+    bl_label = "Controls"
+    bl_parent_id = "DATA_PT_dasktoon_rig"
+
+    def draw(self, context):
+        draw_controls(self.layout, rig_of(context))
+
+
+def draw_controls(layout, rig):
+    """The Controls section (rig controls spec 6.5): each limb's IK/FK switch with its snaps, the control collections."""
+    from dasktoon_rig import controls, face_board
+    if face_board.has_board(rig):
+        layout.operator("dasktoon.rig_face_board_remove", icon='X')
+    else:
+        layout.operator("dasktoon.rig_face_board_add", icon='SHAPEKEY_DATA')
+    if not controls.has_controls(rig):
+        layout.label(text="This rig has no controls yet", icon='INFO')
+        layout.operator("dasktoon.rig_controls_add", icon='BONE_DATA')
+        return
+    column = layout.column(align=True)
+    for label, _kind, _s in controls.LIMBS:
+        bones = controls.limb(rig, label)
+        if bones is None:
+            continue
+        row = column.row(align=True)
+        row.label(text=label)
+        row.prop(rig.pose.bones[bones["switch"]], '["IK_FK"]', text="IK / FK", slider=True)
+        op = row.operator("dasktoon.rig_controls_snap", text="To IK")
+        op.limb, op.to = label, 'IK'
+        op = row.operator("dasktoon.rig_controls_snap", text="To FK")
+        op.limb, op.to = label, 'FK'
+    layout.label(text="Shown controls:")
+    grid = layout.grid_flow(row_major=True, columns=2, even_columns=True, align=True)
+    for name, label in controls.COLLECTIONS:
+        collection = rig.data.collections_all.get(name)
+        if collection is not None:
+            grid.prop(collection, "is_visible", text=label, toggle=True)
+    layout.operator("dasktoon.rig_controls_remove", icon='X')
+
+
 class DATA_PT_dasktoon_rig_parts(DaskRigPanel, Panel):
     bl_label = "Parts"
     bl_parent_id = "DATA_PT_dasktoon_rig"
@@ -1698,6 +1864,11 @@ classes = (
     DaskRigIssue,
     DaskRig,
     DASKTOON_OT_rig_add_humanoid,
+    DASKTOON_OT_rig_controls_add,
+    DASKTOON_OT_rig_controls_remove,
+    DASKTOON_OT_rig_controls_snap,
+    DASKTOON_OT_rig_face_board_add,
+    DASKTOON_OT_rig_face_board_remove,
     DASKTOON_OT_rig_edit_joints,
     DASKTOON_OT_rig_fit,
     DASKTOON_OT_rig_add_selected,
@@ -1725,6 +1896,7 @@ classes = (
     DATA_PT_dasktoon_rig,
     DATA_PT_dasktoon_rig_check,
     DATA_PT_dasktoon_rig_joints,
+    DATA_PT_dasktoon_rig_controls,
     DATA_PT_dasktoon_rig_parts,
     DATA_PT_dasktoon_rig_accessories,
     DATA_PT_dasktoon_rig_expressions,
