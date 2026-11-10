@@ -128,10 +128,10 @@ def _write_model(context, target, objects, options, rep, material_paths):
                                  "collection)") % ", ".join(left_out))
 
 
-def export_model(context, target, objects, options):
+def export_model(context, target, objects, options, collect=None):
     """Write `objects` (glTF), their DaskToon materials, the shaders and the import script to `target` (Godot spec
     2-4). Returns a Report. Face-shaded meshes get their rest-pose face normals for the model and are given back
-    afterwards (face spec 6)."""
+    afterwards (face spec 6). `collect` is passed to the material writer (the .dlive export)."""
     from .. import _materials, face_shading, graph, model_fbx
     rep = report.Report(mode=target.mode, root=target.root, name=target.name, engine=target.engine)
     meshes = [o for o in objects if o.type == 'MESH']
@@ -146,7 +146,7 @@ def export_model(context, target, objects, options):
         material_paths = {}
         if options.export_materials:
             writer = materials.Writer(target, options, rep, world_ambient(context.scene),
-                                      light_direction(context.scene))
+                                      light_direction(context.scene), collect)
             for mat, users in _materials(meshes).items():
                 spec, reason = graph.analyze_material(mat, list(dict.fromkeys(o.data for o in users)))
                 if spec is None:

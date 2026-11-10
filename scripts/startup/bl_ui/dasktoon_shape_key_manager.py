@@ -10,6 +10,7 @@ import gpu
 from gpu_extras.batch import batch_for_shader
 import blf
 import math
+import numpy as np
 import re
 import textwrap
 from bpy.app.translations import pgettext_iface as iface_, pgettext_n as n_, pgettext_rpt as rpt_
@@ -1339,6 +1340,129 @@ class DASKTOON_OT_vrm_bake_expression(Operator):
         return {'FINISHED'}
 
 
+def synthesize_arkit52(obj, overwrite_existing=False):
+    """Build the 52 ARKit face tracking shape keys of the mesh `obj` from its VRM or VRoid keys; returns how many it made
+    (the .dlive export calls it on its temporary copies)."""
+    sk = obj.data.shape_keys
+    existing_names = {kb.name: kb for kb in sk.key_blocks}
+    basis_kb = sk.key_blocks[0]
+
+    def get_kb(patterns):
+        for pat in patterns:
+            for name, kb in existing_names.items():
+                if re.search(pat, name, re.IGNORECASE):
+                    return kb
+        return None
+
+    # Detect VRM base shapes
+    joy_kb = get_kb([r'Fcl_ALL_Joy', r'happy', r'joy', r'笑い', r'smile'])
+    angry_kb = get_kb([r'Fcl_ALL_Angry', r'angry', r'怒'])
+    sad_kb = get_kb([r'Fcl_ALL_Sorrow', r'sad', r'sorrow', r'哀'])
+    surprised_kb = get_kb([r'Fcl_ALL_Surprised', r'surprised', r'驚'])
+    blink_both = get_kb([r'Fcl_EYE_Close$', r'^blink$', r'まばたき'])
+    blink_l = get_kb([r'Fcl_EYE_Close_L', r'^blinkLeft$', r'ウィンク$', r'blink_l']) or blink_both
+    blink_r = get_kb([r'Fcl_EYE_Close_R', r'^blinkRight$', r'ウィンク右', r'blink_r']) or blink_both
+    a_kb = get_kb([r'Fcl_MTH_A', r'^aa$', r'^a$', r'あ'])
+    i_kb = get_kb([r'Fcl_MTH_I', r'^ih$', r'^i$', r'い'])
+    u_kb = get_kb([r'Fcl_MTH_U', r'^ou$', r'^u$', r'う'])
+    e_kb = get_kb([r'Fcl_MTH_E', r'^ee$', r'^e$', r'え'])
+    o_kb = get_kb([r'Fcl_MTH_O', r'^oh$', r'^o$', r'お'])
+    look_u = get_kb([r'lookUp', r'Eye_U', r'eye.*up'])
+    look_d = get_kb([r'lookDown', r'Eye_D', r'eye.*down'])
+    look_l = get_kb([r'lookLeft', r'Eye_L', r'eye.*left'])
+    look_r = get_kb([r'lookRight', r'Eye_R', r'eye.*right'])
+
+    # 52 ARKit Blendshapes Recipe Table: (ARKit_Name, [(source_kb, weight, side_filter)])
+    # side_filter: 'L' (X>0), 'R' (X<0), 'ALL'
+    recipes = {
+        # Eyes
+        'eyeBlinkLeft': [(blink_l, 1.0, 'L')],
+        'eyeBlinkRight': [(blink_r, 1.0, 'R')],
+        'eyeLookDownLeft': [(look_d, 1.0, 'L')],
+        'eyeLookDownRight': [(look_d, 1.0, 'R')],
+        'eyeLookInLeft': [(look_r, 1.0, 'L')],
+        'eyeLookInRight': [(look_l, 1.0, 'R')],
+        'eyeLookOutLeft': [(look_l, 1.0, 'L')],
+        'eyeLookOutRight': [(look_r, 1.0, 'R')],
+        'eyeLookUpLeft': [(look_u, 1.0, 'L')],
+        'eyeLookUpRight': [(look_u, 1.0, 'R')],
+        'eyeSquintLeft': [(joy_kb, 0.5, 'L')],
+        'eyeSquintRight': [(joy_kb, 0.5, 'R')],
+        'eyeWideLeft': [(surprised_kb, 0.6, 'L')],
+        'eyeWideRight': [(surprised_kb, 0.6, 'R')],
+        # Jaw
+        'jawOpen': [(a_kb, 1.0, 'ALL')],
+        'jawForward': [(a_kb, 0.2, 'ALL')],
+        'jawLeft': [(a_kb, 0.2, 'L')],
+        'jawRight': [(a_kb, 0.2, 'R')],
+        # Mouth
+        'mouthClose': [(a_kb, -0.3, 'ALL')],
+        'mouthFunnel': [(u_kb, 0.8, 'ALL')],
+        'mouthPucker': [(o_kb, 0.9, 'ALL')],
+        'mouthLeft': [(i_kb, 0.5, 'L')],
+        'mouthRight': [(i_kb, 0.5, 'R')],
+        'mouthSmileLeft': [(joy_kb, 0.7, 'L'), (blink_l, 0.25, 'L')],
+        'mouthSmileRight': [(joy_kb, 0.7, 'R'), (blink_r, 0.25, 'R')],
+        'mouthFrownLeft': [(sad_kb, 0.8, 'L')],
+        'mouthFrownRight': [(sad_kb, 0.8, 'R')],
+        'mouthDimpleLeft': [(joy_kb, 0.4, 'L')],
+        'mouthDimpleRight': [(joy_kb, 0.4, 'R')],
+        'mouthStretchLeft': [(i_kb, 0.8, 'L')],
+        'mouthStretchRight': [(i_kb, 0.8, 'R')],
+        'mouthRollLower': [(o_kb, 0.3, 'ALL')],
+        'mouthRollUpper': [(u_kb, 0.3, 'ALL')],
+        'mouthShrugLower': [(sad_kb, 0.4, 'ALL')],
+        'mouthShrugUpper': [(sad_kb, 0.4, 'ALL')],
+        'mouthPressLeft': [(i_kb, 0.3, 'L')],
+        'mouthPressRight': [(i_kb, 0.3, 'R')],
+        'mouthLowerDownLeft': [(a_kb, 0.5, 'L')],
+        'mouthLowerDownRight': [(a_kb, 0.5, 'R')],
+        'mouthUpperUpLeft': [(joy_kb, 0.5, 'L')],
+        'mouthUpperUpRight': [(joy_kb, 0.5, 'R')],
+        # Brows
+        'browDownLeft': [(angry_kb, 0.85, 'L')],
+        'browDownRight': [(angry_kb, 0.85, 'R')],
+        'browInnerUp': [(surprised_kb, 0.75, 'ALL')],
+        'browOuterUpLeft': [(surprised_kb, 0.6, 'L')],
+        'browOuterUpRight': [(surprised_kb, 0.6, 'R')],
+        # Cheeks & Nose
+        'cheekPuff': [(u_kb, 0.5, 'ALL')],
+        'cheekSquintLeft': [(joy_kb, 0.6, 'L')],
+        'cheekSquintRight': [(joy_kb, 0.6, 'R')],
+        'noseSneerLeft': [(angry_kb, 0.5, 'L')],
+        'noseSneerRight': [(angry_kb, 0.5, 'R')],
+        'tongueOut': [(a_kb, 0.25, 'ALL')],
+    }
+
+    generated_count = 0
+    fall = 0.015
+    count = len(basis_kb.data)
+    base = np.empty(count * 3, np.float32)
+    basis_kb.data.foreach_get("co", base)
+    base = base.reshape(-1, 3)
+    # How much of a side each vertex takes: a smooth step across the middle (x = 0).
+    t = np.clip((base[:, 0] + fall) / (2.0 * fall), 0.0, 1.0)
+    left = t * t * (3.0 - 2.0 * t)
+    side_fac = {'L': left, 'R': 1.0 - left, 'ALL': np.ones(count, np.float32)}
+    for arkit_name, ingredients in recipes.items():
+        if arkit_name in sk.key_blocks and not overwrite_existing:
+            continue
+
+        target_kb = sk.key_blocks.get(arkit_name) or _new_key(obj, arkit_name)
+        deltas = np.zeros((count, 3), np.float32)
+
+        for src_kb, weight, side in ingredients:
+            if not src_kb:
+                continue
+            co = np.empty(count * 3, np.float32)
+            src_kb.data.foreach_get("co", co)
+            deltas += (co.reshape(-1, 3) - base) * weight * side_fac[side][:, None]
+
+        target_kb.data.foreach_set("co", (base + deltas).ravel())
+        generated_count += 1
+    return generated_count
+
+
 class DASKTOON_OT_vrm_synthesize_arkit52(Operator):
     """Build the 52 ARKit face tracking shape keys from the VRM or VRoid shape keys of the mesh"""
     bl_idname = "dasktoon.vrm_synthesize_arkit52"
@@ -1352,132 +1476,7 @@ class DASKTOON_OT_vrm_synthesize_arkit52(Operator):
         if not obj or not obj.data or not obj.data.shape_keys:
             self.report({'ERROR'}, rpt_("Select a mesh with shape keys"))
             return {'CANCELLED'}
-
-        sk = obj.data.shape_keys
-        existing_names = {kb.name: kb for kb in sk.key_blocks}
-        basis_kb = sk.key_blocks[0]
-
-        def get_kb(patterns):
-            for pat in patterns:
-                for name, kb in existing_names.items():
-                    if re.search(pat, name, re.IGNORECASE):
-                        return kb
-            return None
-
-        # Detect VRM base shapes
-        joy_kb = get_kb([r'Fcl_ALL_Joy', r'happy', r'joy', r'笑い', r'smile'])
-        angry_kb = get_kb([r'Fcl_ALL_Angry', r'angry', r'怒'])
-        sad_kb = get_kb([r'Fcl_ALL_Sorrow', r'sad', r'sorrow', r'哀'])
-        surprised_kb = get_kb([r'Fcl_ALL_Surprised', r'surprised', r'驚'])
-        blink_both = get_kb([r'Fcl_EYE_Close$', r'^blink$', r'まばたき'])
-        blink_l = get_kb([r'Fcl_EYE_Close_L', r'^blinkLeft$', r'ウィンク$', r'blink_l']) or blink_both
-        blink_r = get_kb([r'Fcl_EYE_Close_R', r'^blinkRight$', r'ウィンク右', r'blink_r']) or blink_both
-        a_kb = get_kb([r'Fcl_MTH_A', r'^aa$', r'^a$', r'あ'])
-        i_kb = get_kb([r'Fcl_MTH_I', r'^ih$', r'^i$', r'い'])
-        u_kb = get_kb([r'Fcl_MTH_U', r'^ou$', r'^u$', r'う'])
-        e_kb = get_kb([r'Fcl_MTH_E', r'^ee$', r'^e$', r'え'])
-        o_kb = get_kb([r'Fcl_MTH_O', r'^oh$', r'^o$', r'お'])
-        look_u = get_kb([r'lookUp', r'Eye_U', r'eye.*up'])
-        look_d = get_kb([r'lookDown', r'Eye_D', r'eye.*down'])
-        look_l = get_kb([r'lookLeft', r'Eye_L', r'eye.*left'])
-        look_r = get_kb([r'lookRight', r'Eye_R', r'eye.*right'])
-
-        # 52 ARKit Blendshapes Recipe Table: (ARKit_Name, [(source_kb, weight, side_filter)])
-        # side_filter: 'L' (X>0), 'R' (X<0), 'ALL'
-        recipes = {
-            # Eyes
-            'eyeBlinkLeft': [(blink_l, 1.0, 'L')],
-            'eyeBlinkRight': [(blink_r, 1.0, 'R')],
-            'eyeLookDownLeft': [(look_d, 1.0, 'L')],
-            'eyeLookDownRight': [(look_d, 1.0, 'R')],
-            'eyeLookInLeft': [(look_r, 1.0, 'L')],
-            'eyeLookInRight': [(look_l, 1.0, 'R')],
-            'eyeLookOutLeft': [(look_l, 1.0, 'L')],
-            'eyeLookOutRight': [(look_r, 1.0, 'R')],
-            'eyeLookUpLeft': [(look_u, 1.0, 'L')],
-            'eyeLookUpRight': [(look_u, 1.0, 'R')],
-            'eyeSquintLeft': [(joy_kb, 0.5, 'L')],
-            'eyeSquintRight': [(joy_kb, 0.5, 'R')],
-            'eyeWideLeft': [(surprised_kb, 0.6, 'L')],
-            'eyeWideRight': [(surprised_kb, 0.6, 'R')],
-            # Jaw
-            'jawOpen': [(a_kb, 1.0, 'ALL')],
-            'jawForward': [(a_kb, 0.2, 'ALL')],
-            'jawLeft': [(a_kb, 0.2, 'L')],
-            'jawRight': [(a_kb, 0.2, 'R')],
-            # Mouth
-            'mouthClose': [(a_kb, -0.3, 'ALL')],
-            'mouthFunnel': [(u_kb, 0.8, 'ALL')],
-            'mouthPucker': [(o_kb, 0.9, 'ALL')],
-            'mouthLeft': [(i_kb, 0.5, 'L')],
-            'mouthRight': [(i_kb, 0.5, 'R')],
-            'mouthSmileLeft': [(joy_kb, 0.7, 'L'), (blink_l, 0.25, 'L')],
-            'mouthSmileRight': [(joy_kb, 0.7, 'R'), (blink_r, 0.25, 'R')],
-            'mouthFrownLeft': [(sad_kb, 0.8, 'L')],
-            'mouthFrownRight': [(sad_kb, 0.8, 'R')],
-            'mouthDimpleLeft': [(joy_kb, 0.4, 'L')],
-            'mouthDimpleRight': [(joy_kb, 0.4, 'R')],
-            'mouthStretchLeft': [(i_kb, 0.8, 'L')],
-            'mouthStretchRight': [(i_kb, 0.8, 'R')],
-            'mouthRollLower': [(o_kb, 0.3, 'ALL')],
-            'mouthRollUpper': [(u_kb, 0.3, 'ALL')],
-            'mouthShrugLower': [(sad_kb, 0.4, 'ALL')],
-            'mouthShrugUpper': [(sad_kb, 0.4, 'ALL')],
-            'mouthPressLeft': [(i_kb, 0.3, 'L')],
-            'mouthPressRight': [(i_kb, 0.3, 'R')],
-            'mouthLowerDownLeft': [(a_kb, 0.5, 'L')],
-            'mouthLowerDownRight': [(a_kb, 0.5, 'R')],
-            'mouthUpperUpLeft': [(joy_kb, 0.5, 'L')],
-            'mouthUpperUpRight': [(joy_kb, 0.5, 'R')],
-            # Brows
-            'browDownLeft': [(angry_kb, 0.85, 'L')],
-            'browDownRight': [(angry_kb, 0.85, 'R')],
-            'browInnerUp': [(surprised_kb, 0.75, 'ALL')],
-            'browOuterUpLeft': [(surprised_kb, 0.6, 'L')],
-            'browOuterUpRight': [(surprised_kb, 0.6, 'R')],
-            # Cheeks & Nose
-            'cheekPuff': [(u_kb, 0.5, 'ALL')],
-            'cheekSquintLeft': [(joy_kb, 0.6, 'L')],
-            'cheekSquintRight': [(joy_kb, 0.6, 'R')],
-            'noseSneerLeft': [(angry_kb, 0.5, 'L')],
-            'noseSneerRight': [(angry_kb, 0.5, 'R')],
-            'tongueOut': [(a_kb, 0.25, 'ALL')],
-        }
-
-        generated_count = 0
-        fall = 0.015
-        for arkit_name, ingredients in recipes.items():
-            if arkit_name in sk.key_blocks and not self.overwrite_existing:
-                continue
-
-            target_kb = sk.key_blocks.get(arkit_name) or _new_key(obj, arkit_name)
-            deltas = [v.co.copy() * 0.0 for v in obj.data.vertices]
-
-            for src_kb, weight, side in ingredients:
-                if not src_kb:
-                    continue
-                for i, v in enumerate(obj.data.vertices):
-                    b_co = basis_kb.data[i].co
-                    s_co = src_kb.data[i].co
-                    d = (s_co - b_co) * weight
-
-                    x = b_co.x
-                    if side == 'L':
-                        t = max(0.0, min(1.0, (x + fall) / (2.0 * fall)))
-                        fac = t * t * (3.0 - 2.0 * t)
-                    elif side == 'R':
-                        t = max(0.0, min(1.0, (x + fall) / (2.0 * fall)))
-                        fac = 1.0 - (t * t * (3.0 - 2.0 * t))
-                    else:
-                        fac = 1.0
-
-                    deltas[i] += d * fac
-
-            for i, v in enumerate(obj.data.vertices):
-                target_kb.data[i].co = basis_kb.data[i].co + deltas[i]
-
-            generated_count += 1
-
+        generated_count = synthesize_arkit52(obj, self.overwrite_existing)
         self.report({'INFO'}, rpt_("Built %d of the 52 ARKit shape keys") % generated_count)
         return {'FINISHED'}
 

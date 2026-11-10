@@ -70,6 +70,48 @@ def value_text(kind, is_colour, value):
     raise ValueError(kind)
 
 
+def param_items(base, values, textures, ext=".gdshaderinc"):
+    """[(uniform name, type, is colour, value or texture path)] of the uniforms <base><ext> declares that `values` or
+    `textures` give, in the shader's order: what a .tres lists as shader_parameter/..., and what a .dlive's
+    materials.json holds (DaskLive spec, docs/dlive-format.md)."""
+    out = []
+    for name, kind, is_colour in uniforms(base, ext):
+        if kind.startswith("sampler"):
+            if name in textures:
+                out.append((name, kind, is_colour, textures[name]))
+        elif name in values:
+            out.append((name, kind, is_colour, values[name]))
+    return out
+
+
+def float_json(x):
+    return float(number(x))
+
+
+def value_json(kind, is_colour, value):
+    """The same value as value_text, for JSON: numbers rounded the way the .tres writes them, colours as sRGB."""
+    def num(x):
+        return float(number(x))
+    if kind == "bool":
+        return bool(value > 0.5)
+    if kind == "int":
+        return int(round(value))
+    if kind == "float":
+        return num(value)
+    if kind == "vec4":
+        rgb = [srgb(v) for v in value[:3]] if is_colour else list(value[:3])
+        return [num(v) for v in rgb + [value[3] if len(value) > 3 else 1.0]]
+    if kind in ("vec3", "vec2"):
+        return [num(v) for v in value[:3 if kind == "vec3" else 2]]
+    raise ValueError(kind)
+
+
+def params_json(items):
+    """{uniform: JSON value} of param_items; a texture is its Godot path (res://...), left for the caller to map."""
+    return {name: value if kind.startswith("sampler") else value_json(kind, is_colour, value)
+            for name, kind, is_colour, value in items}
+
+
 def quoted(text):
     return '"%s"' % text.replace("\\", "\\\\").replace('"', '\\"')
 
@@ -88,12 +130,11 @@ class _Resource:
 
     def params(self, base, values, textures, ext=".gdshaderinc"):
         lines = []
-        for name, kind, is_colour in uniforms(base, ext):
+        for name, kind, is_colour, value in param_items(base, values, textures, ext):
             if kind.startswith("sampler"):
-                if name in textures:
-                    lines.append("shader_parameter/%s = %s" % (name, self.ext_id("Texture2D", textures[name])))
-            elif name in values:
-                lines.append("shader_parameter/%s = %s" % (name, value_text(kind, is_colour, values[name])))
+                lines.append("shader_parameter/%s = %s" % (name, self.ext_id("Texture2D", value)))
+            else:
+                lines.append("shader_parameter/%s = %s" % (name, value_text(kind, is_colour, value)))
         return lines
 
     def text(self, body):
@@ -110,8 +151,11 @@ class _Resource:
 class Writer:
     """Writes one model's materials and textures under target.root/<name>/ (Godot spec 2)."""
 
-    def __init__(self, target, options, rep, ambient, light_direction):
+    def __init__(self, target, options, rep, ambient, light_direction, collect=None):
+        """`collect(spec, entry)`, when given, is called for each material written with its values as JSON (the .dlive
+        export packs them: docs/dlive-format.md); the files written are the same."""
         self.target, self.options, self.rep = target, options, rep
+        self.collect = collect
         self.extras = {"world_ambient": tuple(ambient) + (1.0,), "light_direction": tuple(light_direction)}
         self.written = {}  # (image pointer, kind, colour) -> relative path, so a shared image is written once
         self.stems = set()
@@ -212,6 +256,7 @@ class Writer:
         values.update(self.extras)
         resource = _Resource()
         body = ["resource_name = %s" % quoted(spec.material.name), "render_priority = 0"]
+        entry = {"name": spec.material.name}
         if spec.outline:
             alpha = 'CLIP' if "_DT_ALPHATEST_ON" in spec.keywords else 'OPAQUE'
             shader = resource.ext_id("Shader", files.res("%s/%s" % (files.SHADERS, files.shader_file(OUTLINE,
@@ -220,6 +265,8 @@ class Writer:
                                   ["render_priority = 0", "shader = " + shader]
                                   + resource.params(OUTLINE, values, textures)))
             body.append('next_pass = SubResource("ShaderMaterial_outline")')
+            entry["outline"] = {"shader": OUTLINE, "alpha": alpha,
+                                "params": params_json(param_items(OUTLINE, values, textures))}
         cull_back = spec.floats.get("_Cull", 0.0) > 1.5
         alpha = ('BLEND' if spec.render_type == "Transparent"
                  else 'CLIP' if "_DT_ALPHATEST_ON" in spec.keywords else 'OPAQUE')
@@ -229,6 +276,10 @@ class Writer:
         body.append("shader = " + resource.ext_id("Shader", files.res("%s/%s" % (
             files.SHADERS, files.shader_file(base, cull_back, alpha)))))
         body += resource.params(base, values, textures)
+        if self.collect is not None:
+            entry.update(shader=base, cull="back" if cull_back else "disabled", alpha=alpha,
+                         params=params_json(param_items(base, values, textures)))
+            self.collect(spec, entry, {name: path for name, path in textures.items()})
         rel = "Materials/%s.tres" % stem
         files.write_bytes(self.path("%s/%s" % (self.target.name, rel)), resource.text(body).encode("utf-8"))
         self.rep.warnings += self._warnings(spec)

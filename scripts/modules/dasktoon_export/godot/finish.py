@@ -68,3 +68,37 @@ def write(scene, target, rep):
     rep.finish = rel + ".tscn"
     rep.finish_left_out = [label for key, label, _group in settings.LAYERS
                            if key not in PORTED and getattr(finish, key)]
+
+
+_LAYER_OF = {"shadow_tint": "grade", "light_tint": "grade", "grade_strength": "grade", "light_direction": "gradient",
+             "saturation": "color", "contrast": "color"}
+
+
+def _layer_of(name):
+    if name in _LAYER_OF:
+        return _LAYER_OF[name]
+    return next((layer for layer in PORTED if name.startswith(layer)), None)
+
+
+def layers_json(scene):
+    """The finish for a .dlive (docs/dlive-format.md, finish.json): {"amount", "layers": {layer: {uniform: value}}} with
+    the uniform values of dasktoon_finish.gdshader exactly as <model>_finish.tres holds them, the gradient layer also
+    having gradient_auto and gradient_angle. A layer that is off is not in it. None when the scene's finish is off."""
+    finish = getattr(scene, "dasktoon_finish", None)
+    if finish is None or not finish.enabled:
+        return None
+    values = _values(finish)
+    out = {"amount": 1.0, "layers": {}}
+    for name, kind, is_colour, value in materials.param_items(SHADER, values, {}, ".gdshader"):
+        converted = materials.value_json(kind, is_colour, value)
+        if name == "amount":
+            out["amount"] = converted
+            continue
+        layer = _layer_of(name)
+        if layer is not None:
+            out["layers"].setdefault(layer, {})[name] = converted
+    out["layers"] = {layer: params for layer, params in out["layers"].items() if params.get(layer + "_on")}
+    if "gradient" in out["layers"]:
+        out["layers"]["gradient"].update(gradient_auto=bool(finish.gradient_auto),
+                                         gradient_angle=materials.float_json(finish.gradient_angle))
+    return out
