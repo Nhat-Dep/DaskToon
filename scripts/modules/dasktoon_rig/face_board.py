@@ -191,7 +191,7 @@ def build(context, rig):
         board.head = top - Vector((0.0, 0.0, board_height))
         board.tail = top.copy()
         board.align_roll(Vector((0.0, -1.0, 0.0)))
-        board.parent = eb[head.name]
+        board.parent = None  # follows the head by a Child Of: a parent would draw a dashed line to it
         board.use_deform = False
         for knob, _text, kind, _ways in found:
             x, y = places[knob]
@@ -199,7 +199,7 @@ def build(context, rig):
             frame = eb.new(FRAME_PREFIX + knob)
             frame.head, frame.tail = at, at + Vector((0.0, 0.0, knob_length))
             frame.align_roll(Vector((0.0, -1.0, 0.0)))
-            frame.parent, frame.use_deform = board, False
+            frame.parent, frame.use_deform = None, False  # on the board by a Child Of, as the board
             bone = eb.new(PREFIX + knob)
             bone.head, bone.tail = at, at + Vector((0.0, 0.0, knob_length * 0.6))
             bone.align_roll(Vector((0.0, -1.0, 0.0)))
@@ -209,12 +209,23 @@ def build(context, rig):
         view_layer.objects.active = previous
     collection = rig.data.collections.get(COLLECTION) or rig.data.collections.new(COLLECTION)
     collection.is_visible = True
-    record = {"reach": reach, "keys": [], "texts": []}
+    record = {"reach": reach, "keys": [], "texts": [], "widgets": []}
+    _child_of(rig, BOARD, "Head")  # by name: the bone reference went stale with Edit Mode
+    for knob, _text, _kind, _ways in found:
+        _child_of(rig, FRAME_PREFIX + knob, BOARD)
+    shapes = _widgets(context, rig, record, board_width / board_height)
+    board_bone = rig.data.bones[BOARD]
+    collection.assign(board_bone)
+    board_bone.hide_select = True
+    rig.pose.bones[BOARD].custom_shape = shapes["board"]
     for knob, label, kind, ways in found:
         frame, bone = rig.data.bones[FRAME_PREFIX + knob], rig.data.bones[PREFIX + knob]
         for b in (frame, bone, rig.data.bones[BOARD]):
             collection.assign(b)
         frame.hide_select = True
+        rig.pose.bones[FRAME_PREFIX + knob].custom_shape = shapes["slider" if kind == 'SLIDER' else "stick"]
+        pb_knob = rig.pose.bones[PREFIX + knob]
+        pb_knob.custom_shape = shapes["knob"]
         frame.color.palette, bone.color.palette = 'THEME03', 'THEME09'
         pb = rig.pose.bones[PREFIX + knob]
         pb.lock_rotation = pb.lock_scale = (True, True, True)
@@ -260,6 +271,68 @@ def _drive(obj, key, rig, bone, axis, sign, reach):
         fcurve.modifiers.remove(modifier)
 
 
+def _child_of(rig, name, target):
+    """Bone `name` follows `target` as a child would, without the relationship line a parent draws."""
+    con = rig.pose.bones[name].constraints.new('CHILD_OF')
+    con.name = "DT Face Board"
+    con.target, con.subtarget = rig, target
+    con.inverse_matrix = rig.data.bones[target].matrix_local.inverted()
+
+
+def _outline(name, points, edges):
+    mesh = bpy.data.meshes.new(name)
+    mesh.from_pydata(points, edges, [])
+    return bpy.data.objects.new(name, mesh)
+
+
+def _circle(radius, count=16, y=0.0):
+    import math
+    points = [(radius * math.cos(2 * math.pi * k / count), y + radius * math.sin(2 * math.pi * k / count), 0.0)
+              for k in range(count)]
+    return points, [(k, (k + 1) % count) for k in range(count)]
+
+
+def _widgets(context, rig, record, aspect):
+    """The shapes the board's bones are drawn with, in bone units (a bone's length is 1; Y runs along it, X is the
+    character's left): the board a rectangle round the knobs, a joystick's frame the square its knob goes about in, a
+    slider's frame the line its knob goes up, a knob a dot. Kept in a hidden collection with the character."""
+    knob_frame = 1.0 / 1.2  # the reach in a frame bone's length
+    square = [(-knob_frame, -knob_frame, 0.0), (knob_frame, -knob_frame, 0.0), (knob_frame, knob_frame, 0.0),
+              (-knob_frame, knob_frame, 0.0)]
+    line = [(0.0, 0.0, 0.0), (0.0, knob_frame, 0.0), (-0.25, 0.0, 0.0), (0.25, 0.0, 0.0),
+            (-0.25, knob_frame, 0.0), (0.25, knob_frame, 0.0)]
+    half = aspect / 2.0
+    board = [(-half, -0.04, 0.0), (half, -0.04, 0.0), (half, 1.06, 0.0), (-half, 1.06, 0.0)]
+    dot_points, dot_edges = _circle(0.35)
+    made = {
+        "board": _outline("WGT-FB_Board", board, [(0, 1), (1, 2), (2, 3), (3, 0)]),
+        "stick": _outline("WGT-FB_Stick", square, [(0, 1), (1, 2), (2, 3), (3, 0)]),
+        "slider": _outline("WGT-FB_Slider", line, [(0, 1), (2, 3), (4, 5)]),
+        "knob": _outline("WGT-FB_Knob", dot_points, dot_edges),
+    }
+    home = bpy.data.collections.new("WGTS_FaceBoard")
+    parent = rig.users_collection[0] if rig.users_collection else context.scene.collection
+    parent.children.link(home)
+    for obj in made.values():
+        home.objects.link(obj)
+        record["widgets"].append(obj.name)
+    record["widget_collection"] = home.name
+    layer = _find_layer(context.view_layer.layer_collection, home.name)
+    if layer is not None:
+        layer.exclude = True
+    return made
+
+
+def _find_layer(layer, name):
+    if layer.collection.name == name:
+        return layer
+    for child in layer.children:
+        found = _find_layer(child, name)
+        if found is not None:
+            return found
+    return None
+
+
 def _label(context, rig, knob, text, place, height, top, size):
     """A line of 3D text on the board under the knob (or the title), in the interface language; not rendered."""
     curve = bpy.data.curves.new(TEXT_PREFIX + (knob or "Title"), 'FONT')
@@ -269,16 +342,17 @@ def _label(context, rig, knob, text, place, height, top, size):
     obj = bpy.data.objects.new(curve.name, curve)
     for collection in rig.users_collection:
         collection.objects.link(obj)
+    # On the board's bone, its origin at the bone's tail (the board's top), where bone parenting puts a child: the
+    # relationship line Blender draws from a child to its bone has no length. The words go to their place by the
+    # text's own offset (object units): upright, facing front, a label under its knob out of the knob's way.
+    below = 0.0 if knob is None else size * height * 1.6 + REACH * height
+    curve.offset_x = place[0]
+    curve.offset_y = place[1] - below
     obj.parent = rig
     obj.parent_type = 'BONE'
     obj.parent_bone = BOARD
-    # Bone parenting places the child at the bone's tail: put it back at its place on the board, upright, facing front,
-    # a label under its knob, out of the knob's way.
-    below = 0.0 if knob is None else size * height * 1.6 + REACH * height
-    world = rig.matrix_world @ Matrix.Translation(top + Vector((place[0], -0.002, place[1] - below)))
-    world = world @ Matrix.Rotation(1.5707963, 4, 'X')
     context.view_layer.update()
-    obj.matrix_world = world
+    obj.matrix_world = rig.matrix_world @ Matrix.Translation(top) @ Matrix.Rotation(1.5707963, 4, 'X')
     obj.hide_render = True
     obj.hide_select = True
     obj.show_in_front = True
@@ -295,6 +369,16 @@ def remove(context, rig):
         shape = obj.data.shape_keys if obj is not None and obj.type == 'MESH' else None
         if shape is not None and shape.key_blocks.get(key) is not None:
             shape.driver_remove('key_blocks["%s"].value' % key.replace('"', '\\"'))
+    for name in record.get("widgets", []):
+        obj = bpy.data.objects.get(name)
+        if obj is not None:
+            mesh = obj.data
+            bpy.data.objects.remove(obj)
+            if mesh.users == 0:
+                bpy.data.meshes.remove(mesh)
+    shapes_home = bpy.data.collections.get(record.get("widget_collection", ""))
+    if shapes_home is not None and not shapes_home.objects:
+        bpy.data.collections.remove(shapes_home)
     for name in record["texts"]:
         obj = bpy.data.objects.get(name)
         if obj is not None:

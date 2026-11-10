@@ -21,6 +21,9 @@ from mathutils import Matrix, Vector
 
 from . import bones as source_bones
 
+SKELETON_COLLECTION = "Skeleton"  # the DaskToon bones
+CHAINS_COLLECTION = "Hair and Skirt"  # the bones kept from the model (its swinging chains), hidden
+NAME_ENDINGS = ("_arm", "_Rig", "_rig", " Rig", ".Armature", "_Armature", " Armature")
 IMPORTED = "dt_imported"  # on the rig's armature data: where it came from ('MMD', 'UNREAL', 'OTHER')
 TWIST_WORDS = ("twist", "捩")
 # the template proportions (dasktoon_rig.skeleton) used for the bones a skeleton lacks
@@ -470,9 +473,10 @@ def adopt(context, armature, meshes, kind='OTHER', swaying=None, controls=True):
     bpy.data.objects.remove(armature)
     if old_data.users == 0:
         bpy.data.armatures.remove(old_data)
-    rig.name = name
-    rig.data.name = name
+    base = model_name(name)
+    rig.name = rig.data.name = base + " Rig"
     rig.data[IMPORTED] = kind
+    tidy(context, rig, meshes, base, {renamed[n] for n in keep})
     result = Result(rig)
     result.chains = mark_chains(rig, {renamed[n] for n in swaying})
     add_sway(rig, meshes)
@@ -489,10 +493,35 @@ def adopt(context, armature, meshes, kind='OTHER', swaying=None, controls=True):
             result.controls_error = str(ex)
         from dasktoon_rig import face_board
         result.face_knobs = face_board.build(context, rig)  # the expressions named above, on knobs beside the head
-    for obj in context.scene.objects:
-        obj.select_set(obj == rig or obj in meshes)
+    for obj in context.scene.objects:  # nothing selected: the bones and outlines of a selection hide the character
+        obj.select_set(False)
     view_layer.objects.active = rig
     return result
+
+
+def model_name(name):
+    """The model's name from its armature's (MMD Tools' "Name_arm", FModel's "Name_Rig")."""
+    for ending in NAME_ENDINGS:
+        if name.endswith(ending) and len(name) > len(ending):
+            return name[:-len(ending)]
+    return name
+
+
+def tidy(context, rig, meshes, base, kept):
+    """The character in a collection of its own named after the model; the DaskToon bones in a bone collection, the
+    bones kept from the model in a hidden one (dozens of hair and skirt bones hid the character)."""
+    collection = bpy.data.collections.new(base)
+    (context.collection or context.scene.collection).children.link(collection)
+    for obj in [rig] + list(meshes):
+        for old in list(obj.users_collection):
+            old.objects.unlink(obj)
+        collection.objects.link(obj)
+    arm = rig.data
+    skeleton = arm.collections.new(SKELETON_COLLECTION)
+    chains = arm.collections.new(CHAINS_COLLECTION)
+    for bone in arm.bones:
+        (chains if bone.name in kept else skeleton).assign(bone)
+    chains.is_visible = False
 
 
 def convert_materials(meshes, outline=False):

@@ -62,7 +62,17 @@ class FaceBoardTest(unittest.TestCase):
             self.assertNotIn(face_board.PREFIX + name, bones, name)
         self.assertEqual(self.count, 5)
         self.assertFalse(any(b.use_deform for b in bones if b.name.startswith(("FB", face_board.BOARD))))
-        self.assertEqual(bones[face_board.BOARD].parent.name, "Head")
+        board = self.rig.pose.bones[face_board.BOARD]  # follows the head without a parent's dashed line
+        self.assertIsNone(bones[face_board.BOARD].parent)
+        self.assertEqual(board.constraints[0].subtarget, "Head")
+        head = self.rig.pose.bones["Head"]
+        head.rotation_mode = 'XYZ'
+        head.rotation_euler = (0.0, 0.0, 0.5)
+        bpy.context.view_layer.update()
+        frame = self.rig.pose.bones[face_board.FRAME_PREFIX + "Eyes"]
+        expected = head.matrix @ bones["Head"].matrix_local.inverted() @ bones[frame.name].matrix_local
+        np.testing.assert_allclose(np.array(frame.matrix), np.array(expected), atol=1e-5)
+        head.rotation_euler = (0.0, 0.0, 0.0)
         self.assertTrue(bones[face_board.FRAME_PREFIX + "Eyes"].hide_select)
 
     def test_knobs_drive_their_keys(self):

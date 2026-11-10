@@ -273,9 +273,10 @@ def _add(context, rig):
     for b in arm.bones:
         if b.name not in deform:
             b.use_deform = False
+    from . import face_board
     for name in record["collections"]:
         collection = arm.collections_all.get(name)
-        if collection is not None:
+        if collection is not None and name != face_board.COLLECTION:  # the face board stays in sight
             collection.is_visible = False
     hidden = arm.collections.new(DEFORM_COLLECTION)
     helpers = arm.collections.new(HELPER_COLLECTION)
@@ -285,11 +286,51 @@ def _add(context, rig):
         elif b.name in follow:
             hidden.assign(b)
     hidden.is_visible = helpers.is_visible = False
+    # Shown at first: the body, the IK limbs (Rigify's limbs start in IK), the fingers and the root; the FK, tweak and
+    # finger detail controls wait (all at once they hid the character).
+    for collection in arm.collections_all:
+        if collection.name in HIDDEN_AT_FIRST:
+            collection.is_visible = False
+    for collection in [c for c in bpy.data.collections if c.name not in record["collections_data"]
+                       and c.name.startswith("WGT")]:  # Rigify's control shapes, kept with the character
+        home = rig.users_collection[0] if rig.users_collection else None
+        if home is not None and collection.name not in home.children:
+            for parent in [p for p in bpy.data.collections if collection.name in p.children] + [
+                    context.scene.collection]:
+                if collection.name in parent.children:
+                    parent.children.unlink(collection)
+            home.children.link(collection)
+            layer = _layer_collection(context.view_layer.layer_collection, collection.name)
+            if layer is not None:
+                layer.exclude = True
     rig.show_in_front = True
     arm[RECORD] = json.dumps(record)
     bpy.data.objects.remove(meta)
     count = sum(1 for b in arm.bones if b.name not in record["bones"] and not b.name.startswith(HELPER))
     return count
+
+
+HIDDEN_AT_FIRST = {"Torso (Tweak)", "Fingers (Detail)", "Arm.L (FK)", "Arm.R (FK)", "Leg.L (FK)", "Leg.R (FK)",
+                   "Arm.L (Tweak)", "Arm.R (Tweak)", "Leg.L (Tweak)", "Leg.R (Tweak)"}
+
+
+def _layer_collection(layer, name):
+    if layer.collection.name == name:
+        return layer
+    for child in layer.children:
+        found = _layer_collection(child, name)
+        if found is not None:
+            return found
+    return None
+
+
+def _show_side(rig, label, side):
+    """Show the limb's `side` ('IK' / 'FK') controls and hide its other ones."""
+    kind, s = next((kind, s) for name, kind, s in LIMBS if name == label)
+    for which in ("IK", "FK"):
+        collection = rig.data.collections_all.get("%s.%s (%s)" % (kind, s, which))
+        if collection is not None:
+            collection.is_visible = which == side
 
 
 def remove(context, rig):
@@ -413,6 +454,7 @@ def snap(context, rig, label, to):
         for control, org in zip(bones["fk"], bones["org"]):
             _set(context, rig, control, _follow_matrix(rig, control, org, shown[org]))
         switch["IK_FK"] = 1.0
+        _show_side(rig, label, 'FK')
     else:
         for name in bones["reset"]:
             rig.pose.bones[name].matrix_basis.identity()
@@ -426,6 +468,7 @@ def snap(context, rig, label, to):
             for control, org in bones["extra"]:
                 _set(context, rig, control, _follow_matrix(rig, control, org, shown[org]))
         switch["IK_FK"] = 0.0
+        _show_side(rig, label, 'IK')
         rig.update_tag()
         context.view_layer.update()
         if not switch.get("pole_vector"):

@@ -359,9 +359,17 @@ class CharacterTest(unittest.TestCase):
         self.assertFalse(checks.is_dasktoons(self.mat))  # the unhooked Anime BSDF does not count
         result = adopt.adopt(self.context, self.arm, [self.obj], kind='MMD', swaying={"髪1", "髪2", "髪3"})
         rig, obj = result.rig, self.obj
-        self.assertEqual(rig.name, "Tester_arm")
+        self.assertEqual(rig.name, "Tester Rig")  # MMD Tools' "Tester_arm"
         self.assertTrue(skeleton.is_humanoid(rig))
-        self.assertEqual([o.name for o in bpy.data.objects if o.type == 'ARMATURE'], ["Tester_arm"])
+        self.assertEqual([o.name for o in bpy.data.objects if o.type == 'ARMATURE'], ["Tester Rig"])
+        # tidy: the character in a collection of its own, the hair bones hidden, nothing selected
+        self.assertEqual({c.name for c in rig.users_collection}, {"Tester"})
+        self.assertEqual({c.name for c in obj.users_collection}, {"Tester"})
+        self.assertFalse(rig.data.collections_all[adopt.CHAINS_COLLECTION].is_visible)
+        self.assertIn("髪1", rig.data.collections_all[adopt.CHAINS_COLLECTION].bones)
+        self.assertFalse([b.name for b in rig.data.bones if not b.collections])
+        self.assertFalse(bpy.context.selected_objects)
+        self.assertEqual(bpy.context.view_layer.objects.active, rig)
         self.assertEqual(obj.parent, rig)
         self.assertEqual(obj.modifiers[0].object, rig)
         self.assertEqual(rig.data[adopt.IMPORTED], 'MMD')
