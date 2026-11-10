@@ -483,11 +483,26 @@ def adopt(context, armature, meshes, kind='OTHER', swaying=None):
     return result
 
 
-def convert_materials(meshes):
-    """DaskToon's shader on every material of the meshes; the number changed."""
+def convert_materials(meshes, outline=False):
+    """DaskToon's shader on every material of the meshes, with an outline when `outline`; the number changed. No
+    outline by default: an imported model has hundreds of bones, and the outline's hull joined to such a mesh makes
+    playback slow."""
     from bl_ui import dasktoon_material_convert as convert
     done = 0
-    for mat in dict.fromkeys(slot.material for obj in meshes for slot in obj.material_slots if slot.material):
-        if mat.use_nodes and convert.convert(mat):
+    for mat in materials_of(meshes):
+        if mat.use_nodes and convert.convert(mat, outline=outline):
             done += 1
     return done
+
+
+def materials_of(meshes):
+    return list(dict.fromkeys(slot.material for obj in meshes for slot in obj.material_slots if slot.material))
+
+
+def set_outline(meshes, on):
+    """Turn the outline of DaskToon's shader on or off on every material of the meshes."""
+    from dasktoon_guide.checks import ANIME
+    for mat in materials_of(meshes):
+        for node in (mat.node_tree.nodes if mat.node_tree is not None else ()):
+            if node.bl_idname in ANIME and hasattr(node, "use_outline") and node.use_outline != on:
+                node.use_outline = on

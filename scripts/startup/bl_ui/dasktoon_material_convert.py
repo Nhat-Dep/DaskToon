@@ -260,9 +260,10 @@ def _multiply(tree, rgb, source, value):
     return mix.outputs["Result"]
 
 
-def convert(mat, scene=None):
-    """Give `mat` an Anime BSDF fed its old colour; True when it changed (False: nothing to read, or already DaskToon's).
-    A setup of its own keeps its lit and shadow colours, read with the light of `scene` (the current scene)."""
+def convert(mat, scene=None, outline=True):
+    """Give `mat` an Anime BSDF fed its old colour, with an outline unless `outline` is False; True when it changed
+    (False: nothing to read, or already DaskToon's). A setup of its own keeps its lit and shadow colours, read with the
+    light of `scene` (the current scene)."""
     found = colour_of(mat)
     if found is None:
         return False
@@ -275,7 +276,7 @@ def convert(mat, scene=None):
     out = _output(tree)
     anime = tree.nodes.new("ShaderNodeAnimeCharacter")
     anime.location = (out.location.x - 300.0, out.location.y + 300.0)
-    anime.use_outline = True
+    anime.use_outline = True  # its colour is linked even when it starts off, for when it is turned on
     for name, setting in SETTINGS.items():
         if name in anime.inputs:
             anime.inputs[name].default_value = setting
@@ -291,6 +292,7 @@ def convert(mat, scene=None):
     if alpha is not None:
         tree.links.new(alpha, anime.inputs["Alpha"])
     tree.links.new(anime.outputs["BSDF"], out.inputs["Surface"])
+    anime.use_outline = outline  # the Outline sockets hide while it is off; their links stay
     return True
 
 

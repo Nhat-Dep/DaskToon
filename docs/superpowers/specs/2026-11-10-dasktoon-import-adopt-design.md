@@ -20,6 +20,11 @@ Sau Tệp › Nhập (hoặc kéo thả tệp vào cửa sổ 3D) với ô **Nh�
 ngay sau khi nhập, kể cả khi tắt "Nhân vật DaskToon" hay khung xương lạ không chuyển được (mô hình đồ vật). Khối vật lý
 và khớp của MMD Tools (khi nhập kèm vật lý) không bị đụng tới.
 
+Ô **Viền ngoài** (tắt sẵn, người dùng hỏi cùng ngày): vật liệu nhập vào không có viền. Lý do đo được: vỏ viền ghép vào
+một lưới có hàng trăm nhóm đỉnh (mỗi xương một nhóm) chép từng nhóm thành một mảng cho mọi đỉnh — Hsin (92 nghìn đỉnh,
+705 nhóm) mất 3,3 giây/khung có viền, 0,026 giây/khung không viền. Màu viền (ảnh màu làm tối) vẫn được nối sẵn, nên
+bật viền sau cho từng material thì viền đúng màu.
+
 ## 2. Nhập MMD (dasktoon_import/mmd.py)
 
 MMD Tools đọc lưới, khung xương, hình mẫu; **không** nhập vật lý (rigid body) vì đung đưa DaskToon thay nó. Tệp .pmx/.pmd
@@ -86,9 +91,9 @@ trong bản lõi này một hình mẫu mới bắt đầu ở mức 1.
 
 ## 9. Còn lại
 
-- Viền ngoài (outline) của DaskToon tính lại pháp tuyến mượt cả lưới mỗi khung (gộp đỉnh trùng + tìm đỉnh gần nhất):
-  mô hình 92 nghìn đỉnh mất 3,2 giây/khung khi phát. Có sẵn từ trước, giờ lộ ra vì vật liệu nhập vào có viền.
-  Hướng sửa: tính bảng gộp đỉnh một lần, mỗi khung chỉ cộng pháp tuyến theo bảng.
+- Viền ngoài trên mô hình nhiều xương vẫn chậm khi bật: chỗ tốn là bước Join vỏ với lưới gốc (chép nhóm đỉnh),
+  không phải gộp đỉnh/tìm đỉnh gần nhất. Thử nhanh: để vỏ làm bản thể (Geometry to Instance) thay vì ghép, 3,1 → 0,07
+  giây/khung. Chưa làm: cần xem Hành động nhanh, kiểm tra viền và xuất engine có dựa vào vỏ nằm chung lưới không.
 - Váy/áo choàng dài nhiều xương bay mạnh khi di chuyển nhanh với thông số mặc định; có thể lấy giảm chấn từ vật lý MMD.
 - Venti (tệp tải về) tên ảnh trong .pmx khác tên tệp trên đĩa nên mất màu — lỗi của bản tải, MMD Tools cũng vậy.
 - Vật liệu do bộ nhập .uemodel làm trông nhạt hơn bản MMD của cùng nhân vật.

@@ -31,13 +31,19 @@ def _new_objects(before):
     return [obj for obj in bpy.data.objects if obj not in before]
 
 
+OUTLINE_DESCRIPTION = ("Draw DaskToon's outline round the model; off by default, as a model with many bones plays "
+                       "slowly with it. Turn it on later per material")
+
+
 def _shade(op, objects):
-    """DaskToon's shader on the materials of the new meshes, whether or not they became a character."""
+    """DaskToon's shader on the materials of the new meshes, whether or not they became a character, the outline as
+    the operator says."""
     from dasktoon_import import adopt
+    # not MMD Tools' rigid bodies and joints, shown as meshes when the physics is imported
+    meshes = [obj for obj in objects if obj.type == 'MESH' and getattr(obj, "mmd_type", 'NONE') == 'NONE']
     if op.shader:
-        # not MMD Tools' rigid bodies and joints, shown as meshes when the physics is imported
-        adopt.convert_materials([obj for obj in objects if obj.type == 'MESH'
-                                 and getattr(obj, "mmd_type", 'NONE') == 'NONE'])
+        adopt.convert_materials(meshes, outline=op.outline)
+    adopt.set_outline(meshes, op.outline)
 
 
 def _paths(op):
@@ -61,6 +67,7 @@ class DASKTOON_OT_import_uemodel(Operator, ImportHelper):
     shape_keys: BoolProperty(name="Shape Keys", description="Import the morph targets as shape keys", default=True)
     dasktoon: BoolProperty(name="DaskToon Character", description=ADOPT_DESCRIPTION, default=True)
     shader: BoolProperty(name="DaskToon Shader", description=SHADER_DESCRIPTION, default=True)
+    outline: BoolProperty(name="Outline", description=OUTLINE_DESCRIPTION, default=False)
 
     @classmethod
     def poll(cls, context):
@@ -105,6 +112,7 @@ class DASKTOON_OT_import_mmd(Operator, ImportHelper):
         soft_max=1.0)
     dasktoon: BoolProperty(name="DaskToon Character", description=ADOPT_DESCRIPTION, default=True)
     shader: BoolProperty(name="DaskToon Shader", description=SHADER_DESCRIPTION, default=True)
+    outline: BoolProperty(name="Outline", description=OUTLINE_DESCRIPTION, default=False)
 
     @classmethod
     def poll(cls, context):

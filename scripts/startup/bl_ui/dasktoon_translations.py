@@ -372,7 +372,10 @@ VI = {
     "Import a MikuMikuDance model (.pmx, .pmd) with MMD Tools": "Nhập mô hình MikuMikuDance (.pmx, .pmd) bằng MMD Tools",
     "MikuMikuDance units are 8 cm: 0.08 gives metres": "Một đơn vị MikuMikuDance là 8 cm: 0,08 đổi ra mét",
     "DaskToon Character": "Nhân vật DaskToon",
-    "DaskToon Shader": "Shader DaskToon",
+    "Draw DaskToon's outline round the model; off by default, as a model with many bones plays slowly with it. Turn "
+    "it on later per material":
+        "Vẽ viền ngoài DaskToon quanh mô hình; mặc định tắt vì mô hình nhiều xương có viền sẽ phát chậm. Có thể bật "
+        "sau cho từng material",
     "Give every material of the model DaskToon's shader with an outline, keeping its colour or texture":
         "Gắn shader DaskToon có viền cho mọi material của mô hình, giữ màu hoặc ảnh màu của nó",
     "Make the model a DaskToon character: standing in the middle facing the front, DaskToon's skeleton with the "

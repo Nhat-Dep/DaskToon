@@ -427,6 +427,10 @@ class CharacterTest(unittest.TestCase):
                      and n.inputs["Base Color"].is_linked)
         self.assertEqual(anime.inputs["Base Color"].links[0].from_node.bl_idname, 'ShaderNodeTexImage')
         self.assertTrue(anime.inputs["Alpha"].is_linked)
+        self.assertFalse(anime.use_outline)  # no outline by default: its hull makes a many-boned model play slowly
+        self.assertFalse([m for m in obj.modifiers if m.type == 'NODES'])
+        anime.use_outline = True  # turned on later: the outline is the texture, darker
+        self.assertTrue(anime.inputs["Outline Color"].is_linked)
 
     def _box(self, bone):
         boxes = _sided(BOXES + SIDE_BOXES)
