@@ -84,7 +84,7 @@ def export(context, filepath, objects, options=None):
     from dasktoon_export.godot import finish as godot_finish
     from dasktoon_export.targets import ExportTarget
     from dasktoon_rig import auto_expressions, eye_shapes
-    from . import copies, expressions, materials as dlive_materials, thumbnail
+    from . import copies, expressions, materials as dlive_materials, slots, thumbnail
 
     options = options or Options()
     rep = Report(filepath=filepath)
@@ -127,7 +127,8 @@ def export(context, filepath, objects, options=None):
             target = ExportTarget('GODOT_4', 'FOLDER', os.path.join(work, "godot"), name)
             settings = ExportOptions(include_animation=False, bake_size=min(options.texture_size, 1024),
                                      bake_samples=options.bake_samples, merge_meshes=options.merge_meshes)
-            grep = godot.export_model(context, target, objs, settings, collect)
+            with slots.filled(objs):
+                grep = godot.export_model(context, target, objs, settings, collect)
             rep.warnings += list(grep.warnings)
             rep.expressions = expressions.describe(objs, renamed, rig, made)
             thumb_path = os.path.join(work, "thumbnail.png")

@@ -323,6 +323,34 @@ class VersionTest(unittest.TestCase):
             dasktoon_dlive.import_dlive(bpy.context, path)
 
 
+class UnassignedFacesTest(unittest.TestCase):
+    """Every surface of the model names a material of materials.json, also faces with an empty slot or no slot at all."""
+
+    def test_every_primitive_has_a_material_of_the_file(self):
+        tu.reset_scene()
+        rig, objects = character()
+        # An empty slot beside a real one, faces past the slots, and a mesh with no slot.
+        body = bpy.data.objects["Body"]
+        body.data.materials.append(None)
+        for index, poly in enumerate(body.data.polygons):
+            poly.material_index = 1 if index % 3 == 0 else 0
+        before = {o.name: [m.name if m else None for m in o.data.materials] for o in objects if o.type == 'MESH'}
+        indices = [p.material_index for p in body.data.polygons]
+        path = new_path()
+        dasktoon_dlive.export(bpy.context, path, objects, options())
+        files = read(path)
+        gltf = glb_json(files["model.glb"])
+        names = {m["name"] for m in json.loads(files["materials.json"])["materials"]}
+        for mesh in gltf["meshes"]:
+            for prim in mesh["primitives"]:
+                self.assertIn("material", prim, mesh["name"])
+                self.assertIn(gltf["materials"][prim["material"]]["name"], names)
+        self.assertEqual(before, {o.name: [m.name if m else None for m in o.data.materials]
+                                  for o in objects if o.type == 'MESH'})
+        self.assertEqual(indices, [p.material_index for p in body.data.polygons])
+        self.assertFalse([m for m in bpy.data.materials if m.name.startswith("Unassigned")])
+
+
 class OperatorsTest(unittest.TestCase):
     def test_operators_are_registered(self):
         self.assertTrue(hasattr(bpy.ops.export_scene, "dasktoon_dlive"))
