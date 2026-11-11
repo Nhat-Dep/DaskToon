@@ -14,13 +14,31 @@ KEEP = {
     "DaskToon", "Unity", "Unity 6 (URP)", "VRM", "VRoid", "ARKit", "FBX", "URP",
     "VRM 0.x", "VRM 1.0", "_L / _R", "_l / _r", "Left / Right",
     "Anime BSDF", "Manga BSDF", "DaskToon Anime", "DaskToon Manga", "Manga", "Unity 6, Universal Render Pipeline 17.5",
-    "Engine: %s", "Godot 4", "FBX / glTF", "Rig", "IK", "FK", "IK / FK", "MMD Tools", "A", "I", "U", "E", "O",
+    "Engine: %s", "DaskLive (.dlive)", "Godot 4", "FBX / glTF", "Rig", "IK", "FK", "IK / FK", "MMD Tools", "A", "I", "U", "E", "O",
 }
 
 VI = {
     # bl_ui/dasktoon_engine_export.py
     "Engine Export": "Xuất sang engine",
     "Engine Export…": "Xuất sang engine…",
+    "DaskLive Export": "Xuất DaskLive",
+    "DaskLive Import": "Nhập DaskLive",
+    "Pack the character for DaskLive: model, skeleton, shape keys, materials, expressions and finish in one file": "Đóng gói nhân vật cho DaskLive: hình, bộ xương, khóa hình dạng, vật liệu, biểu cảm và màu hoàn thiện trong một tệp",
+    "Bring in a DaskLive character: the model with its DaskToon materials, shape keys and sway": "Nhập nhân vật DaskLive: hình với vật liệu DaskToon, khóa hình dạng và độ đung đưa",
+    "Make Expressions": "Tự làm biểu cảm",
+    "Make the blink, mouth and the 52 face tracking shape keys the character lacks, on copies: the file you work on stays as it is": "Làm các khóa chớp mắt, miệng và 52 khóa theo dõi khuôn mặt mà nhân vật còn thiếu, trên bản sao: tệp đang làm việc giữ nguyên",
+    "Max Texture Size": "Cỡ ảnh tối đa",
+    "Larger images are scaled down to this": "Ảnh lớn hơn sẽ được thu nhỏ về cỡ này",
+    "Thumbnail": "Ảnh đại diện",
+    "Add a small picture of the character": "Thêm một ảnh nhỏ của nhân vật",
+    "DaskLive: %d objects imported": "DaskLive: đã nhập %d đối tượng",
+    "DaskLive: %d materials, %d expressions made, %d warnings": "DaskLive: %d vật liệu, đã làm %d biểu cảm, %d cảnh báo",
+    "No thumbnail (%s)": "Không có ảnh đại diện (%s)",
+    "Texture %s left out (%s)": "Bỏ qua ảnh %s (%s)",
+    "This is not a DaskLive file (no manifest)": "Đây không phải tệp DaskLive (không có bản kê)",
+    "This is not a DaskLive file": "Đây không phải tệp DaskLive",
+    "This DaskLive file is version %s; this DaskToon reads up to version %d. Update DaskToon": "Tệp DaskLive này ở phiên bản %s; DaskToon này đọc được tới phiên bản %d. Hãy cập nhật DaskToon",
+    "This DaskLive file holds an unsafe path": "Tệp DaskLive này chứa đường dẫn không an toàn",
     "Export the model, its DaskToon materials and the shaders for a game engine":
         "Xuất model, material DaskToon và shader cho game engine",
     "Folder": "Thư mục",

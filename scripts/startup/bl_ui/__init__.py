@@ -84,6 +84,7 @@ _modules = [
     "dasktoon_import",
     "dasktoon_jiggle",
     "dasktoon_machine",
+    "dasktoon_dlive",
     "properties_collection",
     "properties_strip",
     "properties_strip_modifier",

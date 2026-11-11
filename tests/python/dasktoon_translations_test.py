@@ -125,6 +125,13 @@ TRANSLATED = [
     "scripts/modules/dasktoon_import/faces.py",
     "scripts/modules/dasktoon_import/__init__.py",
     "scripts/startup/bl_ui/dasktoon_jiggle.py",
+    "scripts/startup/bl_ui/dasktoon_dlive.py",
+    "scripts/modules/dasktoon_dlive/__init__.py",
+    "scripts/modules/dasktoon_dlive/importer.py",
+    "scripts/modules/dasktoon_dlive/expressions.py",
+    "scripts/modules/dasktoon_dlive/materials.py",
+    "scripts/modules/dasktoon_dlive/thumbnail.py",
+    "scripts/modules/dasktoon_dlive/copies.py",
     "scripts/startup/bl_ui/dasktoon_machine.py",
     "scripts/modules/dasktoon_machine/__init__.py",
     "scripts/modules/dasktoon_machine/pieces.py",
@@ -156,7 +163,8 @@ def dasktoon_files():
                     "scripts/startup/dasktoon_*.py", "scripts/modules/dasktoon_export/*.py",
                     "scripts/modules/dasktoon_export/godot/*.py",
                     "scripts/modules/dasktoon_project/*.py", "scripts/modules/dasktoon_rig/*.py",
-                    "scripts/modules/dasktoon_import/*.py", "scripts/modules/dasktoon_machine/*.py"):
+                    "scripts/modules/dasktoon_import/*.py", "scripts/modules/dasktoon_machine/*.py",
+                    "scripts/modules/dasktoon_dlive/*.py"):
         found.update(os.path.relpath(p, REPO).replace(os.sep, "/") for p in glob.glob(path(pattern)))
     found.discard("scripts/startup/bl_ui/dasktoon_translations.py")
     return found
