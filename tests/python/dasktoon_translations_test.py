@@ -132,6 +132,7 @@ TRANSLATED = [
     "scripts/modules/dasktoon_dlive/materials.py",
     "scripts/modules/dasktoon_dlive/thumbnail.py",
     "scripts/modules/dasktoon_dlive/copies.py",
+    "scripts/modules/dasktoon_dlive/slots.py",
     "scripts/startup/bl_ui/dasktoon_machine.py",
     "scripts/modules/dasktoon_machine/__init__.py",
     "scripts/modules/dasktoon_machine/pieces.py",

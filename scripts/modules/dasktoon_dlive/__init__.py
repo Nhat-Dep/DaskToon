@@ -30,7 +30,7 @@ class Options:
     texture_size: int = 2048
     thumbnail: bool = True
     merge_meshes: bool = True
-    bake_samples: int = 16
+    bake_samples: int = 1  # an emission bake has no noise: 1 sample gives the same pixels in 60% of the time
     morph_normals: bool = False  # the shape keys' normals: 80% of a face rig's size, little seen on a toon face
     drop_unused_keys: bool = True  # shape keys no expression plays (on the copies made for the expressions)
 
@@ -168,6 +168,7 @@ def export(context, filepath, objects, options=None):
             with slots.filled(objs):
                 grep = godot.export_model(context, target, objs, settings, collect)
             rep.warnings += list(grep.warnings)
+            rep.warnings += [rpt_("Material %s: %s (DaskLive shows the model's own material)") % item for item in grep.skipped]
             thumb_path = os.path.join(work, "thumbnail.png")
             if options.thumbnail:
                 try:
