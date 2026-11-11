@@ -433,7 +433,66 @@ class TextureTest(unittest.TestCase):
         self.assertTrue(clear["base_map"].endswith(".png"), clear["base_map"])
         self.assertEqual(files[clear["base_map"]][1:4], b"PNG")
         self.assertEqual(len([n for n in files if n.startswith("textures/")
-                              and n.startswith("textures/Plain")]), 1)
+                              and n.startswith("textures/Plain") and not n.endswith(".dds")]), 1)
+
+
+class BlockCompressedTest(unittest.TestCase):
+    """Each image gets a BC7 twin with its whole mip chain, a ramp does not, and the picture survives the encoding."""
+
+    def picture(self, size=64):
+        y, x = np.mgrid[0:size, 0:size] / size
+        rng = np.random.default_rng(3)
+        px = np.stack([x, y, (x + y) / 2, np.ones_like(x)], -1) * 255.0
+        px[..., 0] += 30 * np.sin(x * 20)
+        px += rng.normal(0, 2, px.shape)
+        px[size // 2:, :, 3] = 255
+        px[:size // 2, :, 3] = 255 - x[:size // 2] * 200
+        return np.clip(px, 0, 255).astype(np.uint8)
+
+    def test_encoder_round_trip_and_header(self):
+        import struct
+        from dasktoon_dlive import bc7
+        for size, floor in ((64, 38.0), (24, 28.0)):  # the small one packs a whole sine wave into 24 pixels
+            img = self.picture(size)
+            data = bc7.dds_bytes(img)
+            self.assertEqual(data[:4], b"DDS ")
+            height, width, _, _, mips = struct.unpack("<5I", data[12:32])
+            self.assertEqual((height, width, mips), (size, size, size.bit_length()))
+            self.assertEqual(struct.unpack("<I", data[84:88])[0], struct.unpack("<I", b"DX10")[0])
+            self.assertEqual(struct.unpack("<I", data[128:132])[0], 98)
+            blocks = ((size + 3) // 4) ** 2 * 16
+            first = data[148:148 + blocks]
+            self.assertEqual(len(first), blocks)
+            back = bc7.decode_level(first, size, size).astype(float)
+            mse = ((back - img) ** 2).mean()
+            self.assertGreater(10 * np.log10(255 ** 2 / mse), floor)
+            total = sum(((max(1, size >> i) + 3) // 4) ** 2 * 16 for i in range(mips))
+            self.assertEqual(len(data), 148 + total)
+
+    def test_export_writes_twins_but_not_for_ramps(self):
+        tu.reset_scene()
+        rig, objects = character()
+        image = bpy.data.images.new("Big", 128, 128, alpha=True)
+        image.pixels.foreach_set((self.picture(128)[::-1] / 255.0).astype(np.float32).ravel())
+        image.pack()
+        mat, node = tu.node_material("Painted", 'ShaderNodeAnimeCharacter')
+        tex = mat.node_tree.nodes.new('ShaderNodeTexImage')
+        tex.image = image
+        mat.node_tree.links.new(tex.outputs["Color"], node.inputs["Base Color"])
+        tu.assign(bpy.data.objects["Boots"], mat)
+        path = new_path()
+        dasktoon_dlive.export(bpy.context, path, objects, options())
+        files = read(path)
+        images = [n for n in files if n.startswith("textures/") and n.rsplit(".", 1)[-1] in ("png", "jpg")]
+        self.assertTrue(images)
+        for name in images:
+            if "ramp" in name:
+                self.assertNotIn(name.rsplit(".", 1)[0] + ".dds", files)
+            else:
+                self.assertIn(name.rsplit(".", 1)[0] + ".dds", files, name)
+        path = new_path()
+        dasktoon_dlive.export(bpy.context, path, objects, options(block_compress=False))
+        self.assertFalse([n for n in read(path) if n.endswith(".dds")])
 
 
 class UnreadMaterialTest(unittest.TestCase):

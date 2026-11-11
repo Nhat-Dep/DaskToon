@@ -33,6 +33,7 @@ class Options:
     bake_samples: int = 1  # an emission bake has no noise: 1 sample gives the same pixels in 60% of the time
     morph_normals: bool = False  # the shape keys' normals: 80% of a face rig's size, little seen on a toon face
     drop_unused_keys: bool = True  # shape keys no expression plays (on the copies made for the expressions)
+    block_compress: bool = True  # a BC7 .dds twin of each image: a quarter of the video memory in a release DaskLive
 
 
 @dataclass
@@ -96,6 +97,33 @@ def _texture(source, dest_folder, rel_name, size, rep, colour=False):
     finally:
         if image is not None:
             bpy.data.images.remove(image)
+
+
+DDS_MIN_SIDE = 8  # smaller than this (a ramp, a LUT): left as it is
+
+
+def _twin(path):
+    """Write the BC7 .dds twin of the image at `path` beside it; returns its size in bytes, or 0 when the image is a ramp
+    or too small to be worth it."""
+    from . import bc7
+    if "ramp" in os.path.basename(path).lower():
+        return 0
+    image = bpy.data.images.load(path, check_existing=False)
+    try:
+        width, height = image.size
+        if min(width, height) < DDS_MIN_SIDE:
+            return 0
+        image.colorspace_settings.name = 'Non-Color'  # the PNG's own numbers, no conversion
+        image.alpha_mode = 'STRAIGHT'
+        pixels = np.empty(width * height * 4, np.float32)
+        image.pixels.foreach_get(pixels)
+    finally:
+        bpy.data.images.remove(image)
+    rgba = np.rint(pixels.reshape(height, width, 4)[::-1] * 255.0).astype(np.uint8)  # Blender's rows start at the bottom
+    data = bc7.dds_bytes(rgba)
+    with open(os.path.splitext(path)[0] + ".dds", "wb") as f:
+        f.write(data)
+    return len(data)
 
 
 def _file_hash(path):
@@ -201,6 +229,13 @@ def export(context, filepath, objects, options=None):
                 z.writestr("finish.json", _json(finish), zipfile.ZIP_DEFLATED)
             for rel in sorted(set(v for v in texture_map.values() if v)):
                 z.write(os.path.join(work, rel.replace("/", os.sep)), rel, zipfile.ZIP_STORED)
+                if options.block_compress:
+                    try:
+                        if _twin(os.path.join(work, rel.replace("/", os.sep))):
+                            z.write(os.path.join(work, os.path.splitext(rel)[0].replace("/", os.sep) + ".dds"),
+                                    os.path.splitext(rel)[0] + ".dds", zipfile.ZIP_STORED)
+                    except Exception as ex:  # the image stays as it is: DaskLive shows it uncompressed
+                        rep.warnings.append(rpt_("Texture %s not block-compressed (%s)") % (rel, ex))
             if rep.thumbnail:
                 z.write(thumb_path, "thumbnail.png", zipfile.ZIP_STORED)
         os.replace(tmp_zip, filepath)

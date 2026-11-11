@@ -28,6 +28,9 @@ class EXPORT_SCENE_OT_dasktoon_dlive(Operator):
                     "file you work on stays as it is")
     texture_size: IntProperty(name="Max Texture Size", default=2048, min=64, max=8192, subtype='PIXEL',
                               description="Larger images are scaled down to this")
+    block_compress: BoolProperty(name="Pre-compress Images (DDS)", default=True,
+                                 description="Add a block-compressed twin of each image: DaskLive then keeps it in a "
+                                             "quarter of the video memory (the export takes a few seconds more)")
     thumbnail: BoolProperty(name="Thumbnail", default=True, description="Add a small picture of the character")
 
     def invoke(self, context, _event):
@@ -46,7 +49,7 @@ class EXPORT_SCENE_OT_dasktoon_dlive(Operator):
             return {'CANCELLED'}
         path = bpy.path.ensure_ext(bpy.path.abspath(self.filepath), ".dlive")
         options = dasktoon_dlive.Options(make_expressions=self.make_expressions, texture_size=self.texture_size,
-                                         thumbnail=self.thumbnail)
+                                         thumbnail=self.thumbnail, block_compress=self.block_compress)
         rep = dasktoon_dlive.export(context, path, objects, options)
         self.report({'WARNING'} if rep.warnings else {'INFO'}, rep.summary())
         return {'FINISHED'}
