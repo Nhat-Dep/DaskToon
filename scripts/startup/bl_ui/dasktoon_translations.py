@@ -35,6 +35,7 @@ VI = {
     "DaskLive: %d materials, %d expressions made, %d warnings": "DaskLive: %d vật liệu, đã làm %d biểu cảm, %d cảnh báo",
     "No thumbnail (%s)": "Không có ảnh đại diện (%s)",
     "Texture %s left out (%s)": "Bỏ qua ảnh %s (%s)",
+    "Material %s: bake failed (%s)": "Vật liệu %s: nướng ảnh thất bại (%s)",
     "Material %s: %s (DaskLive shows the model's own material)": "Vật liệu %s: %s (DaskLive dùng vật liệu có sẵn của mô hình)",
     "This is not a DaskLive file (no manifest)": "Đây không phải tệp DaskLive (không có bản kê)",
     "This is not a DaskLive file": "Đây không phải tệp DaskLive",

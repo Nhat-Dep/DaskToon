@@ -110,7 +110,7 @@ def export(context, filepath, objects, options=None):
     from dasktoon_export.godot import finish as godot_finish
     from dasktoon_export.targets import ExportTarget
     from dasktoon_rig import auto_expressions, eye_shapes
-    from . import copies, expressions, materials as dlive_materials, slots, thumbnail
+    from . import copies, expressions, fallback, materials as dlive_materials, slots, thumbnail
 
     options = options or Options()
     rep = Report(filepath=filepath)
@@ -165,7 +165,7 @@ def export(context, filepath, objects, options=None):
             rep.expressions = expressions.describe(objs, renamed, rig, made)
             if options.make_expressions and options.drop_unused_keys:
                 expressions.drop_unused(objs, renamed, rep.expressions)
-            with slots.filled(objs):
+            with slots.filled(objs), fallback.baked(objs, min(options.texture_size, 1024), rep.warnings):
                 grep = godot.export_model(context, target, objs, settings, collect)
             rep.warnings += list(grep.warnings)
             rep.warnings += [rpt_("Material %s: %s (DaskLive shows the model's own material)") % item for item in grep.skipped]

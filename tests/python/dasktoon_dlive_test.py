@@ -436,6 +436,68 @@ class TextureTest(unittest.TestCase):
                               and n.startswith("textures/Plain")]), 1)
 
 
+class UnreadMaterialTest(unittest.TestCase):
+    """A material of a shader DaskToon cannot read (here a node group giving light of its own) reaches the player as
+    its baked look, not glTF's plain white; a material it gives no light of its own is left to glTF; the file's own
+    materials are as they were."""
+
+    def group_material(self, name, colour, strength):
+        tree = bpy.data.node_groups.new(name + "Group", 'ShaderNodeTree')
+        tree.interface.new_socket("Color", in_out='INPUT', socket_type='NodeSocketColor')
+        tree.interface.new_socket("Shader", in_out='OUTPUT', socket_type='NodeSocketShader')
+        inside_in = tree.nodes.new('NodeGroupInput')
+        inside_out = tree.nodes.new('NodeGroupOutput')
+        emission = tree.nodes.new('ShaderNodeEmission')
+        emission.inputs["Strength"].default_value = strength
+        tree.links.new(inside_in.outputs["Color"], emission.inputs["Color"])
+        tree.links.new(emission.outputs["Emission"], inside_out.inputs["Shader"])
+        mat = tu.new_material(name)
+        out = mat.node_tree.nodes.new('ShaderNodeOutputMaterial')
+        group = mat.node_tree.nodes.new('ShaderNodeGroup')
+        group.node_tree = tree
+        group.inputs["Color"].default_value = colour
+        mat.node_tree.links.new(group.outputs["Shader"], out.inputs["Surface"])
+        return mat
+
+    def panel(self, rig, name, mat, offset):
+        bpy.ops.mesh.primitive_plane_add(size=0.2, location=(offset, -0.3, 1.0))
+        obj = bpy.context.active_object
+        obj.name = name
+        tu.assign(obj, mat)
+        obj.parent = rig
+        obj.vertex_groups.new(name="Head").add(list(range(len(obj.data.vertices))), 1.0, 'REPLACE')
+        return obj
+
+    def test_the_baked_look_stands_in_and_the_file_is_unchanged(self):
+        tu.reset_scene()
+        rig, objects = character()
+        glow = self.group_material("Glow", (0.2, 0.6, 0.3, 1.0), 1.0)
+        dark = self.group_material("Dark", (0.2, 0.6, 0.3, 1.0), 0.0)
+        objects += [self.panel(rig, "PanelA", glow, 0.5), self.panel(rig, "PanelB", dark, -0.5)]
+        before = counts()
+        path = new_path()
+        dasktoon_dlive.export(bpy.context, path, objects, options())
+        files = read(path)
+        mats = {m["name"]: m for m in json.loads(files["materials.json"])["materials"]}
+        self.assertIn("Glow", mats)
+        self.assertNotIn("Dark", mats)  # no light of its own: glTF's material stays
+        texture = mats["Glow"]["params"]["base_map"]
+        folder = tempfile.mkdtemp(prefix="dt_dlive_")
+        local = os.path.join(folder, os.path.basename(texture))
+        with open(local, "wb") as f:
+            f.write(files[texture])
+        image = bpy.data.images.load(local)
+        px = np.array(image.pixels[:]).reshape(-1, 4)
+        lit = px[px[:, 3] > 0.5][:, :3]
+        bpy.data.images.remove(image)
+        # (0.2, 0.6, 0.3) linear is about (0.48, 0.80, 0.58) as it is stored
+        np.testing.assert_allclose(np.median(px[:, :3], axis=0), (0.48, 0.80, 0.58), atol=0.08)
+        self.assertEqual(counts(), before)  # nothing of the file's own is left behind or changed
+        self.assertEqual([m.name for m in bpy.data.materials if "original" in m.name], [])
+        self.assertIn("Glow", [m.name for m in bpy.data.materials])
+        self.assertIs(bpy.data.objects["PanelA"].data.materials[0], glow)
+
+
 class OperatorsTest(unittest.TestCase):
     def test_operators_are_registered(self):
         self.assertTrue(hasattr(bpy.ops.export_scene, "dasktoon_dlive"))
