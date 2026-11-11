@@ -495,6 +495,33 @@ class BlockCompressedTest(unittest.TestCase):
         self.assertFalse([n for n in read(path) if n.endswith(".dds")])
 
 
+class JawTest(unittest.TestCase):
+    """expressions.json names the jaw bone under any name the importers know, only when it deforms."""
+
+    def armature(self, jaw_name, deform=True):
+        arm = bpy.data.armatures.new("JawArm")
+        rig = bpy.data.objects.new("JawRig", arm)
+        bpy.context.scene.collection.objects.link(rig)
+        bpy.context.view_layer.objects.active = rig
+        bpy.ops.object.mode_set(mode='EDIT')
+        for name, z in (("Head", 1.6), (jaw_name, 1.5)):
+            bone = arm.edit_bones.new(name)
+            bone.head, bone.tail = (0, 0, z), (0, 0, z + 0.1)
+            bone.use_deform = deform if name == jaw_name else True
+        bpy.ops.object.mode_set(mode='OBJECT')
+        return rig
+
+    def test_names_and_deform(self):
+        from dasktoon_dlive import jaw
+        tu.reset_scene()
+        for name in ("Jaw", "J_Bip_C_Jaw", "jaw", "顎".replace("顎", "Jaw")):
+            self.assertEqual(jaw.jaw_bone(self.armature(name)), name)
+        self.assertIsNone(jaw.jaw_bone(self.armature("Jaw", deform=False)))
+        self.assertIsNone(jaw.jaw_bone(self.armature("Chin_Guard")))
+        self.assertEqual(jaw.add_to({"bones": {"head": "Head"}}, self.armature("Jaw"))["bones"]["jaw"], "Jaw")
+        self.assertEqual(jaw.add_to({"keys": {}}, None), {"keys": {}, "bones": {}})
+
+
 class UnreadMaterialTest(unittest.TestCase):
     """A material of a shader DaskToon cannot read (here a node group giving light of its own) reaches the player as
     its baked look, not glTF's plain white; a material it gives no light of its own is left to glTF; the file's own
