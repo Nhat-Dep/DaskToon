@@ -69,6 +69,8 @@ TRANSLATED = [
     "scripts/modules/dasktoon_rig/shoulders.py",
     "scripts/modules/dasktoon_rig/sections.py",
     "scripts/modules/dasktoon_rig/facing.py",
+    "scripts/modules/dasktoon_rig/face_frame.py",
+    "scripts/modules/dasktoon_rig/face_shapes.py",
     "scripts/modules/dasktoon_rig/fingers.py",
     "scripts/modules/dasktoon_rig/skirt_follow.py",
     "scripts/modules/dasktoon_rig/correctives.py",
