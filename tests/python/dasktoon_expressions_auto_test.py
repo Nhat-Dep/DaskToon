@@ -103,6 +103,41 @@ class KeysStartOffTest(unittest.TestCase):
         self.assert_off()
 
 
+class ArkitSourceNamesTest(unittest.TestCase):
+    """The ARKit 52 are built from the keys named for each expression. A key of the same family in another part of the
+    face (a brow's "happy", an eyelid's "up") must not stand in for the whole expression or for the eye turning."""
+
+    def setUp(self):
+        tu.reset_scene()
+        self.obj = tu.add_sphere(segments=8, rings=4)
+        self.rest = np.array([v.co for v in self.obj.data.vertices])
+
+    def offsets(self, name):
+        key = self.obj.data.shape_keys
+        return np.array([p.co for p in key.key_blocks[name].data]) - self.rest
+
+    def test_the_whole_named_key_wins_over_a_part_of_the_face_that_contains_the_name(self):
+        shaped(self.obj, "Brow Happy", delta=(0.0, 0.0, 0.05))  # first in the list, brows only
+        shaped(self.obj, "joy", delta=(0.0, 0.0, -0.02))
+        skm.synthesize_arkit52(self.obj)
+        np.testing.assert_allclose(self.offsets("mouthDimpleLeft")[:, 2].min(), -0.02 * 0.4, atol=1e-5)
+        self.assertLessEqual(self.offsets("mouthDimpleLeft")[:, 2].max(), 1e-6)  # nothing of the brow's +0.05
+
+    def test_an_eyelid_key_is_not_the_eye_turning_up(self):
+        shaped(self.obj, "Eyelid Up R", delta=(0.0, 0.0, 0.03))
+        shaped(self.obj, "Eyelid Down L", delta=(0.0, 0.0, -0.03))
+        skm.synthesize_arkit52(self.obj)
+        for name in ("eyeLookUpRight", "eyeLookDownLeft", "eyeLookUpLeft", "eyeLookDownRight"):
+            np.testing.assert_allclose(self.offsets(name), 0.0, atol=1e-9, err_msg=name)
+
+    def test_the_eye_turning_keys_are_found_under_the_usual_names(self):
+        for name in ("lookUp", "Look Down"):
+            shaped(self.obj, name, delta=(0.0, 0.0, 0.01))
+        skm.synthesize_arkit52(self.obj)
+        self.assertGreater(np.abs(self.offsets("eyeLookUpRight")).max(), 0.0)
+        self.assertGreater(np.abs(self.offsets("eyeLookDownLeft")).max(), 0.0)
+
+
 class Character(unittest.TestCase):
     def setUp(self):
         self.rig, self.objs, self.eyes = et.character()

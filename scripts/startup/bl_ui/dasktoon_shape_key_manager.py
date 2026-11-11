@@ -1347,18 +1347,27 @@ def synthesize_arkit52(obj, overwrite_existing=False):
     existing_names = {kb.name: kb for kb in sk.key_blocks}
     basis_kb = sk.key_blocks[0]
 
-    def get_kb(patterns):
+    # A key of one part of the face ("Brow Happy", "Eyes Smile", "Eyelid Up R") is not the whole expression nor the eye
+    # turning: a name that is only the pattern wins first, and a name that merely contains it never when it names a
+    # part of the face.
+    part_of_face = re.compile(r'brow|eyelid|eyes?|mouth|lip|cheek|nose|tongue|眉|目|口|頬|鼻', re.IGNORECASE)
+
+    def get_kb(patterns, whole_face=False):
         for pat in patterns:
             for name, kb in existing_names.items():
-                if re.search(pat, name, re.IGNORECASE):
+                if re.fullmatch(pat, name, re.IGNORECASE):
+                    return kb
+        for pat in patterns:
+            for name, kb in existing_names.items():
+                if re.search(pat, name, re.IGNORECASE) and not (whole_face and part_of_face.search(name)):
                     return kb
         return None
 
     # Detect VRM base shapes
-    joy_kb = get_kb([r'Fcl_ALL_Joy', r'happy', r'joy', r'笑い', r'smile'])
-    angry_kb = get_kb([r'Fcl_ALL_Angry', r'angry', r'怒'])
-    sad_kb = get_kb([r'Fcl_ALL_Sorrow', r'sad', r'sorrow', r'哀'])
-    surprised_kb = get_kb([r'Fcl_ALL_Surprised', r'surprised', r'驚'])
+    joy_kb = get_kb([r'Fcl_ALL_Joy', r'happy', r'joy', r'笑い', r'smile'], True)
+    angry_kb = get_kb([r'Fcl_ALL_Angry', r'angry', r'怒'], True)
+    sad_kb = get_kb([r'Fcl_ALL_Sorrow', r'sad', r'sorrow', r'哀'], True)
+    surprised_kb = get_kb([r'Fcl_ALL_Surprised', r'surprised', r'驚'], True)
     blink_both = get_kb([r'Fcl_EYE_Close$', r'^blink$', r'まばたき'])
     blink_l = get_kb([r'Fcl_EYE_Close_L', r'^blinkLeft$', r'ウィンク$', r'blink_l']) or blink_both
     blink_r = get_kb([r'Fcl_EYE_Close_R', r'^blinkRight$', r'ウィンク右', r'blink_r']) or blink_both
@@ -1367,10 +1376,10 @@ def synthesize_arkit52(obj, overwrite_existing=False):
     u_kb = get_kb([r'Fcl_MTH_U', r'^ou$', r'^u$', r'う'])
     e_kb = get_kb([r'Fcl_MTH_E', r'^ee$', r'^e$', r'え'])
     o_kb = get_kb([r'Fcl_MTH_O', r'^oh$', r'^o$', r'お'])
-    look_u = get_kb([r'lookUp', r'Eye_U', r'eye.*up'])
-    look_d = get_kb([r'lookDown', r'Eye_D', r'eye.*down'])
-    look_l = get_kb([r'lookLeft', r'Eye_L', r'eye.*left'])
-    look_r = get_kb([r'lookRight', r'Eye_R', r'eye.*right'])
+    look_u = get_kb([r'lookUp', r'look[ _]?up', r'Eye_U', r'^up$'])
+    look_d = get_kb([r'lookDown', r'look[ _]?down', r'Eye_D', r'^down$'])
+    look_l = get_kb([r'lookLeft', r'look[ _]?left', r'Eye_L', r'^left$'])
+    look_r = get_kb([r'lookRight', r'look[ _]?right', r'Eye_R', r'^right$'])
 
     # 52 ARKit Blendshapes Recipe Table: (ARKit_Name, [(source_kb, weight, side_filter)])
     # side_filter: 'L' (X>0), 'R' (X<0), 'ALL'
