@@ -162,7 +162,9 @@ def moving_objects(objs, name):
 
 
 def made(objs, rig=None):
-    return dlive.make(list(objs.values()), rig)
+    report = dlive.make(list(objs.values()) if isinstance(objs, dict) else objs, rig)
+    assert "error" not in report["how"], report["how"]["error"]
+    return report
 
 
 def described(objs, rig=None):
@@ -343,6 +345,75 @@ class StandInTest(unittest.TestCase):
         for name in ("cheekSquintLeft", "cheekSquintRight"):
             self.assertEqual(moves(objs["Eyes"], name, 1e-5), False, name)
             self.assertTrue(moves(objs["Head"], name), name)
+
+
+def mmd_rig(eyes=True):
+    """A skeleton of Japanese bone names: centre, neck, head and (with `eyes`) both eyes, on the sphere's face."""
+    from dasktoon_rig import skeleton
+    rig = bpy.data.objects.new("MMD", bpy.data.armatures.new("MMD"))
+    bpy.context.scene.collection.objects.link(rig)
+    bones = [("センター", (0, 0, -3), (0, 0, -2)), ("首", (0, 0, -0.6), (0, 0, -0.5)),
+             ("頭", (0, 0, -0.5), (0, 0, 0.55))]
+    if eyes:  # the character's left is +X: MMD's 左 is the left
+        bones += [("左目", (0.25, -0.43, EYE_Z), (0.25, -0.5, EYE_Z)),
+                  ("右目", (-0.25, -0.43, EYE_Z), (-0.25, -0.5, EYE_Z))]
+    with skeleton.editing(bpy.context, rig) as edit:
+        for name, head_at, tail_at in bones:
+            bone = edit.new(name)
+            bone.head, bone.tail = head_at, tail_at
+    return rig
+
+
+class SocketFaceTest(unittest.TestCase):
+    """A face with no eye pieces (lids and sockets modelled in the skin): the eye bones of the skeleton are the eyes."""
+
+    def test_eye_bones_stand_in_for_the_pieces(self):
+        objs = head()
+        bpy.data.objects.remove(objs["Eyes"])
+        del objs["Eyes"]
+        rig = mmd_rig()
+        for obj in objs.values():
+            obj.modifiers.new("Armature", 'ARMATURE').object = rig
+        before = len(bpy.data.armatures), len(bpy.data.objects)
+        report, data = described(objs, rig)
+        self.assertEqual((len(bpy.data.armatures), len(bpy.data.objects)), before)
+        self.assertLessEqual(set(data["made"]["missing"]) - {"eyeBlinkLeft", "eyeBlinkRight"}, CANNOT, data["made"])
+        for name in ("browInnerUp", "cheekPuff", "jawOpen", "mouthPucker", "eyeWideLeft", "eyeSquintRight"):
+            self.assertIn(name, data["keys"])
+        moved, rest = world_offsets(objs["Head"], "eyeWideLeft")
+        moving = np.abs(moved).max(axis=1) > 1e-6
+        self.assertGreater(float(rest[moving, 0].mean()), 0.0, "the left eye is the character's left, +X")
+
+    def test_no_eye_bones_and_no_pieces_no_face(self):
+        objs = head()
+        bpy.data.objects.remove(objs["Eyes"])
+        del objs["Eyes"]
+        rig = mmd_rig(eyes=False)
+        for obj in objs.values():
+            obj.modifiers.new("Armature", 'ARMATURE').object = rig
+        report = made(objs, rig)
+        self.assertEqual(report["sculpted"], [])
+
+
+class RiggedTest(unittest.TestCase):
+    def test_a_daskToon_rig_with_eyes_and_no_keys_gets_the_face_keys(self):
+        import dasktoon_dlive_test as dt
+        tu.reset_scene()
+        rig, objects = dt.character()
+        meshes = [o for o in objects if o.type == 'MESH']
+        report = made(meshes, rig)
+        data = dlive.describe(objects, {}, rig, report)
+        self.assertLessEqual(set(data["made"]["missing"]), CANNOT, data["made"])
+        for name in ("browInnerUp", "browDownLeft", "cheekPuff", "jawLeft", "mouthPucker", "mouthSmileRight"):
+            self.assertIn(name, data["keys"])
+        centre, size = et.head_frame(rig)
+        for obj in meshes:
+            key = obj.data.shape_keys
+            for block in key.key_blocks if key is not None else ():
+                if block != key.reference_key and block.name in dlive.ARKIT:
+                    moved = np.array([p.co for p in block.data]) - np.array([p.co for p in key.reference_key.data])
+                    self.assertLessEqual(float(np.linalg.norm(moved, axis=1).max()), MOST * size * 2.0, (obj.name, block.name))
+        self.assertEqual(rig.data.bones["Head"].length, size)
 
 
 class FrameTest(unittest.TestCase):

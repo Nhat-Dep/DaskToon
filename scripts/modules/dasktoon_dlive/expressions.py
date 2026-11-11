@@ -62,26 +62,31 @@ def make(meshes, rig):
     context = bpy.context
     face_frame.apply_mirrors(context, meshes)
     before = {obj: set(_moving(obj)) for obj in meshes}
-    how = {}
-    with face_frame.located(context, meshes, rig) as frame:
-        result = auto_expressions.run(frame, meshes)
-        sculpted = [name for name, _meshes in result.sculpted]
-        filled = [name for name, _how in result.filled]
-        for name, why in result.filled:
-            how[name] = "filled from " + why
-        for obj in meshes:
-            key = obj.data.shape_keys
-            if key is None or not any(expressions.slot_of(b.name) for b in key.key_blocks):
-                continue
-            manager.synthesize_arkit52(obj, left=_left_of(obj, frame))
-            for name in _moving(obj):
-                if name in ARKIT and name not in before[obj] and name not in filled:
-                    filled.append(name)
-                    how[name] = "built from the expression keys"
-        for name, why, _names in face_shapes.sculpt(frame, meshes, confined=filled) + face_shapes.sculpt_presets(frame, meshes):
-            if name not in sculpted:
-                sculpted.append(name)
-            how[name] = why
+    how, sculpted, filled = {}, [], []
+    try:
+        with face_frame.located(context, meshes, rig) as frame:
+            result = auto_expressions.run(frame, meshes)
+            sculpted = [name for name, _meshes in result.sculpted]
+            filled = [name for name, _how in result.filled]
+            for name, why in result.filled:
+                how[name] = "filled from " + why
+            for obj in meshes:
+                key = obj.data.shape_keys
+                if key is None or not any(expressions.slot_of(b.name) for b in key.key_blocks):
+                    continue
+                manager.synthesize_arkit52(obj, left=_left_of(obj, frame))
+                for name in _moving(obj):
+                    if name in ARKIT and name not in before[obj] and name not in filled:
+                        filled.append(name)
+                        how[name] = "built from the expression keys"
+            new = face_shapes.sculpt(frame, meshes, confined=filled) + face_shapes.sculpt_presets(frame, meshes)
+            for name, why, _names in new:
+                if name not in sculpted:
+                    sculpted.append(name)
+                how[name] = why
+            filled = [name for name in filled if name not in sculpted]  # a stand-in made again is sculpted
+    except Exception as error:  # a face that cannot be read keeps the keys it has: the export goes on
+        how["error"] = "%s: %s" % (type(error).__name__, error)
     return {"sculpted": sculpted, "filled": filled, "how": how}
 
 

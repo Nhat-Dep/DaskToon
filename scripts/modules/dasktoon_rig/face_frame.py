@@ -22,7 +22,7 @@ import math
 
 import bpy
 import numpy as np
-from mathutils import Matrix
+from mathutils import Matrix, Vector
 
 from . import eye_shapes, parts, skeleton
 
@@ -199,7 +199,50 @@ def _find(context, temp, meshes, rig):
         context.view_layer.update()
         if eye_shapes.find_eyes(temp, meshes):
             return True
-    return False
+    return _from_bones(context, temp, rig, world, top)
+
+
+def eye_bones(rig):
+    """The scene positions of the two eye bones of the humanoid armature `rig`, whatever its naming; None without both."""
+    from dasktoon_import import bones
+    if rig is None or rig.type != 'ARMATURE':
+        return None
+    found = [np.array(rig.matrix_world @ bone.head_local) for bone in rig.data.bones
+             if (bones.classify(bone.name) or ("",))[0] == "Eye"]
+    return found if len(found) == 2 else None
+
+
+def _from_bones(context, temp, rig, world, top):
+    """With no eye pieces (a face with sockets and lids), the eye bones of an armature give the frame: the character looks
+    the way its eyes lie from the head's own middle, the head is as tall as it takes to have its eyes just above its middle."""
+    eyes = eye_bones(rig)
+    if eyes is None:
+        return False
+    middle = (eyes[0] + eyes[1]) / 2.0
+    if top <= middle[2]:
+        return False
+    reach = top - middle[2]
+    near = world[(np.abs(world[:, 2] - middle[2]) < 0.3 * reach) & (np.linalg.norm(world[:, :2] - middle[:2], axis=1) < 1.2 * reach)]
+    if not len(near):
+        return False
+    ahead = middle[:2] - near[:, :2].mean(axis=0)  # the eyes lie in front of the head's own middle
+    if np.linalg.norm(ahead) < 1e-6:
+        return False
+    facing = max(FACINGS, key=lambda f: float(np.dot(ahead, f)))
+    size = (top - middle[2]) / (0.5 - BEST)
+    basis = _basis(facing)
+    centre = np.array((middle[0], middle[1], top - size / 2.0))
+    centre = centre + basis[:, 1] * 0.4 * size  # the head's middle lies behind the eyes
+    temp.matrix_world = _matrix(centre, size, facing)
+    context.view_layer.update()
+    inverse = temp.matrix_world.inverted()
+    with skeleton.editing(context, temp) as edit:
+        for name, point in zip(("LeftEye", "RightEye"), sorted(eyes, key=lambda e: -float(e @ basis[:, 0]))):
+            local = inverse @ Vector(point)
+            bone = edit.new(name)
+            bone.head, bone.tail = local, local + Vector((0.0, -0.05, 0.0))
+            bone.parent = edit["Head"]
+    return True
 
 
 def _eye_height(pieces, centre, size, facing):

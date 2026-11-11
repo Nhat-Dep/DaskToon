@@ -16,8 +16,9 @@ Nose: the wings rise and spread. Mouth: a field round the mouth's middle, taperi
 and a bit more above and below; pucker and funnel pull it to the middle and forward, left and right slide it, the rolls,
 shrugs and press move the lips up or down by the band of the upper lip or the lower one, stretch and dimple are the corners.
 Jaw: the lower face turns about the ear, a hinge estimated from the eyes, and fades out past the ears and the chin.
-Eyes: wide scales each eye up about its middle (eye_shapes WIDEN), squint down to SQUINT of its height, and the look keys
-slide the eye's white and iris within the eye, the lashes staying. A key that already moves is left alone."""
+Eyes: wide scales each eye up about its middle (eye_shapes WIDEN), squint down to SQUINT of its height. The look keys
+are not made: the pieces of an eye lie behind holes in the face and out of them when they move (filie's iris is wider than
+what shows), so the game turns the eye bones. A key that already moves where it belongs is left alone."""
 
 import numpy as np
 
@@ -33,9 +34,8 @@ CHEEK_LIFT = 0.14  # (of the eye's width)
 PUFF = 0.14  # (of the distance between the eyes) how far a cheek swells
 SNEER = 0.07
 SQUINT = 0.7  # of the eye's height
-LOOK = 0.22  # (of the eye's width) how far the iris goes
 JAW_TURN = 0.09  # radians
-JAW_OPEN = 0.16
+JAW_OPEN = 0.11
 WORKS = 0.03  # (of the eye's width) a key moves its region at least this far
 JAW_FORWARD = 0.12  # (of the distance between the eyes)
 JAW_BELOW = 0.8  # (of the distance between the eyes) from the mouth to the chin
@@ -242,11 +242,9 @@ class Face:
 
     # -- eyes -------------------------------------------------------------------------------------------------------
     def eye_move(self, how, side):
-        """{object: offsets} of both pieces and skin of the eye on `side` for `how` ('WIDEN', 'SQUINT'), or a look
-        direction ('UP', 'DOWN', 'IN', 'OUT')."""
+        """{object: offsets} of both pieces and skin of the eye on `side` for `how` ('WIDEN', 'SQUINT')."""
         eye = self.eyes[side]
         skin = eye_shapes._skin(self.rig, {side: eye}, self.meshes)
-        hidden = eye_shapes._hidden(self.rig, eye)
         out = {}
         holders = list(dict.fromkeys([o for o, _p in eye.pieces] + list(skin)))
         for obj in holders:
@@ -257,8 +255,6 @@ class Face:
                     continue
                 if how in ('WIDEN', 'SQUINT'):
                     moved[piece] = self._scale(eye, rest[piece], how) - rest[piece]
-                elif i in hidden:  # the white and the iris slide, the lashes stay
-                    moved[piece] = self._look(eye, side, how, rest[piece])
             near, fade = skin.get(obj, {}).get(side, ((), None))
             if len(near) and how in ('WIDEN', 'SQUINT'):
                 moved[near] = (self._scale(eye, rest[near], how) - rest[near]) * fade[:, None]
@@ -276,23 +272,6 @@ class Face:
         else:
             out[:, 2] = middle[2] + (points[:, 2] - middle[2]) * SQUINT
         return out
-
-    def _look(self, eye, side, how, points):
-        """`points` (a piece of the eye) turned like an eyeball about its own middle: the front of a ball moves LOOK of the
-        eye's width, the eye's white and iris slide across without leaving the hole the face has for them."""
-        low, high = points.min(axis=0), points.max(axis=0)
-        radius = max(0.5 * max(high[0] - low[0], high[2] - low[2]), 1e-9)
-        pivot = np.array(((low[0] + high[0]) / 2.0, low[1] + radius, (low[2] + high[2]) / 2.0))
-        outward = 1.0 if side == "LEFT" else -1.0
-        dx, dz = {"UP": (0.0, 1.0), "DOWN": (0.0, -1.0), "IN": (-outward, 0.0), "OUT": (outward, 0.0)}[how]
-        turn = min(LOOK * self.width / radius, 0.6)
-        v = points - pivot
-        ax, az = -dz * turn, dx * turn  # about x (up/down), about z (in/out): the front (y < 0) goes toward dx, dz
-        y1 = v[:, 1] * np.cos(ax) - v[:, 2] * np.sin(ax)
-        z1 = v[:, 1] * np.sin(ax) + v[:, 2] * np.cos(ax)
-        x2 = v[:, 0] * np.cos(az) - y1 * np.sin(az)
-        y2 = v[:, 0] * np.sin(az) + y1 * np.cos(az)
-        return pivot + np.stack([x2, y2, z1], axis=1)
 
     # -- cheeks, nose ------------------------------------------------------------------------------------------------
     def spot(self, rest, centre, across, up):
@@ -459,7 +438,7 @@ class Face:
         w, a, m = self.width, self.apart, self.mid
         if name.startswith("brow"):
             return [(m - a / 2.0 - w, m + a / 2.0 + w, self.lid + 0.15 * w, self.lid + 1.6 * w)]
-        if name.startswith(("eyeWide", "eyeSquint", "eyeLook", "cheekSquint")):
+        if name.startswith(("eyeWide", "eyeSquint", "cheekSquint")):
             eye = self.eyes["LEFT" if name.endswith("Left") else "RIGHT"]
             low = self.eye_low - 1.0 * w if name.startswith("cheek") else eye.low[2] - 0.3 * w
             top = eye.low[2] if name.startswith("cheek") else eye.high[2] + 0.3 * w
@@ -525,6 +504,21 @@ class Face:
         return changed
 
 
+def bone_eyes(rig):
+    """{"LEFT": Eye, "RIGHT": Eye} sized by the eye bones of `rig` (LeftEye, RightEye): a face with sockets and lids has
+    no pieces to find, its eyes are where the skeleton puts them, as wide as a share of the distance between them; {}
+    without both bones."""
+    left, right = rig.data.bones.get("LeftEye"), rig.data.bones.get("RightEye")
+    if left is None or right is None:
+        return {}
+    apart = abs(left.head_local[0] - right.head_local[0])
+    if apart <= 1e-9:
+        return {}
+    half = np.array((0.21 * apart, 0.02 * apart, 0.15 * apart))
+    return {side: eye_shapes.Eye(side, [], np.array(bone.head_local) - half, np.array(bone.head_local) + half)
+            for side, bone in (("LEFT", left), ("RIGHT", right))}
+
+
 def _moving(obj):
     key = obj.data.shape_keys
     if key is None:
@@ -551,14 +545,14 @@ def _put(rig, obj, name, moved):
 HOW = {
     "brow": "brows: the loose pieces above the eyes, else the skin above them, moved up, down or inward",
     "eyeWide": "the eye grown about its middle", "eyeSquint": "the eye shrunk to {} of its height".format(SQUINT),
-    "eyeLook": "the white and the iris slid inside the eye", "cheekPuff": "the cheeks pushed out along the surface",
+"cheekPuff": "the cheeks pushed out along the surface",
     "cheekSquint": "the skin under the eye lifted", "noseSneer": "the nose's wings raised and spread",
     "mouth": "the skin round the mouth moved", "jaw": "the lower face turned about the ear",
 }
 
 
 def how_of(name):
-    for prefix in ("eyeWide", "eyeSquint", "eyeLook", "cheekPuff", "cheekSquint", "noseSneer", "brow", "mouth", "jaw"):
+    for prefix in ("eyeWide", "eyeSquint", "cheekPuff", "cheekSquint", "noseSneer", "brow", "mouth", "jaw"):
         if name.startswith(prefix):
             return HOW[prefix]
     return "sculpted from the face"
@@ -569,9 +563,6 @@ def _fields(face, name):
         return face.brow(name)
     if name.startswith(("eyeWide", "eyeSquint")):
         return face.eye_move('WIDEN' if "Wide" in name else 'SQUINT', "LEFT" if name.endswith("Left") else "RIGHT")
-    if name.startswith("eyeLook"):
-        side = "LEFT" if name.endswith("Left") else "RIGHT"
-        return face.eye_move(name[len("eyeLook"):-len(side)].upper(), side)
     if name.startswith("cheek"):
         return face.cheek(name)
     if name.startswith("nose"):
@@ -606,7 +597,7 @@ def sculpt(rig, meshes, wanted=None, confined=()):
     made again."""
     if rig is None:
         return []
-    eyes = eye_shapes.find_eyes(rig, meshes)
+    eyes = eye_shapes.find_eyes(rig, meshes) or bone_eyes(rig)
     if not eyes:
         return []
     face = Face(rig, meshes, eyes)
@@ -635,7 +626,7 @@ def sculpt_presets(rig, meshes):
     from . import auto_expressions
     if rig is None:
         return []
-    eyes = eye_shapes.find_eyes(rig, meshes)
+    eyes = eye_shapes.find_eyes(rig, meshes) or bone_eyes(rig)
     if not eyes:
         return []
     face = Face(rig, meshes, eyes)
