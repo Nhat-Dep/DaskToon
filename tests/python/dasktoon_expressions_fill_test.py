@@ -130,6 +130,23 @@ class FillTest(unittest.TestCase):
         np.testing.assert_allclose(offsets(obj, "blink_L")[x < -0.1], blink[x < -0.1], atol=1e-6)
         np.testing.assert_allclose(offsets(obj, "blink_L")[x > 0.1], 0.0, atol=1e-6)
 
+    def test_names_in_other_scripts_are_known(self):
+        """The usual MMD morph names (Japanese) are the same slots as the English ones: a face with the shapes under
+        those and empty keys under the English names has the empty ones filled from them."""
+        a = moving(0.0, 0.5, (0.0, 0.0, -0.2))
+        i = moving(0.0, 0.5, (0.1, 0.0, 0.05))
+        blink = moving(1.0, 1.2, (0.0, 0.0, -0.1))
+        wink_left = blink * (xs()[:, :1] > 0)
+        obj = face({"あ": a, "い": i, "まばたき": blink, "ウィンク": wink_left,
+                    "a": None, "i": None, "blink": None, "blink_L": None})
+        for name, slot in (("あ", "A"), ("い", "I"), ("まばたき", "BLINK"),
+                           ("ウィンク", "BLINK_L"), ("ウィンク右", "BLINK_R")):
+            self.assertEqual(expressions.slot_of(name), slot, name)
+        filled = [name for name, _how in expressions.fill(obj)]
+        self.assertEqual(sorted(filled), ["a", "blink", "blink_L", "i"])
+        np.testing.assert_allclose(offsets(obj, "a"), a, atol=1e-6)
+        np.testing.assert_allclose(offsets(obj, "blink"), blink, atol=1e-6)
+
     def test_nothing_to_fill(self):
         obj = face({"a": moving(0.0, 0.5, (0, 0, -0.2)), "e": None})
         self.assertEqual(expressions.fill(obj), [])  # "e" needs "i" too

@@ -21,21 +21,22 @@ EMPTY_SHARE = 0.15  # a key moving less than this share of the mesh's usual expr
 NOTHING = 1e-5
 MIDDLE = 0.015  # the blend across X = 0 of a side, as Split Left / Right
 
-# slot: the names (whole, any case) of its keys
+# slot: the names (whole, any case) of its keys; the Japanese ones are MMD's usual morph names (a, i, u, e, o, blink,
+# the wink of the character's left and right, smile, angry, troubled, surprised)
 SLOTS = {
-    "A": ("a", "aa", "fcl_mth_a", "mth_a", "jawopen"),
-    "I": ("i", "ih", "fcl_mth_i", "mth_i"),
-    "U": ("u", "ou", "fcl_mth_u", "mth_u"),
-    "E": ("e", "ee", "fcl_mth_e", "mth_e"),
-    "O": ("o", "oh", "fcl_mth_o", "mth_o"),
-    "BLINK": ("blink", "eyeblink", "fcl_eye_close"),
-    "BLINK_L": ("blink_l", "blinkleft", "eyeblinkleft", "eyeblink_l", "fcl_eye_close_l"),
-    "BLINK_R": ("blink_r", "blinkright", "eyeblinkright", "eyeblink_r", "fcl_eye_close_r"),
-    "JOY": ("joy", "happy", "fcl_all_joy"),
-    "ANGRY": ("angry", "fcl_all_angry"),
-    "SORROW": ("sorrow", "sad", "fcl_all_sorrow"),
+    "A": ("a", "aa", "fcl_mth_a", "mth_a", "jawopen", "あ"),
+    "I": ("i", "ih", "fcl_mth_i", "mth_i", "い"),
+    "U": ("u", "ou", "fcl_mth_u", "mth_u", "う"),
+    "E": ("e", "ee", "fcl_mth_e", "mth_e", "え"),
+    "O": ("o", "oh", "fcl_mth_o", "mth_o", "お"),
+    "BLINK": ("blink", "eyeblink", "fcl_eye_close", "まばたき"),
+    "BLINK_L": ("blink_l", "blinkleft", "eyeblinkleft", "eyeblink_l", "fcl_eye_close_l", "ウィンク"),
+    "BLINK_R": ("blink_r", "blinkright", "eyeblinkright", "eyeblink_r", "fcl_eye_close_r", "ウィンク右"),
+    "JOY": ("joy", "happy", "fcl_all_joy", "笑い"),
+    "ANGRY": ("angry", "fcl_all_angry", "怒り"),
+    "SORROW": ("sorrow", "sad", "fcl_all_sorrow", "困る"),
     "FUN": ("fun", "relaxed", "fcl_all_fun"),
-    "SURPRISED": ("surprised", "fcl_all_surprised"),
+    "SURPRISED": ("surprised", "fcl_all_surprised", "びっくり"),
     "UPPER_UP": ("mouthupperup",),
     "UPPER_UP_L": ("mouthupperupleft", "mouthupperup_l"),
     "UPPER_UP_R": ("mouthupperupright", "mouthupperup_r"),
