@@ -58,6 +58,23 @@ Hair part (chain bones marked as Build Rig marks them), colliders; shape key val
 - R7 The glTF skin needs meshes parented to the armature with vertex groups (as every real DaskToon character has);
   test fixtures set both.
 - R8 Import restores sway chains as role Hair; the real role of each part is not in `rig.json`.
+- R9 (real models, 2026-11-11) Faces with no material (no slot, an empty slot, an index past the slots) get a plain
+  DaskToon material named `Unassigned` while the export runs, so every glTF primitive names a material of
+  `materials.json` (`dasktoon_dlive/slots.py`). Only visible objects of the view layer count.
+- R10 A material the Godot writer cannot read (another maker's toon group) is baked with an emission bake of its whole
+  surface over the UVs of its meshes and stands in as a DaskToon material wearing that picture, named as the original;
+  a bake whose brightest pixel is below 0.01 (a Principled material: glTF carries it) is left alone
+  (`dasktoon_dlive/fallback.py`). Materials still unread are warnings.
+- R11 Size and time, measured on a 38k-vertex character with 345 shape keys (79 MB, 455 s before; 11.5 MB, 232 s after):
+  shape keys no expression plays (and at rest, and nobody's relative key) are removed from the copies; morph normals are
+  not written (`Options.morph_normals`, 80% of the glTF); colour maps with nothing see-through are JPEG q90 (data maps,
+  alpha maps and maps with alpha stay PNG); equal pictures are stored once (shadow colour = base colour); the emission
+  bake uses 1 sample.
+- R12 Names that stood for expressions: the usual MMD (Japanese) morph names join the alias slots. ARKit sources are
+  found whole name first, a key that moves before an empty placeholder, and a key of one part of the face ("Brow Happy",
+  "Eyelid Up R") never stands in for a whole expression or the eye turning. A mouth ARKit key takes only the mouth part
+  of a whole-face key (the eyes are what the blink moves, the mouth what the vowels move), an eye or brow key only the
+  rest; `mouthSmile` no longer adds the blink.
 
 ## Known gaps
 
