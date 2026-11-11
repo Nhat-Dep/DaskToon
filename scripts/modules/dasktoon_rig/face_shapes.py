@@ -448,11 +448,11 @@ class Face:
         """[(x low, x high, z low, z high)] where the key `name` should move something, armature space."""
         w, a, m = self.width, self.apart, self.mid
         if name.startswith("brow"):
-            return [(m - a / 2.0 - w, m + a / 2.0 + w, self.lid + 0.15 * w, self.lid + 1.6 * w)]
+            return [(m - a / 2.0 - w, m + a / 2.0 + w, self.lid + 0.3 * w, self.lid + 1.6 * w)]
         if name.startswith(("eyeWide", "eyeSquint", "cheekSquint")):
             eye = self.eyes["LEFT" if name.endswith("Left") else "RIGHT"]
-            low = self.eye_low - 1.0 * w if name.startswith("cheek") else eye.low[2] - 0.3 * w
-            top = eye.low[2] if name.startswith("cheek") else eye.high[2] + 0.3 * w
+            low = eye.low[2] - 1.3 * w if name.startswith("cheek") else eye.low[2] - 0.3 * w
+            top = eye.low[2] - 0.3 * w if name.startswith("cheek") else eye.high[2] + 0.3 * w
             return [(eye.low[0] - 0.4 * w, eye.high[0] + 0.4 * w, low, top)]
         if name == "cheekPuff":
             return [(m + s * 0.3 * a, m + s * 1.6 * a, self.z0 - 0.2 * a, self.eye_low) if s > 0
@@ -466,10 +466,10 @@ class Face:
                  self.z0 + MOUTH_SPREAD[1] * h)]
 
     def reach(self, name, rest, fade=0.0):
-        """Per vertex of `rest` 1 inside the places the key `name` works (boxes), falling to 0 `fade` of the eyes' distance
-        outside them."""
+        """Per vertex of `rest` 1 inside the places the key `name` works (boxes), falling to 0 `fade` eye widths outside
+        them."""
         out = np.zeros(len(rest))
-        m = max(fade * self.apart, 1e-9)
+        m = max(fade * self.width, 1e-9)
         for x0, x1, z0, z1 in self.boxes(name):
             inside = (_smooth((rest[:, 0] - (x0 - m)) / m) * _smooth(((x1 + m) - rest[:, 0]) / m)
                       * _smooth((rest[:, 2] - (z0 - m)) / m) * _smooth(((z1 + m) - rest[:, 2]) / m))
@@ -505,10 +505,10 @@ class Face:
 
     def confine(self, name):
         """The key `name` made from others (a whole-face key) moves what lies outside its region (a smile that closes an
-        eye): take that out, fading over a quarter of the eyes' distance. Returns True when it changed."""
+        eye): take that out, fading over 0.3 of an eye's width. Returns True when it changed."""
         changed = False
         for obj, block, moved, base, co in [(o, b, m, bs, c) for o, b, m, bs, c in self._blocks(name, self.meshes)]:
-            weight = self.reach(name, self.rests[obj], 0.25)
+            weight = self.reach(name, self.rests[obj], 0.3)
             if (moved * (1.0 - weight)).max() > 0.2 * WORKS * self.width:
                 block.data.foreach_set("co", (base + (co - base) * np.repeat(weight, 3)))
                 changed = True

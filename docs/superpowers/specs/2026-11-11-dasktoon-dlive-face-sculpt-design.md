@@ -53,3 +53,18 @@ tongueOut (no tongue mesh), eyeLook* (an eyeball turning inside a face's hole: t
 
 dasktoon_face_sculpt_test.py: a head with eye pieces and no armature; brows as pieces of the head's mesh; brows as meshes of
 their own; no brows; Japanese bone names; facing +Y; modelled in half; displacement limits; pairs mirror; hair never moves.
+
+## Rulings from the real characters (2026-11-11)
+
+- filie (no rig, no keys, modelled in half, faces +Y): 55 of 56 keys ARKit-or-VRM; the head is found from her eye pieces, the Mirror
+  modifiers applied on the export's copies. Her hair covers her brows and her face is flat shaded: the keys are small, not
+  broken.
+- tdt (an armature object not in the file): the same way; brows and eyeWide are no longer missing. A hair lock of the Body mesh
+  in front of the cheek once zigzagged with a jaw key: only the skin's own pieces move.
+- lr (faces +Y, no rig): all but look and tongue.
+- A key the export made from a whole-face key (joy) and that moved what lies outside its place (a smile that closed an eye) is
+  confined to the place; a cheek key leaves a margin of 0.3 of an eye's width under the eye, or the eye's own pieces warp.
+- The eye bones of a skeleton are the eyes of a face with no eye pieces (sockets and lids); no blink is made there (closing
+  skin onto a line is no lid).
+- The look keys are not made: an iris wider than the hole of the face it is seen through comes out in front of the skin when
+  it moves.
