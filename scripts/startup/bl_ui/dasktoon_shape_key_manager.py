@@ -1340,9 +1340,10 @@ class DASKTOON_OT_vrm_bake_expression(Operator):
         return {'FINISHED'}
 
 
-def synthesize_arkit52(obj, overwrite_existing=False):
+def synthesize_arkit52(obj, overwrite_existing=False, left=None):
     """Build the 52 ARKit face tracking shape keys of the mesh `obj` from its VRM or VRoid keys; returns how many it made
-    (the .dlive export calls it on its temporary copies)."""
+    (the .dlive export calls it on its temporary copies). `left`: the direction of the character's left in the mesh's own
+    space (a character facing +Y has its left at the mesh's -X); the default is +X."""
     sk = obj.data.shape_keys
     existing_names = {kb.name: kb for kb in sk.key_blocks}
     basis_kb = sk.key_blocks[0]
@@ -1458,9 +1459,10 @@ def synthesize_arkit52(obj, overwrite_existing=False):
     basis_kb.data.foreach_get("co", base)
     base = base.reshape(-1, 3)
     # How much of a side each vertex takes: a smooth step across the middle (x = 0).
-    t = np.clip((base[:, 0] + fall) / (2.0 * fall), 0.0, 1.0)
-    left = t * t * (3.0 - 2.0 * t)
-    side_fac = {'L': left, 'R': 1.0 - left, 'ALL': np.ones(count, np.float32)}
+    across = base[:, 0] if left is None else base @ (np.array(left, np.float32) / np.linalg.norm(left))
+    t = np.clip((across + fall) / (2.0 * fall), 0.0, 1.0)
+    left_share = t * t * (3.0 - 2.0 * t)
+    side_fac = {'L': left_share, 'R': 1.0 - left_share, 'ALL': np.ones(count, np.float32)}
 
     # A whole-face key (joy, sorrow, angry, surprised) moves eyes, brows and mouth together; an ARKit key of one part takes
     # it without what moves the others. The parts are known from the mesh: the eyes are what the blink moves, the mouth

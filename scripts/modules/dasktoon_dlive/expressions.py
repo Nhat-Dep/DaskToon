@@ -7,8 +7,9 @@ expressions.json). `make` runs Auto Expressions and the ARKit 52 synthesis on th
 `describe` writes what moves: shape keys by ARKit and VRM 1.0 names, humanoid bones, and a report."""
 
 import numpy as np
+from mathutils import Vector
 
-from dasktoon_rig import auto_expressions, expressions, eye_shapes
+from dasktoon_rig import auto_expressions, expressions, eye_shapes, face_frame, face_shapes
 
 ARKIT = (
     "eyeBlinkLeft", "eyeLookDownLeft", "eyeLookInLeft", "eyeLookOutLeft", "eyeLookUpLeft", "eyeSquintLeft",
@@ -43,23 +44,45 @@ def _moving(obj):
     return [b.name for b in key.key_blocks if b != key.reference_key and expressions.key_moves(b, base)]
 
 
+def _left_of(obj, frame):
+    """The direction of the character's left in the space of mesh `obj` (the frame's +X), None without a frame."""
+    if frame is None:
+        return None
+    left = obj.matrix_world.to_3x3().inverted() @ (frame.matrix_world.to_3x3() @ Vector((1.0, 0.0, 0.0)))
+    return tuple(left) if left.length > 1e-9 else None
+
+
 def make(meshes, rig):
-    """Auto Expressions then the ARKit 52 on `meshes` (copies: they are changed). Returns the report dict
-    {"sculpted": [...], "filled": [...]}."""
+    """Auto Expressions, the ARKit 52 from them and, for the face keys still empty, ARKit keys sculpted from the face's
+    own shape (dasktoon_rig.face_shapes) on `meshes` (copies: they are changed). A character without a DaskToon rig is
+    read through a temporary armature on the head found (face_frame). Returns the report dict {"sculpted": [...],
+    "filled": [...], "how": {name: how}}."""
+    import bpy
     from bl_ui import dasktoon_shape_key_manager as manager
+    context = bpy.context
+    face_frame.apply_mirrors(context, meshes)
     before = {obj: set(_moving(obj)) for obj in meshes}
-    result = auto_expressions.run(rig, meshes)
-    sculpted = [name for name, _meshes in result.sculpted]
-    filled = [name for name, _how in result.filled]
-    for obj in meshes:
-        key = obj.data.shape_keys
-        if key is None or not any(expressions.slot_of(b.name) for b in key.key_blocks):
-            continue
-        manager.synthesize_arkit52(obj)
-        for name in _moving(obj):
-            if name in ARKIT and name not in before[obj] and name not in filled:
-                filled.append(name)
-    return {"sculpted": sculpted, "filled": filled}
+    how = {}
+    with face_frame.located(context, meshes, rig) as frame:
+        result = auto_expressions.run(frame, meshes)
+        sculpted = [name for name, _meshes in result.sculpted]
+        filled = [name for name, _how in result.filled]
+        for name, why in result.filled:
+            how[name] = "filled from " + why
+        for obj in meshes:
+            key = obj.data.shape_keys
+            if key is None or not any(expressions.slot_of(b.name) for b in key.key_blocks):
+                continue
+            manager.synthesize_arkit52(obj, left=_left_of(obj, frame))
+            for name in _moving(obj):
+                if name in ARKIT and name not in before[obj] and name not in filled:
+                    filled.append(name)
+                    how[name] = "built from the expression keys"
+        for name, why, _names in face_shapes.sculpt(frame, meshes, confined=filled) + face_shapes.sculpt_presets(frame, meshes):
+            if name not in sculpted:
+                sculpted.append(name)
+            how[name] = why
+    return {"sculpted": sculpted, "filled": filled, "how": how}
 
 
 def humanoid_bones(rig):
