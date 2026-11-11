@@ -416,6 +416,60 @@ class RiggedTest(unittest.TestCase):
         self.assertEqual(rig.data.bones["Head"].length, size)
 
 
+class BodyTest(unittest.TestCase):
+    """A head on a body five times taller: the head's size is not the character's, and the body never moves."""
+
+    def test_a_head_on_a_tall_body(self):
+        objs = head()
+        bm = bmesh.new()
+        bmesh.ops.create_cone(bm, cap_ends=True, segments=16, radius1=0.3, radius2=0.3, depth=5.0)
+        bmesh.ops.translate(bm, vec=(0, 0, -3.1), verts=bm.verts)
+        mesh = bpy.data.meshes.new("Torso")
+        bm.to_mesh(mesh)
+        bm.free()
+        torso = bpy.data.objects.new("Body", mesh)
+        bpy.context.scene.collection.objects.link(torso)
+        objs["Body"] = torso
+        report, data = described(objs)
+        self.assertLessEqual(set(data["made"]["missing"]), CANNOT, data["made"])
+        key = torso.data.shape_keys
+        for block in key.key_blocks if key is not None else ():
+            if block != key.reference_key:
+                self.assertEqual(float(np.abs(world_offsets(torso, block.name)[0]).max()), 0.0, block.name)
+
+    def test_a_head_that_faces_sideways(self):
+        for turn in (math.pi / 2, -math.pi / 2):
+            objs = head()
+            for obj in objs.values():
+                obj.rotation_euler.z = turn
+            bpy.context.view_layer.update()
+            _report, data = described(objs)
+            self.assertLessEqual(set(data["made"]["missing"]), CANNOT, (turn, data["made"]))
+            left = np.array(objs["Head"].matrix_world.to_3x3() @ Vector((1.0, 0.0, 0.0)))  # the character's left
+            moved, rest = world_offsets(objs["Head"], "cheekSquintLeft")
+            moving = np.abs(moved).max(axis=1) > 1e-6
+            self.assertGreater(float((rest[moving] @ left).mean()), 0.0, turn)
+
+
+class ExportTest(unittest.TestCase):
+    def test_the_archive_says_what_was_made_and_what_could_not_be(self):
+        import json
+        import tempfile
+        import zipfile
+        import dasktoon_dlive
+        objs = head(brows='meshes')
+        for obj in objs.values():
+            obj.data.uv_layers.new(name="UVMap")
+        path = os.path.join(tempfile.mkdtemp(prefix="dt_face_"), "Head.dlive")
+        dasktoon_dlive.export(bpy.context, path, list(objs.values()), dasktoon_dlive.Options(thumbnail=False))
+        with zipfile.ZipFile(path) as z:
+            data = json.loads(z.read("expressions.json"))
+        self.assertLessEqual(set(data["made"]["missing"]), CANNOT, data["made"])
+        self.assertIn("browInnerUp", data["made"]["how"])
+        self.assertEqual({e["mesh"] for e in data["keys"]["browInnerUp"]}, {"Brows"})
+        self.assertTrue(all(o.data.shape_keys is None for o in objs.values()), "the file's own meshes are unchanged")
+
+
 class FrameTest(unittest.TestCase):
     def test_no_eyes_no_frame(self):
         objs = head()

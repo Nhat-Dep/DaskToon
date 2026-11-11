@@ -112,7 +112,7 @@ class Face:
 
     # -- where the vertices a key may move are -------------------------------------------------------------------------
     def movable(self, obj):
-        """Mask of the vertices of `obj` a key may move: of the Body, the loose pieces that make the face's skin (a hair
+        """Mask of the vertices of `obj` a key may move: of the Body, the loose pieces that reach the eyes (the face's skin; a hair
         lock of the same mesh in front of the cheek is another piece and stays), in the face box; of other meshes only
         the small loose pieces lying wholly in the mouth's place (teeth, a tongue)."""
         if obj in self._movable:
@@ -123,8 +123,8 @@ class Face:
         pieces = self.pieces(obj)
         if self.roles.get(obj) == 'BODY':
             a = self.apart
-            middle = ((np.abs(rest[:, 0] - self.mid) < a) & (rest[:, 2] > self.eye_z - 2.0 * a)
-                      & (rest[:, 2] < self.eye_z + 0.5 * a) & (rest[:, 1] < self.head_y))
+            middle = ((np.abs(rest[:, 0] - self.mid) < 1.5 * a) & (rest[:, 2] > self.eye_low - 0.3 * self.width)
+                      & (rest[:, 2] < self.eye_top + 0.3 * self.width) & (rest[:, 1] < self.head_y))
             counts = [int(middle[piece].sum()) for piece in pieces]
             most = max(counts) if counts else 0
             for piece, count in zip(pieces, counts):
