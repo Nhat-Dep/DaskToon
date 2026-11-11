@@ -6,7 +6,7 @@
 """Make an installed DaskToon match this repository: scripts/startup, scripts/modules, the keymaps and the
 translations.
 
-    python tools/dasktoon_sync_build.py D:/build_windows_x64_vc17_Release/bin/Release/5.2 [--dry-run]
+    python tools/dasktoon_sync_build.py D:/build_windows_x64_vc18_Release/bin/Release/5.2 [--dry-run]
 
 Changed files are copied, and files or folders the repository does not have are removed: copying alone left removed
 modules behind, and Blender kept loading them. datafiles/locale/languages is copied and installed language folders
