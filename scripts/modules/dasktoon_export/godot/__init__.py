@@ -120,7 +120,7 @@ def _write_model(context, target, objects, options, rep, material_paths):
         with clip_bake.baked(context, clip_rig, objects) as baked:
             mode = 'NLA_TRACKS' if baked else 'ACTIVE_ACTIONS'
             left_out = model.write_glb(context, objects, path, options.include_animation, mode,
-                                       morph_normals=not rep.face_meshes)
+                                       morph_normals=options.morph_normals and not rep.face_meshes)
         rep.clips = [(name, loop) for name, loop, _stepped in baked]
     rep.model = "%s/%s.glb" % (target.name, target.name)
     if left_out:

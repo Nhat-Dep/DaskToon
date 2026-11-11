@@ -108,3 +108,21 @@ def describe(meshes, renamed, rig, made):
     made = dict(made)
     made["missing"] = [name for name in ARKIT if name not in keys]
     return {"keys": keys, "bones": humanoid_bones(rig), "made": made}
+
+
+def drop_unused(meshes, renamed, described):
+    """Remove from `meshes` (copies) the shape keys no expression plays, that rest at 0 and that no kept key is
+    relative to: a model with hundreds of keys sends only what moves in a game."""
+    used = {(e["mesh"], e["key"]) for entries in described["keys"].values() for e in entries}
+    dropped = 0
+    for obj in meshes:
+        key = obj.data.shape_keys if obj.type == 'MESH' else None
+        if key is None:
+            continue
+        mesh_name = renamed.get(obj.name, obj.name)
+        keep = {b.name for b in key.key_blocks if (mesh_name, b.name) in used or abs(b.value) > 1e-6}
+        keep |= {b.relative_key.name for b in key.key_blocks if b.name in keep}
+        for block in [b for b in key.key_blocks if b != key.reference_key and b.name not in keep]:
+            obj.shape_key_remove(block)
+            dropped += 1
+    return dropped

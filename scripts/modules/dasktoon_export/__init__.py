@@ -23,6 +23,7 @@ class ExportOptions:
     bake_size: int = 1024
     bake_samples: int = 16
     merge_meshes: bool = True  # the character's meshes into one (merge.py)
+    morph_normals: bool = True  # shape keys carry normals too (a Godot/.dlive player may do without: 80% of a face rig)
 
 
 def safe_name(name):

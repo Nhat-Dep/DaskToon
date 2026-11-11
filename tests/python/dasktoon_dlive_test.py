@@ -351,6 +351,91 @@ class UnassignedFacesTest(unittest.TestCase):
         self.assertFalse([m for m in bpy.data.materials if m.name.startswith("Unassigned")])
 
 
+class SizeTest(unittest.TestCase):
+    """What a game does not need stays out of the file: shape keys no expression plays, the morph normals."""
+
+    def pack_with_extra_keys(self, **kwargs):
+        tu.reset_scene()
+        rig, objects = character()
+        body = bpy.data.objects["Body"]
+        body.shape_key_add(name="Basis", from_mix=False)
+        extra = body.shape_key_add(name="zzz_unplayed", from_mix=False)
+        for index, point in enumerate(extra.data):
+            point.co.z += 0.002 * (index % 5)
+        extra.value = 0.0
+        body.shape_key_add(name="zzz_empty", from_mix=False)
+        path = new_path()
+        dasktoon_dlive.export(bpy.context, path, objects, options(**kwargs))
+        files = read(path)
+        return body, files, glb_json(files["model.glb"])
+
+    def target_names(self, gltf):
+        return [n for m in gltf["meshes"] for n in m.get("extras", {}).get("targetNames", [])]
+
+    def test_unplayed_keys_are_left_out_and_the_file_keeps_them(self):
+        body, files, gltf = self.pack_with_extra_keys()
+        names = self.target_names(gltf)
+        self.assertNotIn("zzz_unplayed", names)
+        self.assertTrue(names)  # what an expression plays is there
+        self.assertIn("zzz_unplayed", [b.name for b in body.data.shape_keys.key_blocks])
+
+    def test_unplayed_keys_stay_when_asked(self):
+        _body, _files, gltf = self.pack_with_extra_keys(drop_unused_keys=False)
+        self.assertIn("zzz_unplayed", self.target_names(gltf))
+
+    def test_morph_normals_only_when_asked(self):
+        for wanted in (False, True):
+            _body, _files, gltf = self.pack_with_extra_keys(morph_normals=wanted)
+            targets = [t for m in gltf["meshes"] for p in m["primitives"] for t in p.get("targets", [])]
+            self.assertTrue(targets)
+            self.assertEqual(all("NORMAL" in t for t in targets), wanted)
+
+
+class TextureTest(unittest.TestCase):
+    """Colour maps with nothing see-through are JPEG, one with some transparency stays PNG, and the same picture under
+    two inputs is in the file once."""
+
+    def image(self, name, alpha):
+        image = bpy.data.images.new(name, 64, 64, alpha=True)
+        px = np.tile((0.9, 0.6, 0.5, 1.0), 64 * 64).reshape(64, 64, 4).astype(np.float32)
+        px[:, :, 0] = np.linspace(0.0, 1.0, 64)[None, :]  # not flat: a gradient, so it is no accident they are equal
+        px[:32, :, 3] = alpha
+        image.pixels.foreach_set(px.ravel())
+        image.pack()
+        return image
+
+    def link(self, mat, node, socket, image):
+        tex = mat.node_tree.nodes.new('ShaderNodeTexImage')
+        tex.image = image
+        mat.node_tree.links.new(tex.outputs["Color"], node.inputs[socket])
+
+    def test_formats_and_one_copy(self):
+        tu.reset_scene()
+        rig, objects = character()
+        solid = self.image("Solid", 1.0)
+        same = self.image("Same", 1.0)
+        see_through = self.image("SeeThrough", 0.2)
+        mat, node = tu.node_material("Plain", 'ShaderNodeAnimeCharacter')
+        self.link(mat, node, "Base Color", solid)
+        self.link(mat, node, "Shadow Color", same)
+        glass, gnode = tu.node_material("Glass", 'ShaderNodeAnimeCharacter')
+        self.link(glass, gnode, "Base Color", see_through)
+        tu.assign(bpy.data.objects["Boots"], mat)
+        tu.assign(bpy.data.objects["Teeth"], glass)
+        path = new_path()
+        dasktoon_dlive.export(bpy.context, path, objects, options())
+        files = read(path)
+        mats = {m["name"]: m for m in json.loads(files["materials.json"])["materials"]}
+        plain, clear = mats["Plain"]["params"], mats["Glass"]["params"]
+        self.assertTrue(plain["base_map"].endswith(".jpg"), plain["base_map"])
+        self.assertEqual(files[plain["base_map"]][:2], bytes([0xFF, 0xD8]))
+        self.assertEqual(plain["base_map"], plain["shadow_color_map"])  # the same picture, one file
+        self.assertTrue(clear["base_map"].endswith(".png"), clear["base_map"])
+        self.assertEqual(files[clear["base_map"]][1:4], b"PNG")
+        self.assertEqual(len([n for n in files if n.startswith("textures/")
+                              and n.startswith("textures/Plain")]), 1)
+
+
 class OperatorsTest(unittest.TestCase):
     def test_operators_are_registered(self):
         self.assertTrue(hasattr(bpy.ops.export_scene, "dasktoon_dlive"))
