@@ -102,7 +102,7 @@ class Face:
         self.meshes = [o for o in meshes if _is_mesh_of(rig, o) and len(o.data.vertices) and o not in hair]
         self.roles = roles
         self.rests = {o: _rest(rig, o) for o in self.meshes}
-        self._movable = {}
+        self._movable, self._pieces, self._brows = {}, {}, None
         if not self.mouth_found:  # a face that ends sooner than the usual distance below the eyes: the mouth is half way
             lowest = [r[(np.abs(r[:, 0] - self.mid) < 0.3 * self.apart) & (r[:, 1] < self.head_y)
                         & (r[:, 2] < self.eye_low), 2].min(initial=self.eye_low)
@@ -120,7 +120,7 @@ class Face:
         rest = self.rests[obj]
         box = self.in_box(rest)
         out = np.zeros(len(rest), bool)
-        pieces = eye_shapes._pieces(obj.data)
+        pieces = self.pieces(obj)
         if self.roles.get(obj) == 'BODY':
             a = self.apart
             middle = ((np.abs(rest[:, 0] - self.mid) < a) & (rest[:, 2] > self.eye_z - 2.0 * a)
@@ -140,6 +140,12 @@ class Face:
                     out[piece] = True
         self._movable[obj] = out
         return out
+
+    def pieces(self, obj):
+        """The loose pieces of `obj` (cached: finding them is slow on a big mesh)."""
+        if obj not in self._pieces:
+            self._pieces[obj] = eye_shapes._pieces(obj.data)
+        return self._pieces[obj]
 
     def in_box(self, rest):
         a = self.apart
@@ -169,13 +175,18 @@ class Face:
 
     # -- brows ------------------------------------------------------------------------------------------------------
     def brow_pieces(self):
+        if self._brows is None:
+            self._brows = self._find_brows()
+        return self._brows
+
+    def _find_brows(self):
         """{object: [vertex indices]} of the loose pieces over the eyes, a pair twin across the middle (brows of a mesh
         of their own, or loose pieces of the face's), not part of an eye; {} without a pair."""
         eye_pieces = {(o, int(p[0])) for e in self.eyes.values() for o, p in e.pieces if len(p)}
         found = {"LEFT": [], "RIGHT": []}
         for obj in self.meshes:
             rest = self.rests[obj]
-            for piece in eye_shapes._pieces(obj.data):
+            for piece in self.pieces(obj):
                 if len(piece) < eye_shapes.FEWEST or (obj, int(piece[0])) in eye_pieces:
                     continue
                 p = rest[piece]
@@ -589,18 +600,21 @@ def _stand_in(obj, name):
             block.value = 0.0
 
 
-def sculpt(rig, meshes, wanted=None, confined=()):
-    """Make the ARKit face keys of ARKIT_FACE (those of `wanted` if given) that no mesh of `meshes` moves where it should;
-    returns [(key name, how, [mesh names])]; nothing without both eyes found. `confined`: names of keys made from
+def read(rig, meshes):
+    """The Face of the character: its eyes found as pieces, else by the eye bones of `rig`; None without a rig or eyes."""
+    if rig is None:
+        return None
+    eyes = eye_shapes.find_eyes(rig, meshes) or bone_eyes(rig)
+    return Face(rig, meshes, eyes) if eyes else None
+
+
+def sculpt(face, wanted=None, confined=()):
+    """Make the ARKit face keys of ARKIT_FACE (those of `wanted` if given) that no mesh of the `face` moves where it
+    should; returns [(key name, how, [mesh names])]. `confined`: names of keys made from
     others, which lose what they move outside their region. A key under the name that moves only
     elsewhere is a stand-in (a "browInnerUp" made from a whole-face key that only widens the eyes): it is cleared and
     made again."""
-    if rig is None:
-        return []
-    eyes = eye_shapes.find_eyes(rig, meshes) or bone_eyes(rig)
-    if not eyes:
-        return []
-    face = Face(rig, meshes, eyes)
+    rig = face.rig
     made = []
     for name in confined:  # keys the export made from whole-face keys move only where they belong
         if name in ARKIT_FACE:
@@ -620,16 +634,11 @@ def sculpt(rig, meshes, wanted=None, confined=()):
     return made
 
 
-def sculpt_presets(rig, meshes):
+def sculpt_presets(face):
     """The VRM expressions nothing moves yet (PRESETS), made of the ARKit fields, under their VRM 0.x names; returns
     [(key name, how, [mesh names])]."""
     from . import auto_expressions
-    if rig is None:
-        return []
-    eyes = eye_shapes.find_eyes(rig, meshes) or bone_eyes(rig)
-    if not eyes:
-        return []
-    face = Face(rig, meshes, eyes)
+    rig = face.rig
     states = auto_expressions.states(face.meshes)
     made = []
     for slot, name, parts in PRESETS:

@@ -79,7 +79,8 @@ def make(meshes, rig):
                     if name in ARKIT and name not in before[obj] and name not in filled:
                         filled.append(name)
                         how[name] = "built from the expression keys"
-            new = face_shapes.sculpt(frame, meshes, confined=filled) + face_shapes.sculpt_presets(frame, meshes)
+            face = face_shapes.read(frame, meshes)
+            new = face_shapes.sculpt(face, confined=filled) + face_shapes.sculpt_presets(face) if face is not None else []
             for name, why, _names in new:
                 if name not in sculpted:
                     sculpted.append(name)
