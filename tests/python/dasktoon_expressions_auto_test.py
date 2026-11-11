@@ -130,6 +130,15 @@ class ArkitSourceNamesTest(unittest.TestCase):
         for name in ("eyeLookUpRight", "eyeLookDownLeft", "eyeLookUpLeft", "eyeLookDownRight"):
             np.testing.assert_allclose(self.offsets(name), 0.0, atol=1e-9, err_msg=name)
 
+    def test_a_moving_key_wins_over_an_empty_placeholder_of_the_usual_name(self):
+        shaped(self.obj, "Look Up", delta=(0.0, 0.0, 0.0))  # the empty placeholder
+        shaped(self.obj, "up", delta=(0.0, 0.0, 0.02))  # where the shape is
+        shaped(self.obj, "joy", delta=(0.0, 0.0, 0.0))
+        shaped(self.obj, "Eyes Smile", delta=(0.0, 0.0, 0.03))
+        skm.synthesize_arkit52(self.obj)
+        np.testing.assert_allclose(self.offsets("eyeLookUpLeft")[:, 2].max(), 0.02, atol=1e-5)
+        self.assertEqual(float(np.abs(self.offsets("mouthDimpleLeft")).max()), 0.0)  # a part of the face is no joy
+
     def test_the_eye_turning_keys_are_found_under_the_usual_names(self):
         for name in ("lookUp", "Look Down"):
             shaped(self.obj, name, delta=(0.0, 0.0, 0.01))

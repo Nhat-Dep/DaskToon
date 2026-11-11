@@ -1350,18 +1350,26 @@ def synthesize_arkit52(obj, overwrite_existing=False):
     # A key of one part of the face ("Brow Happy", "Eyes Smile", "Eyelid Up R") is not the whole expression nor the eye
     # turning: a name that is only the pattern wins first, and a name that merely contains it never when it names a
     # part of the face.
-    part_of_face = re.compile(r'brow|eyelid|eyes?|mouth|lip|cheek|nose|tongue|眉|目|口|頬|鼻', re.IGNORECASE)
+    part_of_face = re.compile(r'brow|eyelid|(?<![a-z])eyes?(?![a-z])|mouth|lip|cheek|nose|tongue|眉|目|口|頬|鼻', re.IGNORECASE)
+
+    basis_co = np.empty(len(basis_kb.data) * 3, np.float32)
+    basis_kb.data.foreach_get("co", basis_co)
+
+    def moves(kb):
+        co = np.empty_like(basis_co)
+        kb.data.foreach_get("co", co)
+        return bool(len(co) and np.abs(co - basis_co).max() > 1e-5)
 
     def get_kb(patterns, whole_face=False):
+        """The key of the first pattern that names one, whole names before names that contain the pattern; one that
+        moves before an empty placeholder of the same name family (a model has "Look Up" empty and its shape under "up")."""
+        found = []
         for pat in patterns:
-            for name, kb in existing_names.items():
-                if re.fullmatch(pat, name, re.IGNORECASE):
-                    return kb
+            found += [kb for name, kb in existing_names.items() if re.fullmatch(pat, name, re.IGNORECASE)]
         for pat in patterns:
-            for name, kb in existing_names.items():
-                if re.search(pat, name, re.IGNORECASE) and not (whole_face and part_of_face.search(name)):
-                    return kb
-        return None
+            found += [kb for name, kb in existing_names.items()
+                      if re.search(pat, name, re.IGNORECASE) and not (whole_face and part_of_face.search(name))]
+        return next((kb for kb in found if moves(kb)), found[0] if found else None)
 
     # Detect VRM base shapes
     joy_kb = get_kb([r'Fcl_ALL_Joy', r'happy', r'joy', r'笑い', r'smile'], True)
