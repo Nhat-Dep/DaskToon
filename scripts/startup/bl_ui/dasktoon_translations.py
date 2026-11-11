@@ -32,6 +32,8 @@ VI = {
     "Pre-compress Images (DDS)": "Nén sẵn ảnh (DDS)",
     "Add a block-compressed twin of each image: DaskLive then keeps it in a quarter of the video memory (the export takes a few seconds more)": "Thêm một bản ảnh đã nén cho mỗi ảnh: DaskLive sẽ giữ ảnh trong bộ nhớ đồ họa chỉ bằng một phần tư (xuất lâu hơn vài giây)",
     "Texture %s not block-compressed (%s)": "Ảnh %s không nén sẵn được (%s)",
+    "The character does not face the front (-Y): DaskLive will show its back. Turn it, or export with Make Expressions on":
+        "Nhân vật không quay mặt về phía trước (-Y): DaskLive sẽ thấy lưng. Hãy xoay nhân vật, hoặc xuất với Tự làm biểu cảm",
     "Thumbnail": "Ảnh đại diện",
     "Add a small picture of the character": "Thêm một ảnh nhỏ của nhân vật",
     "DaskLive: %d objects imported": "DaskLive: đã nhập %d đối tượng",

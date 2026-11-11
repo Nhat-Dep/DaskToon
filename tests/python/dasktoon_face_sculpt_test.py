@@ -469,6 +469,33 @@ class ExportTest(unittest.TestCase):
         self.assertEqual({e["mesh"] for e in data["keys"]["browInnerUp"]}, {"Brows"})
         self.assertTrue(all(o.data.shape_keys is None for o in objs.values()), "the file's own meshes are unchanged")
 
+    def test_a_character_facing_back_is_exported_facing_the_front(self):
+        """DaskLive's camera looks at -Y (DaskToon's front, glTF's +Z): a character built facing +Y is turned on the
+        copies, the file's own objects stay as they are, and the eyes come back in front of the head."""
+        import tempfile
+        import dasktoon_dlive
+        from dasktoon_dlive import importer
+        for facing, turned in ((-1.0, True), (1.0, False)):
+            objs = head(facing=facing, with_hair=False)
+            for obj in objs.values():
+                obj.data.uv_layers.new(name="UVMap")
+            before = {name: obj.matrix_world.copy() for name, obj in objs.items()}
+            path = os.path.join(tempfile.mkdtemp(prefix="dt_face_"), "Head.dlive")
+            rep = dasktoon_dlive.export(bpy.context, path, list(objs.values()), dasktoon_dlive.Options(thumbnail=False))
+            self.assertEqual(rep.turned is not None, turned, rep.turned)
+            for name, obj in objs.items():
+                self.assertEqual(obj.matrix_world, before[name], "the file's own objects are not turned")
+            for obj in list(objs.values()):
+                bpy.data.objects.remove(obj)
+            new = importer.import_dlive(bpy.context, path)
+            meshes = [o for o in new if o.type == 'MESH']
+            world = np.concatenate([np.array([o.matrix_world @ v.co for v in o.data.vertices]) for o in meshes])
+            # the sphere is the same front and back; the eye pieces add vertices on the face's side only
+            middle = (world[:, 1].min() + world[:, 1].max()) / 2.0
+            self.assertGreater(int((world[:, 1] < middle).sum()), int((world[:, 1] > middle).sum()), facing)
+            for obj in new:
+                bpy.data.objects.remove(obj)
+
 
 class FrameTest(unittest.TestCase):
     def test_no_eyes_no_frame(self):

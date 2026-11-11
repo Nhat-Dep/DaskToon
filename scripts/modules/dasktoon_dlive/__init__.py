@@ -10,6 +10,7 @@ import contextlib
 import datetime
 import hashlib
 import json
+import math
 import os
 import shutil
 import tempfile
@@ -43,6 +44,7 @@ class Report:
     expressions: dict = field(default_factory=dict)
     warnings: list = field(default_factory=list)
     thumbnail: bool = False
+    turned: tuple = None  # (degrees about +Z, what told the way) when the copies were turned to face the front
 
     def summary(self):
         made = self.expressions.get("made", {})
@@ -138,7 +140,8 @@ def export(context, filepath, objects, options=None):
     from dasktoon_export.godot import finish as godot_finish
     from dasktoon_export.targets import ExportTarget
     from dasktoon_rig import auto_expressions, eye_shapes
-    from . import copies, expressions, fallback, jaw, materials as dlive_materials, slots, thumbnail
+    from dasktoon_rig import facing
+    from . import copies, expressions, fallback, front, jaw, materials as dlive_materials, slots, thumbnail
 
     options = options or Options()
     rep = Report(filepath=filepath)
@@ -186,7 +189,16 @@ def export(context, filepath, objects, options=None):
                 meshes = [o for o in objs if o.type == 'MESH']
                 meshes = [m for m in meshes if rig is None or eye_shapes._is_mesh_of(rig, m)] or meshes
                 made = expressions.make(meshes, rig)
-            target = ExportTarget('GODOT_4', 'FOLDER', os.path.join(work, "godot"), name)
+            if options.make_expressions:  # the copies may be turned; the user's own objects are not
+                angle, told = front.turn_to_front(context, objs, rig)
+                if angle:
+                    rep.turned = (round(math.degrees(angle)), told)
+            else:
+                way, _told = front.direction(context, objs, rig)
+                if way is not None and facing.turn_to_front(way):
+                    rep.warnings.append(rpt_("The character does not face the front (-Y): DaskLive will show its "
+                                             "back. Turn it, or export with Make Expressions on"))
+            target =ExportTarget('GODOT_4', 'FOLDER', os.path.join(work, "godot"), name)
             settings = ExportOptions(include_animation=False, bake_size=min(options.texture_size, 1024),
                                      bake_samples=options.bake_samples, merge_meshes=options.merge_meshes,
                                      morph_normals=options.morph_normals)
