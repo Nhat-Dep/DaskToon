@@ -147,6 +147,60 @@ class ArkitSourceNamesTest(unittest.TestCase):
         self.assertGreater(np.abs(self.offsets("eyeLookDownLeft")).max(), 0.0)
 
 
+class ArkitPartsTest(unittest.TestCase):
+    """A whole-face key (joy, surprised, angry, sorrow) moves the eyes, brows and mouth together; the ARKit key of one
+    part must move that part only: a smile that shut an eye, a brow lift that opened the mouth. The parts are what the
+    blink and the vowel keys of the same mesh move."""
+
+    def setUp(self):
+        tu.reset_scene()
+        self.obj = tu.add_sphere(segments=8, rings=6)
+        self.rest = np.array([v.co for v in self.obj.data.vertices])
+        z = self.rest[:, 2]
+        self.eyes = z > 0.4
+        self.mouth = z < -0.4
+        self.assertTrue(self.eyes.any() and self.mouth.any() and (~self.eyes & ~self.mouth).any())
+
+    def key(self, name, where, delta):
+        shaped(self.obj, name, delta=(0.0, 0.0, 0.0))
+        block = self.obj.data.shape_keys.key_blocks[name]
+        co = self.rest.copy()
+        co[where] += np.array(delta)
+        block.data.foreach_set("co", co.ravel())
+
+    def offsets(self, name):
+        key = self.obj.data.shape_keys
+        return np.array([p.co for p in key.key_blocks[name].data]) - self.rest
+
+    def make(self):
+        self.key("blink", self.eyes, (0.0, 0.0, -0.1))
+        self.key("a", self.mouth, (0.0, 0.0, -0.2))
+        self.key("joy", self.eyes | self.mouth, (0.0, 0.0, 0.05))
+        self.key("surprised", self.eyes | self.mouth, (0.0, 0.0, 0.07))
+        self.key("angry", self.eyes | self.mouth, (0.0, 0.0, -0.03))
+        skm.synthesize_arkit52(self.obj)
+
+    def moved(self, name):
+        return np.abs(self.offsets(name)).max(axis=1) > 1e-9
+
+    def test_mouth_keys_leave_the_eyes(self):
+        self.make()
+        for name in ("mouthSmileLeft", "mouthSmileRight", "mouthUpperUpLeft", "mouthDimpleLeft"):
+            self.assertTrue(self.moved(name)[self.mouth].any(), name)
+            self.assertFalse(self.moved(name)[self.eyes].any(), name)
+
+    def test_eye_and_brow_keys_leave_the_mouth(self):
+        self.make()
+        for name in ("eyeWideLeft", "eyeSquintRight", "browInnerUp", "browDownLeft", "browOuterUpRight"):
+            self.assertTrue(self.moved(name)[self.eyes].any(), name)
+            self.assertFalse(self.moved(name)[self.mouth].any(), name)
+
+    def test_a_face_without_blink_or_vowel_keys_is_as_before(self):
+        self.key("joy", self.eyes | self.mouth, (0.0, 0.0, 0.05))
+        skm.synthesize_arkit52(self.obj)
+        self.assertTrue(self.moved("mouthSmileLeft")[self.eyes].any())  # no part to tell by
+
+
 class Character(unittest.TestCase):
     def setUp(self):
         self.rig, self.objs, self.eyes = et.character()

@@ -1418,8 +1418,8 @@ def synthesize_arkit52(obj, overwrite_existing=False):
         'mouthPucker': [(o_kb, 0.9, 'ALL')],
         'mouthLeft': [(i_kb, 0.5, 'L')],
         'mouthRight': [(i_kb, 0.5, 'R')],
-        'mouthSmileLeft': [(joy_kb, 0.7, 'L'), (blink_l, 0.25, 'L')],
-        'mouthSmileRight': [(joy_kb, 0.7, 'R'), (blink_r, 0.25, 'R')],
+        'mouthSmileLeft': [(joy_kb, 0.7, 'L')],
+        'mouthSmileRight': [(joy_kb, 0.7, 'R')],
         'mouthFrownLeft': [(sad_kb, 0.8, 'L')],
         'mouthFrownRight': [(sad_kb, 0.8, 'R')],
         'mouthDimpleLeft': [(joy_kb, 0.4, 'L')],
@@ -1461,6 +1461,36 @@ def synthesize_arkit52(obj, overwrite_existing=False):
     t = np.clip((base[:, 0] + fall) / (2.0 * fall), 0.0, 1.0)
     left = t * t * (3.0 - 2.0 * t)
     side_fac = {'L': left, 'R': 1.0 - left, 'ALL': np.ones(count, np.float32)}
+
+    # A whole-face key (joy, sorrow, angry, surprised) moves eyes, brows and mouth together; an ARKit key of one part takes
+    # it without what moves the others. The parts are known from the mesh: the eyes are what the blink moves, the mouth
+    # what the vowels move.
+    def zone(keys):
+        out = np.zeros(count, bool)
+        for kb in keys:
+            if kb is None:
+                continue
+            co = np.empty(count * 3, np.float32)
+            kb.data.foreach_get("co", co)
+            moved = np.linalg.norm(co.reshape(-1, 3) - base, axis=1)
+            if moved.max() > 1e-5:
+                out |= moved > 0.05 * moved.max()
+        return out
+
+    eye_zone = zone([blink_both, blink_l, blink_r])
+    mouth_zone = zone([a_kb, i_kb, o_kb, u_kb, e_kb])
+    only_eyes, only_mouth = eye_zone & ~mouth_zone, mouth_zone & ~eye_zone
+    whole_face = {kb.name for kb in (joy_kb, sad_kb, angry_kb, surprised_kb) if kb is not None}
+
+    def leave_out(arkit_name):
+        if arkit_name.startswith(('mouth', 'jaw', 'tongue')):
+            return only_eyes
+        if arkit_name.startswith('nose'):
+            return only_eyes | only_mouth
+        if arkit_name.startswith(('eye', 'brow', 'cheekSquint')):
+            return only_mouth
+        return None
+
     for arkit_name, ingredients in recipes.items():
         if arkit_name in sk.key_blocks and not overwrite_existing:
             continue
@@ -1473,7 +1503,11 @@ def synthesize_arkit52(obj, overwrite_existing=False):
                 continue
             co = np.empty(count * 3, np.float32)
             src_kb.data.foreach_get("co", co)
-            deltas += (co.reshape(-1, 3) - base) * weight * side_fac[side][:, None]
+            share = side_fac[side]
+            hidden = leave_out(arkit_name)
+            if hidden is not None and src_kb.name in whole_face:
+                share = share * ~hidden
+            deltas += (co.reshape(-1, 3) - base) * weight * share[:, None]
 
         target_kb.data.foreach_set("co", (base + deltas).ravel())
         generated_count += 1
